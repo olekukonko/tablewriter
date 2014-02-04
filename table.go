@@ -169,6 +169,10 @@ func (t table) printRows() {
 	}
 
 }
+
+// Print Row Information
+// Adjust column alignment based on type
+
 func (t table) printRow(columns [][]string, colKey int) {
 	// Get Maximum Height
 	max := t.rs[colKey]
@@ -186,9 +190,7 @@ func (t table) printRow(columns [][]string, colKey int) {
 			columns[i] = append(columns[i], "  ")
 		}
 	}
-
 	//fmt.Println(max, "\n")
-
 	for x := 0; x < max; x++ {
 		for y := 0; y < total; y++ {
 			fmt.Fprint(t.out, t.pColumn)
@@ -196,7 +198,7 @@ func (t table) printRow(columns [][]string, colKey int) {
 			str := columns[y][x]
 
 			// This would print alignment
-			// Default alignment  would use multiple configureation
+			// Default alignment  would use multiple configuration
 			switch t.align {
 			case ALIGN_CENTRE: //
 				fmt.Fprintf(t.out, "%s", Pad(str, " ", t.cs[y]))

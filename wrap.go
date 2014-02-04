@@ -55,7 +55,6 @@ func WrapWords(words [][]byte, spc, lim, pen int) [][][]byte {
 			length[i][j] = length[i][j-1] + spc + len(words[j])
 		}
 	}
-
 	nbrk := make([]int, n)
 	cost := make([]int, n)
 	for i := range cost {
@@ -79,7 +78,6 @@ func WrapWords(words [][]byte, spc, lim, pen int) [][][]byte {
 			}
 		}
 	}
-
 	var lines [][][]byte
 	i := 0
 	for i < n {
