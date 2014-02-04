@@ -1,4 +1,4 @@
-// Credit https://github.com/tonnerre/golang-text/blob/master/wrap.go
+
 package table
 
 import (
@@ -13,41 +13,25 @@ var (
 
 const defaultPenalty = 1e5
 
-// Wrap wraps s into a paragraph of lines of length lim, with minimal
-// raggedness.
-func Wrap(s string, lim int) string {
-	return string(WrapBytes([]byte(s), lim))
-}
 
 // Wrap wraps s into a paragraph of lines of length lim, with minimal
 // raggedness.
 func WrapString(s string, lim int) ([]string, int) {
 	words := bytes.Split(bytes.Replace(bytes.TrimSpace([]byte(s)), nl, sp, -1), sp)
 	var lines []string
-	max := 0;
+	max := 0
 	for _, v := range words {
 		max = len(v)
 		if max > lim {
 			lim = max
 		}
 	}
-
 	for _, line := range WrapWords(words, 1, lim, defaultPenalty) {
 		lines = append(lines, string(bytes.Join(line, sp)))
 	}
 	return lines, lim
 }
 
-// WrapBytes wraps b into a paragraph of lines of length lim, with minimal
-// raggedness.
-func WrapBytes(b []byte, lim int) []byte {
-	words := bytes.Split(bytes.Replace(bytes.TrimSpace(b), nl, sp, -1), sp)
-	var lines [][]byte
-	for _, line := range WrapWords(words, 1, lim, defaultPenalty) {
-		lines = append(lines, bytes.Join(line, sp))
-	}
-	return bytes.Join(lines, nl)
-}
 
 // WrapWords is the low-level line-breaking algorithm, useful if you need more
 // control over the details of the text wrapping process. For most uses, either
@@ -68,7 +52,7 @@ func WrapWords(words [][]byte, spc, lim, pen int) [][][]byte {
 		length[i] = make([]int, n)
 		length[i][i] = len(words[i])
 		for j := i + 1; j < n; j++ {
-			length[i][j] = length[i][j-1]+spc+len(words[j])
+			length[i][j] = length[i][j-1] + spc + len(words[j])
 		}
 	}
 
@@ -83,8 +67,8 @@ func WrapWords(words [][]byte, spc, lim, pen int) [][][]byte {
 			nbrk[i] = n
 		} else {
 			for j := i + 1; j < n; j++ {
-				d := lim - length[i][j - 1]
-				c := d * d + cost[j]
+				d := lim - length[i][j-1]
+				c := d*d + cost[j]
 				if length[i][j-1] > lim {
 					c += pen // too-long lines get a worse penalty
 				}
