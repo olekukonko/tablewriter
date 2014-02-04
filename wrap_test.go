@@ -1,8 +1,15 @@
-package table
+// Copyright 2014 Oleku Konko All rights reserved.
+// Use of this source code is governed by a MIT
+// license that can be found in the LICENSE file.
+
+// This module is a Table Writer  API for the Go Programming Language.
+// The protocols were written in pure Go and works on windows and unix systems
+
+package tablewriter
 
 import (
-	"testing"
 	"strings"
+	"testing"
 )
 
 var text = "The quick brown fox jumps over the lazy dog."
@@ -12,8 +19,7 @@ func TestWrap(t *testing.T) {
 		"The", "quick", "brown", "fox",
 		"jumps", "over", "the", "lazy", "dog."}
 
-
-	got , _ := WrapString(text, 6)
+	got, _ := WrapString(text, 6)
 	if len(exp) != len(got) {
 		t.Fail()
 	}
@@ -21,7 +27,7 @@ func TestWrap(t *testing.T) {
 
 func TestWrapOneLine(t *testing.T) {
 	exp := "The quick brown fox jumps over the lazy dog."
-	words , _ := WrapString(text, 500)
+	words, _ := WrapString(text, 500)
 	got := strings.Join(words, string(sp))
 	if exp != got {
 		t.Fail()

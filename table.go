@@ -1,9 +1,18 @@
-package table
+// Copyright 2014 Oleku Konko All rights reserved.
+// Use of this source code is governed by a MIT
+// license that can be found in the LICENSE file.
+
+// This module is a Table Writer  API for the Go Programming Language.
+// The protocols were written in pure Go and works on windows and unix systems
+
+package tablewriter
 
 import (
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -49,7 +58,8 @@ type table struct {
 }
 
 // Start New Table
-func NewTable(writer io.Writer) *table {
+// Take io.Writer Directly
+func NewWriter(writer io.Writer) *table {
 	t := &table{
 		out:     writer,
 		rows:    [][]string{},
@@ -66,6 +76,46 @@ func NewTable(writer io.Writer) *table {
 		align:   ALIGN_DEFAULT}
 
 	return t
+}
+
+// Start A new table by importing from a CSV file
+func NewCSV(writer io.Writer, fileName string) (*table, error) {
+
+	file, err := os.Open(fileName)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return &table{}, err
+	}
+	defer file.Close()
+	csvReader := csv.NewReader(file)
+	t, err := NewCSVReader(writer, csvReader)
+	return t, err
+}
+
+//  Start a New Table Writer with csv.Reader
+// This enables customisation such as reader.Comma = ';'
+// See http://golang.org/src/pkg/encoding/csv/reader.go?s=3213:3671#L94
+func NewCSVReader(writer io.Writer, csvReader *csv.Reader) (*table, error) {
+	// Read the first row
+	headers, err := csvReader.Read()
+	if err != nil {
+		return &table{}, err
+	}
+
+	t := NewWriter(writer)
+	t.SetHeader(headers)
+
+	for {
+		record, err := csvReader.Read()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+
+			return &table{}, err
+		}
+		t.Append(record)
+	}
+	return t, nil
 }
 
 // Render table output
@@ -136,7 +186,7 @@ func (t *table) Append(row []string) error {
 func (t table) printLine(nl bool) {
 	fmt.Fprint(t.out, t.pCenter)
 	for _, v := range t.cs {
-		fmt.Fprintf(t.out,"%s%s%s%s",
+		fmt.Fprintf(t.out, "%s%s%s%s",
 			t.pRow,
 			strings.Repeat(string(t.pRow), v),
 			t.pRow,
@@ -202,9 +252,9 @@ func (t table) printRow(columns [][]string, colKey int) {
 			switch t.align {
 			case ALIGN_CENTRE: //
 				fmt.Fprintf(t.out, "%s", Pad(str, " ", t.cs[y]))
-			case ALIGN_LEFT:
-				fmt.Fprintf(t.out, "%s", PadLeft(str, " ", t.cs[y]))
 			case ALIGN_RIGHT:
+				fmt.Fprintf(t.out, "%s", PadLeft(str, " ", t.cs[y]))
+			case ALIGN_LEFT:
 				fmt.Fprintf(t.out, "%s", PadRight(str, " ", t.cs[y]))
 			default:
 				if decimal.MatchString(strings.TrimSpace(str)) || percent.MatchString(strings.TrimSpace(str)) {

@@ -1,8 +1,9 @@
-TextTable
+ASCII Table Writer
 =========
 
 [![Build Status](https://travis-ci.org/olekukonko/TextTable.png?branch=master)](https://travis-ci.org/olekukonko/TextTable) [![Total views](https://sourcegraph.com/api/repos/github.com/olekukonko/TextTable/counters/views.png)](https://sourcegraph.com/github.com/olekukonko/TextTable)
-ASCII Text Table
+
+Generate ASCII table on the fly ...
 
 #### Features
 - Automatic Padding
@@ -13,7 +14,7 @@ ASCII Text Table
 - Write Directly to http , file etc via `io.Reader`
 
 #### TODO
-- Import Directly from CSV
+- <strike>Import Directly from CSV</strike>
 - Support custom alignment
 - Support table with uneven elements
 - Support pyramid structure
@@ -28,15 +29,15 @@ data := [][]string{
     []string{"D", "The Gopher", "800"},
 }
 
-t := table.NewTable(os.Stdout)
-t.SetHeader([]string{"Name", "Sign", "Rating"})
+table := tablewriter.NewWriter(os.Stdout)
+table.SetHeader([]string{"Name", "Sign", "Rating"})
 for _, v := range data {
-    t.Append(v)
+    table.Append(v)
 }
-t.Render() // Send output
+table.Render() // Send output
 ```
 
-#### output
+#### Output
 ```
 +------+-----------------------+--------+
 | NAME |         SIGN          | RATING |
@@ -46,4 +47,25 @@ t.Render() // Send output
 |  C   |       The Ugly        |    120 |
 |  D   |      The Gopher       |    800 |
 +------+-----------------------+--------+
+```
+
+
+#### Example
+```go
+	table, _ := tablewriter.NewCSV(os.Stdout, "test.csv")
+	table.SetCenterSeparator("*")
+	table.SetRowSeparator("=")
+	table.SetAlignment(ALIGN_LEFT)
+	table.Render()
+```
+
+#### Output
+```
+*============*===========*=========*
+| FIRST_NAME | LAST_NAME |   SSN   |
+*============*===========*=========*
+| John       | Barry     | 123456  |
+| Kathy      | Smith     | 687987  |
+| Bob        | McCornick | 3979870 |
+*============*===========*=========*
 ```

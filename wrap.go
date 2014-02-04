@@ -1,5 +1,11 @@
+// Copyright 2014 Oleku Konko All rights reserved.
+// Use of this source code is governed by a MIT
+// license that can be found in the LICENSE file.
 
-package table
+// This module is a Table Writer  API for the Go Programming Language.
+// The protocols were written in pure Go and works on windows and unix systems
+
+package tablewriter
 
 import (
 	"bytes"
@@ -12,7 +18,6 @@ var (
 )
 
 const defaultPenalty = 1e5
-
 
 // Wrap wraps s into a paragraph of lines of length lim, with minimal
 // raggedness.
@@ -31,7 +36,6 @@ func WrapString(s string, lim int) ([]string, int) {
 	}
 	return lines, lim
 }
-
 
 // WrapWords is the low-level line-breaking algorithm, useful if you need more
 // control over the details of the text wrapping process. For most uses, either

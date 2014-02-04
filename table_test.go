@@ -1,7 +1,15 @@
-package table
+// Copyright 2014 Oleku Konko All rights reserved.
+// Use of this source code is governed by a MIT
+// license that can be found in the LICENSE file.
+
+// This module is a Table Writer  API for the Go Programming Language.
+// The protocols were written in pure Go and works on windows and unix systems
+
+package tablewriter
 
 import (
 	"os"
+	"testing"
 )
 
 func ExampleShort() {
@@ -13,7 +21,7 @@ func ExampleShort() {
 		[]string{"D", "The Gopher", "800"},
 	}
 
-	table := NewTable(os.Stdout)
+	table := NewWriter(os.Stdout)
 	table.SetHeader([]string{"Name", "Sign", "Rating"})
 
 	for _, v := range data {
@@ -30,7 +38,7 @@ func ExampleLong() {
 		[]string{"Instead of lining up the letters all ", "the way across, he splits the keyboard in two", "Like most ergonomic keyboards", "See Data"},
 	}
 
-	table := NewTable(os.Stdout)
+	table := NewWriter(os.Stdout)
 	table.SetHeader([]string{"Name", "Sign", "Rating"})
 	table.SetCenterSeparator("*")
 	table.SetRowSeparator("=")
@@ -42,3 +50,17 @@ func ExampleLong() {
 
 }
 
+func ExampleCSV() {
+	table, _ := NewCSV(os.Stdout, "test.csv")
+	table.SetCenterSeparator("*")
+	table.SetRowSeparator("=")
+	table.Render()
+}
+
+func TestCSV(t *testing.T) {
+	table, _ := NewCSV(os.Stdout, "test.csv")
+	table.SetCenterSeparator("*")
+	table.SetRowSeparator("=")
+	table.SetAlignment(ALIGN_LEFT)
+	table.Render()
+}
