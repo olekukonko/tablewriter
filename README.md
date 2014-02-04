@@ -1,5 +1,7 @@
 TextTable
 =========
+
+[![Build Status](https://travis-ci.org/olekukonko/TextTable.png?branch=master)](https://travis-ci.org/olekukonko/TextTable) [![Total views](https://sourcegraph.com/api/repos/github.com/olekukonko/TextTable/counters/views.png)](https://sourcegraph.com/github.com/olekukonko/TextTable)
 ASCII Text Table
 
 #### Features
@@ -28,7 +30,6 @@ data := [][]string{
 
 t := table.NewTable(os.Stdout)
 t.SetHeader([]string{"Name", "Sign", "Rating"})
-
 for _, v := range data {
     t.Append(v)
 }
@@ -45,5 +46,4 @@ t.Render() // Send output
 |  C   |       The Ugly        |    120 |
 |  D   |      The Gopher       |    800 |
 +------+-----------------------+--------+
-
 ```
