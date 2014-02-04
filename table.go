@@ -8,11 +8,9 @@
 package tablewriter
 
 import (
-	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -76,46 +74,6 @@ func NewWriter(writer io.Writer) *table {
 		align:   ALIGN_DEFAULT}
 
 	return t
-}
-
-// Start A new table by importing from a CSV file
-func NewCSV(writer io.Writer, fileName string) (*table, error) {
-
-	file, err := os.Open(fileName)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return &table{}, err
-	}
-	defer file.Close()
-	csvReader := csv.NewReader(file)
-	t, err := NewCSVReader(writer, csvReader)
-	return t, err
-}
-
-//  Start a New Table Writer with csv.Reader
-// This enables customisation such as reader.Comma = ';'
-// See http://golang.org/src/pkg/encoding/csv/reader.go?s=3213:3671#L94
-func NewCSVReader(writer io.Writer, csvReader *csv.Reader) (*table, error) {
-	// Read the first row
-	headers, err := csvReader.Read()
-	if err != nil {
-		return &table{}, err
-	}
-
-	t := NewWriter(writer)
-	t.SetHeader(headers)
-
-	for {
-		record, err := csvReader.Read()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-
-			return &table{}, err
-		}
-		t.Append(record)
-	}
-	return t, nil
 }
 
 // Render table output

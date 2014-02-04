@@ -3,7 +3,10 @@ ASCII Table Writer
 
 [![Build Status](https://travis-ci.org/olekukonko/TextTable.png?branch=master)](https://travis-ci.org/olekukonko/TextTable) [![Total views](https://sourcegraph.com/api/repos/github.com/olekukonko/TextTable/counters/views.png)](https://sourcegraph.com/github.com/olekukonko/TextTable)
 
-Generate ASCII table on the fly ...
+Generate ASCII table on the fly ...  Installation is simple as
+
+    go get  github.com/olekukonko/tablewriter
+
 
 #### Features
 - Automatic Padding
@@ -14,11 +17,12 @@ Generate ASCII table on the fly ...
 - Write Directly to http , file etc via `io.Reader`
 
 #### TODO
-- <strike>Import Directly from CSV</strike>
+- ~~Import Directly from CSV~~
 - Support custom alignment
 - Support table with uneven elements
 - Support pyramid structure
 - General Improvement & Optimisation
+- `NewFromHTML` Parse table from HTML
 
 #### Example
 ```go
@@ -52,11 +56,11 @@ table.Render() // Send output
 
 #### Example
 ```go
-	table, _ := tablewriter.NewCSV(os.Stdout, "test.csv")
-	table.SetCenterSeparator("*")
-	table.SetRowSeparator("=")
-	table.SetAlignment(ALIGN_LEFT)
-	table.Render()
+table, _ := tablewriter.NewCSV(os.Stdout, "test.csv")
+table.SetCenterSeparator("*")
+table.SetRowSeparator("=")
+table.SetAlignment(table.ALIGN_LEFT)
+table.Render()
 ```
 
 #### Output
