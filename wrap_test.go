@@ -1,45 +1,29 @@
-// Credit https://github.com/tonnerre/golang-text/blob/master/wrap_test.go
 package table
 
 import (
-	"bytes"
 	"testing"
+	"strings"
 )
 
 var text = "The quick brown fox jumps over the lazy dog."
 
 func TestWrap(t *testing.T) {
-	exp := [][]string{
-		{"The", "quick", "brown", "fox"},
-		{"jumps", "over", "the", "lazy", "dog."},
-	}
-	words := bytes.Split([]byte(text), sp)
-	got := WrapWords(words, 1, 24, defaultPenalty)
-	if len(exp) != len(got) {
-		t.Fail()
-	}
-	for i := range exp {
-		if len(exp[i]) != len(got[i]) {
-			t.Fail()
-		}
-		for j := range exp[i] {
-			if exp[i][j] != string(got[i][j]) {
-				t.Fatal(i, exp[i][j], got[i][j])
-			}
-		}
-	}
-}
+	exp := []string{
+		"The", "quick", "brown", "fox",
+		"jumps", "over", "the", "lazy", "dog."}
 
-func TestWrapNarrow(t *testing.T) {
-	exp := "The\nquick\nbrown\nfox\njumps\nover\nthe\nlazy\ndog."
-	if Wrap(text, 5) != exp {
+
+	got , _ := WrapString(text, 6)
+	if len(exp) != len(got) {
 		t.Fail()
 	}
 }
 
 func TestWrapOneLine(t *testing.T) {
 	exp := "The quick brown fox jumps over the lazy dog."
-	if Wrap(text, 500) != exp {
+	words , _ := WrapString(text, 500)
+	got := strings.Join(words, string(sp))
+	if exp != got {
 		t.Fail()
 	}
 }
