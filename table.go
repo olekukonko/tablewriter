@@ -136,14 +136,14 @@ func (t *table) Append(row []string) error {
 func (t table) printLine(nl bool) {
 	fmt.Fprint(t.out, t.pCenter)
 	for _, v := range t.cs {
-		fmt.Printf("%s%s%s%s",
+		fmt.Fprintf(t.out,"%s%s%s%s",
 			t.pRow,
 			strings.Repeat(string(t.pRow), v),
 			t.pRow,
 			t.pCenter)
 	}
 	if nl {
-		fmt.Println()
+		fmt.Fprintln()
 	}
 }
 
@@ -159,7 +159,7 @@ func (t table) printHeading() {
 			t.pColumn)
 	}
 
-	fmt.Println()
+	fmt.Fprintln()
 	t.printLine(true)
 }
 
