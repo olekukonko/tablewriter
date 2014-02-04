@@ -14,9 +14,12 @@ ASCII Text Table
 #### TODO
 - Import Directly from CSV
 - Support custom alignment
+- Support table with uneven elements
+- Support pyramid structure
+- General Improvement & Optimisation
 
 #### Example
-```
+```go
 	data := [][]string{
 		[]string{"A", "The Good", "500"},
 		[]string{"B", "The Very very Bad Man", "288"},
