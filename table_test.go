@@ -2,10 +2,9 @@ package table
 
 import (
 	"os"
-	"testing"
 )
 
-func ExampleShort(t *testing.T) {
+func ExampleShort() {
 
 	data := [][]string{
 		[]string{"A", "The Good", "500"},
@@ -24,7 +23,7 @@ func ExampleShort(t *testing.T) {
 
 }
 
-func ExampleLong(t *testing.T) {
+func ExampleLong() {
 
 	data := [][]string{
 		[]string{"Learn East has computers with adapted keyboards with enlarged print etc", "  Some Data  ", " Another Data"},
