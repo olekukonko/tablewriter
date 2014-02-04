@@ -143,7 +143,7 @@ func (t table) printLine(nl bool) {
 			t.pCenter)
 	}
 	if nl {
-		fmt.Fprintln()
+		fmt.Fprintln(t.out)
 	}
 }
 
@@ -159,7 +159,7 @@ func (t table) printHeading() {
 			t.pColumn)
 	}
 
-	fmt.Fprintln()
+	fmt.Fprintln(t.out)
 	t.printLine(true)
 }
 
