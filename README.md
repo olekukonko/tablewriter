@@ -1,7 +1,7 @@
 ASCII Table Writer
 =========
 
-[![Build Status](https://travis-ci.org/olekukonko/TextTable.png?branch=master)](https://travis-ci.org/olekukonko/TextTable) [![Total views](https://sourcegraph.com/api/repos/github.com/olekukonko/TextTable/counters/views.png)](https://sourcegraph.com/github.com/olekukonko/TextTable)
+[![Build Status](https://travis-ci.org/olekukonko/tablewriter.png?branch=master)](https://travis-ci.org/olekukonko/tablewriter) [![Total views](https://sourcegraph.com/api/repos/github.com/olekukonko/tablewriter/counters/views.png)](https://sourcegraph.com/github.com/olekukonko/tablewriter)
 
 Generate ASCII table on the fly ...  Installation is simple as
 
@@ -54,7 +54,7 @@ table.Render() // Send output
 ```
 
 
-#### Example
+#### Example 2
 ```go
 table, _ := tablewriter.NewCSV(os.Stdout, "test.csv")
 table.SetCenterSeparator("*")
@@ -63,7 +63,7 @@ table.SetAlignment(table.ALIGN_LEFT)
 table.Render()
 ```
 
-#### Output
+#### Output 2
 ```
 *============*===========*=========*
 | FIRST_NAME | LAST_NAME |   SSN   |

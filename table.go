@@ -127,13 +127,12 @@ func (t *table) Append(row []string) error {
 	n := len(t.lines)
 	line := [][]string{}
 	for i, v := range row {
+
 		// Detect string  width
-		//t.setWidth(v, i)
-
 		// Detect String height
-		//out := t.setHeight(v, i)
-
+		// Break strings into words
 		out := t.parseDimension(v, i, n)
+
 		// Append broken words
 		line = append(line, out)
 	}
