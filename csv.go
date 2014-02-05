@@ -9,7 +9,6 @@ package tablewriter
 
 import (
 	"encoding/csv"
-	"fmt"
 	"io"
 	"os"
 )
@@ -19,7 +18,6 @@ import (
 func NewCSV(writer io.Writer, fileName string) (*table, error) {
 	file, err := os.Open(fileName)
 	if err != nil {
-		fmt.Println("Error:", err)
 		return &table{}, err
 	}
 	defer file.Close()
@@ -44,7 +42,6 @@ func NewCSVReader(writer io.Writer, csvReader *csv.Reader) (*table, error) {
 		if err == io.EOF {
 			break
 		} else if err != nil {
-
 			return &table{}, err
 		}
 		t.Append(record)
