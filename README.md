@@ -22,7 +22,7 @@ Generate ASCII table on the fly ...  Installation is simple as
 #### TODO
 - ~~Import Directly from CSV~~  - `done`
 - Support custom alignment
-- ~~ISupport table with uneven rows ~~ - `done`
+- ~~Support table with uneven rows~~ - `done`
 - General Improvement & Optimisation
 - `NewHTML` Parse table from HTML
 
