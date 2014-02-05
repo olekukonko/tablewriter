@@ -27,7 +27,7 @@ Generate ASCII table on the fly ...  Installation is simple as
 - `NewHTML` Parse table from HTML
 
 
-#### Example   1
+#### Example   1 - Basic
 ```go
 data := [][]string{
     []string{"A", "The Good", "500"},
@@ -56,7 +56,7 @@ table.Render() // Send output
 +------+-----------------------+--------+
 ```
 
-#### Example 2
+#### Example 2 - CSV
 ```go
 table, _ := tablewriter.NewCSV(os.Stdout, "test_info.csv")
 table.SetAlignment(table.ALIGN_LEFT)   // Set Alignment
@@ -74,8 +74,8 @@ table.Render()
 +----------+--------------+------+-----+---------+----------------+
 ```
 
-#### Example 3
-```
+#### Example 3  - Separator
+```go
 table, _ := tablewriter.NewCSV(os.Stdout, "test.csv")
 table.SetRowLine(true)         // Enable row line
 
