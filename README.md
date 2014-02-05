@@ -16,13 +16,13 @@ Generate ASCII table on the fly ...  Installation is simple as
 - Automatic Alignment of numbers & percentage
 - Write Directly to http , file etc via `io.Reader`
 - Read directly from CSV file
-- Optional Row line via `SetRowLine`
+- Optional Row line via `SetRowLine` - `new`
+- Normalise Table Header - `new`
 
 #### TODO
-- ~~Import Directly from CSV~~
+- ~~Import Directly from CSV~~  - `done`
 - Support custom alignment
-- Support table with uneven elements
-- Support pyramid structure
+- ~~ISupport table with uneven rows ~~ - `done`
 - General Improvement & Optimisation
 - `NewHTML` Parse table from HTML
 

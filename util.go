@@ -13,14 +13,14 @@ import (
 	"unicode/utf8"
 )
 
-// Format Table title
+// Format Table Header
+// Replace _ , . and spaces
 func Title(name string) string {
 	name = strings.Replace(name, "_", " ", -1)
 	name = strings.Replace(name, ".", " ", -1)
 	name = strings.TrimSpace(name)
 	return strings.ToUpper(name)
 }
-
 
 // Pad String
 // Attempts to play string in the center

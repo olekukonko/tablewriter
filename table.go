@@ -49,11 +49,11 @@ type table struct {
 	pCenter string
 	pRow    string
 	pColumn string
-
 	tColumn int
 	tRow    int
 	align   int
 	rowLine bool
+	colSize int
 }
 
 // Start New Table
@@ -73,8 +73,8 @@ func NewWriter(writer io.Writer) *table {
 		tColumn: -1,
 		tRow:    -1,
 		align:   ALIGN_DEFAULT,
-		rowLine:   false}
-
+		rowLine: false,
+		colSize: -1}
 	return t
 }
 
@@ -83,7 +83,6 @@ func (t table) Render() {
 	t.printLine(true)
 	t.printHeading()
 	t.printRows()
-
 	if !t.rowLine {
 		t.printLine(true)
 	}
@@ -92,6 +91,8 @@ func (t table) Render() {
 
 // Set table header
 func (t *table) SetHeader(keys []string) {
+
+	t.colSize = len(keys)
 	for i, v := range keys {
 		t.parseDimension(v, i, -1)
 		t.headers = append(t.headers, Title(v))
@@ -124,13 +125,13 @@ func (t *table) SetAlignment(align int) {
 }
 
 // Set Row Line
+// This would enable / disable a line on each row of the table
 func (t *table) SetRowLine(line bool) {
 	t.rowLine = line
 }
 
 // Append row to table
 func (t *table) Append(row []string) error {
-
 	h := len(t.headers)
 	if h > 0 && h != len(row) {
 		return errors.New("Heder length does not match")
