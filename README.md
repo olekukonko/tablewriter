@@ -27,7 +27,7 @@ Generate ASCII table on the fly ...  Installation is simple as
 - `NewHTML` Parse table from HTML
 
 
-#### Example
+#### Example   1
 ```go
 data := [][]string{
     []string{"A", "The Good", "500"},
@@ -44,7 +44,7 @@ for _, v := range data {
 table.Render() // Send output
 ```
 
-#### Output
+#### Output  2
 ```
 +------+-----------------------+--------+
 | NAME |         SIGN          | RATING |
@@ -56,23 +56,47 @@ table.Render() // Send output
 +------+-----------------------+--------+
 ```
 
-
 #### Example 2
 ```go
-table, _ := tablewriter.NewCSV(os.Stdout, "test.csv")
-table.SetCenterSeparator("*")
-table.SetRowSeparator("=")
-table.SetAlignment(table.ALIGN_LEFT)
+table, _ := tablewriter.NewCSV(os.Stdout, "test_info.csv")
+table.SetAlignment(table.ALIGN_LEFT)   // Set Alignment
 table.Render()
 ```
 
 #### Output 2
 ```
-*============*===========*=========*
-| FIRST_NAME | LAST_NAME |   SSN   |
-*============*===========*=========*
-| John       | Barry     | 123456  |
-| Kathy      | Smith     | 687987  |
-| Bob        | McCornick | 3979870 |
-*============*===========*=========*
++----------+--------------+------+-----+---------+----------------+
+|  FIELD   |     TYPE     | NULL | KEY | DEFAULT |     EXTRA      |
++----------+--------------+------+-----+---------+----------------+
+| user_id  | smallint(5)  | NO   | PRI | NULL    | auto_increment |
+| username | varchar(10)  | NO   |     | NULL    |                |
+| password | varchar(100) | NO   |     | NULL    |                |
++----------+--------------+------+-----+---------+----------------+
+```
+
+#### Example 3
+```
+table, _ := tablewriter.NewCSV(os.Stdout, "test.csv")
+table.SetRowLine(true)         // Enable row line
+
+// Change table lines
+table.SetCenterSeparator("*")
+table.SetColumnSeparator("‡")
+table.SetRowSeparator("-")
+
+table.SetAlignment(tablewriter.ALIGN_LEFT)
+table.Render()
+```
+
+### Output 3
+```
+*------------*-----------*---------*
+╪ FIRST NAME ╪ LAST NAME ╪   SSN   ╪
+*------------*-----------*---------*
+╪ John       ╪ Barry     ╪ 123456  ╪
+*------------*-----------*---------*
+╪ Kathy      ╪ Smith     ╪ 687987  ╪
+*------------*-----------*---------*
+╪ Bob        ╪ McCornick ╪ 3979870 ╪
+*------------*-----------*---------*
 ```

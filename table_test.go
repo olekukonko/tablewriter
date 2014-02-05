@@ -57,10 +57,24 @@ func ExampleCSV() {
 	table.Render()
 }
 
+
 func TestCSV(t *testing.T) {
 	table, _ := NewCSV(os.Stdout, "test.csv")
+	table.SetRowLine(true)
 	table.SetCenterSeparator("*")
-	table.SetRowSeparator("=")
+	table.SetColumnSeparator("‡")
+	table.SetRowSeparator("-")
 	table.SetAlignment(ALIGN_LEFT)
 	table.Render()
 }
+
+
+func TestCSVInfo(t *testing.T) {
+	table, _ := NewCSV(os.Stdout, "test_info.csv")
+	table.SetAlignment(ALIGN_LEFT)
+	table.Render()
+}
+
+
+
+
