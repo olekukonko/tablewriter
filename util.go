@@ -13,6 +13,17 @@ import (
 	"unicode/utf8"
 )
 
+// Format Table title
+func Title(name string) string {
+	name = strings.Replace(name, "_", " ", -1)
+	name = strings.Replace(name, ".", " ", -1)
+	name = strings.TrimSpace(name)
+	return strings.ToUpper(name)
+}
+
+
+// Pad String
+// Attempts to play string in the center
 func Pad(s, pad string, width int) string {
 	gap := width - utf8.RuneCountInString(s)
 	if gap > 0 {
@@ -23,6 +34,8 @@ func Pad(s, pad string, width int) string {
 	return s
 }
 
+// Pad String Right position
+// This would pace string at the left side fo the screen
 func PadRight(s, pad string, width int) string {
 	gap := width - utf8.RuneCountInString(s)
 	if gap > 0 {
@@ -31,6 +44,8 @@ func PadRight(s, pad string, width int) string {
 	return s
 }
 
+// Pad String Left position
+// This would pace string at the right side fo the screen
 func PadLeft(s, pad string, width int) string {
 	gap := width - utf8.RuneCountInString(s)
 	if gap > 0 {

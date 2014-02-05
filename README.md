@@ -15,6 +15,8 @@ Generate ASCII table on the fly ...  Installation is simple as
 - Support Custom Separators
 - Automatic Alignment of numbers & percentage
 - Write Directly to http , file etc via `io.Reader`
+- Read directly from CSV file
+- Optional Row line via `SetRowLine`
 
 #### TODO
 - ~~Import Directly from CSV~~
@@ -22,7 +24,8 @@ Generate ASCII table on the fly ...  Installation is simple as
 - Support table with uneven elements
 - Support pyramid structure
 - General Improvement & Optimisation
-- `NewFromHTML` Parse table from HTML
+- `NewHTML` Parse table from HTML
+
 
 #### Example
 ```go

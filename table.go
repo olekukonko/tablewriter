@@ -53,6 +53,7 @@ type table struct {
 	tColumn int
 	tRow    int
 	align   int
+	rowLine bool
 }
 
 // Start New Table
@@ -71,7 +72,8 @@ func NewWriter(writer io.Writer) *table {
 		pColumn: COLUMN,
 		tColumn: -1,
 		tRow:    -1,
-		align:   ALIGN_DEFAULT}
+		align:   ALIGN_DEFAULT,
+		rowLine:   false}
 
 	return t
 }
@@ -81,14 +83,18 @@ func (t table) Render() {
 	t.printLine(true)
 	t.printHeading()
 	t.printRows()
-	t.printLine(true)
+
+	if !t.rowLine {
+		t.printLine(true)
+	}
+
 }
 
 // Set table header
 func (t *table) SetHeader(keys []string) {
 	for i, v := range keys {
 		t.parseDimension(v, i, -1)
-		t.headers = append(t.headers, strings.ToUpper(v))
+		t.headers = append(t.headers, Title(v))
 	}
 }
 
@@ -115,6 +121,11 @@ func (t *table) SetCenterSeparator(sep string) {
 // Set Table Alignment
 func (t *table) SetAlignment(align int) {
 	t.align = align
+}
+
+// Set Row Line
+func (t *table) SetRowLine(line bool) {
+	t.rowLine = line
 }
 
 // Append row to table
@@ -229,6 +240,10 @@ func (t table) printRow(columns [][]string, colKey int) {
 		}
 		fmt.Fprint(t.out, t.pColumn)
 		fmt.Fprintln(t.out)
+	}
+
+	if t.rowLine {
+		t.printLine(true)
 	}
 
 }
