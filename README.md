@@ -14,10 +14,11 @@ Generate ASCII table on the fly ...  Installation is simple as
 - Supports Alignment
 - Support Custom Separators
 - Automatic Alignment of numbers & percentage
-- Write Directly to http , file etc via `io.Reader`
+- Write Directly to http , file etc via `io.Writer`
 - Read directly from CSV file
-- Optional Row line via `SetRowLine` - `new`
-- Normalise Table Header - `new`
+- Optional Row line via `SetRowLine`
+- Normalise Table Header
+- Make CSV Headers optional
 
 #### TODO
 - ~~Import Directly from CSV~~  - `done`
@@ -58,7 +59,7 @@ table.Render() // Send output
 
 #### Example 2 - CSV
 ```go
-table, _ := tablewriter.NewCSV(os.Stdout, "test_info.csv")
+table, _ := tablewriter.NewCSV(os.Stdout, "test_info.csv", true)
 table.SetAlignment(table.ALIGN_LEFT)   // Set Alignment
 table.Render()
 ```
@@ -76,7 +77,7 @@ table.Render()
 
 #### Example 3  - Separator
 ```go
-table, _ := tablewriter.NewCSV(os.Stdout, "test.csv")
+table, _ := tablewriter.NewCSV(os.Stdout, "test.csv", true)
 table.SetRowLine(true)         // Enable row line
 
 // Change table lines
