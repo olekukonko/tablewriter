@@ -5,19 +5,20 @@ Generate ASCII table on the fly via command line ...  Installation is simple as
 
 #### Get Tool
 
-    go get  github.com/olekukonko/tablewriter/cmd
+    go get  github.com/olekukonko/tablewriter/csv2table
 
 #### Install Tool
 
-    go install  github.com/olekukonko/tablewriter/cmd
+    go install  github.com/olekukonko/tablewriter/csv2table
 
 
 #### Usage
 
-    go run tablewriter.go -f ../test.csv
+    csv2table test.csv
 
 #### Output
 
+```
 +------------+-----------+---------+
 | FIRST NAME | LAST NAME |   SSN   |
 +------------+-----------+---------+
@@ -25,3 +26,4 @@ Generate ASCII table on the fly via command line ...  Installation is simple as
 |   Kathy    |   Smith   |  687987 |
 |    Bob     | McCornick | 3979870 |
 +------------+-----------+---------+
+```
