@@ -60,7 +60,7 @@ table.Render() // Send output
 #### Example 2 - CSV
 ```go
 table, _ := tablewriter.NewCSV(os.Stdout, "test_info.csv", true)
-table.SetAlignment(table.ALIGN_LEFT)   // Set Alignment
+table.SetAlignment(tablewriter.ALIGN_LEFT)   // Set Alignment
 table.Render()
 ```
 
