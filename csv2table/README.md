@@ -14,7 +14,11 @@ Generate ASCII table on the fly via command line ...  Installation is simple as
 
 #### Usage
 
-    csv2table test.csv
+    csv2table -f test.csv
+
+#### Support for Piping
+
+    cat test.csv | csv2table -p=true
 
 #### Output
 
@@ -27,3 +31,13 @@ Generate ASCII table on the fly via command line ...  Installation is simple as
 |    Bob     | McCornick | 3979870 |
 +------------+-----------+---------+
 ```
+
+#### Support for Piping
+
+    echo dance,with,me | csv2table -p=true -h=false
+
+#### Output
+
+    +-------+------+-----+
+    | dance | with | me  |
+    +-------+------+-----+

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/olekukonko/tablewriter"
+	"io"
 	"os"
 	"unicode/utf8"
 )
@@ -14,35 +15,45 @@ var (
 	delimiter = flag.String("d", ",", "Set CSV File delimiter eg. ,|;|\t ")
 	header    = flag.Bool("h", true, "Set header options eg. true|false ")
 	align     = flag.String("a", "none", "Set aligmement with eg. none|left|right|centre")
+	pipe      = flag.Bool("p", false, "Suport for Piping from STDIN")
 )
 
 func main() {
 	flag.Parse()
-
 	fmt.Println()
-
-	if *fileName == "" {
-		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-		flag.PrintDefaults()
-		fmt.Println()
-		os.Exit(1)
+	if *pipe || hasArg("-p") {
+		process(os.Stdin)
+	} else {
+		if *fileName == "" {
+			fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+			flag.PrintDefaults()
+			fmt.Println()
+			os.Exit(1)
+		}
+		processFile()
 	}
-
-	process()
 	fmt.Println()
-
 }
 
-func process() {
-	file, err := os.Open(*fileName)
+func hasArg(name string) bool {
+	for _ , v := range os.Args {
+		if name == v {
+			return true
+		}
+	}
+	return false
+}
+func processFile() {
+	r, err := os.Open(*fileName)
 	if err != nil {
 		exit(err)
 	}
-	defer file.Close()
-	csvReader := csv.NewReader(file)
-
+	defer r.Close()
+	process(r)
+}
+func process(r io.Reader) {
+	csvReader := csv.NewReader(r)
 	rune, size := utf8.DecodeRuneInString(*delimiter)
-
 	if size == 0 {
 		rune = ','
 	}
