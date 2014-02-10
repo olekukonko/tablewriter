@@ -13,6 +13,15 @@ import (
 	"unicode/utf8"
 )
 
+// Simple Condition for string
+// Returns value based on condition
+func ConditionString(cond bool, valid , inValid string) string {
+	if cond {
+		return valid
+	}
+	return inValid
+}
+
 // Format Table Header
 // Replace _ , . and spaces
 func Title(name string) string {

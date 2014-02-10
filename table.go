@@ -23,6 +23,7 @@ const (
 	CENTRE = "+"
 	ROW    = "-"
 	COLUMN = "|"
+	SPACE  = " "
 )
 
 const (
@@ -44,6 +45,7 @@ type table struct {
 	cs      map[int]int
 	rs      map[int]int
 	headers []string
+	footers []string
 	mW      int
 	pCenter string
 	pRow    string
@@ -66,6 +68,7 @@ func NewWriter(writer io.Writer) *table {
 		cs:      make(map[int]int),
 		rs:      make(map[int]int),
 		headers: []string{},
+		footers: []string{},
 		mW:      MAX_ROW_WIDTH,
 		pCenter: CENTRE,
 		pRow:    ROW,
@@ -89,6 +92,7 @@ func (t table) Render() {
 	if !t.rowLine && t.border {
 		t.printLine(true)
 	}
+	t.printFooter()
 
 }
 
@@ -98,6 +102,15 @@ func (t *table) SetHeader(keys []string) {
 	for i, v := range keys {
 		t.parseDimension(v, i, -1)
 		t.headers = append(t.headers, Title(v))
+	}
+}
+
+// Set table Footer
+func (t *table) SetFooter(keys []string) {
+	//t.colSize = len(keys)
+	for i, v := range keys {
+		t.parseDimension(v, i, -1)
+		t.footers = append(t.footers, Title(v))
 	}
 }
 
@@ -161,6 +174,19 @@ func (t *table) Append(row []string) error {
 	return nil
 }
 
+// Allow Support for Bulk Append
+// Eliminates repeated for loops
+func (t *table) AppendBulk(rows [][]string) (err error) {
+	for _, row := range rows {
+		err = t.Append(row)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Print line based on row width
 func (t table) printLine(nl bool) {
 	fmt.Fprint(t.out, t.pCenter)
 	for _, v := range t.cs {
@@ -175,31 +201,114 @@ func (t table) printLine(nl bool) {
 	}
 }
 
+// Print heading information
 func (t table) printHeading() {
+	// Check if headers is available
 	if len(t.headers) < 1 {
 		return
 	}
-	if t.border {
-		fmt.Fprint(t.out, t.pColumn)
-	} else {
-		fmt.Fprint(t.out, " ")
+
+	// Check if border is set
+	// Replace with space if not set
+	fmt.Fprint(t.out, ConditionString(t.border, t.pColumn, SPACE))
+
+	// Identify last column
+	end := len(t.cs) - 1
+
+	// Print Heading column
+	for i, v := range t.cs {
+		pad := ConditionString((i == end && !t.border), SPACE, t.pColumn)
+		fmt.Fprintf(t.out, " %s %s",
+			Pad(t.headers[i], SPACE, v),
+			pad)
+	}
+	// Next line
+	fmt.Fprintln(t.out)
+	t.printLine(true)
+}
+
+// Print heading information
+func (t table) printFooter() {
+	// Check if headers is available
+	if len(t.footers) < 1 {
+		return
 	}
 
+	// Only print line if border is not set
+	if !t.border {
+		t.printLine(true)
+	}
+	// Check if border is set
+	// Replace with space if not set
+	fmt.Fprint(t.out, ConditionString(t.border, t.pColumn, SPACE))
 
+	// Identify last column
+	end := len(t.cs) - 1
+
+	// Print Heading column
 	for i, v := range t.cs {
+		pad := ConditionString((i == end && !t.border), SPACE, t.pColumn)
 
-		pad := t.pColumn
-
-		if i == len(t.cs)-1 {
-			pad = " "
+		if len(t.footers[i]) == 0 {
+			pad = SPACE
 		}
 		fmt.Fprintf(t.out, " %s %s",
-			Pad(t.headers[i], " ", v),
+			Pad(t.footers[i], SPACE, v),
 			pad)
+	}
+	// Next line
+	fmt.Fprintln(t.out)
+	//t.printLine(true)
+
+	hasPrinted := false
+
+	for i, v := range t.cs {
+		pad := t.pRow
+		center := t.pCenter
+		length := len(t.footers[i])
+
+		if length > 0 {
+			hasPrinted = true
+		}
+
+		// Set center to be space if length is 0
+		if length == 0 && !t.border {
+			center = SPACE
+		}
+
+		// Print first junction
+		if i == 0 {
+			fmt.Fprint(t.out, center)
+		}
+
+		// Pad With space of length is 0
+		if length == 0 {
+			pad = SPACE
+		}
+		// Ignore left space of it has printed before
+		if hasPrinted || t.border {
+			pad = t.pRow
+			center = t.pCenter
+		}
+
+		// Change Center start position
+		if center == SPACE {
+			if i < end && len(t.footers[i+1]) != 0 {
+				center = t.pCenter
+			}
+		}
+
+		// Print the footer
+		fmt.Fprintf(t.out, "%s%s%s%s",
+			pad,
+			strings.Repeat(string(pad), v),
+			pad,
+			center)
+
 	}
 
 	fmt.Fprintln(t.out)
-	t.printLine(true)
+
 }
 
 func (t table) printRows() {
@@ -220,7 +329,7 @@ func (t table) printRow(columns [][]string, colKey int) {
 	// TODO Fix uneven col size
 	// if total < t.colSize {
 	//	for n := t.colSize - total; n < t.colSize ; n++ {
-	//		columns = append(columns, []string{" "})
+	//		columns = append(columns, []string{SPACE})
 	//		t.cs[n] = t.mW
 	//	}
 	//}
@@ -242,44 +351,40 @@ func (t table) printRow(columns [][]string, colKey int) {
 		for y := 0; y < total; y++ {
 
 			// Check if border is set
-			if !t.border && y == 0 {
-				fmt.Fprint(t.out, " ")
-			} else {
-				fmt.Fprint(t.out, t.pColumn)
-			}
-			fmt.Fprintf(t.out, " ")
+			fmt.Fprint(t.out, ConditionString((!t.border && y == 0), SPACE, t.pColumn))
+
+			fmt.Fprintf(t.out, SPACE)
 			str := columns[y][x]
 
 			// This would print alignment
 			// Default alignment  would use multiple configuration
 			switch t.align {
 			case ALIGN_CENTRE: //
-				fmt.Fprintf(t.out, "%s", Pad(str, " ", t.cs[y]))
+				fmt.Fprintf(t.out, "%s", Pad(str, SPACE, t.cs[y]))
 			case ALIGN_RIGHT:
-				fmt.Fprintf(t.out, "%s", PadLeft(str, " ", t.cs[y]))
+				fmt.Fprintf(t.out, "%s", PadLeft(str, SPACE, t.cs[y]))
 			case ALIGN_LEFT:
-				fmt.Fprintf(t.out, "%s", PadRight(str, " ", t.cs[y]))
+				fmt.Fprintf(t.out, "%s", PadRight(str, SPACE, t.cs[y]))
 			default:
 				if decimal.MatchString(strings.TrimSpace(str)) || percent.MatchString(strings.TrimSpace(str)) {
-					fmt.Fprintf(t.out, "%s", PadLeft(str, " ", t.cs[y]))
+					fmt.Fprintf(t.out, "%s", PadLeft(str, SPACE, t.cs[y]))
 				} else {
-					if max == 1 || pads[y] > 0 {
-						fmt.Fprintf(t.out, "%s", Pad(str, " ", t.cs[y]))
-					} else {
-						fmt.Fprintf(t.out, "%s", PadRight(str, " ", t.cs[y]))
-					}
+					fmt.Fprintf(t.out, "%s", PadRight(str, SPACE, t.cs[y]))
+
+					// TODO Custom alignment per column
+					//if max == 1 || pads[y] > 0 {
+					//	fmt.Fprintf(t.out, "%s", Pad(str, SPACE, t.cs[y]))
+					//} else {
+					//	fmt.Fprintf(t.out, "%s", PadRight(str, SPACE, t.cs[y]))
+					//}
 
 				}
 			}
-			fmt.Fprintf(t.out, " ")
+			fmt.Fprintf(t.out, SPACE)
 		}
-
-		if t.border {
-			fmt.Fprint(t.out, t.pColumn)
-		} else {
-			fmt.Fprint(t.out, " ")
-		}
-
+		// Check if border is set
+		// Replace with space if not set
+		fmt.Fprint(t.out, ConditionString(t.border, t.pColumn, SPACE))
 		fmt.Fprintln(t.out)
 	}
 

@@ -22,8 +22,10 @@ Generate ASCII table on the fly ...  Installation is simple as
 
 #### TODO
 - ~~Import Directly from CSV~~  - `done`
-- Support custom alignment
+- ~~Support for `SetFooter`~~  - `done`
+- ~~Support for `SetBorder`~~  - `done`
 - ~~Support table with uneven rows~~ - `done`
+- Support custom alignment
 - General Improvement & Optimisation
 - `NewHTML` Parse table from HTML
 
@@ -89,7 +91,7 @@ table.SetAlignment(tablewriter.ALIGN_LEFT)
 table.Render()
 ```
 
-### Output 3
+#### Output 3
 ```
 *------------*-----------*---------*
 ╪ FIRST NAME ╪ LAST NAME ╪   SSN   ╪
@@ -101,3 +103,34 @@ table.Render()
 ╪ Bob        ╪ McCornick ╪ 3979870 ╪
 *------------*-----------*---------*
 ```
+
+
+#### Example 4 - Without Border
+```go
+data := [][]string{
+    []string{"1/1/2014", "Domain name", "2233", "$10.98"},
+    []string{"1/1/2014", "January Hosting", "2233", "$54.95"},
+    []string{"1/4/2014", "Febuary Hosting", "2233", "$51.00"},
+    []string{"1/4/2014", "Febuary Extra Bandwidth", "2233", "$30.00"},
+}
+
+table := tablewriter.NewWriter(os.Stdout)
+table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
+table.SetFooter([]string{"", "", "Total", "$146.93"}) // Add Footer
+table.SetBorder(false)                                // Set Border to false
+table.AppendBulk(data)                                // Add Bulk Data
+table.Render()
+```
+
+#### Output 4
+
+		DATE   |       DESCRIPTION       |  CV2  | AMOUNT
+	+----------+-------------------------+-------+---------+
+	  1/1/2014 | Domain name             |  2233 | $10.98
+	  1/1/2014 | January Hosting         |  2233 | $54.95
+	  1/4/2014 | Febuary Hosting         |  2233 | $51.00
+	  1/4/2014 | Febuary Extra Bandwidth |  2233 | $30.00
+	+----------+-------------------------+-------+---------+
+										   TOTAL | $146 93
+										 +-------+---------+
+
