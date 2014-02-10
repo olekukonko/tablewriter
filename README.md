@@ -48,7 +48,7 @@ for _, v := range data {
 table.Render() // Send output
 ```
 
-#### Output  2
+##### Output  1
 ```
 +------+-----------------------+--------+
 | NAME |         SIGN          | RATING |
@@ -60,26 +60,7 @@ table.Render() // Send output
 +------+-----------------------+--------+
 ```
 
-#### Example 2 - CSV
-```go
-table, _ := tablewriter.NewCSV(os.Stdout, "test_info.csv", true)
-table.SetAlignment(tablewriter.ALIGN_LEFT)   // Set Alignment
-table.Render()
-```
-
-#### Output 2
-```
-+----------+--------------+------+-----+---------+----------------+
-|  FIELD   |     TYPE     | NULL | KEY | DEFAULT |     EXTRA      |
-+----------+--------------+------+-----+---------+----------------+
-| user_id  | smallint(5)  | NO   | PRI | NULL    | auto_increment |
-| username | varchar(10)  | NO   |     | NULL    |                |
-| password | varchar(100) | NO   |     | NULL    |                |
-+----------+--------------+------+-----+---------+----------------+
-```
-
-
-#### Example 3 - Without Border
+#### Example 2 - Without Border
 ```go
 data := [][]string{
     []string{"1/1/2014", "Domain name", "2233", "$10.98"},
@@ -96,7 +77,7 @@ table.AppendBulk(data)                                // Add Bulk Data
 table.Render()
 ```
 
-#### Output 3
+##### Output 2
 
         DATE   |       DESCRIPTION        |  CV2  | AMOUNT
     +----------+--------------------------+-------+---------+
@@ -109,8 +90,25 @@ table.Render()
                                           +-------+---------+
 
 
+#### Example 3 - CSV
+```go
+table, _ := tablewriter.NewCSV(os.Stdout, "test_info.csv", true)
+table.SetAlignment(tablewriter.ALIGN_LEFT)   // Set Alignment
+table.Render()
+```
 
-#### Example 4  - Separator
+##### Output 3
+```
++----------+--------------+------+-----+---------+----------------+
+|  FIELD   |     TYPE     | NULL | KEY | DEFAULT |     EXTRA      |
++----------+--------------+------+-----+---------+----------------+
+| user_id  | smallint(5)  | NO   | PRI | NULL    | auto_increment |
+| username | varchar(10)  | NO   |     | NULL    |                |
+| password | varchar(100) | NO   |     | NULL    |                |
++----------+--------------+------+-----+---------+----------------+
+```
+
+#### Example 4  - Custom Separator
 ```go
 table, _ := tablewriter.NewCSV(os.Stdout, "test.csv", true)
 table.SetRowLine(true)         // Enable row line
@@ -124,7 +122,7 @@ table.SetAlignment(tablewriter.ALIGN_LEFT)
 table.Render()
 ```
 
-#### Output 4
+##### Output 4
 ```
 *------------*-----------*---------*
 ╪ FIRST NAME ╪ LAST NAME ╪   SSN   ╪
