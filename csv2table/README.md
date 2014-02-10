@@ -32,7 +32,7 @@ Generate ASCII table on the fly via command line ...  Installation is simple as
 +------------+-----------+---------+
 ```
 
-#### Support for Piping
+#### Another Piping with Header set to `false`
 
     echo dance,with,me | csv2table -p=true -h=false
 

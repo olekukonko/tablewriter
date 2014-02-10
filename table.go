@@ -8,7 +8,6 @@
 package tablewriter
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"regexp"
@@ -53,6 +52,7 @@ type table struct {
 	tRow    int
 	align   int
 	rowLine bool
+	border  bool
 	colSize int
 }
 
@@ -74,16 +74,19 @@ func NewWriter(writer io.Writer) *table {
 		tRow:    -1,
 		align:   ALIGN_DEFAULT,
 		rowLine: false,
+		border:  true,
 		colSize: -1}
 	return t
 }
 
 // Render table output
 func (t table) Render() {
-	t.printLine(true)
+	if t.border {
+		t.printLine(true)
+	}
 	t.printHeading()
 	t.printRows()
-	if !t.rowLine {
+	if !t.rowLine && t.border {
 		t.printLine(true)
 	}
 
@@ -91,7 +94,6 @@ func (t table) Render() {
 
 // Set table header
 func (t *table) SetHeader(keys []string) {
-
 	t.colSize = len(keys)
 	for i, v := range keys {
 		t.parseDimension(v, i, -1)
@@ -130,12 +132,19 @@ func (t *table) SetRowLine(line bool) {
 	t.rowLine = line
 }
 
+// Set Table Border
+// This would enable / disable line around the table
+func (t *table) SetBorder(border bool) {
+	t.border = border
+}
+
 // Append row to table
 func (t *table) Append(row []string) error {
-	h := len(t.headers)
-	if h > 0 && h != len(row) {
-		return errors.New("Heder length does not match")
+	rowSize := len(t.headers)
+	if rowSize > t.colSize {
+		t.colSize = rowSize
 	}
+
 	n := len(t.lines)
 	line := [][]string{}
 	for i, v := range row {
@@ -170,12 +179,23 @@ func (t table) printHeading() {
 	if len(t.headers) < 1 {
 		return
 	}
+	if t.border {
+		fmt.Fprint(t.out, t.pColumn)
+	} else {
+		fmt.Fprint(t.out, " ")
+	}
 
-	fmt.Fprint(t.out, t.pColumn)
+
 	for i, v := range t.cs {
+
+		pad := t.pColumn
+
+		if i == len(t.cs)-1 {
+			pad = " "
+		}
 		fmt.Fprintf(t.out, " %s %s",
 			Pad(t.headers[i], " ", v),
-			t.pColumn)
+			pad)
 	}
 
 	fmt.Fprintln(t.out)
@@ -197,6 +217,14 @@ func (t table) printRow(columns [][]string, colKey int) {
 	max := t.rs[colKey]
 	total := len(columns)
 
+	// TODO Fix uneven col size
+	// if total < t.colSize {
+	//	for n := t.colSize - total; n < t.colSize ; n++ {
+	//		columns = append(columns, []string{" "})
+	//		t.cs[n] = t.mW
+	//	}
+	//}
+
 	// Pad Each Height
 	// pads := []int{}
 	pads := []int{}
@@ -212,7 +240,13 @@ func (t table) printRow(columns [][]string, colKey int) {
 	//fmt.Println(max, "\n")
 	for x := 0; x < max; x++ {
 		for y := 0; y < total; y++ {
-			fmt.Fprint(t.out, t.pColumn)
+
+			// Check if border is set
+			if !t.border && y == 0 {
+				fmt.Fprint(t.out, " ")
+			} else {
+				fmt.Fprint(t.out, t.pColumn)
+			}
 			fmt.Fprintf(t.out, " ")
 			str := columns[y][x]
 
@@ -239,7 +273,13 @@ func (t table) printRow(columns [][]string, colKey int) {
 			}
 			fmt.Fprintf(t.out, " ")
 		}
-		fmt.Fprint(t.out, t.pColumn)
+
+		if t.border {
+			fmt.Fprint(t.out, t.pColumn)
+		} else {
+			fmt.Fprint(t.out, " ")
+		}
+
 		fmt.Fprintln(t.out)
 	}
 
