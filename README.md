@@ -19,15 +19,8 @@ Generate ASCII table on the fly ...  Installation is simple as
 - Optional Row line via `SetRowLine`
 - Normalise Table Header
 - Make CSV Headers optional
-
-#### TODO
-- ~~Import Directly from CSV~~  - `done`
-- ~~Support for `SetFooter`~~  - `done`
-- ~~Support for `SetBorder`~~  - `done`
-- ~~Support table with uneven rows~~ - `done`
-- Support custom alignment
-- General Improvement & Optimisation
-- `NewHTML` Parse table from HTML
+- Enable or Disable Table border
+- Set custom footer support
 
 
 #### Example   1 - Basic
@@ -78,16 +71,19 @@ table.Render()
 ```
 
 ##### Output 2
+```
 
-        DATE   |       DESCRIPTION        |  CV2  | AMOUNT
-    +----------+--------------------------+-------+---------+
-      1/1/2014 | Domain name              |  2233 | $10.98
-      1/1/2014 | January Hosting          |  2233 | $54.95
-      1/4/2014 | February Hosting         |  2233 | $51.00
-      1/4/2014 | February Extra Bandwidth |  2233 | $30.00
-    +----------+--------------------------+-------+---------+
-                                            TOTAL | $146 93
-                                          +-------+---------+
+    DATE   |       DESCRIPTION        |  CV2  | AMOUNT
++----------+--------------------------+-------+---------+
+  1/1/2014 | Domain name              |  2233 | $10.98
+  1/1/2014 | January Hosting          |  2233 | $54.95
+  1/4/2014 | February Hosting         |  2233 | $51.00
+  1/4/2014 | February Extra Bandwidth |  2233 | $30.00
++----------+--------------------------+-------+---------+
+                                        TOTAL | $146 93
+                                      +-------+---------+
+
+```
 
 
 #### Example 3 - CSV
@@ -134,3 +130,12 @@ table.Render()
 ╪ Bob        ╪ McCornick ╪ 3979870 ╪
 *------------*-----------*---------*
 ```
+
+#### TODO
+- ~~Import Directly from CSV~~  - `done`
+- ~~Support for `SetFooter`~~  - `done`
+- ~~Support for `SetBorder`~~  - `done`
+- ~~Support table with uneven rows~~ - `done`
+- Support custom alignment
+- General Improvement & Optimisation
+- `NewHTML` Parse table from HTML
