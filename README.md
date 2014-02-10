@@ -60,13 +60,13 @@ table.Render() // Send output
 +------+-----------------------+--------+
 ```
 
-#### Example 2 - Without Border
+#### Example 2 - Without Border / Footer / Bulk Append
 ```go
 data := [][]string{
     []string{"1/1/2014", "Domain name", "2233", "$10.98"},
     []string{"1/1/2014", "January Hosting", "2233", "$54.95"},
-    []string{"1/4/2014", "Febuary Hosting", "2233", "$51.00"},
-    []string{"1/4/2014", "Febuary Extra Bandwidth", "2233", "$30.00"},
+    []string{"1/4/2014", "February Hosting", "2233", "$51.00"},
+    []string{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
 }
 
 table := tablewriter.NewWriter(os.Stdout)
