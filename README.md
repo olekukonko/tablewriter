@@ -41,6 +41,7 @@ data := [][]string{
 
 table := tablewriter.NewWriter(os.Stdout)
 table.SetHeader([]string{"Name", "Sign", "Rating"})
+
 for _, v := range data {
     table.Append(v)
 }
@@ -77,35 +78,8 @@ table.Render()
 +----------+--------------+------+-----+---------+----------------+
 ```
 
-#### Example 3  - Separator
-```go
-table, _ := tablewriter.NewCSV(os.Stdout, "test.csv", true)
-table.SetRowLine(true)         // Enable row line
 
-// Change table lines
-table.SetCenterSeparator("*")
-table.SetColumnSeparator("‡")
-table.SetRowSeparator("-")
-
-table.SetAlignment(tablewriter.ALIGN_LEFT)
-table.Render()
-```
-
-#### Output 3
-```
-*------------*-----------*---------*
-╪ FIRST NAME ╪ LAST NAME ╪   SSN   ╪
-*------------*-----------*---------*
-╪ John       ╪ Barry     ╪ 123456  ╪
-*------------*-----------*---------*
-╪ Kathy      ╪ Smith     ╪ 687987  ╪
-*------------*-----------*---------*
-╪ Bob        ╪ McCornick ╪ 3979870 ╪
-*------------*-----------*---------*
-```
-
-
-#### Example 4 - Without Border
+#### Example 3 - Without Border
 ```go
 data := [][]string{
     []string{"1/1/2014", "Domain name", "2233", "$10.98"},
@@ -122,7 +96,7 @@ table.AppendBulk(data)                                // Add Bulk Data
 table.Render()
 ```
 
-#### Output 4
+#### Output 3
 
 		DATE   |       DESCRIPTION       |  CV2  | AMOUNT
 	+----------+-------------------------+-------+---------+
@@ -134,3 +108,31 @@ table.Render()
 										   TOTAL | $146 93
 										 +-------+---------+
 
+
+
+#### Example 4  - Separator
+```go
+table, _ := tablewriter.NewCSV(os.Stdout, "test.csv", true)
+table.SetRowLine(true)         // Enable row line
+
+// Change table lines
+table.SetCenterSeparator("*")
+table.SetColumnSeparator("‡")
+table.SetRowSeparator("-")
+
+table.SetAlignment(tablewriter.ALIGN_LEFT)
+table.Render()
+```
+
+#### Output 4
+```
+*------------*-----------*---------*
+╪ FIRST NAME ╪ LAST NAME ╪   SSN   ╪
+*------------*-----------*---------*
+╪ John       ╪ Barry     ╪ 123456  ╪
+*------------*-----------*---------*
+╪ Kathy      ╪ Smith     ╪ 687987  ╪
+*------------*-----------*---------*
+╪ Bob        ╪ McCornick ╪ 3979870 ╪
+*------------*-----------*---------*
+```
