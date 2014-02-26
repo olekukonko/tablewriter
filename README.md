@@ -14,12 +14,12 @@ Generate ASCII table on the fly ...  Installation is simple as
 - Supports Alignment
 - Support Custom Separators
 - Automatic Alignment of numbers & percentage
-- Write Directly to http , file etc via `io.Writer`
+- Write directly to http , file etc via `io.Writer`
 - Read directly from CSV file
-- Optional Row line via `SetRowLine`
-- Normalise Table Header
+- Optional row line via `SetRowLine`
+- Normalise table header
 - Make CSV Headers optional
-- Enable or Disable Table border
+- Enable or disable table border
 - Set custom footer support
 
 

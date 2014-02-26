@@ -5,6 +5,7 @@
 // This module is a Table Writer  API for the Go Programming Language.
 // The protocols were written in pure Go and works on windows and unix systems
 
+// Create & Generate text based table
 package tablewriter
 
 import (
@@ -89,6 +90,7 @@ func (t table) Render() {
 	}
 	t.printHeading()
 	t.printRows()
+
 	if !t.rowLine && t.border {
 		t.printLine(true)
 	}
