@@ -191,7 +191,8 @@ func (t *table) AppendBulk(rows [][]string) (err error) {
 // Print line based on row width
 func (t table) printLine(nl bool) {
 	fmt.Fprint(t.out, t.pCenter)
-	for _, v := range t.cs {
+	for i := 0; i < len(t.cs); i++ {
+		v := t.cs[i]
 		fmt.Fprintf(t.out, "%s%s%s%s",
 			t.pRow,
 			strings.Repeat(string(t.pRow), v),
@@ -218,7 +219,8 @@ func (t table) printHeading() {
 	end := len(t.cs) - 1
 
 	// Print Heading column
-	for i, v := range t.cs {
+	for i := 0; i <= end; i++ {
+		v := t.cs[i]
 		pad := ConditionString((i == end && !t.border), SPACE, t.pColumn)
 		fmt.Fprintf(t.out, " %s %s",
 			Pad(t.headers[i], SPACE, v),
@@ -248,7 +250,8 @@ func (t table) printFooter() {
 	end := len(t.cs) - 1
 
 	// Print Heading column
-	for i, v := range t.cs {
+	for i := 0; i <= end; i++ {
+		v := t.cs[i]
 		pad := ConditionString((i == end && !t.border), SPACE, t.pColumn)
 
 		if len(t.footers[i]) == 0 {
@@ -264,7 +267,8 @@ func (t table) printFooter() {
 
 	hasPrinted := false
 
-	for i, v := range t.cs {
+	for i := 0; i <= end; i++ {
+		v := t.cs[i]
 		pad := t.pRow
 		center := t.pCenter
 		length := len(t.footers[i])
