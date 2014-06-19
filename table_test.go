@@ -8,7 +8,10 @@
 package tablewriter
 
 import (
+	"bytes"
+	"fmt"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -97,4 +100,53 @@ func TestBorder(t *testing.T) {
 	table.SetBorder(false)                                // Set Border to false
 	table.AppendBulk(data)                                // Add Bulk Data
 	table.Render()
+}
+
+func TestPrintHeading(t *testing.T) {
+	var buf bytes.Buffer
+	table := NewWriter(&buf)
+	table.SetHeader([]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c"})
+	table.printHeading()
+	want := `| 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | A | B | C |
++---+---+---+---+---+---+---+---+---+---+---+---+
+`
+	got := buf.String()
+	if got != want {
+		t.Errorf("header rendering failed\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
+
+func TestPrintFooter(t *testing.T) {
+	var buf bytes.Buffer
+	table := NewWriter(&buf)
+	table.SetHeader([]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c"})
+	table.SetFooter([]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c"})
+	table.printFooter()
+	want := `| 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | A | B | C |
++---+---+---+---+---+---+---+---+---+---+---+---+
+`
+	got := buf.String()
+	if got != want {
+		t.Errorf("footer rendering failed\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
+
+func TestPrintLine(t *testing.T) {
+	header := make([]string, 12)
+	val := " "
+	want := ""
+	for i := range header {
+		header[i] = val
+		want = fmt.Sprintf("%s+-%s-", want, strings.Replace(val, " ", "-", -1))
+		val = val + " "
+	}
+	want = want + "+"
+	var buf bytes.Buffer
+	table := NewWriter(&buf)
+	table.SetHeader(header)
+	table.printLine(false)
+	got := buf.String()
+	if got != want {
+		t.Errorf("line rendering failed\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
 }
