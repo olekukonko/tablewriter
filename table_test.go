@@ -150,3 +150,23 @@ func TestPrintLine(t *testing.T) {
 		t.Errorf("line rendering failed\ngot:\n%s\nwant:\n%s\n", got, want)
 	}
 }
+
+func TestAnsiStrip(t *testing.T) {
+	header := make([]string, 12)
+	val := " "
+	want := ""
+	for i := range header {
+		header[i] = "\033[43;30m" + val + "\033[00m"
+		want = fmt.Sprintf("%s+-%s-", want, strings.Replace(val, " ", "-", -1))
+		val = val + " "
+	}
+	want = want + "+"
+	var buf bytes.Buffer
+	table := NewWriter(&buf)
+	table.SetHeader(header)
+	table.printLine(false)
+	got := buf.String()
+	if got != want {
+		t.Errorf("line rendering failed\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
