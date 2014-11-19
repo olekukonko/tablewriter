@@ -116,6 +116,21 @@ func TestPrintHeading(t *testing.T) {
 	}
 }
 
+func TestPrintHeadingTitleFunc(t *testing.T) {
+	var buf bytes.Buffer
+	table := NewWriter(&buf)
+	table.SetTitleFunc(func(name string) string { return name })
+	table.SetHeader([]string{"a", "A", "bC", "bc", "BC", "1lower", "2Title", "3UPPER"})
+	table.printHeading()
+	want := `| a | A | bC | bc | BC | 1lower | 2Title | 3UPPER |
++---+---+----+----+----+--------+--------+--------+
+`
+	got := buf.String()
+	if got != want {
+		t.Errorf("header rendering with title func failed\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
+
 func TestPrintFooter(t *testing.T) {
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
