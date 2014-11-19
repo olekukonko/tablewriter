@@ -57,6 +57,7 @@ type table struct {
 	rowLine bool
 	border  bool
 	colSize int
+	titleFunc func(string) string
 }
 
 // Start New Table
@@ -79,8 +80,14 @@ func NewWriter(writer io.Writer) *table {
 		align:   ALIGN_DEFAULT,
 		rowLine: false,
 		border:  true,
-		colSize: -1}
+		colSize: -1,
+		titleFunc: Title,
+	}
 	return t
+}
+
+func (t *table) SetTitleFunc(titleFunc func(string) string) {
+	t.titleFunc = titleFunc
 }
 
 // Render table output
@@ -103,7 +110,7 @@ func (t *table) SetHeader(keys []string) {
 	t.colSize = len(keys)
 	for i, v := range keys {
 		t.parseDimension(v, i, -1)
-		t.headers = append(t.headers, Title(v))
+		t.headers = append(t.headers, t.titleFunc(v))
 	}
 }
 
@@ -112,7 +119,7 @@ func (t *table) SetFooter(keys []string) {
 	//t.colSize = len(keys)
 	for i, v := range keys {
 		t.parseDimension(v, i, -1)
-		t.footers = append(t.footers, Title(v))
+		t.footers = append(t.footers, t.titleFunc(v))
 	}
 }
 
