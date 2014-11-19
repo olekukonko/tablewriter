@@ -13,7 +13,6 @@ import (
 	"io"
 	"regexp"
 	"strings"
-	"unicode/utf8"
 )
 
 const (
@@ -405,7 +404,7 @@ func (t *table) parseDimension(str string, colKey, rowKey int) []string {
 		raw []string
 		max int
 	)
-	w := utf8.RuneCountInString(str)
+	w := DisplayWidth(str)
 	// Calculate Width
 	// Check if with is grater than maximum width
 	if w > t.mW {

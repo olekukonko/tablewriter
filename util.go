@@ -11,7 +11,16 @@ import (
 	"math"
 	"strings"
 	"unicode/utf8"
+	"regexp"
 )
+
+var (
+    ansi = regexp.MustCompile("\033\\[(?:[0-9]{1,3}(?:;[0-9]{1,3})*)?[m|K]")
+)
+
+func DisplayWidth(str string) int {
+    return utf8.RuneCountInString(ansi.ReplaceAllLiteralString(str, ""))
+}
 
 // Simple Condition for string
 // Returns value based on condition
@@ -34,7 +43,7 @@ func Title(name string) string {
 // Pad String
 // Attempts to play string in the center
 func Pad(s, pad string, width int) string {
-	gap := width - utf8.RuneCountInString(s)
+	gap := width - DisplayWidth(s)
 	if gap > 0 {
 		gapLeft := int(math.Ceil(float64(gap / 2)))
 		gapRight := gap - gapLeft
@@ -46,7 +55,7 @@ func Pad(s, pad string, width int) string {
 // Pad String Right position
 // This would pace string at the left side fo the screen
 func PadRight(s, pad string, width int) string {
-	gap := width - utf8.RuneCountInString(s)
+	gap := width - DisplayWidth(s)
 	if gap > 0 {
 		return s + strings.Repeat(string(pad), gap)
 	}
@@ -56,7 +65,7 @@ func PadRight(s, pad string, width int) string {
 // Pad String Left position
 // This would pace string at the right side fo the screen
 func PadLeft(s, pad string, width int) string {
-	gap := width - utf8.RuneCountInString(s)
+	gap := width - DisplayWidth(s)
 	if gap > 0 {
 		return strings.Repeat(string(pad), gap) + s
 	}
