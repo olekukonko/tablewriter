@@ -40,23 +40,23 @@ var (
 )
 
 type table struct {
-	out     io.Writer
-	rows    [][]string
-	lines   [][][]string
-	cs      map[int]int
-	rs      map[int]int
-	headers []string
-	footers []string
-	mW      int
-	pCenter string
-	pRow    string
-	pColumn string
-	tColumn int
-	tRow    int
-	align   int
-	rowLine bool
-	border  bool
-	colSize int
+	out       io.Writer
+	rows      [][]string
+	lines     [][][]string
+	cs        map[int]int
+	rs        map[int]int
+	headers   []string
+	footers   []string
+	mW        int
+	pCenter   string
+	pRow      string
+	pColumn   string
+	tColumn   int
+	tRow      int
+	align     int
+	rowLine   bool
+	border    bool
+	colSize   int
 	titleFunc func(string) string
 }
 
@@ -64,23 +64,23 @@ type table struct {
 // Take io.Writer Directly
 func NewWriter(writer io.Writer) *table {
 	t := &table{
-		out:     writer,
-		rows:    [][]string{},
-		lines:   [][][]string{},
-		cs:      make(map[int]int),
-		rs:      make(map[int]int),
-		headers: []string{},
-		footers: []string{},
-		mW:      MAX_ROW_WIDTH,
-		pCenter: CENTRE,
-		pRow:    ROW,
-		pColumn: COLUMN,
-		tColumn: -1,
-		tRow:    -1,
-		align:   ALIGN_DEFAULT,
-		rowLine: false,
-		border:  true,
-		colSize: -1,
+		out:       writer,
+		rows:      [][]string{},
+		lines:     [][][]string{},
+		cs:        make(map[int]int),
+		rs:        make(map[int]int),
+		headers:   []string{},
+		footers:   []string{},
+		mW:        MAX_ROW_WIDTH,
+		pCenter:   CENTRE,
+		pRow:      ROW,
+		pColumn:   COLUMN,
+		tColumn:   -1,
+		tRow:      -1,
+		align:     ALIGN_DEFAULT,
+		rowLine:   false,
+		border:    true,
+		colSize:   -1,
 		titleFunc: Title,
 	}
 	return t
