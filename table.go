@@ -38,7 +38,7 @@ var (
 	percent = regexp.MustCompile(`^[0-9]+.[0-9]+%$`)
 )
 
-type table struct {
+type Table struct {
 	out     io.Writer
 	rows    [][]string
 	lines   [][][]string
@@ -60,8 +60,8 @@ type table struct {
 
 // Start New Table
 // Take io.Writer Directly
-func NewWriter(writer io.Writer) *table {
-	t := &table{
+func NewWriter(writer io.Writer) *Table {
+	t := &Table{
 		out:     writer,
 		rows:    [][]string{},
 		lines:   [][][]string{},
@@ -83,7 +83,7 @@ func NewWriter(writer io.Writer) *table {
 }
 
 // Render table output
-func (t table) Render() {
+func (t Table) Render() {
 	if t.border {
 		t.printLine(true)
 	}
@@ -98,7 +98,7 @@ func (t table) Render() {
 }
 
 // Set table header
-func (t *table) SetHeader(keys []string) {
+func (t *Table) SetHeader(keys []string) {
 	t.colSize = len(keys)
 	for i, v := range keys {
 		t.parseDimension(v, i, -1)
@@ -107,7 +107,7 @@ func (t *table) SetHeader(keys []string) {
 }
 
 // Set table Footer
-func (t *table) SetFooter(keys []string) {
+func (t *Table) SetFooter(keys []string) {
 	//t.colSize = len(keys)
 	for i, v := range keys {
 		t.parseDimension(v, i, -1)
@@ -116,44 +116,44 @@ func (t *table) SetFooter(keys []string) {
 }
 
 // Set the Default column width
-func (t *table) SetColWidth(width int) {
+func (t *Table) SetColWidth(width int) {
 	t.mW = width
 }
 
 // Set the Column Separator
-func (t *table) SetColumnSeparator(sep string) {
+func (t *Table) SetColumnSeparator(sep string) {
 	t.pColumn = sep
 }
 
 // Set the Row Separator
-func (t *table) SetRowSeparator(sep string) {
+func (t *Table) SetRowSeparator(sep string) {
 	t.pRow = sep
 }
 
 // Set the center Separator
-func (t *table) SetCenterSeparator(sep string) {
+func (t *Table) SetCenterSeparator(sep string) {
 	t.pCenter = sep
 }
 
 // Set Table Alignment
-func (t *table) SetAlignment(align int) {
+func (t *Table) SetAlignment(align int) {
 	t.align = align
 }
 
 // Set Row Line
 // This would enable / disable a line on each row of the table
-func (t *table) SetRowLine(line bool) {
+func (t *Table) SetRowLine(line bool) {
 	t.rowLine = line
 }
 
 // Set Table Border
 // This would enable / disable line around the table
-func (t *table) SetBorder(border bool) {
+func (t *Table) SetBorder(border bool) {
 	t.border = border
 }
 
 // Append row to table
-func (t *table) Append(row []string) error {
+func (t *Table) Append(row []string) error {
 	rowSize := len(t.headers)
 	if rowSize > t.colSize {
 		t.colSize = rowSize
@@ -177,7 +177,7 @@ func (t *table) Append(row []string) error {
 
 // Allow Support for Bulk Append
 // Eliminates repeated for loops
-func (t *table) AppendBulk(rows [][]string) (err error) {
+func (t *Table) AppendBulk(rows [][]string) (err error) {
 	for _, row := range rows {
 		err = t.Append(row)
 		if err != nil {
@@ -188,7 +188,7 @@ func (t *table) AppendBulk(rows [][]string) (err error) {
 }
 
 // Print line based on row width
-func (t table) printLine(nl bool) {
+func (t Table) printLine(nl bool) {
 	fmt.Fprint(t.out, t.pCenter)
 	for i := 0; i < len(t.cs); i++ {
 		v := t.cs[i]
@@ -204,7 +204,7 @@ func (t table) printLine(nl bool) {
 }
 
 // Print heading information
-func (t table) printHeading() {
+func (t Table) printHeading() {
 	// Check if headers is available
 	if len(t.headers) < 1 {
 		return
@@ -231,7 +231,7 @@ func (t table) printHeading() {
 }
 
 // Print heading information
-func (t table) printFooter() {
+func (t Table) printFooter() {
 	// Check if headers is available
 	if len(t.footers) < 1 {
 		return
@@ -316,7 +316,7 @@ func (t table) printFooter() {
 
 }
 
-func (t table) printRows() {
+func (t Table) printRows() {
 	for i, lines := range t.lines {
 		t.printRow(lines, i)
 	}
@@ -326,7 +326,7 @@ func (t table) printRows() {
 // Print Row Information
 // Adjust column alignment based on type
 
-func (t table) printRow(columns [][]string, colKey int) {
+func (t Table) printRow(columns [][]string, colKey int) {
 	// Get Maximum Height
 	max := t.rs[colKey]
 	total := len(columns)
@@ -399,7 +399,7 @@ func (t table) printRow(columns [][]string, colKey int) {
 
 }
 
-func (t *table) parseDimension(str string, colKey, rowKey int) []string {
+func (t *Table) parseDimension(str string, colKey, rowKey int) []string {
 	var (
 		raw []string
 		max int

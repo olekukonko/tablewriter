@@ -10,6 +10,7 @@ package tablewriter
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -168,5 +169,43 @@ func TestAnsiStrip(t *testing.T) {
 	got := buf.String()
 	if got != want {
 		t.Errorf("line rendering failed\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
+
+func NewCustomizedTable(out io.Writer) *Table {
+	table := NewWriter(out)
+	table.SetCenterSeparator("")
+	table.SetColumnSeparator("")
+	table.SetRowSeparator("")
+	table.SetBorder(false)
+	table.SetAlignment(ALIGN_LEFT)
+	table.SetHeader([]string{})
+	return table
+}
+
+func TestSubclass(t *testing.T) {
+	buf := new(bytes.Buffer)
+	table := NewCustomizedTable(buf)
+
+	data := [][]string{
+		[]string{"A", "The Good", "500"},
+		[]string{"B", "The Very very Bad Man", "288"},
+		[]string{"C", "The Ugly", "120"},
+		[]string{"D", "The Gopher", "800"},
+	}
+
+	for _, v := range data {
+		table.Append(v)
+	}
+	table.Render()
+
+	output := string(buf.Bytes())
+	want := `  A  The Good               500  
+  B  The Very very Bad Man  288  
+  C  The Ugly               120  
+  D  The Gopher             800  
+`
+	if output != want {
+		t.Error(fmt.Sprintf("Unexpected output '%v' != '%v'", output, want))
 	}
 }
