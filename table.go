@@ -421,7 +421,13 @@ func (t *Table) parseDimension(str string, colKey, rowKey int) []string {
 		return raw
 	}
 	// Calculate Height
-	raw, max = WrapString(str, t.cs[colKey])
+	raw, _ = WrapString(str, t.cs[colKey])
+
+	for _, line := range raw {
+		if w := DisplayWidth(line); w > max {
+			max = w
+		}
+	}
 
 	// Make sure the with is the same length as maximum word
 	// Important for cases where the width is smaller than maxu word
