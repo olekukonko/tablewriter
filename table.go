@@ -34,8 +34,8 @@ const (
 )
 
 var (
-	decimal = regexp.MustCompile(`^[0-9]+.[0-9]+$`)
-	percent = regexp.MustCompile(`^[0-9]+.[0-9]+%$`)
+	decimal = regexp.MustCompile(`^[0-9]+(.[0-9]+?)$`)
+	percent = regexp.MustCompile(`^[0-9]+(.[0-9]+?)%$`)
 )
 
 type Table struct {
