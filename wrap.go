@@ -8,13 +8,14 @@
 package tablewriter
 
 import (
-	"bytes"
 	"math"
+	"strings"
+	"unicode/utf8"
 )
 
 var (
-	nl = []byte{'\n'}
-	sp = []byte{' '}
+	nl = "\n"
+	sp = " "
 )
 
 const defaultPenalty = 1e5
@@ -22,7 +23,7 @@ const defaultPenalty = 1e5
 // Wrap wraps s into a paragraph of lines of length lim, with minimal
 // raggedness.
 func WrapString(s string, lim int) ([]string, int) {
-	words := bytes.Split(bytes.Replace(bytes.TrimSpace([]byte(s)), nl, sp, -1), sp)
+	words := strings.Split(strings.Replace(strings.TrimSpace(s), nl, sp, -1), sp)
 	var lines []string
 	max := 0
 	for _, v := range words {
@@ -32,31 +33,31 @@ func WrapString(s string, lim int) ([]string, int) {
 		}
 	}
 	for _, line := range WrapWords(words, 1, lim, defaultPenalty) {
-		lines = append(lines, string(bytes.Join(line, sp)))
+		lines = append(lines, strings.Join(line, sp))
 	}
 	return lines, lim
 }
 
 // WrapWords is the low-level line-breaking algorithm, useful if you need more
-// control over the details of the text wrapping process. For most uses, either
-// Wrap or WrapBytes will be sufficient and more convenient.
+// control over the details of the text wrapping process. For most uses,
+// WrapString will be sufficient and more convenient.
 //
 // WrapWords splits a list of words into lines with minimal "raggedness",
-// treating each byte as one unit, accounting for spc units between adjacent
+// treating each rune as one unit, accounting for spc units between adjacent
 // words on each line, and attempting to limit lines to lim units. Raggedness
 // is the total error over all lines, where error is the square of the
 // difference of the length of the line and lim. Too-long lines (which only
 // happen when a single word is longer than lim units) have pen penalty units
 // added to the error.
-func WrapWords(words [][]byte, spc, lim, pen int) [][][]byte {
+func WrapWords(words []string, spc, lim, pen int) [][]string {
 	n := len(words)
 
 	length := make([][]int, n)
 	for i := 0; i < n; i++ {
 		length[i] = make([]int, n)
-		length[i][i] = len(words[i])
+		length[i][i] = utf8.RuneCountInString(words[i])
 		for j := i + 1; j < n; j++ {
-			length[i][j] = length[i][j-1] + spc + len(words[j])
+			length[i][j] = length[i][j-1] + spc + utf8.RuneCountInString(words[j])
 		}
 	}
 	nbrk := make([]int, n)
@@ -82,7 +83,7 @@ func WrapWords(words [][]byte, spc, lim, pen int) [][][]byte {
 			}
 		}
 	}
-	var lines [][][]byte
+	var lines [][]string
 	i := 0
 	for i < n {
 		lines = append(lines, words[i:nbrk[i]])

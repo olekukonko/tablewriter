@@ -33,3 +33,12 @@ func TestWrapOneLine(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestUnicode(t *testing.T) {
+	input := "Česká řeřicha"
+	wordsUnicode, _ := WrapString(input, 13)
+	// input contains 13 runes, so it fits on one line.
+	if len(wordsUnicode) != 1 {
+		t.Fail()
+	}
+}
