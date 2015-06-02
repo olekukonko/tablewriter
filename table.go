@@ -102,7 +102,7 @@ func (t *Table) SetHeader(keys []string) {
 	t.colSize = len(keys)
 	for i, v := range keys {
 		t.parseDimension(v, i, -1)
-		t.headers = append(t.headers, Title(v))
+		t.headers = append(t.headers, v)
 	}
 }
 
@@ -111,7 +111,7 @@ func (t *Table) SetFooter(keys []string) {
 	//t.colSize = len(keys)
 	for i, v := range keys {
 		t.parseDimension(v, i, -1)
-		t.footers = append(t.footers, Title(v))
+		t.footers = append(t.footers, v)
 	}
 }
 
@@ -222,7 +222,7 @@ func (t Table) printHeading() {
 		v := t.cs[i]
 		pad := ConditionString((i == end && !t.border), SPACE, t.pColumn)
 		fmt.Fprintf(t.out, " %s %s",
-			Pad(t.headers[i], SPACE, v),
+			Pad(Title(t.headers[i]), SPACE, v),
 			pad)
 	}
 	// Next line
@@ -257,7 +257,7 @@ func (t Table) printFooter() {
 			pad = SPACE
 		}
 		fmt.Fprintf(t.out, " %s %s",
-			Pad(t.footers[i], SPACE, v),
+			Pad(Title(t.footers[i]), SPACE, v),
 			pad)
 	}
 	// Next line
