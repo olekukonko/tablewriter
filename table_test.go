@@ -117,6 +117,21 @@ func TestPrintHeading(t *testing.T) {
 	}
 }
 
+func TestPrintHeadingWithoutAutoFormat(t *testing.T) {
+	var buf bytes.Buffer
+	table := NewWriter(&buf)
+	table.SetHeader([]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c"})
+	table.SetAutoFormatHeaders(false)
+	table.printHeading()
+	want := `| 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | a | b | c |
++---+---+---+---+---+---+---+---+---+---+---+---+
+`
+	got := buf.String()
+	if got != want {
+		t.Errorf("header rendering failed\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
+
 func TestPrintFooter(t *testing.T) {
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
@@ -124,6 +139,22 @@ func TestPrintFooter(t *testing.T) {
 	table.SetFooter([]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c"})
 	table.printFooter()
 	want := `| 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | A | B | C |
++---+---+---+---+---+---+---+---+---+---+---+---+
+`
+	got := buf.String()
+	if got != want {
+		t.Errorf("footer rendering failed\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
+
+func TestPrintFooterWithoutAutoFormat(t *testing.T) {
+	var buf bytes.Buffer
+	table := NewWriter(&buf)
+	table.SetAutoFormatHeaders(false)
+	table.SetHeader([]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c"})
+	table.SetFooter([]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c"})
+	table.printFooter()
+	want := `| 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | a | b | c |
 +---+---+---+---+---+---+---+---+---+---+---+---+
 `
 	got := buf.String()

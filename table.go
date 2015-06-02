@@ -46,6 +46,7 @@ type Table struct {
 	rs      map[int]int
 	headers []string
 	footers []string
+	autoFmt bool
 	mW      int
 	pCenter string
 	pRow    string
@@ -69,6 +70,7 @@ func NewWriter(writer io.Writer) *Table {
 		rs:      make(map[int]int),
 		headers: []string{},
 		footers: []string{},
+		autoFmt: true,
 		mW:      MAX_ROW_WIDTH,
 		pCenter: CENTRE,
 		pRow:    ROW,
@@ -113,6 +115,11 @@ func (t *Table) SetFooter(keys []string) {
 		t.parseDimension(v, i, -1)
 		t.footers = append(t.footers, v)
 	}
+}
+
+// Turn header autoformatting on/off. Default is on (true).
+func (t* Table) SetAutoFormatHeaders(auto bool) {
+	t.autoFmt = auto
 }
 
 // Set the Default column width
@@ -220,9 +227,13 @@ func (t Table) printHeading() {
 	// Print Heading column
 	for i := 0; i <= end; i++ {
 		v := t.cs[i]
+		h := t.headers[i]
+		if t.autoFmt {
+			h = Title(h)
+		}
 		pad := ConditionString((i == end && !t.border), SPACE, t.pColumn)
 		fmt.Fprintf(t.out, " %s %s",
-			Pad(Title(t.headers[i]), SPACE, v),
+			Pad(h, SPACE, v),
 			pad)
 	}
 	// Next line
@@ -251,13 +262,17 @@ func (t Table) printFooter() {
 	// Print Heading column
 	for i := 0; i <= end; i++ {
 		v := t.cs[i]
+		f := t.footers[i]
+		if t.autoFmt {
+			f = Title(f)
+		}
 		pad := ConditionString((i == end && !t.border), SPACE, t.pColumn)
 
 		if len(t.footers[i]) == 0 {
 			pad = SPACE
 		}
 		fmt.Fprintf(t.out, " %s %s",
-			Pad(Title(t.footers[i]), SPACE, v),
+			Pad(f, SPACE, v),
 			pad)
 	}
 	// Next line
