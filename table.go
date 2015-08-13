@@ -39,48 +39,50 @@ var (
 )
 
 type Table struct {
-	out     io.Writer
-	rows    [][]string
-	lines   [][][]string
-	cs      map[int]int
-	rs      map[int]int
-	headers []string
-	footers []string
-	autoFmt bool
-	mW      int
-	pCenter string
-	pRow    string
-	pColumn string
-	tColumn int
-	tRow    int
-	align   int
-	rowLine bool
-	border  bool
-	colSize int
+	out      io.Writer
+	rows     [][]string
+	lines    [][][]string
+	cs       map[int]int
+	rs       map[int]int
+	headers  []string
+	footers  []string
+	autoFmt  bool
+	autoWrap bool
+	mW       int
+	pCenter  string
+	pRow     string
+	pColumn  string
+	tColumn  int
+	tRow     int
+	align    int
+	rowLine  bool
+	border   bool
+	colSize  int
 }
 
 // Start New Table
 // Take io.Writer Directly
 func NewWriter(writer io.Writer) *Table {
 	t := &Table{
-		out:     writer,
-		rows:    [][]string{},
-		lines:   [][][]string{},
-		cs:      make(map[int]int),
-		rs:      make(map[int]int),
-		headers: []string{},
-		footers: []string{},
-		autoFmt: true,
-		mW:      MAX_ROW_WIDTH,
-		pCenter: CENTRE,
-		pRow:    ROW,
-		pColumn: COLUMN,
-		tColumn: -1,
-		tRow:    -1,
-		align:   ALIGN_DEFAULT,
-		rowLine: false,
-		border:  true,
-		colSize: -1}
+		out:      writer,
+		rows:     [][]string{},
+		lines:    [][][]string{},
+		cs:       make(map[int]int),
+		rs:       make(map[int]int),
+		headers:  []string{},
+		footers:  []string{},
+		autoFmt:  true,
+		autoWrap: true,
+		mW:       MAX_ROW_WIDTH,
+		pCenter:  CENTRE,
+		pRow:     ROW,
+		pColumn:  COLUMN,
+		tColumn:  -1,
+		tRow:     -1,
+		align:    ALIGN_DEFAULT,
+		rowLine:  false,
+		border:   true,
+		colSize:  -1}
 	return t
 }
 
@@ -120,6 +122,11 @@ func (t *Table) SetFooter(keys []string) {
 // Turn header autoformatting on/off. Default is on (true).
 func (t* Table) SetAutoFormatHeaders(auto bool) {
 	t.autoFmt = auto
+}
+
+// Turn automatic multiline text adjustment on/off. Default is on (true).
+func (t *Table) SetAutoWrapText(auto bool) {
+	t.autoWrap = auto
 }
 
 // Set the Default column width
@@ -436,7 +443,11 @@ func (t *Table) parseDimension(str string, colKey, rowKey int) []string {
 		return raw
 	}
 	// Calculate Height
-	raw, _ = WrapString(str, t.cs[colKey])
+	if t.autoWrap {
+		raw, _ = WrapString(str, t.cs[colKey])
+	} else {
+		raw = getLines(str)
+	}
 
 	for _, line := range raw {
 		if w := DisplayWidth(line); w > max {
