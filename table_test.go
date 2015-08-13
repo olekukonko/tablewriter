@@ -163,6 +163,40 @@ func TestPrintFooterWithoutAutoFormat(t *testing.T) {
 	}
 }
 
+func TestPrintTableWithAndWithoutAutoWrap(t *testing.T) {
+	var buf bytes.Buffer
+	var multiline = `A multiline
+string with some lines being really long.`
+
+	with := NewWriter(&buf)
+	with.Append([]string{multiline})
+	with.Render()
+	want := `+--------------------------------+
+| A multiline string with some   |
+| lines being really long.       |
++--------------------------------+
+`
+	got := buf.String()
+	if got != want {
+		t.Errorf("multiline text rendering with wrapping failed\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+
+	buf.Truncate(0)
+	without := NewWriter(&buf)
+	without.SetAutoWrapText(false)
+	without.Append([]string{multiline})
+	without.Render()
+	want = `+-------------------------------------------+
+| A multiline                               |
+| string with some lines being really long. |
++-------------------------------------------+
+`
+	got = buf.String()
+	if got != want {
+		t.Errorf("multiline text rendering without wrapping rendering failed\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
+
 func TestPrintLine(t *testing.T) {
 	header := make([]string, 12)
 	val := " "
