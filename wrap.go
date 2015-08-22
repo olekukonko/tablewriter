@@ -91,3 +91,13 @@ func WrapWords(words []string, spc, lim, pen int) [][]string {
 	}
 	return lines
 }
+
+// getLines decomposes a multiline string into a slice of strings.
+func getLines(s string) []string {
+	var lines []string
+
+	for _, line := range strings.Split(strings.TrimSpace(s), nl) {
+		lines = append(lines, line)
+	}
+	return lines
+}
