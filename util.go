@@ -19,7 +19,15 @@ var (
 )
 
 func DisplayWidth(str string) int {
-	return utf8.RuneCountInString(ansi.ReplaceAllLiteralString(str, ""))
+	tmp := ansi.ReplaceAllLiteralString(str, "")
+	tmp_rune := []rune(tmp)
+	count := 0
+	for _, v := range tmp_rune {
+		if v > 128 {
+			count++
+		}
+	}
+	return utf8.RuneCountInString(tmp) + count
 }
 
 // Simple Condition for string
