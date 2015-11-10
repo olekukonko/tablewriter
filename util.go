@@ -79,3 +79,11 @@ func PadLeft(s, pad string, width int) string {
 	}
 	return s
 }
+
+func strToInterface(row []string) []interface{} {
+	i := []interface{}{}
+	for _, v := range row {
+		i = append(i, interface{}(v))
+	}
+	return i
+}

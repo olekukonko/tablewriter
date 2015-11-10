@@ -167,7 +167,7 @@ func (t *Table) SetBorder(border bool) {
 }
 
 // Append row to table
-func (t *Table) Append(row []string) error {
+func (t *Table) Append(row []interface{}) error {
 	rowSize := len(t.headers)
 	if rowSize > t.colSize {
 		t.colSize = rowSize
@@ -176,11 +176,12 @@ func (t *Table) Append(row []string) error {
 	n := len(t.lines)
 	line := [][]string{}
 	for i, v := range row {
+		str := fmt.Sprint(v)
 
 		// Detect string  width
 		// Detect String height
 		// Break strings into words
-		out := t.parseDimension(v, i, n)
+		out := t.parseDimension(str, i, n)
 
 		// Append broken words
 		line = append(line, out)
@@ -191,7 +192,7 @@ func (t *Table) Append(row []string) error {
 
 // Allow Support for Bulk Append
 // Eliminates repeated for loops
-func (t *Table) AppendBulk(rows [][]string) (err error) {
+func (t *Table) AppendBulk(rows [][]interface{}) (err error) {
 	for _, row := range rows {
 		err = t.Append(row)
 		if err != nil {

@@ -46,7 +46,7 @@ func NewCSVReader(writer io.Writer, csvReader *csv.Reader, hasHeader bool) (*Tab
 		} else if err != nil {
 			return &Table{}, err
 		}
-		t.Append(record)
+		t.Append(strToInterface(record))
 	}
 	return t, nil
 }
