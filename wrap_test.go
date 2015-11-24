@@ -42,3 +42,14 @@ func TestUnicode(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestDisplayWidth(t *testing.T) {
+	input := "Česká řeřicha"
+	if n := DisplayWidth(input); n != 13 {
+		t.Errorf("Wants: %d Got: %d", 13, n)
+	}
+	input = "\033[43;30m" + input + "\033[00m"
+	if n := DisplayWidth(input); n != 13 {
+		t.Errorf("Wants: %d Got: %d", 13, n)
+	}
+}
