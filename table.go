@@ -56,6 +56,7 @@ type Table struct {
 	tRow     int
 	align    int
 	rowLine  bool
+	hdrLine  bool
 	border   bool
 	colSize  int
 }
@@ -81,6 +82,7 @@ func NewWriter(writer io.Writer) *Table {
 		tRow:     -1,
 		align:    ALIGN_DEFAULT,
 		rowLine:  false,
+		hdrLine:  true,
 		border:   true,
 		colSize:  -1}
 	return t
@@ -152,6 +154,12 @@ func (t *Table) SetCenterSeparator(sep string) {
 // Set Table Alignment
 func (t *Table) SetAlignment(align int) {
 	t.align = align
+}
+
+// Set Header Line
+// This would enable / disable a line after the header
+func (t *Table) SetHeaderLine(line bool) {
+	t.hdrLine = line
 }
 
 // Set Row Line
@@ -245,7 +253,9 @@ func (t Table) printHeading() {
 	}
 	// Next line
 	fmt.Fprintln(t.out)
-	t.printLine(true)
+	if t.hdrLine {
+		t.printLine(true)
+	}
 }
 
 // Print heading information
