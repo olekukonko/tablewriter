@@ -18,11 +18,11 @@ import (
 
 func ExampleShort() {
 
-	data := [][]string{
-		[]string{"A", "The Good", "500"},
-		[]string{"B", "The Very very Bad Man", "288"},
-		[]string{"C", "The Ugly", "120"},
-		[]string{"D", "The Gopher", "800"},
+	data := [][]interface{}{
+		[]interface{}{"A", "The Good", "500"},
+		[]interface{}{"B", "The Very very Bad Man", "288"},
+		[]interface{}{"C", "The Ugly", "120"},
+		[]interface{}{"D", "The Gopher", "800"},
 	}
 
 	table := NewWriter(os.Stdout)
@@ -37,9 +37,9 @@ func ExampleShort() {
 
 func ExampleLong() {
 
-	data := [][]string{
-		[]string{"Learn East has computers with adapted keyboards with enlarged print etc", "  Some Data  ", " Another Data"},
-		[]string{"Instead of lining up the letters all ", "the way across, he splits the keyboard in two", "Like most ergonomic keyboards", "See Data"},
+	data := [][]interface{}{
+		[]interface{}{"Learn East has computers with adapted keyboards with enlarged print etc", "  Some Data  ", " Another Data"},
+		[]interface{}{"Instead of lining up the letters all ", "the way across, he splits the keyboard in two", "Like most ergonomic keyboards", "See Data"},
 	}
 
 	table := NewWriter(os.Stdout)
@@ -88,11 +88,11 @@ func TestCSVSeparator(t *testing.T) {
 }
 
 func TestBorder(t *testing.T) {
-	data := [][]string{
-		[]string{"1/1/2014", "Domain name", "2233", "$10.98"},
-		[]string{"1/1/2014", "January Hosting", "2233", "$54.95"},
-		[]string{"1/4/2014", "February Hosting", "2233", "$51.00"},
-		[]string{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
+	data := [][]interface{}{
+		[]interface{}{"1/1/2014", "Domain name", "2233", "$10.98"},
+		[]interface{}{"1/1/2014", "January Hosting", "2233", "$54.95"},
+		[]interface{}{"1/4/2014", "February Hosting", "2233", "$51.00"},
+		[]interface{}{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
 	}
 
 	var buf bytes.Buffer
@@ -185,7 +185,7 @@ func TestPrintTableWithAndWithoutAutoWrap(t *testing.T) {
 string with some lines being really long.`
 
 	with := NewWriter(&buf)
-	with.Append([]string{multiline})
+	with.Append([]interface{}{multiline})
 	with.Render()
 	want := `+--------------------------------+
 | A multiline string with some   |
@@ -200,7 +200,7 @@ string with some lines being really long.`
 	buf.Truncate(0)
 	without := NewWriter(&buf)
 	without.SetAutoWrapText(false)
-	without.Append([]string{multiline})
+	without.Append([]interface{}{multiline})
 	without.Render()
 	want = `+-------------------------------------------+
 | A multiline                               |
@@ -268,11 +268,11 @@ func TestSubclass(t *testing.T) {
 	buf := new(bytes.Buffer)
 	table := NewCustomizedTable(buf)
 
-	data := [][]string{
-		[]string{"A", "The Good", "500"},
-		[]string{"B", "The Very very Bad Man", "288"},
-		[]string{"C", "The Ugly", "120"},
-		[]string{"D", "The Gopher", "800"},
+	data := [][]interface{}{
+		[]interface{}{"A", "The Good", "500"},
+		[]interface{}{"B", "The Very very Bad Man", "288"},
+		[]interface{}{"C", "The Ugly", "120"},
+		[]interface{}{"D", "The Gopher", "800"},
 	}
 
 	for _, v := range data {
