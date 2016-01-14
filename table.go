@@ -175,7 +175,7 @@ func (t *Table) SetBorder(border bool) {
 }
 
 // Append row to table
-func (t *Table) Append(row []string) error {
+func (t *Table) Append(row []string) {
 	rowSize := len(t.headers)
 	if rowSize > t.colSize {
 		t.colSize = rowSize
@@ -194,19 +194,14 @@ func (t *Table) Append(row []string) error {
 		line = append(line, out)
 	}
 	t.lines = append(t.lines, line)
-	return nil
 }
 
 // Allow Support for Bulk Append
 // Eliminates repeated for loops
-func (t *Table) AppendBulk(rows [][]string) (err error) {
+func (t *Table) AppendBulk(rows [][]string) {
 	for _, row := range rows {
-		err = t.Append(row)
-		if err != nil {
-			return err
-		}
+		t.Append(row)
 	}
-	return nil
 }
 
 // Print line based on row width
