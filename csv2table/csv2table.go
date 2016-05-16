@@ -14,7 +14,7 @@ var (
 	fileName  = flag.String("f", "", "Set file with  eg. sample.csv")
 	delimiter = flag.String("d", ",", "Set CSV File delimiter eg. ,|;|\t ")
 	header    = flag.Bool("h", true, "Set header options eg. true|false ")
-	align     = flag.String("a", "none", "Set aligmement with eg. none|left|right|centre")
+	align     = flag.String("a", "none", "Set aligmement with eg. none|left|right|center")
 	pipe      = flag.Bool("p", false, "Suport for Piping from STDIN")
 	border      = flag.Bool("b", true, "Enable / disable table border")
 )
@@ -72,7 +72,7 @@ func process(r io.Reader) {
 	case "right":
 		table.SetAlignment(tablewriter.ALIGN_RIGHT)
 	case "center":
-		table.SetAlignment(tablewriter.ALIGN_CENTRE)
+		table.SetAlignment(tablewriter.ALIGN_CENTER)
 	}
 	table.SetBorder(*border)
 	table.Render()

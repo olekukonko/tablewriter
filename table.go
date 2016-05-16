@@ -20,7 +20,7 @@ const (
 )
 
 const (
-	CENTRE = "+"
+	CENTER = "+"
 	ROW    = "-"
 	COLUMN = "|"
 	SPACE  = " "
@@ -28,7 +28,7 @@ const (
 
 const (
 	ALIGN_DEFAULT = iota
-	ALIGN_CENTRE
+	ALIGN_CENTER
 	ALIGN_RIGHT
 	ALIGN_LEFT
 )
@@ -77,7 +77,7 @@ func NewWriter(writer io.Writer) *Table {
 		autoFmt:  true,
 		autoWrap: true,
 		mW:       MAX_ROW_WIDTH,
-		pCenter:  CENTRE,
+		pCenter:  CENTER,
 		pRow:     ROW,
 		pColumn:  COLUMN,
 		tColumn:  -1,
@@ -424,7 +424,7 @@ func (t Table) printRow(columns [][]string, colKey int) {
 			// This would print alignment
 			// Default alignment  would use multiple configuration
 			switch t.align {
-			case ALIGN_CENTRE: //
+			case ALIGN_CENTER: //
 				fmt.Fprintf(t.out, "%s", Pad(str, SPACE, t.cs[y]))
 			case ALIGN_RIGHT:
 				fmt.Fprintf(t.out, "%s", PadLeft(str, SPACE, t.cs[y]))
