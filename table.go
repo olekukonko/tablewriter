@@ -34,8 +34,8 @@ const (
 )
 
 var (
-	decimal = regexp.MustCompile(`^\d*\.?\d*$`)
-	percent = regexp.MustCompile(`^\d*\.?\d*$%$`)
+	decimal = regexp.MustCompile(`^-*\d*\.?\d*$`)
+	percent = regexp.MustCompile(`^-*\d*\.?\d*$%$`)
 )
 
 type Border struct {
