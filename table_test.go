@@ -295,6 +295,110 @@ func TestPrintFooterWithoutAutoFormat(t *testing.T) {
 	}
 }
 
+func TestPrintShortCaption(t *testing.T) {
+	var buf bytes.Buffer
+	data := [][]string{
+		[]string{"A", "The Good", "500"},
+		[]string{"B", "The Very very Bad Man", "288"},
+		[]string{"C", "The Ugly", "120"},
+		[]string{"D", "The Gopher", "800"},
+	}
+
+	table := NewWriter(&buf)
+	table.SetHeader([]string{"Name", "Sign", "Rating"})
+	table.SetCaption(true, "Short caption.")
+
+	for _, v := range data {
+		table.Append(v)
+	}
+	table.Render()
+
+	want := `+------+-----------------------+--------+
+| NAME |         SIGN          | RATING |
++------+-----------------------+--------+
+| A    | The Good              |    500 |
+| B    | The Very very Bad Man |    288 |
+| C    | The Ugly              |    120 |
+| D    | The Gopher            |    800 |
++------+-----------------------+--------+
+Short caption.
+`
+	got := buf.String()
+	if got != want {
+		t.Errorf("long caption for short example rendering failed\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
+
+func TestPrintLongCaptionWithShortExample(t *testing.T) {
+	var buf bytes.Buffer
+	data := [][]string{
+		[]string{"A", "The Good", "500"},
+		[]string{"B", "The Very very Bad Man", "288"},
+		[]string{"C", "The Ugly", "120"},
+		[]string{"D", "The Gopher", "800"},
+	}
+
+	table := NewWriter(&buf)
+	table.SetHeader([]string{"Name", "Sign", "Rating"})
+	table.SetCaption(true, "This is a very long caption. The text should wrap. If not, we have a problem that needs to be solved.")
+
+	for _, v := range data {
+		table.Append(v)
+	}
+	table.Render()
+
+	want := `+------+-----------------------+--------+
+| NAME |         SIGN          | RATING |
++------+-----------------------+--------+
+| A    | The Good              |    500 |
+| B    | The Very very Bad Man |    288 |
+| C    | The Ugly              |    120 |
+| D    | The Gopher            |    800 |
++------+-----------------------+--------+
+This is a very long caption. The text
+should wrap. If not, we have a problem
+that needs to be solved.
+`
+	got := buf.String()
+	if got != want {
+		t.Errorf("long caption for short example rendering failed\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
+
+func TestPrintLongCaptionWithLongExample(t *testing.T) {
+	var buf bytes.Buffer
+	data := [][]string{
+		[]string{"Learn East has computers with adapted keyboards with enlarged print etc", "Some Data", "Another Data"},
+		[]string{"Instead of lining up the letters all", "the way across, he splits the keyboard in two", "Like most ergonomic keyboards"},
+	}
+
+	table := NewWriter(&buf)
+	table.SetCaption(true, "This is a very long caption. The text should wrap. If not, we have a problem that needs to be solved.")
+	table.SetHeader([]string{"Name", "Sign", "Rating"})
+
+	for _, v := range data {
+		table.Append(v)
+	}
+	table.Render()
+
+	want := `+--------------------------------+--------------------------------+-------------------------------+
+|              NAME              |              SIGN              |            RATING             |
++--------------------------------+--------------------------------+-------------------------------+
+| Learn East has computers       | Some Data                      | Another Data                  |
+| with adapted keyboards with    |                                |                               |
+| enlarged print etc             |                                |                               |
+| Instead of lining up the       | the way across, he splits the  | Like most ergonomic keyboards |
+| letters all                    | keyboard in two                |                               |
++--------------------------------+--------------------------------+-------------------------------+
+This is a very long caption. The text should wrap. If not, we have a problem that needs to be
+solved.
+`
+	got := buf.String()
+	if got != want {
+		t.Errorf("long caption for long example rendering failed\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
+
 func TestPrintTableWithAndWithoutAutoWrap(t *testing.T) {
 	var buf bytes.Buffer
 	var multiline = `A multiline
