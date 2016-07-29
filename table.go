@@ -501,7 +501,6 @@ func (t *Table) printFooter() {
 // Print caption text
 func (t Table) printCaption() {
 	width := t.getTableWidth()
-	// fmt.Fprintln(t.out, width)
 	paragraph, _ := WrapString(t.captionText, width)
 	for linecount := 0; linecount < len(paragraph); linecount++ {
 		fmt.Fprintln(t.out, paragraph[linecount])
@@ -510,13 +509,13 @@ func (t Table) printCaption() {
 
 // Calculate the total number of characters in a row
 func (t Table) getTableWidth() int {
-	var chars, spaces, ncols, seps int
-	for k, v := range t.cs {
+	var chars int
+	for _, v := range t.cs {
 		chars += v
-		ncols = k + 1
 	}
-	spaces = ncols * 2
-	seps = ncols + 1
+	ncols := t.colSize
+	spaces := ncols * 2
+	seps := ncols + 1
 	return (chars + spaces + seps + 1)
 }
 
