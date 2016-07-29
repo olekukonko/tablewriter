@@ -513,10 +513,13 @@ func (t Table) getTableWidth() int {
 	for _, v := range t.cs {
 		chars += v
 	}
-	ncols := t.colSize
-	spaces := ncols * 2
-	seps := ncols + 1
-	return (chars + spaces + seps + 1)
+
+	// Add chars, spaces, seperators to calculate the total width of the table.
+	// ncols := t.colSize
+	// spaces := ncols * 2
+	// seps := ncols + 1
+
+	return (chars + (3 * t.colSize) + 2)
 }
 
 func (t Table) printRows() {
