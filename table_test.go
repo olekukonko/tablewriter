@@ -311,6 +311,41 @@ that needs to be solved.
 	}
 }
 
+func TestPrintCaptionWithFooter(t *testing.T) {
+	data := [][]string{
+		[]string{"1/1/2014", "Domain name", "2233", "$10.98"},
+		[]string{"1/1/2014", "January Hosting", "2233", "$54.95"},
+		[]string{"1/4/2014", "February Hosting", "2233", "$51.00"},
+		[]string{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
+	}
+
+	var buf bytes.Buffer
+	table := NewWriter(&buf)
+	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
+	table.SetFooter([]string{"", "", "Total", "$146.93"})                                                  // Add Footer
+	table.SetCaption(true, "This is a very long caption. The text should wrap to the width of the table.") // Add caption
+	table.SetBorder(false)                                                                                 // Set Border to false
+	table.AppendBulk(data)                                                                                 // Add Bulk Data
+	table.Render()
+
+	want := `    DATE   |       DESCRIPTION        |  CV2  | AMOUNT   
++----------+--------------------------+-------+---------+
+  1/1/2014 | Domain name              |  2233 | $10.98   
+  1/1/2014 | January Hosting          |  2233 | $54.95   
+  1/4/2014 | February Hosting         |  2233 | $51.00   
+  1/4/2014 | February Extra Bandwidth |  2233 | $30.00   
++----------+--------------------------+-------+---------+
+                                        TOTAL | $146 93  
+                                      +-------+---------+
+This is a very long caption. The text should wrap to the
+width of the table.
+`
+	got := buf.String()
+	if got != want {
+		t.Errorf("border table rendering failed\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
+
 func TestPrintLongCaptionWithLongExample(t *testing.T) {
 	var buf bytes.Buffer
 	data := [][]string{
