@@ -70,6 +70,8 @@ type Table struct {
 	hdrLine  bool
 	borders  Border
 	colSize  int
+
+	leftOffset string
 }
 
 // Start New Table
@@ -105,12 +107,14 @@ func NewWriter(writer io.Writer) *Table {
 // Render table output
 func (t Table) Render() {
 	if t.borders.Top {
+		fmt.Fprintf(t.out, t.leftOffset)
 		t.printLine(true)
 	}
 	t.printHeading()
 	t.printRows()
 
 	if !t.rowLine && t.borders.Bottom {
+		fmt.Fprintf(t.out, t.leftOffset)
 		t.printLine(true)
 	}
 	t.printFooter()
@@ -178,6 +182,11 @@ func (t *Table) SetFooterAlignment(fAlign int) {
 // Set Table Alignment
 func (t *Table) SetAlignment(align int) {
 	t.align = align
+}
+
+// Set New Line
+func (t *Table) SetLeftOffset(leftOffset string) {
+	t.leftOffset = leftOffset
 }
 
 // Set New Line
@@ -272,7 +281,7 @@ func (t Table) printHeading() {
 	if len(t.headers) < 1 {
 		return
 	}
-
+	fmt.Fprintf(t.out, t.leftOffset)
 	// Check if border is set
 	// Replace with space if not set
 	fmt.Fprint(t.out, ConditionString(t.borders.Left, t.pColumn, SPACE))
@@ -298,6 +307,7 @@ func (t Table) printHeading() {
 	// Next line
 	fmt.Fprint(t.out, t.newLine)
 	if t.hdrLine {
+		fmt.Fprintf(t.out, t.leftOffset)
 		t.printLine(true)
 	}
 }
@@ -308,13 +318,14 @@ func (t Table) printFooter() {
 	if len(t.footers) < 1 {
 		return
 	}
-
 	// Only print line if border is not set
 	if !t.borders.Bottom {
+		fmt.Fprintf(t.out, t.leftOffset)
 		t.printLine(true)
 	}
 	// Check if border is set
 	// Replace with space if not set
+	fmt.Fprintf(t.out, t.leftOffset)
 	fmt.Fprint(t.out, ConditionString(t.borders.Bottom, t.pColumn, SPACE))
 
 	// Identify last column
@@ -342,7 +353,7 @@ func (t Table) printFooter() {
 	// Next line
 	fmt.Fprint(t.out, t.newLine)
 	//t.printLine(true)
-
+	fmt.Fprintf(t.out, t.leftOffset)
 	hasPrinted := false
 
 	for i := 0; i <= end; i++ {
@@ -390,13 +401,13 @@ func (t Table) printFooter() {
 			center)
 
 	}
-
 	fmt.Fprint(t.out, t.newLine)
 
 }
 
 func (t Table) printRows() {
 	for i, lines := range t.lines {
+		fmt.Fprintf(t.out, t.leftOffset)
 		t.printRow(lines, i)
 	}
 
@@ -433,7 +444,6 @@ func (t Table) printRow(columns [][]string, colKey int) {
 	//fmt.Println(max, "\n")
 	for x := 0; x < max; x++ {
 		for y := 0; y < total; y++ {
-
 			// Check if border is set
 			fmt.Fprint(t.out, ConditionString((!t.borders.Left && y == 0), SPACE, t.pColumn))
 
@@ -473,6 +483,7 @@ func (t Table) printRow(columns [][]string, colKey int) {
 	}
 
 	if t.rowLine {
+		fmt.Fprintf(t.out, t.leftOffset)
 		t.printLine(true)
 	}
 
