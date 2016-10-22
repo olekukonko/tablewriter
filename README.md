@@ -5,7 +5,7 @@ ASCII Table Writer
 
 Generate ASCII table on the fly ...  Installation is simple as
 
-    go get  github.com/olekukonko/tablewriter
+    go get github.com/wneo/tablewriter
 
 
 #### Features
