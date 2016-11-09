@@ -21,6 +21,7 @@ Generate ASCII table on the fly ...  Installation is simple as
 - Make CSV Headers optional
 - Enable or disable table border
 - Set custom footer support
+- Set custom caption
 
 
 #### Example   1 - Basic
@@ -131,7 +132,7 @@ table.Render()
 *------------*-----------*---------*
 ```
 
-##### Example 5 - Markdown Format
+#### Example 5 - Markdown Format
 ```go
 data := [][]string{
 	[]string{"1/1/2014", "Domain name", "2233", "$10.98"},
@@ -156,6 +157,40 @@ table.Render()
 | 1/1/2014 | January Hosting          | 2233 | $54.95 |
 | 1/4/2014 | February Hosting         | 2233 | $51.00 |
 | 1/4/2014 | February Extra Bandwidth | 2233 | $30.00 |
+```
+
+#### Example 6 - Set table caption
+```go
+data := [][]string{
+    []string{"A", "The Good", "500"},
+    []string{"B", "The Very very Bad Man", "288"},
+    []string{"C", "The Ugly", "120"},
+    []string{"D", "The Gopher", "800"},
+}
+
+table := tablewriter.NewWriter(os.Stdout)
+table.SetHeader([]string{"Name", "Sign", "Rating"})
+table.SetCaption(true, "Movie ratings.")
+
+for _, v := range data {
+    table.Append(v)
+}
+table.Render() // Send output
+```
+
+Note: Caption text will wrap with total width of rendered table.
+
+##### Output 6
+```
++------+-----------------------+--------+
+| NAME |         SIGN          | RATING |
++------+-----------------------+--------+
+|  A   |       The Good        |    500 |
+|  B   | The Very very Bad Man |    288 |
+|  C   |       The Ugly        |    120 |
+|  D   |      The Gopher       |    800 |
++------+-----------------------+--------+
+Movie ratings.
 ```
 
 #### TODO

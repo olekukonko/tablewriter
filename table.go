@@ -47,58 +47,62 @@ type Border struct {
 }
 
 type Table struct {
-	out      io.Writer
-	rows     [][]string
-	lines    [][][]string
-	cs       map[int]int
-	rs       map[int]int
-	headers  []string
-	footers  []string
-	autoFmt  bool
-	autoWrap bool
-	mW       int
-	pCenter  string
-	pRow     string
-	pColumn  string
-	tColumn  int
-	tRow     int
-	hAlign   int
-	fAlign   int
-	align    int
-	newLine  string
-	rowLine  bool
-	hdrLine  bool
-	borders  Border
-	colSize  int
+	out         io.Writer
+	rows        [][]string
+	lines       [][][]string
+	cs          map[int]int
+	rs          map[int]int
+	headers     []string
+	footers     []string
+	caption     bool
+	captionText string
+	autoFmt     bool
+	autoWrap    bool
+	mW          int
+	pCenter     string
+	pRow        string
+	pColumn     string
+	tColumn     int
+	tRow        int
+	hAlign      int
+	fAlign      int
+	align       int
+	newLine     string
+	rowLine     bool
+	hdrLine     bool
+	borders     Border
+	colSize     int
 }
 
 // Start New Table
 // Take io.Writer Directly
 func NewWriter(writer io.Writer) *Table {
 	t := &Table{
-		out:      writer,
-		rows:     [][]string{},
-		lines:    [][][]string{},
-		cs:       make(map[int]int),
-		rs:       make(map[int]int),
-		headers:  []string{},
-		footers:  []string{},
-		autoFmt:  true,
-		autoWrap: true,
-		mW:       MAX_ROW_WIDTH,
-		pCenter:  CENTER,
-		pRow:     ROW,
-		pColumn:  COLUMN,
-		tColumn:  -1,
-		tRow:     -1,
-		hAlign:   ALIGN_DEFAULT,
-		fAlign:   ALIGN_DEFAULT,
-		align:    ALIGN_DEFAULT,
-		newLine:  NEWLINE,
-		rowLine:  false,
-		hdrLine:  true,
-		borders:  Border{Left: true, Right: true, Bottom: true, Top: true},
-		colSize:  -1}
+		out:         writer,
+		rows:        [][]string{},
+		lines:       [][][]string{},
+		cs:          make(map[int]int),
+		rs:          make(map[int]int),
+		headers:     []string{},
+		footers:     []string{},
+		caption:     false,
+		captionText: "Table caption.",
+		autoFmt:     true,
+		autoWrap:    true,
+		mW:          MAX_ROW_WIDTH,
+		pCenter:     CENTER,
+		pRow:        ROW,
+		pColumn:     COLUMN,
+		tColumn:     -1,
+		tRow:        -1,
+		hAlign:      ALIGN_DEFAULT,
+		fAlign:      ALIGN_DEFAULT,
+		align:       ALIGN_DEFAULT,
+		newLine:     NEWLINE,
+		rowLine:     false,
+		hdrLine:     true,
+		borders:     Border{Left: true, Right: true, Bottom: true, Top: true},
+		colSize:     -1}
 	return t
 }
 
@@ -114,7 +118,9 @@ func (t Table) Render() {
 		t.printLine(true)
 	}
 	t.printFooter()
-
+	if t.caption {
+		t.printCaption()
+	}
 }
 
 // Set table header
@@ -132,6 +138,14 @@ func (t *Table) SetFooter(keys []string) {
 	for i, v := range keys {
 		t.parseDimension(v, i, -1)
 		t.footers = append(t.footers, v)
+	}
+}
+
+// Set table Caption
+func (t *Table) SetCaption(caption bool, captionText ...string) {
+	t.caption = caption
+	if len(captionText) == 1 {
+		t.captionText = captionText[0]
 	}
 }
 
@@ -393,6 +407,30 @@ func (t Table) printFooter() {
 
 	fmt.Fprint(t.out, t.newLine)
 
+}
+
+// Print caption text
+func (t Table) printCaption() {
+	width := t.getTableWidth()
+	paragraph, _ := WrapString(t.captionText, width)
+	for linecount := 0; linecount < len(paragraph); linecount++ {
+		fmt.Fprintln(t.out, paragraph[linecount])
+	}
+}
+
+// Calculate the total number of characters in a row
+func (t Table) getTableWidth() int {
+	var chars int
+	for _, v := range t.cs {
+		chars += v
+	}
+
+	// Add chars, spaces, seperators to calculate the total width of the table.
+	// ncols := t.colSize
+	// spaces := ncols * 2
+	// seps := ncols + 1
+
+	return (chars + (3 * t.colSize) + 2)
 }
 
 func (t Table) printRows() {
