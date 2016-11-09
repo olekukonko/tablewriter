@@ -20,10 +20,11 @@ const (
 )
 
 const (
-	CENTER = "+"
-	ROW    = "-"
-	COLUMN = "|"
-	SPACE  = " "
+	CENTER  = "+"
+	ROW     = "-"
+	COLUMN  = "|"
+	SPACE   = " "
+	NEWLINE = "\n"
 )
 
 const (
@@ -66,6 +67,7 @@ type Table struct {
 	hAlign      int
 	fAlign      int
 	align       int
+	newLine     string
 	rowLine     bool
 	hdrLine     bool
 	borders     Border
@@ -96,6 +98,7 @@ func NewWriter(writer io.Writer) *Table {
 		hAlign:      ALIGN_DEFAULT,
 		fAlign:      ALIGN_DEFAULT,
 		align:       ALIGN_DEFAULT,
+		newLine:     NEWLINE,
 		rowLine:     false,
 		hdrLine:     true,
 		borders:     Border{Left: true, Right: true, Bottom: true, Top: true},
@@ -191,6 +194,11 @@ func (t *Table) SetAlignment(align int) {
 	t.align = align
 }
 
+// Set New Line
+func (t *Table) SetNewLine(nl string) {
+	t.newLine = nl
+}
+
 // Set Header Line
 // This would enable / disable a line after the header
 func (t *Table) SetHeaderLine(line bool) {
@@ -255,7 +263,7 @@ func (t Table) printLine(nl bool) {
 			t.pCenter)
 	}
 	if nl {
-		fmt.Fprintln(t.out)
+		fmt.Fprint(t.out, t.newLine)
 	}
 }
 
@@ -302,7 +310,7 @@ func (t Table) printHeading() {
 			pad)
 	}
 	// Next line
-	fmt.Fprintln(t.out)
+	fmt.Fprint(t.out, t.newLine)
 	if t.hdrLine {
 		t.printLine(true)
 	}
@@ -346,7 +354,7 @@ func (t Table) printFooter() {
 			pad)
 	}
 	// Next line
-	fmt.Fprintln(t.out)
+	fmt.Fprint(t.out, t.newLine)
 	//t.printLine(true)
 
 	hasPrinted := false
@@ -397,7 +405,7 @@ func (t Table) printFooter() {
 
 	}
 
-	fmt.Fprintln(t.out)
+	fmt.Fprint(t.out, t.newLine)
 
 }
 
@@ -499,7 +507,7 @@ func (t Table) printRow(columns [][]string, colKey int) {
 		// Check if border is set
 		// Replace with space if not set
 		fmt.Fprint(t.out, ConditionString(t.borders.Left, t.pColumn, SPACE))
-		fmt.Fprintln(t.out)
+		fmt.Fprint(t.out, t.newLine)
 	}
 
 	if t.rowLine {
