@@ -103,14 +103,14 @@ func TestNoBorder(t *testing.T) {
 	table.AppendBulk(data)                                // Add Bulk Data
 	table.Render()
 
-	want := `    DATE   |       DESCRIPTION        |  CV2  | AMOUNT   
+	want := `    DATE   |       DESCRIPTION        |  CV2  | AMOUNT
 +----------+--------------------------+-------+---------+
-  1/1/2014 | Domain name              |  2233 | $10.98   
-  1/1/2014 | January Hosting          |  2233 | $54.95   
-  1/4/2014 | February Hosting         |  2233 | $51.00   
-  1/4/2014 | February Extra Bandwidth |  2233 | $30.00   
+  1/1/2014 | Domain name              |  2233 | $10.98
+  1/1/2014 | January Hosting          |  2233 | $54.95
+  1/4/2014 | February Hosting         |  2233 | $51.00
+  1/4/2014 | February Extra Bandwidth |  2233 | $30.00
 +----------+--------------------------+-------+---------+
-                                        TOTAL | $146 93  
+                                        TOTAL | $146 93
                                       +-------+---------+
 `
 	got := buf.String()
@@ -288,7 +288,7 @@ func TestPrintLine(t *testing.T) {
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
 	table.SetHeader(header)
-	table.printLine(false)
+	table.printInnerLine(false)
 	got := buf.String()
 	if got != want {
 		t.Errorf("line rendering failed\ngot:\n%s\nwant:\n%s\n", got, want)
@@ -308,7 +308,7 @@ func TestAnsiStrip(t *testing.T) {
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
 	table.SetHeader(header)
-	table.printLine(false)
+	table.printInnerLine(false)
 	got := buf.String()
 	if got != want {
 		t.Errorf("line rendering failed\ngot:\n%s\nwant:\n%s\n", got, want)
@@ -343,10 +343,10 @@ func TestSubclass(t *testing.T) {
 	table.Render()
 
 	output := string(buf.Bytes())
-	want := `  A  The Good               500  
-  B  The Very very Bad Man  288  
-  C  The Ugly               120  
-  D  The Gopher             800  
+	want := `  A  The Good               500
+  B  The Very very Bad Man  288
+  C  The Ugly               120
+  D  The Gopher             800
 `
 	if output != want {
 		t.Error(fmt.Sprintf("Unexpected output '%v' != '%v'", output, want))
