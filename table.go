@@ -47,29 +47,38 @@ type Border struct {
 }
 
 type Table struct {
-	out      io.Writer
-	rows     [][]string
-	lines    [][][]string
-	cs       map[int]int
-	rs       map[int]int
-	headers  []string
-	footers  []string
-	autoFmt  bool
-	autoWrap bool
-	mW       int
-	pCenter  string
-	pRow     string
-	pColumn  string
-	tColumn  int
-	tRow     int
-	hAlign   int
-	fAlign   int
-	align    int
-	newLine  string
-	rowLine  bool
-	hdrLine  bool
-	borders  Border
-	colSize  int
+	out                io.Writer
+	rows               [][]string
+	lines              [][][]string
+	cs                 map[int]int
+	rs                 map[int]int
+	headers            []string
+	footers            []string
+	autoFmt            bool
+	autoWrap           bool
+	mW                 int
+	pCenter            string
+	pRow               string
+	pColumn            string
+	tColumn            int
+	tRow               int
+	hAlign             int
+	fAlign             int
+	align              int
+	newLine            string
+	rowLine            bool
+	hdrLine            bool
+	borders            Border
+	colSize            int
+	cornerTopLeft      string
+	cornerTopMiddle    string
+	cornerTopRight     string
+	cornerCenterLeft   string
+	cornerCenterMiddle string
+	cornerCenterRight  string
+	cornerBottomLeft   string
+	cornerBottomMiddle string
+	cornerBottomRight  string
 }
 
 // Start New Table
@@ -99,20 +108,28 @@ func NewWriter(writer io.Writer) *Table {
 		hdrLine:  true,
 		borders:  Border{Left: true, Right: true, Bottom: true, Top: true},
 		colSize:  -1}
+	t.SetCenterSeparator(CENTER)
 	return t
 }
 
 // Render table output
 func (t Table) Render() {
 	if t.borders.Top {
-		t.printLine(true)
+		t.printTopLine(true)
 	}
 	t.printHeading()
 	t.printRows()
 
-	if !t.rowLine && t.borders.Bottom {
-		t.printLine(true)
+	if len(t.footers) == 0 {
+		if !t.rowLine && t.borders.Bottom {
+			t.printBottomLine(true)
+		}
+	} else {
+		if !t.rowLine && t.borders.Bottom {
+			t.printInnerLine(true)
+		}
 	}
+
 	t.printFooter()
 
 }
@@ -150,6 +167,99 @@ func (t *Table) SetColWidth(width int) {
 	t.mW = width
 }
 
+// Set all border characters to use standard unicode box border characters
+func (t *Table) UseBoxBorders() {
+	t.SetTopLeftCornerCharacter("┌")
+	t.SetTopMiddleCornerCharacter("┬")
+	t.SetTopRightCornerCharacter("┐")
+	t.SetCenterLeftCornerCharacter("├")
+	t.SetCenterMiddleCornerCharacter("┼")
+	t.SetCenterRightCornerCharacter("┤")
+	t.SetBottomLeftCornerCharacter("└")
+	t.SetBottomMiddleCornerCharacter("┴")
+	t.SetBottomRightCornerCharacter("┘")
+
+	t.SetColumnSeparator("│")
+	t.SetRowSeparator("─")
+}
+
+// Set all border characters to use heavy (bold) unicode box border characters
+func (t *Table) UseHeavyBoxBorders() {
+	t.SetTopLeftCornerCharacter("┏")
+	t.SetTopMiddleCornerCharacter("┳")
+	t.SetTopRightCornerCharacter("┓")
+	t.SetCenterLeftCornerCharacter("┣")
+	t.SetCenterMiddleCornerCharacter("╋")
+	t.SetCenterRightCornerCharacter("┫")
+	t.SetBottomLeftCornerCharacter("┗")
+	t.SetBottomMiddleCornerCharacter("┻")
+	t.SetBottomRightCornerCharacter("┛")
+
+	t.SetColumnSeparator("┃")
+	t.SetRowSeparator("━")
+}
+
+// Set all border characters to use arc (curved) unicode box border characters
+func (t *Table) UseArcBoxBorders() {
+	t.SetTopLeftCornerCharacter("╭")
+	t.SetTopMiddleCornerCharacter("┬")
+	t.SetTopRightCornerCharacter("╮")
+	t.SetCenterLeftCornerCharacter("├")
+	t.SetCenterMiddleCornerCharacter("┼")
+	t.SetCenterRightCornerCharacter("┤")
+	t.SetBottomLeftCornerCharacter("╰")
+	t.SetBottomMiddleCornerCharacter("┴")
+	t.SetBottomRightCornerCharacter("╯")
+
+	t.SetColumnSeparator("│")
+	t.SetRowSeparator("─")
+}
+
+// Set the character to use in the top left corner of the borders
+func (t *Table) SetTopLeftCornerCharacter(c string) {
+	t.cornerTopLeft = c
+}
+
+// Set the character to use in the top middle corner of the borders
+func (t *Table) SetTopMiddleCornerCharacter(c string) {
+	t.cornerTopMiddle = c
+}
+
+// Set the character to use in the top right corner of the borders
+func (t *Table) SetTopRightCornerCharacter(c string) {
+	t.cornerTopRight = c
+}
+
+// Set the character to use in the center left corner of the borders
+func (t *Table) SetCenterLeftCornerCharacter(c string) {
+	t.cornerCenterLeft = c
+}
+
+// Set the character to use in the center middle corner of the borders
+func (t *Table) SetCenterMiddleCornerCharacter(c string) {
+	t.cornerCenterMiddle = c
+}
+
+// Set the character to use in the center right corner of the borders
+func (t *Table) SetCenterRightCornerCharacter(c string) {
+	t.cornerCenterRight = c
+}
+
+// Set the character to use in the bottom left corner of the borders
+func (t *Table) SetBottomLeftCornerCharacter(c string) {
+	t.cornerBottomLeft = c
+}
+
+// Set the character to use in the bottom middle corner of the borders
+func (t *Table) SetBottomMiddleCornerCharacter(c string) {
+	t.cornerBottomMiddle = c
+}
+
+// Set the character to use in the bottom right corner of the borders
+func (t *Table) SetBottomRightCornerCharacter(c string) {
+	t.cornerBottomRight = c
+}
+
 // Set the Column Separator
 func (t *Table) SetColumnSeparator(sep string) {
 	t.pColumn = sep
@@ -162,7 +272,15 @@ func (t *Table) SetRowSeparator(sep string) {
 
 // Set the center Separator
 func (t *Table) SetCenterSeparator(sep string) {
-	t.pCenter = sep
+	t.SetTopLeftCornerCharacter(sep)
+	t.SetTopMiddleCornerCharacter(sep)
+	t.SetTopRightCornerCharacter(sep)
+	t.SetCenterLeftCornerCharacter(sep)
+	t.SetCenterMiddleCornerCharacter(sep)
+	t.SetCenterRightCornerCharacter(sep)
+	t.SetBottomLeftCornerCharacter(sep)
+	t.SetBottomMiddleCornerCharacter(sep)
+	t.SetBottomRightCornerCharacter(sep)
 }
 
 // Set Header Alignment
@@ -238,15 +356,59 @@ func (t *Table) AppendBulk(rows [][]string) {
 }
 
 // Print line based on row width
-func (t Table) printLine(nl bool) {
-	fmt.Fprint(t.out, t.pCenter)
+func (t Table) printTopLine(nl bool) {
+	fmt.Fprint(t.out, t.cornerTopLeft)
 	for i := 0; i < len(t.cs); i++ {
 		v := t.cs[i]
-		fmt.Fprintf(t.out, "%s%s%s%s",
+		fmt.Fprintf(t.out, "%s%s%s",
 			t.pRow,
 			strings.Repeat(string(t.pRow), v),
+			t.pRow)
+		if i == len(t.cs)-1 {
+			fmt.Fprintf(t.out, "%s", t.cornerTopRight)
+		} else {
+			fmt.Fprintf(t.out, "%s", t.cornerTopMiddle)
+		}
+	}
+	if nl {
+		fmt.Fprint(t.out, t.newLine)
+	}
+}
+
+// Print line based on row width
+func (t Table) printInnerLine(nl bool) {
+	fmt.Fprint(t.out, t.cornerCenterLeft)
+	for i := 0; i < len(t.cs); i++ {
+		v := t.cs[i]
+		fmt.Fprintf(t.out, "%s%s%s",
 			t.pRow,
-			t.pCenter)
+			strings.Repeat(string(t.pRow), v),
+			t.pRow)
+		if i == len(t.cs)-1 {
+			fmt.Fprintf(t.out, "%s", t.cornerCenterRight)
+		} else {
+			fmt.Fprintf(t.out, "%s", t.cornerCenterMiddle)
+		}
+	}
+	if nl {
+		fmt.Fprint(t.out, t.newLine)
+	}
+}
+
+// Print line based on row width
+func (t Table) printBottomLine(nl bool) {
+	fmt.Fprint(t.out, t.cornerBottomLeft)
+	for i := 0; i < len(t.cs); i++ {
+		v := t.cs[i]
+		fmt.Fprintf(t.out, "%s%s%s",
+			t.pRow,
+			strings.Repeat(string(t.pRow), v),
+			t.pRow)
+		if i == len(t.cs)-1 {
+			fmt.Fprintf(t.out, "%s", t.cornerBottomRight)
+		} else {
+			fmt.Fprintf(t.out, "%s", t.cornerBottomMiddle)
+		}
 	}
 	if nl {
 		fmt.Fprint(t.out, t.newLine)
@@ -298,7 +460,7 @@ func (t Table) printHeading() {
 	// Next line
 	fmt.Fprint(t.out, t.newLine)
 	if t.hdrLine {
-		t.printLine(true)
+		t.printInnerLine(true)
 	}
 }
 
@@ -311,7 +473,7 @@ func (t Table) printFooter() {
 
 	// Only print line if border is not set
 	if !t.borders.Bottom {
-		t.printLine(true)
+		t.printInnerLine(true)
 	}
 	// Check if border is set
 	// Replace with space if not set
@@ -348,7 +510,7 @@ func (t Table) printFooter() {
 	for i := 0; i <= end; i++ {
 		v := t.cs[i]
 		pad := t.pRow
-		center := t.pCenter
+		center := t.cornerBottomLeft
 		length := len(t.footers[i])
 
 		if length > 0 {
@@ -379,6 +541,12 @@ func (t Table) printFooter() {
 		if center == SPACE {
 			if i < end && len(t.footers[i+1]) != 0 {
 				center = t.pCenter
+			}
+		} else {
+			if i == end {
+				center = t.cornerBottomRight
+			} else {
+				center = t.cornerBottomMiddle
 			}
 		}
 
@@ -473,7 +641,7 @@ func (t Table) printRow(columns [][]string, colKey int) {
 	}
 
 	if t.rowLine {
-		t.printLine(true)
+		t.printInnerLine(true)
 	}
 
 }
