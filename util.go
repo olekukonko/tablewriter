@@ -9,17 +9,13 @@ package tablewriter
 
 import (
 	"math"
-	"regexp"
 	"strings"
-	"unicode/utf8"
-)
 
-var (
-	ansi = regexp.MustCompile("\033\\[(?:[0-9]{1,3}(?:;[0-9]{1,3})*)?[m|K]")
+	"github.com/mattn/go-runewidth"
 )
 
 func DisplayWidth(str string) int {
-	return utf8.RuneCountInString(ansi.ReplaceAllLiteralString(str, ""))
+	return runewidth.StringWidth(str)
 }
 
 // Simple Condition for string
