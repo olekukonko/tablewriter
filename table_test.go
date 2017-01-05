@@ -14,6 +14,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/mattn/go-runewidth"
 )
 
 func ExampleShort() {
@@ -80,8 +82,13 @@ func TestCSVSeparator(t *testing.T) {
 		return
 	}
 	table.SetRowLine(true)
-	table.SetCenterSeparator("*")
-	table.SetColumnSeparator("‡")
+	if runewidth.IsEastAsian() {
+		table.SetCenterSeparator("＊")
+		table.SetColumnSeparator("‡")
+	} else {
+		table.SetCenterSeparator("*")
+		table.SetColumnSeparator("‡")
+	}
 	table.SetRowSeparator("-")
 	table.SetAlignment(ALIGN_LEFT)
 	table.Render()
