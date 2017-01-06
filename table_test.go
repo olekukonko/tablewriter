@@ -93,12 +93,13 @@ func TestNoBorder(t *testing.T) {
 		[]string{"1/1/2014", "January Hosting", "2233", "$54.95"},
 		[]string{"1/4/2014", "February Hosting", "2233", "$51.00"},
 		[]string{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
+		[]string{"1/4/2014", "    (Discount)", "2233", "-$1.00"},
 	}
 
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
 	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
-	table.SetFooter([]string{"", "", "Total", "$146.93"}) // Add Footer
+	table.SetFooter([]string{"", "", "Total", "$145.93"}) // Add Footer
 	table.SetBorder(false)                                // Set Border to false
 	table.AppendBulk(data)                                // Add Bulk Data
 	table.Render()
@@ -109,8 +110,9 @@ func TestNoBorder(t *testing.T) {
   1/1/2014 | January Hosting          |  2233 | $54.95   
   1/4/2014 | February Hosting         |  2233 | $51.00   
   1/4/2014 | February Extra Bandwidth |  2233 | $30.00   
+  1/4/2014 |     (Discount)           |  2233 | -$1.00   
 +----------+--------------------------+-------+---------+
-                                        TOTAL | $146 93  
+                                        TOTAL | $145 93  
                                       +-------+---------+
 `
 	got := buf.String()
@@ -125,12 +127,13 @@ func TestWithBorder(t *testing.T) {
 		[]string{"1/1/2014", "January Hosting", "2233", "$54.95"},
 		[]string{"1/4/2014", "February Hosting", "2233", "$51.00"},
 		[]string{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
+		[]string{"1/4/2014", "    (Discount)", "2233", "-$1.00"},
 	}
 
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
 	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
-	table.SetFooter([]string{"", "", "Total", "$146.93"}) // Add Footer
+	table.SetFooter([]string{"", "", "Total", "$145.93"}) // Add Footer
 	table.AppendBulk(data)                                // Add Bulk Data
 	table.Render()
 
@@ -141,8 +144,9 @@ func TestWithBorder(t *testing.T) {
 | 1/1/2014 | January Hosting          |  2233 | $54.95  |
 | 1/4/2014 | February Hosting         |  2233 | $51.00  |
 | 1/4/2014 | February Extra Bandwidth |  2233 | $30.00  |
+| 1/4/2014 |     (Discount)           |  2233 | -$1.00  |
 +----------+--------------------------+-------+---------+
-|                                       TOTAL | $146 93 |
+|                                       TOTAL | $145 93 |
 +----------+--------------------------+-------+---------+
 `
 	got := buf.String()
