@@ -10,6 +10,8 @@ package tablewriter
 import (
 	"strings"
 	"testing"
+
+	"github.com/mattn/go-runewidth"
 )
 
 var text = "The quick brown fox jumps over the lazy dog."
@@ -45,11 +47,15 @@ func TestUnicode(t *testing.T) {
 
 func TestDisplayWidth(t *testing.T) {
 	input := "Česká řeřicha"
-	if n := DisplayWidth(input); n != 13 {
-		t.Errorf("Wants: %d Got: %d", 13, n)
+	want := 13
+	if runewidth.IsEastAsian() {
+		want = 14
+	}
+	if n := DisplayWidth(input); n != want {
+		t.Errorf("Wants: %d Got: %d", want, n)
 	}
 	input = "\033[43;30m" + input + "\033[00m"
-	if n := DisplayWidth(input); n != 13 {
-		t.Errorf("Wants: %d Got: %d", 13, n)
+	if n := DisplayWidth(input); n != want {
+		t.Errorf("Wants: %d Got: %d", want, n)
 	}
 }
