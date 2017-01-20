@@ -14,6 +14,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/mattn/go-runewidth"
 )
 
 func ExampleShort() {
@@ -80,8 +82,13 @@ func TestCSVSeparator(t *testing.T) {
 		return
 	}
 	table.SetRowLine(true)
-	table.SetCenterSeparator("*")
-	table.SetColumnSeparator("‡")
+	if runewidth.IsEastAsian() {
+		table.SetCenterSeparator("＊")
+		table.SetColumnSeparator("‡")
+	} else {
+		table.SetCenterSeparator("*")
+		table.SetColumnSeparator("‡")
+	}
 	table.SetRowSeparator("-")
 	table.SetAlignment(ALIGN_LEFT)
 	table.Render()
@@ -93,12 +100,13 @@ func TestNoBorder(t *testing.T) {
 		[]string{"1/1/2014", "January Hosting", "2233", "$54.95"},
 		[]string{"1/4/2014", "February Hosting", "2233", "$51.00"},
 		[]string{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
+		[]string{"1/4/2014", "    (Discount)", "2233", "-$1.00"},
 	}
 
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
 	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
-	table.SetFooter([]string{"", "", "Total", "$146.93"}) // Add Footer
+	table.SetFooter([]string{"", "", "Total", "$145.93"}) // Add Footer
 	table.SetBorder(false)                                // Set Border to false
 	table.AppendBulk(data)                                // Add Bulk Data
 	table.Render()
@@ -109,8 +117,9 @@ func TestNoBorder(t *testing.T) {
   1/1/2014 | January Hosting          |  2233 | $54.95   
   1/4/2014 | February Hosting         |  2233 | $51.00   
   1/4/2014 | February Extra Bandwidth |  2233 | $30.00   
+  1/4/2014 |     (Discount)           |  2233 | -$1.00   
 +----------+--------------------------+-------+---------+
-                                        TOTAL | $146 93  
+                                        TOTAL | $145 93  
                                       +-------+---------+
 `
 	got := buf.String()
@@ -125,12 +134,13 @@ func TestWithBorder(t *testing.T) {
 		[]string{"1/1/2014", "January Hosting", "2233", "$54.95"},
 		[]string{"1/4/2014", "February Hosting", "2233", "$51.00"},
 		[]string{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
+		[]string{"1/4/2014", "    (Discount)", "2233", "-$1.00"},
 	}
 
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
 	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
-	table.SetFooter([]string{"", "", "Total", "$146.93"}) // Add Footer
+	table.SetFooter([]string{"", "", "Total", "$145.93"}) // Add Footer
 	table.AppendBulk(data)                                // Add Bulk Data
 	table.Render()
 
@@ -141,8 +151,9 @@ func TestWithBorder(t *testing.T) {
 | 1/1/2014 | January Hosting          |  2233 | $54.95  |
 | 1/4/2014 | February Hosting         |  2233 | $51.00  |
 | 1/4/2014 | February Extra Bandwidth |  2233 | $30.00  |
+| 1/4/2014 |     (Discount)           |  2233 | -$1.00  |
 +----------+--------------------------+-------+---------+
-|                                       TOTAL | $146 93 |
+|                                       TOTAL | $145 93 |
 +----------+--------------------------+-------+---------+
 `
 	got := buf.String()
@@ -350,5 +361,96 @@ func TestSubclass(t *testing.T) {
 `
 	if output != want {
 		t.Error(fmt.Sprintf("Unexpected output '%v' != '%v'", output, want))
+	}
+}
+
+func TestAutoMergeRows(t *testing.T) {
+	data := [][]string{
+		[]string{"A", "The Good", "500"},
+		[]string{"A", "The Very very Bad Man", "288"},
+		[]string{"B", "The Very very Bad Man", "120"},
+		[]string{"B", "The Very very Bad Man", "200"},
+	}
+	var buf bytes.Buffer
+	table := NewWriter(&buf)
+	table.SetHeader([]string{"Name", "Sign", "Rating"})
+
+	for _, v := range data {
+		table.Append(v)
+	}
+	table.SetAutoMergeCells(true)
+	table.Render()
+	want := `+------+-----------------------+--------+
+| NAME |         SIGN          | RATING |
++------+-----------------------+--------+
+| A    | The Good              |    500 |
+|      | The Very very Bad Man |    288 |
+| B    |                       |    120 |
+|      |                       |    200 |
++------+-----------------------+--------+
+`
+	got := buf.String()
+	if got != want {
+		t.Errorf("\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+
+	buf.Reset()
+	table = NewWriter(&buf)
+	table.SetHeader([]string{"Name", "Sign", "Rating"})
+
+	for _, v := range data {
+		table.Append(v)
+	}
+	table.SetAutoMergeCells(true)
+	table.SetRowLine(true)
+	table.Render()
+	want = `+------+-----------------------+--------+
+| NAME |         SIGN          | RATING |
++------+-----------------------+--------+
+| A    | The Good              |    500 |
++      +-----------------------+--------+
+|      | The Very very Bad Man |    288 |
++------+                       +--------+
+| B    |                       |    120 |
++      +                       +--------+
+|      |                       |    200 |
++------+-----------------------+--------+
+`
+	got = buf.String()
+	if got != want {
+		t.Errorf("\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+
+	buf.Reset()
+	table = NewWriter(&buf)
+	table.SetHeader([]string{"Name", "Sign", "Rating"})
+
+	dataWithlongText := [][]string{
+		[]string{"A", "The Good", "500"},
+		[]string{"A", "The Very very very very very Bad Man", "288"},
+		[]string{"B", "The Very very very very very Bad Man", "120"},
+		[]string{"C", "The Very very Bad Man", "200"},
+	}
+	table.AppendBulk(dataWithlongText)
+	table.SetAutoMergeCells(true)
+	table.SetRowLine(true)
+	table.Render()
+	want = `+------+--------------------------------+--------+
+| NAME |              SIGN              | RATING |
++------+--------------------------------+--------+
+| A    | The Good                       |    500 |
++------+--------------------------------+--------+
+| A    | The Very very very very very   |    288 |
+|      | Bad Man                        |        |
++------+                                +--------+
+| B    |                                |    120 |
+|      |                                |        |
++------+--------------------------------+--------+
+| C    | The Very very Bad Man          |    200 |
++------+--------------------------------+--------+
+`
+	got = buf.String()
+	if got != want {
+		t.Errorf("\ngot:\n%s\nwant:\n%s\n", got, want)
 	}
 }

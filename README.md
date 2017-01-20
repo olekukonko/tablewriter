@@ -21,6 +21,7 @@ Generate ASCII table on the fly ...  Installation is simple as
 - Make CSV Headers optional
 - Enable or disable table border
 - Set custom footer support
+- Optional identical cells merging
 
 
 #### Example   1 - Basic
@@ -158,7 +159,6 @@ table.Render()
 | 1/4/2014 | February Extra Bandwidth | 2233 | $30.00 |
 ```
 
-
 #### Table with color
 ```go
 data := [][]string{
@@ -186,7 +186,25 @@ table.SetColumnAttributes(tablewriter.Add(tablewriter.Bold, tablewriter.FgHiBlac
 table.SetFooterAttributes(tablewriter.Add(), tablewriter.Add(),
                           tablewriter.Add(tablewriter.Bold),
                           tablewriter.Add(tablewriter.FgHiRedColor))
+table.AppendBulk(data)
+table.Render()
+```
 
+=======
+#### Example 6  - Identical cells merging
+```go
+data := [][]string{
+  []string{"1/1/2014", "Domain name", "1234", "$10.98"},
+  []string{"1/1/2014", "January Hosting", "2345", "$54.95"},
+  []string{"1/4/2014", "February Hosting", "3456", "$51.00"},
+  []string{"1/4/2014", "February Extra Bandwidth", "4567", "$30.00"},
+}
+
+table := NewWriter(os.Stdout)
+table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
+table.SetFooter([]string{"", "", "Total", "$146.93"})
+table.SetAutoMergeCells(true)
+table.SetRowLine(true)
 table.AppendBulk(data)
 table.Render()
 ```
@@ -194,6 +212,23 @@ table.Render()
 #### Table with color Output
 ![Table with Color](https://cloud.githubusercontent.com/assets/6460392/21101956/bbc7b356-c0a1-11e6-9f36-dba694746efc.png)
 
+=======
+##### Output 6
+```
++----------+--------------------------+-------+---------+
+|   DATE   |       DESCRIPTION        |  CV2  | AMOUNT  |
++----------+--------------------------+-------+---------+
+| 1/1/2014 | Domain name              |  1234 | $10.98  |
++          +--------------------------+-------+---------+
+|          | January Hosting          |  2345 | $54.95  |
++----------+--------------------------+-------+---------+
+| 1/4/2014 | February Hosting         |  3456 | $51.00  |
++          +--------------------------+-------+---------+
+|          | February Extra Bandwidth |  4567 | $30.00  |
++----------+--------------------------+-------+---------+
+|                                       TOTAL | $146 93 |
++----------+--------------------------+-------+---------+
+```
 
 #### TODO
 - ~~Import Directly from CSV~~  - `done`
