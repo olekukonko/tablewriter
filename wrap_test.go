@@ -32,7 +32,7 @@ func TestWrapOneLine(t *testing.T) {
 	words, _ := WrapString(text, 500)
 	got := strings.Join(words, string(sp))
 	if exp != got {
-		t.Fail()
+		t.Errorf("expected: %q, got: %q", exp, got)
 	}
 }
 

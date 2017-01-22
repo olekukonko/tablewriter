@@ -96,7 +96,7 @@ func WrapWords(words []string, spc, lim, pen int) [][]string {
 func getLines(s string) []string {
 	var lines []string
 
-	for _, line := range strings.Split(strings.TrimSpace(s), nl) {
+	for _, line := range strings.Split(s, nl) {
 		lines = append(lines, line)
 	}
 	return lines
