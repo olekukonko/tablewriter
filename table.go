@@ -463,7 +463,7 @@ func (t Table) printRow(columns [][]string, colKey int) {
 		pad := max - length
 		pads = append(pads, pad)
 		for n := 0; n < pad; n++ {
-			columns[i] = append(columns[i], "  ")
+			columns[i] = append(columns[i], " ")
 		}
 	}
 	//fmt.Println(max, "\n")
