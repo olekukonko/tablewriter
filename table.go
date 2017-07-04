@@ -156,6 +156,11 @@ func (t *Table) SetColWidth(width int) {
 	t.mW = width
 }
 
+// Set the minimal width for a column
+func (t *Table) SetColMinWidth(column int, width int) {
+    t.cs[column] = width
+}
+
 // Set the Column Separator
 func (t *Table) SetColumnSeparator(sep string) {
 	t.pColumn = sep
