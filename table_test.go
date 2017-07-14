@@ -505,3 +505,59 @@ func TestAutoMergeRows(t *testing.T) {
 		t.Errorf("\ngot:\n%s\nwant:\n%s\n", got, want)
 	}
 }
+
+func TestClearRows(t *testing.T) {
+	data := [][]string{
+		[]string{"1/1/2014", "Domain name", "2233", "$10.98"},
+	}
+
+	var buf bytes.Buffer
+	table := NewWriter(&buf)
+	table.SetAutoWrapText(false)
+	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
+	table.SetFooter([]string{"", "", "Total", "$145.93"}) // Add Footer
+	table.AppendBulk(data)                                // Add Bulk Data
+	table.Render()
+
+	originalWant := `+----------+-------------+-------+---------+
+|   DATE   | DESCRIPTION |  CV2  | AMOUNT  |
++----------+-------------+-------+---------+
+| 1/1/2014 | Domain name |  2233 | $10.98  |
++----------+-------------+-------+---------+
+|                          TOTAL | $145 93 |
++----------+-------------+-------+---------+
+`
+	want := originalWant
+
+	got := buf.String()
+	if got != want {
+		t.Errorf("table clear rows failed\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+
+	buf.Reset()
+	table.ClearRows()
+	table.Render()
+
+	want = `+----------+-------------+-------+---------+
+|   DATE   | DESCRIPTION |  CV2  | AMOUNT  |
++----------+-------------+-------+---------+
++----------+-------------+-------+---------+
+|                          TOTAL | $145 93 |
++----------+-------------+-------+---------+
+`
+
+	got = buf.String()
+	if got != want {
+		t.Errorf("table clear failed\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+
+	buf.Reset()
+	table.AppendBulk(data) // Add Bulk Data
+	table.Render()
+
+	want = originalWant
+	got = buf.String()
+	if got != want {
+		t.Errorf("table clear rows failed\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
