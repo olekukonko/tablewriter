@@ -252,6 +252,11 @@ func (t *Table) ClearRows() {
 	t.lines = [][][]string{}
 }
 
+// Clear footer
+func (t *Table) ClearFooter() {
+	t.footers = []string{}
+}
+
 // Print line based on row width
 func (t Table) printLine(nl bool) {
 	fmt.Fprint(t.out, t.pCenter)

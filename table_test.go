@@ -555,8 +555,46 @@ func TestClearRows(t *testing.T) {
 	table.AppendBulk(data) // Add Bulk Data
 	table.Render()
 
-	want = originalWant
+	want = `+----------+-------------+-------+---------+
+|   DATE   | DESCRIPTION |  CV2  | AMOUNT  |
++----------+-------------+-------+---------+
+| 1/1/2014 | Domain name |  2233 | $10.98  |
++----------+-------------+-------+---------+
+|                          TOTAL | $145 93 |
++----------+-------------+-------+---------+
+`
+
 	got = buf.String()
+	if got != want {
+		t.Errorf("table clear rows failed\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
+
+func TestClearFooters(t *testing.T) {
+	data := [][]string{
+		[]string{"1/1/2014", "Domain name", "2233", "$10.98"},
+	}
+
+	var buf bytes.Buffer
+	table := NewWriter(&buf)
+	table.SetAutoWrapText(false)
+	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
+	table.SetFooter([]string{"", "", "Total", "$145.93"}) // Add Footer
+	table.AppendBulk(data)                                // Add Bulk Data
+	table.Render()
+
+	buf.Reset()
+	table.ClearFooter()
+	table.Render()
+
+	want := `+----------+-------------+-------+---------+
+|   DATE   | DESCRIPTION |  CV2  | AMOUNT  |
++----------+-------------+-------+---------+
+| 1/1/2014 | Domain name |  2233 | $10.98  |
++----------+-------------+-------+---------+
+`
+
+	got := buf.String()
 	if got != want {
 		t.Errorf("table clear rows failed\ngot:\n%s\nwant:\n%s\n", got, want)
 	}
