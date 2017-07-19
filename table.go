@@ -115,12 +115,10 @@ func (t Table) Render() {
 	} else {
 		t.printRows()
 	}
-
 	if !t.rowLine && t.borders.Bottom {
 		t.printLine(true)
 	}
 	t.printFooter()
-
 }
 
 // Set table header
@@ -247,6 +245,16 @@ func (t *Table) AppendBulk(rows [][]string) {
 	for _, row := range rows {
 		t.Append(row)
 	}
+}
+
+// Clear rows
+func (t *Table) ClearRows() {
+	t.lines = [][][]string{}
+}
+
+// Clear footer
+func (t *Table) ClearFooter() {
+	t.footers = []string{}
 }
 
 // Print line based on row width
@@ -428,14 +436,12 @@ func (t Table) printFooter() {
 	}
 
 	fmt.Fprint(t.out, t.newLine)
-
 }
 
 func (t Table) printRows() {
 	for i, lines := range t.lines {
 		t.printRow(lines, i)
 	}
-
 }
 
 // Print Row Information
