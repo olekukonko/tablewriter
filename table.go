@@ -105,7 +105,7 @@ func NewWriter(writer io.Writer) *Table {
 }
 
 // Render table output
-func (t Table) Render() {
+func (t *Table) Render() {
 	if t.borders.Top {
 		t.printLine(true)
 	}
@@ -258,7 +258,7 @@ func (t *Table) ClearFooter() {
 }
 
 // Print line based on row width
-func (t Table) printLine(nl bool) {
+func (t *Table) printLine(nl bool) {
 	fmt.Fprint(t.out, t.pCenter)
 	for i := 0; i < len(t.cs); i++ {
 		v := t.cs[i]
@@ -274,7 +274,7 @@ func (t Table) printLine(nl bool) {
 }
 
 // Print line based on row width with our without cell separator
-func (t Table) printLineOptionalCellSeparators(nl bool, displayCellSeparator []bool) {
+func (t *Table) printLineOptionalCellSeparators(nl bool, displayCellSeparator []bool) {
 	fmt.Fprint(t.out, t.pCenter)
 	for i := 0; i < len(t.cs); i++ {
 		v := t.cs[i]
@@ -311,7 +311,7 @@ func pad(align int) func(string, string, int) string {
 }
 
 // Print heading information
-func (t Table) printHeading() {
+func (t *Table) printHeading() {
 	// Check if headers is available
 	if len(t.headers) < 1 {
 		return
@@ -347,7 +347,7 @@ func (t Table) printHeading() {
 }
 
 // Print heading information
-func (t Table) printFooter() {
+func (t *Table) printFooter() {
 	// Check if headers is available
 	if len(t.footers) < 1 {
 		return
@@ -438,7 +438,7 @@ func (t Table) printFooter() {
 	fmt.Fprint(t.out, t.newLine)
 }
 
-func (t Table) printRows() {
+func (t *Table) printRows() {
 	for i, lines := range t.lines {
 		t.printRow(lines, i)
 	}
@@ -447,7 +447,7 @@ func (t Table) printRows() {
 // Print Row Information
 // Adjust column alignment based on type
 
-func (t Table) printRow(columns [][]string, colKey int) {
+func (t *Table) printRow(columns [][]string, colKey int) {
 	// Get Maximum Height
 	max := t.rs[colKey]
 	total := len(columns)
@@ -520,7 +520,7 @@ func (t Table) printRow(columns [][]string, colKey int) {
 }
 
 // Print the rows of the table and merge the cells that are identical
-func (t Table) printRowsMergeCells() {
+func (t *Table) printRowsMergeCells() {
 	var previousLine []string
 	var displayCellBorder []bool
 	var tmpWriter bytes.Buffer
@@ -543,7 +543,7 @@ func (t Table) printRowsMergeCells() {
 // Print Row Information to a writer and merge identical cells.
 // Adjust column alignment based on type
 
-func (t Table) printRowMergeCells(writer io.Writer, columns [][]string, colKey int, previousLine []string) ([]string, []bool) {
+func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, colKey int, previousLine []string) ([]string, []bool) {
 	// Get Maximum Height
 	max := t.rs[colKey]
 	total := len(columns)
