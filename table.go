@@ -330,7 +330,10 @@ func (t *Table) printHeading() {
 	// Print Heading column
 	for i := 0; i <= end; i++ {
 		v := t.cs[i]
-		h := t.headers[i]
+		h := ""
+		if i < len(t.headers) {
+			h = t.headers[i]
+		}
 		if t.autoFmt {
 			h = Title(h)
 		}
