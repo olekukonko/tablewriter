@@ -599,3 +599,64 @@ func TestClearFooters(t *testing.T) {
 		t.Errorf("table clear rows failed\ngot:\n%s\nwant:\n%s\n", got, want)
 	}
 }
+
+func TestMoreDataColumnsThanHeaders(t *testing.T) {
+	var (
+		buf    = &bytes.Buffer{}
+		table  = NewWriter(buf)
+		header = []string{"A", "B", "C"}
+		data   = [][]string{
+			[]string{"a", "b", "c", "d"},
+			[]string{"1", "2", "3", "4"},
+		}
+		want = `+---+---+---+---+
+| A | B | C |   |
++---+---+---+---+
+| a | b | c | d |
+| 1 | 2 | 3 | 4 |
++---+---+---+---+
+`
+	)
+	table.SetHeader(header)
+	// table.SetFooter(ctx.tableCtx.footer)
+	table.AppendBulk(data)
+	table.Render()
+
+	got := buf.String()
+
+	if got != want {
+		t.Errorf("\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
+
+func TestMoreFooterColumnsThanHeaders(t *testing.T) {
+	var (
+		buf    = &bytes.Buffer{}
+		table  = NewWriter(buf)
+		header = []string{"A", "B", "C"}
+		data   = [][]string{
+			[]string{"a", "b", "c", "d"},
+			[]string{"1", "2", "3", "4"},
+		}
+		footer = []string{"a", "b", "c", "d", "e"}
+		want   = `+---+---+---+---+---+
+| A | B | C |   |   |
++---+---+---+---+---+
+| a | b | c | d |
+| 1 | 2 | 3 | 4 |
++---+---+---+---+---+
+| A | B | C | D | E |
++---+---+---+---+---+
+`
+	)
+	table.SetHeader(header)
+	table.SetFooter(footer)
+	table.AppendBulk(data)
+	table.Render()
+
+	got := buf.String()
+
+	if got != want {
+		t.Errorf("\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
