@@ -72,6 +72,9 @@ type Table struct {
 	hdrLine        bool
 	borders        Border
 	colSize        int
+	headerParams []string
+	columnsParams []string
+	footerParams []string
 }
 
 // Start New Table
@@ -100,7 +103,9 @@ func NewWriter(writer io.Writer) *Table {
 		rowLine:  false,
 		hdrLine:  true,
 		borders:  Border{Left: true, Right: true, Bottom: true, Top: true},
-		colSize:  -1}
+		colSize:  -1,
+		headerParams: []string{},
+		columnsParams: []string{}}
 	return t
 }
 
@@ -327,6 +332,12 @@ func (t *Table) printHeading() {
 	// Get pad function
 	padFunc := pad(t.hAlign)
 
+	// Checking for ANSI escape sequences for header
+	is_esc_seq := false
+	if len(t.headerParams) > 0 {
+		is_esc_seq = true
+	}
+
 	// Print Heading column
 	for i := 0; i <= end; i++ {
 		v := t.cs[i]
@@ -338,9 +349,17 @@ func (t *Table) printHeading() {
 			h = Title(h)
 		}
 		pad := ConditionString((i == end && !t.borders.Left), SPACE, t.pColumn)
-		fmt.Fprintf(t.out, " %s %s",
+
+		if is_esc_seq {
+			fmt.Fprintf(t.out, " %s %s",
+				format(padFunc(h, SPACE, v),
+				t.headerParams[i]), pad)
+		} else {
+			fmt.Fprintf(t.out, " %s %s",
 			padFunc(h, SPACE, v),
 			pad)
+		}
+
 	}
 	// Next line
 	fmt.Fprint(t.out, t.newLine)
@@ -370,6 +389,12 @@ func (t *Table) printFooter() {
 	// Get pad function
 	padFunc := pad(t.fAlign)
 
+	// Checking for ANSI escape sequences for header
+	is_esc_seq := false
+	if len(t.footerParams) > 0 {
+		is_esc_seq = true
+	}
+
 	// Print Heading column
 	for i := 0; i <= end; i++ {
 		v := t.cs[i]
@@ -382,9 +407,20 @@ func (t *Table) printFooter() {
 		if len(t.footers[i]) == 0 {
 			pad = SPACE
 		}
-		fmt.Fprintf(t.out, " %s %s",
+
+		if is_esc_seq {
+			fmt.Fprintf(t.out, " %s %s",
+				format(padFunc(f, SPACE, v),
+				t.footerParams[i]), pad)
+		} else {
+			fmt.Fprintf(t.out, " %s %s",
 			padFunc(f, SPACE, v),
 			pad)
+		}
+
+		//fmt.Fprintf(t.out, " %s %s",
+		//	padFunc(f, SPACE, v),
+		//	pad)
 	}
 	// Next line
 	fmt.Fprint(t.out, t.newLine)
@@ -467,6 +503,13 @@ func (t *Table) printRow(columns [][]string, colKey int) {
 	// pads := []int{}
 	pads := []int{}
 
+	// Checking for ANSI escape sequences for columns
+	is_esc_seq := false
+	if len(t.columnsParams) > 0 {
+		is_esc_seq = true
+	}
+
+
 	for i, line := range columns {
 		length := len(line)
 		pad := max - length
@@ -484,6 +527,11 @@ func (t *Table) printRow(columns [][]string, colKey int) {
 
 			fmt.Fprintf(t.out, SPACE)
 			str := columns[y][x]
+
+			// Embedding escape sequence with column value
+			if is_esc_seq{
+				str = format(str, t.columnsParams[y])
+			}
 
 			// This would print alignment
 			// Default alignment  would use multiple configuration

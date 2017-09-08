@@ -159,6 +159,38 @@ table.Render()
 | 1/4/2014 | February Extra Bandwidth | 2233 | $30.00 |
 ```
 
+#### Table with color
+```go
+data := [][]string{
+    []string{"1/1/2014", "Domain name", "2233", "$10.98"},
+    []string{"1/1/2014", "January Hosting", "2233", "$54.95"},
+    []string{"1/4/2014", "February Hosting", "2233", "$51.00"},
+    []string{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
+}
+
+table := tablewriter.NewWriter(os.Stdout)
+table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
+table.SetFooter([]string{"", "", "Total", "$146.93"}) // Add Footer
+table.SetBorder(false)                                // Set Border to false
+
+table.SetHeaderAttributes(tablewriter.Add(tablewriter.Bold, tablewriter.BgGreenColor),
+			  tablewriter.Add(tablewriter.FgHiRedColor, tablewriter.Bold, tablewriter.BgBlackColor),
+			  tablewriter.Add(tablewriter.BgRedColor, tablewriter.FgWhiteColor),
+	  		  tablewriter.Add(tablewriter.BgCyanColor, tablewriter.FgWhiteColor))
+
+table.SetColumnAttributes(tablewriter.Add(tablewriter.Bold, tablewriter.FgHiBlackColor),
+			  tablewriter.Add(tablewriter.Bold, tablewriter.FgHiRedColor),
+			  tablewriter.Add(tablewriter.Bold, tablewriter.FgHiBlackColor),
+			  tablewriter.Add(tablewriter.Bold, tablewriter.FgBlackColor))
+
+table.SetFooterAttributes(tablewriter.Add(), tablewriter.Add(),
+                          tablewriter.Add(tablewriter.Bold),
+                          tablewriter.Add(tablewriter.FgHiRedColor))
+table.AppendBulk(data)
+table.Render()
+```
+
+=======
 #### Example 6  - Identical cells merging
 ```go
 data := [][]string{
@@ -177,6 +209,10 @@ table.AppendBulk(data)
 table.Render()
 ```
 
+#### Table with color Output
+![Table with Color](https://cloud.githubusercontent.com/assets/6460392/21101956/bbc7b356-c0a1-11e6-9f36-dba694746efc.png)
+
+=======
 ##### Output 6
 ```
 +----------+--------------------------+-------+---------+
@@ -202,3 +238,5 @@ table.Render()
 - Support custom alignment
 - General Improvement & Optimisation
 - `NewHTML` Parse table from HTML
+
+
