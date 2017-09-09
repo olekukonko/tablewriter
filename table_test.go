@@ -14,8 +14,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-
-	"github.com/mattn/go-runewidth"
 )
 
 func ExampleShort() {
@@ -109,26 +107,21 @@ func TestCSVSeparator(t *testing.T) {
 		return
 	}
 	table.SetRowLine(true)
-	if runewidth.IsEastAsian() {
-		table.SetCenterSeparator("＊")
-		table.SetColumnSeparator("‡")
-	} else {
-		table.SetCenterSeparator("*")
-		table.SetColumnSeparator("‡")
-	}
+	table.SetCenterSeparator("+")
+	table.SetColumnSeparator("|")
 	table.SetRowSeparator("-")
 	table.SetAlignment(ALIGN_LEFT)
 	table.Render()
 
-	want := `*------------*-----------*---------*
-‡ FIRST NAME ‡ LAST NAME ‡   SSN   ‡
-*------------*-----------*---------*
-‡ John       ‡ Barry     ‡ 123456  ‡
-*------------*-----------*---------*
-‡ Kathy      ‡ Smith     ‡ 687987  ‡
-*------------*-----------*---------*
-‡ Bob        ‡ McCornick ‡ 3979870 ‡
-*------------*-----------*---------*
+	want := `+------------+-----------+---------+
+| FIRST NAME | LAST NAME |   SSN   |
++------------+-----------+---------+
+| John       | Barry     | 123456  |
++------------+-----------+---------+
+| Kathy      | Smith     | 687987  |
++------------+-----------+---------+
+| Bob        | McCornick | 3979870 |
++------------+-----------+---------+
 `
 
 	got := buf.String()
