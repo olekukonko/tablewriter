@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -822,5 +823,13 @@ func TestSetColMinWidth(t *testing.T) {
 
 	if got != want {
 		t.Errorf("\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
+
+func TestWrapString(t *testing.T) {
+	want := []string{"ああああああああああああああああああああああああ", "あああああああ"}
+	got, _ := WrapString("ああああああああああああああああああああああああ あああああああ", 55)
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("\ngot:\n%v\nwant:\n%v\n", got, want)
 	}
 }
