@@ -207,7 +207,6 @@ func TestWithBorder(t *testing.T) {
 }
 
 func TestPrintingInMarkdown(t *testing.T) {
-	fmt.Println("TESTING")
 	data := [][]string{
 		[]string{"1/1/2014", "Domain name", "2233", "$10.98"},
 		[]string{"1/1/2014", "January Hosting", "2233", "$54.95"},
@@ -645,6 +644,39 @@ func TestMoreFooterColumnsThanHeaders(t *testing.T) {
 	table.SetHeader(header)
 	table.SetFooter(footer)
 	table.AppendBulk(data)
+	table.Render()
+
+	got := buf.String()
+
+	if got != want {
+		t.Errorf("\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
+
+func TestSetColMinWidth(t *testing.T) {
+	var (
+		buf    = &bytes.Buffer{}
+		table  = NewWriter(buf)
+		header = []string{"AAA", "BBB", "CCC"}
+		data   = [][]string{
+			[]string{"a", "b", "c"},
+			[]string{"1", "2", "3"},
+		}
+		footer = []string{"a", "b", "cccc"}
+		want   = `+-----+-----+-------+
+| AAA | BBB |  CCC  |
++-----+-----+-------+
+| a   | b   | c     |
+|   1 |   2 |     3 |
++-----+-----+-------+
+|  A  |  B  | CCCC  |
++-----+-----+-------+
+`
+	)
+	table.SetHeader(header)
+	table.SetFooter(footer)
+	table.AppendBulk(data)
+	table.SetColMinWidth(2, 5)
 	table.Render()
 
 	got := buf.String()
