@@ -55,6 +55,8 @@ type Table struct {
 	rs             map[int]int
 	headers        []string
 	footers        []string
+	caption        bool
+	captionText    string
 	autoFmt        bool
 	autoWrap       bool
 	mW             int
@@ -88,6 +90,8 @@ func NewWriter(writer io.Writer) *Table {
 		rs:            make(map[int]int),
 		headers:       []string{},
 		footers:       []string{},
+		caption:       false,
+		captionText:   "Table caption.",
 		autoFmt:       true,
 		autoWrap:      true,
 		mW:            MAX_ROW_WIDTH,
@@ -124,6 +128,10 @@ func (t *Table) Render() {
 		t.printLine(true)
 	}
 	t.printFooter()
+
+	if t.caption {
+		t.printCaption()
+	}
 }
 
 // Set table header
@@ -144,6 +152,14 @@ func (t *Table) SetFooter(keys []string) {
 	}
 }
 
+// Set table Caption
+func (t *Table) SetCaption(caption bool, captionText ...string) {
+	t.caption = caption
+	if len(captionText) == 1 {
+		t.captionText = captionText[0]
+	}
+}
+
 // Turn header autoformatting on/off. Default is on (true).
 func (t *Table) SetAutoFormatHeaders(auto bool) {
 	t.autoFmt = auto
@@ -161,7 +177,7 @@ func (t *Table) SetColWidth(width int) {
 
 // Set the minimal width for a column
 func (t *Table) SetColMinWidth(column int, width int) {
-    t.cs[column] = width
+	t.cs[column] = width
 }
 
 // Set the Column Separator
@@ -482,7 +498,31 @@ func (t *Table) printFooter() {
 	fmt.Fprint(t.out, t.newLine)
 }
 
-func (t *Table) printRows() {
+// Print caption text
+func (t Table) printCaption() {
+	width := t.getTableWidth()
+	paragraph, _ := WrapString(t.captionText, width)
+	for linecount := 0; linecount < len(paragraph); linecount++ {
+		fmt.Fprintln(t.out, paragraph[linecount])
+	}
+}
+
+// Calculate the total number of characters in a row
+func (t Table) getTableWidth() int {
+	var chars int
+	for _, v := range t.cs {
+		chars += v
+	}
+
+	// Add chars, spaces, seperators to calculate the total width of the table.
+	// ncols := t.colSize
+	// spaces := ncols * 2
+	// seps := ncols + 1
+
+	return (chars + (3 * t.colSize) + 2)
+}
+
+func (t Table) printRows() {
 	for i, lines := range t.lines {
 		t.printRow(lines, i)
 	}

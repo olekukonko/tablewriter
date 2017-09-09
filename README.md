@@ -22,6 +22,7 @@ Generate ASCII table on the fly ...  Installation is simple as
 - Enable or disable table border
 - Set custom footer support
 - Optional identical cells merging
+- Set custom caption
 
 
 #### Example   1 - Basic
@@ -132,7 +133,7 @@ table.Render()
 *------------*-----------*---------*
 ```
 
-##### Example 5 - Markdown Format
+#### Example 5 - Markdown Format
 ```go
 data := [][]string{
 	[]string{"1/1/2014", "Domain name", "2233", "$10.98"},
@@ -212,7 +213,7 @@ table.SetBorder(false)                                // Set Border to false
 table.SetHeaderAttributes(tablewriter.Add(tablewriter.Bold, tablewriter.BgGreenColor),
 			  tablewriter.Add(tablewriter.FgHiRedColor, tablewriter.Bold, tablewriter.BgBlackColor),
 			  tablewriter.Add(tablewriter.BgRedColor, tablewriter.FgWhiteColor),
-	  		  tablewriter.Add(tablewriter.BgCyanColor, tablewriter.FgWhiteColor))
+			  tablewriter.Add(tablewriter.BgCyanColor, tablewriter.FgWhiteColor))
 
 table.SetColumnAttributes(tablewriter.Add(tablewriter.Bold, tablewriter.FgHiBlackColor),
 			  tablewriter.Add(tablewriter.Bold, tablewriter.FgHiRedColor),
@@ -230,6 +231,39 @@ table.Render()
 #### Table with color Output
 ![Table with Color](https://cloud.githubusercontent.com/assets/6460392/21101956/bbc7b356-c0a1-11e6-9f36-dba694746efc.png)
 
+#### Example 6 - Set table caption
+```go
+data := [][]string{
+    []string{"A", "The Good", "500"},
+    []string{"B", "The Very very Bad Man", "288"},
+    []string{"C", "The Ugly", "120"},
+    []string{"D", "The Gopher", "800"},
+}
+
+table := tablewriter.NewWriter(os.Stdout)
+table.SetHeader([]string{"Name", "Sign", "Rating"})
+table.SetCaption(true, "Movie ratings.")
+
+for _, v := range data {
+    table.Append(v)
+}
+table.Render() // Send output
+```
+
+Note: Caption text will wrap with total width of rendered table.
+
+##### Output 6
+```
++------+-----------------------+--------+
+| NAME |         SIGN          | RATING |
++------+-----------------------+--------+
+|  A   |       The Good        |    500 |
+|  B   | The Very very Bad Man |    288 |
+|  C   |       The Ugly        |    120 |
+|  D   |      The Gopher       |    800 |
++------+-----------------------+--------+
+Movie ratings.
+```
 
 #### TODO
 - ~~Import Directly from CSV~~  - `done`
