@@ -60,7 +60,7 @@ const (
 	Italic
 )
 
-type Values []int
+type Colors []int
 
 func startFormat(seq string) string {
 	return fmt.Sprintf("%s[%sm", ESC, seq)
@@ -100,35 +100,35 @@ func format(s string, codes interface{}) string {
 }
 
 // Adding header colors (ANSI codes)
-func (t *Table) SetHeaderColor(args ...Values) {
-	if t.colSize != len(args) {
+func (t *Table) SetHeaderColor(colors ...Colors) {
+	if t.colSize != len(colors) {
 		panic("Number of header colors must be equal to number of headers.")
 	}
-	for i := 0; i < len(args); i++ {
-		t.headerParams = append(t.headerParams, makeSequence(args[i]))
+	for i := 0; i < len(colors); i++ {
+		t.headerParams = append(t.headerParams, makeSequence(colors[i]))
 	}
 }
 
 // Adding column colors (ANSI codes)
-func (t *Table) SetColumnColor(args ...Values) {
-	if t.colSize != len(args) {
+func (t *Table) SetColumnColor(colors ...Colors) {
+	if t.colSize != len(colors) {
 		panic("Number of column colors must be equal to number of headers.")
 	}
-	for i := 0; i < len(args); i++ {
-		t.columnsParams = append(t.columnsParams, makeSequence(args[i]))
+	for i := 0; i < len(colors); i++ {
+		t.columnsParams = append(t.columnsParams, makeSequence(colors[i]))
 	}
 }
 
 // Adding column colors (ANSI codes)
-func (t *Table) SetFooterColor(args ...Values) {
-	if len(t.footers) != len(args) {
+func (t *Table) SetFooterColor(colors ...Colors) {
+	if len(t.footers) != len(colors) {
 		panic("Number of footer colors must be equal to number of footer.")
 	}
-	for i := 0; i < len(args); i++ {
-		t.footerParams = append(t.footerParams, makeSequence(args[i]))
+	for i := 0; i < len(colors); i++ {
+		t.footerParams = append(t.footerParams, makeSequence(colors[i]))
 	}
 }
 
-func Add(values ...int) []int {
-	return values
+func Color(colors ...int) []int {
+	return colors
 }
