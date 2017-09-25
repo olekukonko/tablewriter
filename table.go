@@ -77,6 +77,7 @@ type Table struct {
 	headerParams   []string
 	columnsParams  []string
 	footerParams   []string
+	columnsAlign   []int
 }
 
 // Start New Table
@@ -109,7 +110,9 @@ func NewWriter(writer io.Writer) *Table {
 		borders:       Border{Left: true, Right: true, Bottom: true, Top: true},
 		colSize:       -1,
 		headerParams:  []string{},
-		columnsParams: []string{}}
+		columnsParams: []string{},
+		footerParams:  []string{},
+		columnsAlign:  []int{}}
 	return t
 }
 
@@ -208,6 +211,22 @@ func (t *Table) SetFooterAlignment(fAlign int) {
 // Set Table Alignment
 func (t *Table) SetAlignment(align int) {
 	t.align = align
+}
+
+func (t *Table) SetColumnAlignment(keys []int) {
+	for _, v := range keys {
+		switch v {
+		case ALIGN_CENTER:
+			break
+		case ALIGN_LEFT:
+			break
+		case ALIGN_RIGHT:
+			break
+		default:
+			v = ALIGN_DEFAULT
+		}
+		t.columnsAlign = append(t.columnsAlign, v)
+	}
 }
 
 // Set New Line
@@ -528,6 +547,15 @@ func (t Table) printRows() {
 	}
 }
 
+func (t *Table) fillAlignment(num int) {
+	if len(t.columnsAlign) < num {
+		t.columnsAlign = make([]int, num)
+		for i := range t.columnsAlign {
+			t.columnsAlign[i] = t.align
+		}
+	}
+}
+
 // Print Row Information
 // Adjust column alignment based on type
 
@@ -553,6 +581,7 @@ func (t *Table) printRow(columns [][]string, colKey int) {
 	if len(t.columnsParams) > 0 {
 		is_esc_seq = true
 	}
+	t.fillAlignment(total)
 
 	for i, line := range columns {
 		length := len(line)
@@ -579,7 +608,7 @@ func (t *Table) printRow(columns [][]string, colKey int) {
 
 			// This would print alignment
 			// Default alignment  would use multiple configuration
-			switch t.align {
+			switch t.columnsAlign[y] {
 			case ALIGN_CENTER: //
 				fmt.Fprintf(t.out, "%s", Pad(str, SPACE, t.cs[y]))
 			case ALIGN_RIGHT:
@@ -656,6 +685,7 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, colKey 
 	}
 
 	var displayCellBorder []bool
+	t.fillAlignment(total)
 	for x := 0; x < max; x++ {
 		for y := 0; y < total; y++ {
 
@@ -681,7 +711,7 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, colKey 
 
 			// This would print alignment
 			// Default alignment  would use multiple configuration
-			switch t.align {
+			switch t.columnsAlign[y] {
 			case ALIGN_CENTER: //
 				fmt.Fprintf(writer, "%s", Pad(str, SPACE, t.cs[y]))
 			case ALIGN_RIGHT:

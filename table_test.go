@@ -833,3 +833,37 @@ func TestWrapString(t *testing.T) {
 		t.Errorf("\ngot:\n%v\nwant:\n%v\n", got, want)
 	}
 }
+
+func TestCustomAlign(t *testing.T) {
+	var (
+		buf    = &bytes.Buffer{}
+		table  = NewWriter(buf)
+		header = []string{"AAA", "BBB", "CCC"}
+		data   = [][]string{
+			[]string{"a", "b", "c"},
+			[]string{"1", "2", "3"},
+		}
+		footer = []string{"a", "b", "cccc"}
+		want   = `+-----+-----+-------+
+| AAA | BBB |  CCC  |
++-----+-----+-------+
+| a   |  b  |     c |
+| 1   |  2  |     3 |
++-----+-----+-------+
+|  A  |  B  | CCCC  |
++-----+-----+-------+
+`
+        )
+	table.SetHeader(header)
+	table.SetFooter(footer)
+	table.AppendBulk(data)
+	table.SetColMinWidth(2, 5)
+	table.SetColumnAlignment([]int{ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT})
+	table.Render()
+
+	got := buf.String()
+
+	if got != want {
+		t.Errorf("\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
