@@ -19,10 +19,10 @@ import (
 
 func ExampleShort() {
 	data := [][]string{
-		[]string{"A", "The Good", "500"},
-		[]string{"B", "The Very very Bad Man", "288"},
-		[]string{"C", "The Ugly", "120"},
-		[]string{"D", "The Gopher", "800"},
+		{"A", "The Good", "500"},
+		{"B", "The Very very Bad Man", "288"},
+		{"C", "The Ugly", "120"},
+		{"D", "The Gopher", "800"},
 	}
 
 	table := NewWriter(os.Stdout)
@@ -45,8 +45,8 @@ func ExampleShort() {
 
 func ExampleLong() {
 	data := [][]string{
-		[]string{"Learn East has computers with adapted keyboards with enlarged print etc", "  Some Data  ", " Another Data"},
-		[]string{"Instead of lining up the letters all ", "the way across, he splits the keyboard in two", "Like most ergonomic keyboards", "See Data"},
+		{"Learn East has computers with adapted keyboards with enlarged print etc", "  Some Data  ", " Another Data"},
+		{"Instead of lining up the letters all ", "the way across, he splits the keyboard in two", "Like most ergonomic keyboards", "See Data"},
 	}
 
 	table := NewWriter(os.Stdout)
@@ -89,7 +89,7 @@ func TestCSVInfo(t *testing.T) {
 
 	got := buf.String()
 	want := `   FIELD   |     TYPE     | NULL | KEY | DEFAULT |     EXTRA       
-+----------+--------------+------+-----+---------+----------------+
+-----------+--------------+------+-----+---------+-----------------
   user_id  | smallint(5)  | NO   | PRI | NULL    | auto_increment  
   username | varchar(10)  | NO   |     | NULL    |                 
   password | varchar(100) | NO   |     | NULL    |                 
@@ -133,12 +133,12 @@ func TestCSVSeparator(t *testing.T) {
 
 func TestNoBorder(t *testing.T) {
 	data := [][]string{
-		[]string{"1/1/2014", "Domain name", "2233", "$10.98"},
-		[]string{"1/1/2014", "January Hosting", "2233", "$54.95"},
-		[]string{"", "    (empty)\n    (empty)", "", ""},
-		[]string{"1/4/2014", "February Hosting", "2233", "$51.00"},
-		[]string{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
-		[]string{"1/4/2014", "    (Discount)", "2233", "-$1.00"},
+		{"1/1/2014", "Domain name", "2233", "$10.98"},
+		{"1/1/2014", "January Hosting", "2233", "$54.95"},
+		{"", "    (empty)\n    (empty)", "", ""},
+		{"1/4/2014", "February Hosting", "2233", "$51.00"},
+		{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
+		{"1/4/2014", "    (Discount)", "2233", "-$1.00"},
 	}
 
 	var buf bytes.Buffer
@@ -151,7 +151,7 @@ func TestNoBorder(t *testing.T) {
 	table.Render()
 
 	want := `    DATE   |       DESCRIPTION        |  CV2  | AMOUNT   
-+----------+--------------------------+-------+---------+
+-----------+--------------------------+-------+----------
   1/1/2014 | Domain name              |  2233 | $10.98   
   1/1/2014 | January Hosting          |  2233 | $54.95   
            |     (empty)              |       |          
@@ -159,9 +159,9 @@ func TestNoBorder(t *testing.T) {
   1/4/2014 | February Hosting         |  2233 | $51.00   
   1/4/2014 | February Extra Bandwidth |  2233 | $30.00   
   1/4/2014 |     (Discount)           |  2233 | -$1.00   
-+----------+--------------------------+-------+---------+
+-----------+--------------------------+-------+----------
                                         TOTAL | $145 93  
-                                      +-------+---------+
+                                      --------+----------
 `
 	got := buf.String()
 	if got != want {
@@ -171,12 +171,12 @@ func TestNoBorder(t *testing.T) {
 
 func TestWithBorder(t *testing.T) {
 	data := [][]string{
-		[]string{"1/1/2014", "Domain name", "2233", "$10.98"},
-		[]string{"1/1/2014", "January Hosting", "2233", "$54.95"},
-		[]string{"", "    (empty)\n    (empty)", "", ""},
-		[]string{"1/4/2014", "February Hosting", "2233", "$51.00"},
-		[]string{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
-		[]string{"1/4/2014", "    (Discount)", "2233", "-$1.00"},
+		{"1/1/2014", "Domain name", "2233", "$10.98"},
+		{"1/1/2014", "January Hosting", "2233", "$54.95"},
+		{"", "    (empty)\n    (empty)", "", ""},
+		{"1/4/2014", "February Hosting", "2233", "$51.00"},
+		{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
+		{"1/4/2014", "    (Discount)", "2233", "-$1.00"},
 	}
 
 	var buf bytes.Buffer
@@ -209,10 +209,10 @@ func TestWithBorder(t *testing.T) {
 
 func TestPrintingInMarkdown(t *testing.T) {
 	data := [][]string{
-		[]string{"1/1/2014", "Domain name", "2233", "$10.98"},
-		[]string{"1/1/2014", "January Hosting", "2233", "$54.95"},
-		[]string{"1/4/2014", "February Hosting", "2233", "$51.00"},
-		[]string{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
+		{"1/1/2014", "Domain name", "2233", "$10.98"},
+		{"1/1/2014", "January Hosting", "2233", "$54.95"},
+		{"1/4/2014", "February Hosting", "2233", "$51.00"},
+		{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
 	}
 
 	var buf bytes.Buffer
@@ -299,10 +299,10 @@ func TestPrintFooterWithoutAutoFormat(t *testing.T) {
 func TestPrintShortCaption(t *testing.T) {
 	var buf bytes.Buffer
 	data := [][]string{
-		[]string{"A", "The Good", "500"},
-		[]string{"B", "The Very very Bad Man", "288"},
-		[]string{"C", "The Ugly", "120"},
-		[]string{"D", "The Gopher", "800"},
+		{"A", "The Good", "500"},
+		{"B", "The Very very Bad Man", "288"},
+		{"C", "The Ugly", "120"},
+		{"D", "The Gopher", "800"},
 	}
 
 	table := NewWriter(&buf)
@@ -333,10 +333,10 @@ Short caption.
 func TestPrintLongCaptionWithShortExample(t *testing.T) {
 	var buf bytes.Buffer
 	data := [][]string{
-		[]string{"A", "The Good", "500"},
-		[]string{"B", "The Very very Bad Man", "288"},
-		[]string{"C", "The Ugly", "120"},
-		[]string{"D", "The Gopher", "800"},
+		{"A", "The Good", "500"},
+		{"B", "The Very very Bad Man", "288"},
+		{"C", "The Ugly", "120"},
+		{"D", "The Gopher", "800"},
 	}
 
 	table := NewWriter(&buf)
@@ -368,10 +368,10 @@ that needs to be solved.
 
 func TestPrintCaptionWithFooter(t *testing.T) {
 	data := [][]string{
-		[]string{"1/1/2014", "Domain name", "2233", "$10.98"},
-		[]string{"1/1/2014", "January Hosting", "2233", "$54.95"},
-		[]string{"1/4/2014", "February Hosting", "2233", "$51.00"},
-		[]string{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
+		{"1/1/2014", "Domain name", "2233", "$10.98"},
+		{"1/1/2014", "January Hosting", "2233", "$54.95"},
+		{"1/4/2014", "February Hosting", "2233", "$51.00"},
+		{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
 	}
 
 	var buf bytes.Buffer
@@ -384,14 +384,14 @@ func TestPrintCaptionWithFooter(t *testing.T) {
 	table.Render()
 
 	want := `    DATE   |       DESCRIPTION        |  CV2  | AMOUNT   
-+----------+--------------------------+-------+---------+
+-----------+--------------------------+-------+----------
   1/1/2014 | Domain name              |  2233 | $10.98   
   1/1/2014 | January Hosting          |  2233 | $54.95   
   1/4/2014 | February Hosting         |  2233 | $51.00   
   1/4/2014 | February Extra Bandwidth |  2233 | $30.00   
-+----------+--------------------------+-------+---------+
+-----------+--------------------------+-------+----------
                                         TOTAL | $146 93  
-                                      +-------+---------+
+                                      --------+----------
 This is a very long caption. The text should wrap to the
 width of the table.
 `
@@ -404,8 +404,8 @@ width of the table.
 func TestPrintLongCaptionWithLongExample(t *testing.T) {
 	var buf bytes.Buffer
 	data := [][]string{
-		[]string{"Learn East has computers with adapted keyboards with enlarged print etc", "Some Data", "Another Data"},
-		[]string{"Instead of lining up the letters all", "the way across, he splits the keyboard in two", "Like most ergonomic keyboards"},
+		{"Learn East has computers with adapted keyboards with enlarged print etc", "Some Data", "Another Data"},
+		{"Instead of lining up the letters all", "the way across, he splits the keyboard in two", "Like most ergonomic keyboards"},
 	}
 
 	table := NewWriter(&buf)
@@ -525,10 +525,10 @@ func TestSubclass(t *testing.T) {
 	table := NewCustomizedTable(buf)
 
 	data := [][]string{
-		[]string{"A", "The Good", "500"},
-		[]string{"B", "The Very very Bad Man", "288"},
-		[]string{"C", "The Ugly", "120"},
-		[]string{"D", "The Gopher", "800"},
+		{"A", "The Good", "500"},
+		{"B", "The Very very Bad Man", "288"},
+		{"C", "The Ugly", "120"},
+		{"D", "The Gopher", "800"},
 	}
 
 	for _, v := range data {
@@ -549,10 +549,10 @@ func TestSubclass(t *testing.T) {
 
 func TestAutoMergeRows(t *testing.T) {
 	data := [][]string{
-		[]string{"A", "The Good", "500"},
-		[]string{"A", "The Very very Bad Man", "288"},
-		[]string{"B", "The Very very Bad Man", "120"},
-		[]string{"B", "The Very very Bad Man", "200"},
+		{"A", "The Good", "500"},
+		{"A", "The Very very Bad Man", "288"},
+		{"B", "The Very very Bad Man", "120"},
+		{"B", "The Very very Bad Man", "200"},
 	}
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
@@ -609,10 +609,10 @@ func TestAutoMergeRows(t *testing.T) {
 	table.SetHeader([]string{"Name", "Sign", "Rating"})
 
 	dataWithlongText := [][]string{
-		[]string{"A", "The Good", "500"},
-		[]string{"A", "The Very very very very very Bad Man", "288"},
-		[]string{"B", "The Very very very very very Bad Man", "120"},
-		[]string{"C", "The Very very Bad Man", "200"},
+		{"A", "The Good", "500"},
+		{"A", "The Very very very very very Bad Man", "288"},
+		{"B", "The Very very very very very Bad Man", "120"},
+		{"C", "The Very very Bad Man", "200"},
 	}
 	table.AppendBulk(dataWithlongText)
 	table.SetAutoMergeCells(true)
@@ -640,7 +640,7 @@ func TestAutoMergeRows(t *testing.T) {
 
 func TestClearRows(t *testing.T) {
 	data := [][]string{
-		[]string{"1/1/2014", "Domain name", "2233", "$10.98"},
+		{"1/1/2014", "Domain name", "2233", "$10.98"},
 	}
 
 	var buf bytes.Buffer
@@ -704,7 +704,7 @@ func TestClearRows(t *testing.T) {
 
 func TestClearFooters(t *testing.T) {
 	data := [][]string{
-		[]string{"1/1/2014", "Domain name", "2233", "$10.98"},
+		{"1/1/2014", "Domain name", "2233", "$10.98"},
 	}
 
 	var buf bytes.Buffer
@@ -738,8 +738,8 @@ func TestMoreDataColumnsThanHeaders(t *testing.T) {
 		table  = NewWriter(buf)
 		header = []string{"A", "B", "C"}
 		data   = [][]string{
-			[]string{"a", "b", "c", "d"},
-			[]string{"1", "2", "3", "4"},
+			{"a", "b", "c", "d"},
+			{"1", "2", "3", "4"},
 		}
 		want = `+---+---+---+---+
 | A | B | C |   |
@@ -767,8 +767,8 @@ func TestMoreFooterColumnsThanHeaders(t *testing.T) {
 		table  = NewWriter(buf)
 		header = []string{"A", "B", "C"}
 		data   = [][]string{
-			[]string{"a", "b", "c", "d"},
-			[]string{"1", "2", "3", "4"},
+			{"a", "b", "c", "d"},
+			{"1", "2", "3", "4"},
 		}
 		footer = []string{"a", "b", "c", "d", "e"}
 		want   = `+---+---+---+---+---+
@@ -799,8 +799,8 @@ func TestSetColMinWidth(t *testing.T) {
 		table  = NewWriter(buf)
 		header = []string{"AAA", "BBB", "CCC"}
 		data   = [][]string{
-			[]string{"a", "b", "c"},
-			[]string{"1", "2", "3"},
+			{"a", "b", "c"},
+			{"1", "2", "3"},
 		}
 		footer = []string{"a", "b", "cccc"}
 		want   = `+-----+-----+-------+
@@ -840,8 +840,8 @@ func TestCustomAlign(t *testing.T) {
 		table  = NewWriter(buf)
 		header = []string{"AAA", "BBB", "CCC"}
 		data   = [][]string{
-			[]string{"a", "b", "c"},
-			[]string{"1", "2", "3"},
+			{"a", "b", "c"},
+			{"1", "2", "3"},
 		}
 		footer = []string{"a", "b", "cccc"}
 		want   = `+-----+-----+-------+
@@ -853,7 +853,7 @@ func TestCustomAlign(t *testing.T) {
 |  A  |  B  | CCCC  |
 +-----+-----+-------+
 `
-        )
+	)
 	table.SetHeader(header)
 	table.SetFooter(footer)
 	table.AppendBulk(data)
