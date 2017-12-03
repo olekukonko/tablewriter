@@ -205,7 +205,7 @@ data := [][]string{
 	[]string{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
 }
 
-table := tablewriter.NewWriter(colorable.NewColorableStdout())
+table := tablewriter.NewWriter(os.Stdout)
 table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
 table.SetFooter([]string{"", "", "Total", "$146.93"}) // Add Footer
 table.SetBorder(false)                                // Set Border to false
