@@ -76,6 +76,31 @@ func ExampleCSV() {
 	// *============*===========*=========*
 }
 
+// TestNumLines to test the numbers of lines
+func TestNumLines(t *testing.T) {
+	data := [][]string{
+		[]string{"A", "The Good", "500"},
+		[]string{"B", "The Very very Bad Man", "288"},
+		[]string{"C", "The Ugly", "120"},
+		[]string{"D", "The Gopher", "800"},
+	}
+
+	buf := &bytes.Buffer{}
+	table := NewWriter(buf)
+	table.SetHeader([]string{"Name", "Sign", "Rating"})
+
+	for i, v := range data {
+		table.Append(v)
+		if i+1 != table.NumLines() {
+			t.Errorf("Number of lines failed\ngot:\n[%d]\nwant:\n[%d]\n", table.NumLines(), i+1)
+		}
+	}
+
+	if len(data) != table.NumLines() {
+		t.Errorf("Number of lines failed\ngot:\n[%d]\nwant:\n[%d]\n", table.NumLines(), len(data))
+	}
+}
+
 func TestCSVInfo(t *testing.T) {
 	buf := &bytes.Buffer{}
 	table, err := NewCSV(buf, "test_info.csv", true)
@@ -853,7 +878,7 @@ func TestCustomAlign(t *testing.T) {
 |  A  |  B  | CCCC  |
 +-----+-----+-------+
 `
-        )
+	)
 	table.SetHeader(header)
 	table.SetFooter(footer)
 	table.AppendBulk(data)

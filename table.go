@@ -292,6 +292,11 @@ func (t *Table) AppendBulk(rows [][]string) {
 	}
 }
 
+// NumLines to get the number of lines
+func (t *Table) NumLines() int {
+	return len(t.lines)
+}
+
 // Clear rows
 func (t *Table) ClearRows() {
 	t.lines = [][][]string{}
