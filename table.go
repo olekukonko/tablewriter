@@ -296,6 +296,13 @@ func (t *Table) Append(row []string) {
 	t.lines = append(t.lines, line)
 }
 
+// Appends row list to table
+func (t *Table) Appends(rows ...[]string) {
+	for _, row := range rows {
+		t.Append(row)
+	}
+}
+
 // Allow Support for Bulk Append
 // Eliminates repeated for loops
 func (t *Table) AppendBulk(rows [][]string) {
