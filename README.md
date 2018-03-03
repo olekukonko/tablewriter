@@ -26,6 +26,7 @@ Generate ASCII table on the fly ...  Installation is simple as
 - Optional identical cells merging
 - Set custom caption
 - Optional reflowing of paragrpahs in multi-line cells.
+- Parse from html.
 
 #### Example   1 - Basic
 ```go
@@ -198,7 +199,7 @@ table.Render()
 ```
 
 
-#### Table with color
+#### Example 7  - Table with color
 ```go
 data := [][]string{
 	[]string{"1/1/2014", "Domain name", "2233", "$10.98"},
@@ -230,10 +231,10 @@ table.AppendBulk(data)
 table.Render()
 ```
 
-#### Table with color Output
+##### Output 7
 ![Table with Color](https://cloud.githubusercontent.com/assets/6460392/21101956/bbc7b356-c0a1-11e6-9f36-dba694746efc.png)
 
-#### Example 6 - Set table caption
+#### Example 8 - Set table caption
 ```go
 data := [][]string{
     []string{"A", "The Good", "500"},
@@ -254,7 +255,7 @@ table.Render() // Send output
 
 Note: Caption text will wrap with total width of rendered table.
 
-##### Output 6
+##### Output 8
 ```
 +------+-----------------------+--------+
 | NAME |         SIGN          | RATING |
@@ -267,11 +268,63 @@ Note: Caption text will wrap with total width of rendered table.
 Movie ratings.
 ```
 
+#### Example 9 - Parse from html
+```go
+	html := `
+<!DOCTYPE html>
+<html>
+<body>
+
+<table style="width:100%">
+  <tr>
+    <th>Firstname</th>
+    <th>Lastname</th>
+    <th>Age</th>
+    <td class="print_ignore"></td>
+  </tr>
+  <tr>
+    <td>Jill</td>
+    <td>Smith</td>
+    <td>50</td>
+  </tr>
+  <tr>
+    <td>Eve</td>
+    <td>Jackson</td>
+    <td>94</td>
+  </tr>
+  <tr>
+    <td>John</td>
+    <td>Doe</td>
+    <td>80</td>
+  </tr>
+</table>
+
+</body>
+</html>
+`
+	table := tablewriter.NewWriter(os.Stdout)
+	table.FromHTML(html)
+	table.Render() // Send output
+```
+
+Note: Caption text will wrap with total width of rendered table.
+
+##### Output 9
+```
++-----------+----------+-----+
+| FIRSTNAME | LASTNAME | AGE |
++-----------+----------+-----+
+| Jill      | Smith    |  50 |
+| Eve       | Jackson  |  94 |
+| John      | Doe      |  80 |
++-----------+----------+-----+
+```
+
 #### TODO
 - ~~Import Directly from CSV~~  - `done`
 - ~~Support for `SetFooter`~~  - `done`
 - ~~Support for `SetBorder`~~  - `done`
 - ~~Support table with uneven rows~~ - `done`
 - ~~Support custom alignment~~
+- ~~`FromHTML` Parse table from HTML~~
 - General Improvement & Optimisation
-- `NewHTML` Parse table from HTML
