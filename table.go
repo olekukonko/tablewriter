@@ -14,6 +14,8 @@ import (
 	"io"
 	"regexp"
 	"strings"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 const (
@@ -317,6 +319,20 @@ func (t *Table) ClearRows() {
 // Clear footer
 func (t *Table) ClearFooter() {
 	t.footers = [][]string{}
+}
+
+// FromHTML Parse table from HTML
+func (t *Table) FromHTML(html string) error {
+	header, datas, err := t.parseFromHTML(html)
+	if err != nil {
+		return err
+	}
+	t.SetHeader(header)
+	for _, v := range datas {
+		t.Append(v)
+	}
+
+	return nil
 }
 
 // Print line based on row width
@@ -836,4 +852,28 @@ func (t *Table) parseDimension(str string, colKey, rowKey int) []string {
 	}
 	//fmt.Printf("Raw %+v %d\n", raw, len(raw))
 	return raw
+}
+
+func (t *Table) parseFromHTML(html string) ([]string, [][]string, error) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var header []string
+	var datas [][]string
+	doc.Find("tr").Each(func(_ int, tr *goquery.Selection) {
+		var data []string
+		tr.Find("th").Each(func(_ int, th *goquery.Selection) {
+			header = append(header, th.Text())
+		})
+		tr.Find("td").Each(func(_ int, td *goquery.Selection) {
+			data = append(data, td.Text())
+		})
+		if len(data) != 0 && (len(header) == 0 || (len(header) > 0 && len(header) == len(data))) {
+			datas = append(datas, data)
+		}
+	})
+
+	return header, datas, nil
 }

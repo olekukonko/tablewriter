@@ -1118,3 +1118,58 @@ func TestCustomAlign(t *testing.T) {
 		t.Errorf("\ngot:\n%s\nwant:\n%s\n", got, want)
 	}
 }
+
+func TestFromHTML(t *testing.T) {
+	var (
+		buf   = &bytes.Buffer{}
+		table = NewWriter(buf)
+		html  = `
+<!DOCTYPE html>
+<html>
+<body>
+
+<table style="width:100%">
+  <tr>
+    <th>Firstname</th>
+    <th>Lastname</th>
+    <th>Age</th>
+    <td class="print_ignore"></td>
+  </tr>
+  <tr>
+    <td>Jill</td>
+    <td>Smith</td>
+    <td>50</td>
+  </tr>
+  <tr>
+    <td>Eve</td>
+    <td>Jackson</td>
+    <td>94</td>
+  </tr>
+  <tr>
+    <td>John</td>
+    <td>Doe</td>
+    <td>80</td>
+  </tr>
+</table>
+
+</body>
+</html>
+`
+		want = `+-----------+----------+-----+
+| FIRSTNAME | LASTNAME | AGE |
++-----------+----------+-----+
+| Jill      | Smith    |  50 |
+| Eve       | Jackson  |  94 |
+| John      | Doe      |  80 |
++-----------+----------+-----+
+`
+	)
+	table.FromHTML(html)
+	table.Render()
+
+	got := buf.String()
+
+	if got != want {
+		t.Errorf("\ngot:\n%s\nwant:\n%s\n", got, want)
+	}
+}
