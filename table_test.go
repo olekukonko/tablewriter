@@ -445,7 +445,7 @@ func Example_autowrap() {
 string with some lines being really long.`
 
 	const (
-		testRow     = iota
+		testRow = iota
 		testHeader
 		testFooter
 		testFooter2
