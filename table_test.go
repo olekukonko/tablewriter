@@ -61,7 +61,7 @@ func ExampleLong() {
 }
 
 func ExampleCSV() {
-	table, _ := NewCSV(os.Stdout, "test.csv", true)
+	table, _ := NewCSV(os.Stdout, "testdata/test.csv", true)
 	table.SetCenterSeparator("*")
 	table.SetRowSeparator("=")
 
@@ -103,7 +103,7 @@ func TestNumLines(t *testing.T) {
 
 func TestCSVInfo(t *testing.T) {
 	buf := &bytes.Buffer{}
-	table, err := NewCSV(buf, "test_info.csv", true)
+	table, err := NewCSV(buf, "testdata/test_info.csv", true)
 	if err != nil {
 		t.Error(err)
 		return
@@ -127,7 +127,7 @@ func TestCSVInfo(t *testing.T) {
 
 func TestCSVSeparator(t *testing.T) {
 	buf := &bytes.Buffer{}
-	table, err := NewCSV(buf, "test.csv", true)
+	table, err := NewCSV(buf, "testdata/test.csv", true)
 	if err != nil {
 		t.Error(err)
 		return
