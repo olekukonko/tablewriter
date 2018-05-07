@@ -38,10 +38,7 @@ data := [][]string{
 
 table := tablewriter.NewWriter(os.Stdout)
 table.SetHeader([]string{"Name", "Sign", "Rating"})
-
-for _, v := range data {
-    table.Append(v)
-}
+table.Appends(data...)
 table.Render() // Send output
 ```
 
