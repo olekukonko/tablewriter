@@ -624,12 +624,13 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 	}
 	//fmt.Println(max, "\n")
 	for x := 0; x < max; x++ {
+		var buffer strings.Builder
 		for y := 0; y < total; y++ {
 
 			// Check if border is set
-			fmt.Fprint(t.out, ConditionString((!t.borders.Left && y == 0), SPACE, t.pColumn))
+			fmt.Fprint(&buffer, ConditionString((!t.borders.Left && y == 0), SPACE, t.pColumn))
 
-			fmt.Fprintf(t.out, SPACE)
+			fmt.Fprintf(&buffer, SPACE)
 			str := columns[y][x]
 
 			// Embedding escape sequence with column value
@@ -641,31 +642,32 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 			// Default alignment  would use multiple configuration
 			switch t.columnsAlign[y] {
 			case ALIGN_CENTER: //
-				fmt.Fprintf(t.out, "%s", Pad(str, SPACE, t.cs[y]))
+				fmt.Fprintf(&buffer, "%s", Pad(str, SPACE, t.cs[y]))
 			case ALIGN_RIGHT:
-				fmt.Fprintf(t.out, "%s", PadLeft(str, SPACE, t.cs[y]))
+				fmt.Fprintf(&buffer, "%s", PadLeft(str, SPACE, t.cs[y]))
 			case ALIGN_LEFT:
-				fmt.Fprintf(t.out, "%s", PadRight(str, SPACE, t.cs[y]))
+				fmt.Fprintf(&buffer, "%s", PadRight(str, SPACE, t.cs[y]))
 			default:
 				if decimal.MatchString(strings.TrimSpace(str)) || percent.MatchString(strings.TrimSpace(str)) {
-					fmt.Fprintf(t.out, "%s", PadLeft(str, SPACE, t.cs[y]))
+					fmt.Fprintf(&buffer, "%s", PadLeft(str, SPACE, t.cs[y]))
 				} else {
-					fmt.Fprintf(t.out, "%s", PadRight(str, SPACE, t.cs[y]))
+					fmt.Fprintf(&buffer, "%s", PadRight(str, SPACE, t.cs[y]))
 
 					// TODO Custom alignment per column
 					//if max == 1 || pads[y] > 0 {
-					//	fmt.Fprintf(t.out, "%s", Pad(str, SPACE, t.cs[y]))
+					//	fmt.Fprintf(&buffer, "%s", Pad(str, SPACE, t.cs[y]))
 					//} else {
-					//	fmt.Fprintf(t.out, "%s", PadRight(str, SPACE, t.cs[y]))
+					//	fmt.Fprintf(&buffer, "%s", PadRight(str, SPACE, t.cs[y]))
 					//}
 
 				}
 			}
-			fmt.Fprintf(t.out, SPACE)
+			fmt.Fprintf(&buffer, SPACE)
 		}
 		// Check if border is set
 		// Replace with space if not set
-		fmt.Fprint(t.out, ConditionString(t.borders.Left, t.pColumn, SPACE))
+		fmt.Fprint(&buffer, ConditionString(t.borders.Left, t.pColumn, SPACE))
+		fmt.Fprint(t.out, strings.TrimRight(buffer.String(), " "))
 		fmt.Fprint(t.out, t.newLine)
 	}
 
