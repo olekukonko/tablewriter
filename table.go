@@ -314,6 +314,11 @@ func (t *Table) ClearRows() {
 	t.lines = [][][]string{}
 }
 
+// ClearHeaders removes all the table's headers.
+func (t *Table) ClearHeaders() {
+	t.headers = t.headers[0:0]
+}
+
 // Clear footer
 func (t *Table) ClearFooter() {
 	t.footers = [][]string{}
