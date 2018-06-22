@@ -317,6 +317,13 @@ func (t *Table) ClearRows() {
 // ClearHeaders removes all the table's headers.
 func (t *Table) ClearHeaders() {
 	t.headers = t.headers[0:0]
+
+	// resets the headers columns.
+	if len(t.cs) > 0 {
+		for k := range t.cs {
+			delete(t.cs, k)
+		}
+	}
 }
 
 // Clear footer
