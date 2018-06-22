@@ -318,7 +318,7 @@ func (t *Table) ClearRows() {
 func (t *Table) ClearHeaders() {
 	t.headers = t.headers[0:0]
 
-	// resets the headers columns.
+	// reset the column separators, otherwise we will have empty headers if the length of the new headers is smaller than the current one.
 	if len(t.cs) > 0 {
 		for k := range t.cs {
 			delete(t.cs, k)
