@@ -118,6 +118,31 @@ func NewWriter(writer io.Writer) *Table {
 	return t
 }
 
+// SetOutput sets the table output target.
+func (t *Table) SetOutput(w io.Writer) {
+	t.out = w
+}
+
+// RenderRowOnce renders a single row without actually appending to the existing, so it can be re-used more than one times.
+// It will also render without caption, headers and footer, it can be used after the table has been printed at least once.
+func (t *Table) RenderRowOnce(row []string) int {
+	// don't print headers
+	// but keep the `t.cs` which will help align the rows based on the previous renders.
+	oldLines := t.lines
+
+	t.Append(row)
+
+	if t.autoMergeCells {
+		t.printRowsMergeCells()
+	} else {
+		t.printRows()
+	}
+
+	n := t.NumLines()
+	t.lines = oldLines
+	return n
+}
+
 // Render table output
 func (t *Table) Render() {
 	if t.borders.Top {
@@ -274,8 +299,7 @@ func (t *Table) SetBorders(border Border) {
 	t.borders = border
 }
 
-// Append row to table
-func (t *Table) Append(row []string) {
+func (t *Table) extractLine(row []string) [][]string {
 	rowSize := len(t.headers)
 	if rowSize > t.colSize {
 		t.colSize = rowSize
@@ -293,6 +317,13 @@ func (t *Table) Append(row []string) {
 		// Append broken words
 		line = append(line, out)
 	}
+
+	return line
+}
+
+// Append row to table
+func (t *Table) Append(row []string) {
+	line := t.extractLine(row)
 	t.lines = append(t.lines, line)
 }
 
