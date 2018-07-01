@@ -267,6 +267,44 @@ Note: Caption text will wrap with total width of rendered table.
 Movie ratings.
 ```
 
+#### Example 7 - Use header separator
+This example is compatible with reStructuredText table format
+
+```go
+data := [][]string{
+	[]string{"1/1/2014", "Domain name", "2233", "$10.98"},
+	[]string{"1/1/2014", "January Hosting", "2233", "$54.95"},
+	[]string{"1/4/2014", "February Hosting", "2233", "$51.00"},
+	[]string{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
+}
+
+table := tablewriter.NewWriter(os.Stdout)
+table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
+table.SetHeaderSeparator("=")
+table.SetBorder(true)
+table.SetRowLine(true)
+table.SetCenterSeparator("+")
+table.SetRowSeparator("-")
+table.AppendBulk(data)
+table.Render()
+```
+
+#### Output 7
+
+```
++----------+--------------------------+------+--------+
+|   DATE   |       DESCRIPTION        | CV2  | AMOUNT |
++==========+==========================+======+========+
+| 1/1/2014 | Domain name              | 2233 | $10.98 |
++----------+--------------------------+------+--------+
+| 1/1/2014 | January Hosting          | 2233 | $54.95 |
++----------+--------------------------+------+--------+
+| 1/4/2014 | February Hosting         | 2233 | $51.00 |
++----------+--------------------------+------+--------+
+| 1/4/2014 | February Extra Bandwidth | 2233 | $30.00 |
++----------+--------------------------+------+--------+
+```
+
 #### TODO
 - ~~Import Directly from CSV~~  - `done`
 - ~~Support for `SetFooter`~~  - `done`
