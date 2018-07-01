@@ -62,6 +62,7 @@ type Table struct {
 	reflowText     bool
 	mW             int
 	pCenter        string
+	pHeader        string
 	pRow           string
 	pColumn        string
 	tColumn        int
@@ -100,6 +101,7 @@ func NewWriter(writer io.Writer) *Table {
 		mW:            MAX_ROW_WIDTH,
 		pCenter:       CENTER,
 		pRow:          ROW,
+		pHeader:       ROW,
 		pColumn:       COLUMN,
 		tColumn:       -1,
 		tRow:          -1,
@@ -121,7 +123,7 @@ func NewWriter(writer io.Writer) *Table {
 // Render table output
 func (t *Table) Render() {
 	if t.borders.Top {
-		t.printLine(true)
+		t.printLine(true, false)
 	}
 	t.printHeading()
 	if t.autoMergeCells {
@@ -130,7 +132,7 @@ func (t *Table) Render() {
 		t.printRows()
 	}
 	if !t.rowLine && t.borders.Bottom {
-		t.printLine(true)
+		t.printLine(true, false)
 	}
 	t.printFooter()
 
@@ -203,6 +205,11 @@ func (t *Table) SetColumnSeparator(sep string) {
 // Set the Row Separator
 func (t *Table) SetRowSeparator(sep string) {
 	t.pRow = sep
+}
+
+// Set the Header Separator
+func (t *Table) SetHeaderSeparator(sep string) {
+	t.pHeader = sep
 }
 
 // Set the center Separator
@@ -320,14 +327,19 @@ func (t *Table) ClearFooter() {
 }
 
 // Print line based on row width
-func (t *Table) printLine(nl bool) {
+func (t *Table) printLine(nl bool, isHeader bool) {
+	seperator := t.pRow
+	if isHeader {
+		seperator = t.pHeader
+	}
+
 	fmt.Fprint(t.out, t.pCenter)
 	for i := 0; i < len(t.cs); i++ {
 		v := t.cs[i]
 		fmt.Fprintf(t.out, "%s%s%s%s",
-			t.pRow,
-			strings.Repeat(string(t.pRow), v),
-			t.pRow,
+			seperator,
+			strings.Repeat(string(seperator), v),
+			seperator,
 			t.pCenter)
 	}
 	if nl {
@@ -425,7 +437,7 @@ func (t *Table) printHeading() {
 		fmt.Fprint(t.out, t.newLine)
 	}
 	if t.hdrLine {
-		t.printLine(true)
+		t.printLine(true, true)
 	}
 }
 
@@ -438,7 +450,7 @@ func (t *Table) printFooter() {
 
 	// Only print line if border is not set
 	if !t.borders.Bottom {
-		t.printLine(true)
+		t.printLine(true, false)
 	}
 
 	// Identify last column
@@ -670,7 +682,7 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 	}
 
 	if t.rowLine {
-		t.printLine(true)
+		t.printLine(true, false)
 	}
 }
 
@@ -691,7 +703,7 @@ func (t *Table) printRowsMergeCells() {
 	}
 	//Print the end of the table
 	if t.rowLine {
-		t.printLine(true)
+		t.printLine(true, false)
 	}
 }
 
