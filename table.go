@@ -128,7 +128,8 @@ func (t *Table) SetOutput(w io.Writer) {
 func (t *Table) RenderRowOnce(row []string) int {
 	// don't print headers
 	// but keep the `t.cs` which will help align the rows based on the previous renders.
-	oldLines := t.lines
+	bckp := t.lines
+	t.lines = [][][]string{}
 
 	t.Append(row)
 
@@ -138,8 +139,9 @@ func (t *Table) RenderRowOnce(row []string) int {
 		t.printRows()
 	}
 
+	t.lines = bckp
 	n := t.NumLines()
-	t.lines = oldLines
+
 	return n
 }
 
