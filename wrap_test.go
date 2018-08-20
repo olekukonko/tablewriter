@@ -8,8 +8,10 @@
 package tablewriter
 
 import (
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/mattn/go-runewidth"
 )
@@ -23,6 +25,26 @@ func TestWrap(t *testing.T) {
 
 	got, _ := WrapString(text, 6)
 	checkEqual(t, len(got), len(exp))
+}
+
+func TestBigWrap(t *testing.T) {
+	var memBefore, memAfter runtime.MemStats
+
+	timeBefore := time.Now()
+	runtime.ReadMemStats(&memBefore)
+	WrapString(strings.Repeat(text+" ", 1000), 6)
+	runtime.ReadMemStats(&memAfter)
+	timeAfter := time.Now()
+
+	// 10MiB is a huge amount, but still far less than the 665MiB observed with old algorithm!
+	if (memAfter.Alloc - memBefore.Alloc) >= 10000000 {
+		t.Fail()
+	}
+
+	// This may be flaky, but should alert us to falling back to an n-squared approach
+	if timeAfter.Sub(timeBefore) > time.Second {
+		t.Fail()
+	}
 }
 
 func TestWrapOneLine(t *testing.T) {

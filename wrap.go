@@ -11,6 +11,8 @@ import (
 	"math"
 	"strings"
 
+	"github.com/bbrks/wrap"
+
 	"github.com/mattn/go-runewidth"
 )
 
@@ -21,10 +23,16 @@ var (
 
 const defaultPenalty = 1e5
 
+const maxWordsToUseNiceAlgo = 500
+
 // Wrap wraps s into a paragraph of lines of length lim, with minimal
 // raggedness.
 func WrapString(s string, lim int) ([]string, int) {
 	words := strings.Split(strings.Replace(s, nl, sp, -1), sp)
+	if len(words) > maxWordsToUseNiceAlgo {
+		rv := wrap.Wrap(s, lim)
+		return strings.Split(rv, nl), lim
+	}
 	var lines []string
 	max := 0
 	for _, v := range words {
@@ -50,6 +58,9 @@ func WrapString(s string, lim int) ([]string, int) {
 // difference of the length of the line and lim. Too-long lines (which only
 // happen when a single word is longer than lim units) have pen penalty units
 // added to the error.
+//
+// Note this function uses both n-squared memory and runtime, so do not call with
+// a long list of words.
 func WrapWords(words []string, spc, lim, pen int) [][]string {
 	n := len(words)
 
