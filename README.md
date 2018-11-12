@@ -135,7 +135,37 @@ table.Render()
 *------------*-----------*---------*
 ```
 
-#### Example 5 - Markdown Format
+#### Example 5 - More Custom Separators
+
+```go
+table, _ := NewCSV(&buf, "testdata/test.csv", true)
+table.SetColumnSeparator("│")
+table.SetRowSeparator("─")
+// center separator overrides all the corner separators, needs to be first
+table.SetCenterSeparator("┼")
+table.SetTopSeparator("┬")
+table.SetBottomSeparator("┴")
+table.SetLeftSeparator("├")
+table.SetRightSeparator("┤")
+table.SetTopLeftSeparator("┌")
+table.SetTopRightSeparator("┐")
+table.SetBottomLeftSeparator("└")
+table.SetBottomRightSeparator("┘")
+```
+
+##### Output 5
+
+```
+┌────────────┬───────────┬─────────┐
+│ FIRST NAME │ LAST NAME │   SSN   │
+├────────────┼───────────┼─────────┤
+│ John       │ Barry     │  123456 │
+│ Kathy      │ Smith     │  687987 │
+│ Bob        │ McCornick │ 3979870 │
+└────────────┴───────────┴─────────┘
+```
+
+#### Example 6 - Markdown Format
 ```go
 data := [][]string{
 	[]string{"1/1/2014", "Domain name", "2233", "$10.98"},
@@ -152,7 +182,7 @@ table.AppendBulk(data) // Add Bulk Data
 table.Render()
 ```
 
-##### Output 5
+##### Output 6
 ```
 |   DATE   |       DESCRIPTION        | CV2  | AMOUNT |
 |----------|--------------------------|------|--------|
@@ -162,7 +192,7 @@ table.Render()
 | 1/4/2014 | February Extra Bandwidth | 2233 | $30.00 |
 ```
 
-#### Example 6  - Identical cells merging
+#### Example 7  - Identical cells merging
 ```go
 data := [][]string{
   []string{"1/1/2014", "Domain name", "1234", "$10.98"},
@@ -180,7 +210,7 @@ table.AppendBulk(data)
 table.Render()
 ```
 
-##### Output 6
+##### Output 7
 ```
 +----------+--------------------------+-------+---------+
 |   DATE   |       DESCRIPTION        |  CV2  | AMOUNT  |
@@ -198,7 +228,7 @@ table.Render()
 ```
 
 
-#### Table with color
+#### Example 8 - Table with color
 ```go
 data := [][]string{
 	[]string{"1/1/2014", "Domain name", "2233", "$10.98"},
@@ -230,10 +260,10 @@ table.AppendBulk(data)
 table.Render()
 ```
 
-#### Table with color Output
+##### Output 8
 ![Table with Color](https://cloud.githubusercontent.com/assets/6460392/21101956/bbc7b356-c0a1-11e6-9f36-dba694746efc.png)
 
-#### Example 6 - Set table caption
+#### Example 9 - Set table caption
 ```go
 data := [][]string{
     []string{"A", "The Good", "500"},
@@ -254,7 +284,7 @@ table.Render() // Send output
 
 Note: Caption text will wrap with total width of rendered table.
 
-##### Output 6
+##### Output 9
 ```
 +------+-----------------------+--------+
 | NAME |         SIGN          | RATING |

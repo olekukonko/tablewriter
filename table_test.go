@@ -440,6 +440,92 @@ solved.
 	checkEqual(t, buf.String(), want, "long caption for long example rendering failed")
 }
 
+func TestPrintCornerBorders(t *testing.T) {
+	var buf bytes.Buffer
+	data := [][]string{
+		{"what's up", "the sky", "ok"},
+		{"sup", "the ceiling", "so-so"},
+	}
+
+	table := NewWriter(&buf)
+	table.SetAutoMergeCells(true)
+	table.SetBorders(Border{
+		Left: true,
+		Right: true,
+		Top: true,
+		Bottom: false,
+	})
+	table.SetFooter([]string{"", "", "yeah"})
+	table.SetCenterSeparator("┼")
+	table.SetColumnSeparator("│")
+	table.SetRowSeparator("─")
+	table.SetTopSeparator("┬")
+	table.SetBottomSeparator("┴")
+	table.SetLeftSeparator("├")
+	table.SetRightSeparator("┤")
+	table.SetTopLeftSeparator("┌")
+	table.SetTopRightSeparator("┐")
+	table.SetBottomLeftSeparator("└")
+	table.SetBottomRightSeparator("┘")
+	table.SetHeader([]string{"Question", "Answer", "Comment"})
+
+	for _, v := range data {
+		table.Append(v)
+	}
+	table.Render()
+
+	want := `┌───────────┬─────────────┬─────────┐
+│ QUESTION  │   ANSWER    │ COMMENT │
+├───────────┼─────────────┼─────────┤
+│ what's up │ the sky     │ ok      │
+│ sup       │ the ceiling │ so-so   │
+└───────────┴─────────────┴─────────┘
+│                            YEAH   │
+└───────────┴─────────────┴─────────┘
+`
+	checkEqual(t, buf.String(), want, "corner rendering failed")
+}
+
+func TestPrintCornerBordersWithoutBorders(t *testing.T) {
+	var buf bytes.Buffer
+	data := [][]string{
+		{"what's up", "the sky", "ok", "", "wub wub"},
+		{"sup", "the ceiling", "so-so"},
+	}
+
+	table := NewWriter(&buf)
+	table.SetAutoMergeCells(true)
+	table.SetBorder(false)
+	table.SetFooter([]string{"", "these are nice answers", "yeah", "", "i know right"})
+	table.SetCenterSeparator("┼")
+	table.SetColumnSeparator("│")
+	table.SetRowSeparator("─")
+	table.SetTopSeparator("┬")
+	table.SetBottomSeparator("┴")
+	table.SetLeftSeparator("├")
+	table.SetRightSeparator("┤")
+	table.SetTopLeftSeparator("┌")
+	table.SetTopRightSeparator("┐")
+	table.SetBottomLeftSeparator("└")
+	table.SetBottomRightSeparator("┘")
+	table.SetHeader([]string{"Question", "Answer", "Comment"})
+
+	for _, v := range data {
+		table.Append(v)
+	}
+	table.Render()
+
+	want := `  QUESTION  │         ANSWER         │ COMMENT │  │               
+├───────────┼────────────────────────┼─────────┼──┼──────────────┤
+  what's up │ the sky                │ ok      │  │ wub wub       
+  sup       │ the ceiling            │ so-so    
+└───────────┴────────────────────────┴─────────┴──┴──────────────┘
+              THESE ARE NICE ANSWERS │  YEAH        I KNOW RIGHT  
+            └────────────────────────┴─────────┘  └──────────────┘
+`
+	checkEqual(t, buf.String(), want, "corder rendering failed")
+}
+
 func Example_autowrap() {
 	var multiline = `A multiline
 string with some lines being really long.`
@@ -713,7 +799,7 @@ func TestPrintLine(t *testing.T) {
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
 	table.SetHeader(header)
-	table.printLine(false)
+	table.printLine(false, false, false)
 	checkEqual(t, buf.String(), want, "line rendering failed")
 }
 
@@ -730,7 +816,7 @@ func TestAnsiStrip(t *testing.T) {
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
 	table.SetHeader(header)
-	table.printLine(false)
+	table.printLine(false, false, false)
 	checkEqual(t, buf.String(), want, "line rendering failed")
 }
 
