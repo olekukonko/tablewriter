@@ -267,6 +267,34 @@ Note: Caption text will wrap with total width of rendered table.
 Movie ratings.
 ```
 
+#### Render table into a string
+
+Instead of rendering the table to `io.Stdout` you can also render it into a string. Go 1.10 introduced the `strings.Builder` type which implements the `io.Writer` interface and can therefore be used for this task. Example:
+
+```go
+package main
+
+import (
+    "strings"
+    "fmt"
+
+    "github.com/olekukonko/tablewriter"
+)
+
+func main() {
+    tableString := &strings.Builder{}
+	table := tablewriter.NewWriter(tableString)
+
+    /*
+     * Code to fill the table
+     */
+
+    table.Render()
+
+    fmt.Println(tableString.String())
+}
+```
+
 #### TODO
 - ~~Import Directly from CSV~~  - `done`
 - ~~Support for `SetFooter`~~  - `done`
