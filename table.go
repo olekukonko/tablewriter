@@ -120,7 +120,11 @@ func NewWriter(writer io.Writer) *Table {
 
 // SetMaxRowWidth sets max output row width
 func (t *Table) SetMaxRowWidth(w int) {
-	t.mW = w*1
+	if w == 0 || w < 10 {
+		t.mW = 1<<6
+	} else {
+		t.mW = w*1
+	}
 }
 
 // Render table output
