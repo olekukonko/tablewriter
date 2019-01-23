@@ -17,7 +17,9 @@ import (
 )
 
 const (
-	MAX_ROW_WIDTH = 30
+	MIN_ROW_WIDTH = 12
+	MAX_ROW_WIDTH = 64
+	DEFAULT_ROW_WIDTH = 1<<5
 )
 
 const (
@@ -118,13 +120,13 @@ func NewWriter(writer io.Writer) *Table {
 	return t
 }
 
-// SetMaxRowWidth sets max output row width
-func (t *Table) SetMaxRowWidth(w int) {
-	// If width < 10 or width is 0, sets row width to 64 (Default)
-	if w == 0 || w < 10 {
-		t.mW = 1<<6
+// SetRowWidth sets output row width
+func (t *Table) SetRowWidth(w int) {
+	// if width < 12 or width > 12, sets row width to 32 (Default)
+	if w < MIN_ROW_WIDTH || w > MAX_ROW_WIDTH {
+		t.mW = DEFAULT_ROW_WIDTH
 	} else {
-		t.mW = w*1
+		t.mW = w
 	}
 }
 
