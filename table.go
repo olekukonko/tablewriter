@@ -706,6 +706,11 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 	// Pad Each Height
 	pads := []int{}
 
+	// Checking for ANSI escape sequences for columns
+	is_esc_seq := false
+	if len(t.columnsParams) > 0 {
+		is_esc_seq = true
+	}
 	for i, line := range columns {
 		length := len(line)
 		pad := max - length
@@ -726,6 +731,11 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 			fmt.Fprintf(writer, SPACE)
 
 			str := columns[y][x]
+
+			// Embedding escape sequence with column value
+			if is_esc_seq {
+				str = format(str, t.columnsParams[y])
+			}
 
 			if t.autoMergeCells {
 				//Store the full line to merge mutli-lines cells
