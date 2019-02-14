@@ -81,7 +81,7 @@ type Table struct {
 	columnsAlign   []int
 }
 
-// Start New Table
+// NewWriter starts New Table
 // Take io.Writer Directly
 func NewWriter(writer io.Writer) *Table {
 	t := &Table{
@@ -144,7 +144,7 @@ const (
 	footerRowIdx = -2
 )
 
-// Set table header
+// SetHeader: Set table header
 func (t *Table) SetHeader(keys []string) {
 	t.colSize = len(keys)
 	for i, v := range keys {
@@ -153,7 +153,7 @@ func (t *Table) SetHeader(keys []string) {
 	}
 }
 
-// Set table Footer
+// SetFooter: Set table Footer
 func (t *Table) SetFooter(keys []string) {
 	//t.colSize = len(keys)
 	for i, v := range keys {
@@ -162,7 +162,7 @@ func (t *Table) SetFooter(keys []string) {
 	}
 }
 
-// Set table Caption
+// SetCaption: Set table Caption
 func (t *Table) SetCaption(caption bool, captionText ...string) {
 	t.caption = caption
 	if len(captionText) == 1 {
@@ -170,57 +170,57 @@ func (t *Table) SetCaption(caption bool, captionText ...string) {
 	}
 }
 
-// Turn header autoformatting on/off. Default is on (true).
+// SetAutoFormatHeaders: Turn header autoformatting on/off. Default is on (true).
 func (t *Table) SetAutoFormatHeaders(auto bool) {
 	t.autoFmt = auto
 }
 
-// Turn automatic multiline text adjustment on/off. Default is on (true).
+// SetAutoWrapText: Turn automatic multiline text adjustment on/off. Default is on (true).
 func (t *Table) SetAutoWrapText(auto bool) {
 	t.autoWrap = auto
 }
 
-// Turn automatic reflowing of multiline text when rewrapping. Default is on (true).
+// SetReflowDuringAutoWrap: Turn automatic reflowing of multiline text when rewrapping. Default is on (true).
 func (t *Table) SetReflowDuringAutoWrap(auto bool) {
 	t.reflowText = auto
 }
 
-// Set the Default column width
+// SetColWidth: Set the Default column width
 func (t *Table) SetColWidth(width int) {
 	t.mW = width
 }
 
-// Set the minimal width for a column
+// SetColMinWidth: Set the minimal width for a column
 func (t *Table) SetColMinWidth(column int, width int) {
 	t.cs[column] = width
 }
 
-// Set the Column Separator
+// SetColumnSeparator: Set the Column Separator
 func (t *Table) SetColumnSeparator(sep string) {
 	t.pColumn = sep
 }
 
-// Set the Row Separator
+// SetRowSeparator: Set the Row Separator
 func (t *Table) SetRowSeparator(sep string) {
 	t.pRow = sep
 }
 
-// Set the center Separator
+// SetCenterSeparator: Set the center Separator
 func (t *Table) SetCenterSeparator(sep string) {
 	t.pCenter = sep
 }
 
-// Set Header Alignment
+// SetHeaderAlignment: Set Header Alignment
 func (t *Table) SetHeaderAlignment(hAlign int) {
 	t.hAlign = hAlign
 }
 
-// Set Footer Alignment
+// SetFooterAlignment: Set Footer Alignment
 func (t *Table) SetFooterAlignment(fAlign int) {
 	t.fAlign = fAlign
 }
 
-// Set Table Alignment
+// SetAlignment: Set Table Alignment
 func (t *Table) SetAlignment(align int) {
 	t.align = align
 }
@@ -241,30 +241,30 @@ func (t *Table) SetColumnAlignment(keys []int) {
 	}
 }
 
-// Set New Line
+// SetNewLine: Set New Line
 func (t *Table) SetNewLine(nl string) {
 	t.newLine = nl
 }
 
-// Set Header Line
+// SetHeaderLine: Set Header Line
 // This would enable / disable a line after the header
 func (t *Table) SetHeaderLine(line bool) {
 	t.hdrLine = line
 }
 
-// Set Row Line
+// SetRowLine: Set Row Line
 // This would enable / disable a line on each row of the table
 func (t *Table) SetRowLine(line bool) {
 	t.rowLine = line
 }
 
-// Set Auto Merge Cells
+// SetAutoMergeCells: Set Auto Merge Cells
 // This would enable / disable the merge of cells with identical values
 func (t *Table) SetAutoMergeCells(auto bool) {
 	t.autoMergeCells = auto
 }
 
-// Set Table Border
+// SetBorder: Set Table Border
 // This would enable / disable line around the table
 func (t *Table) SetBorder(border bool) {
 	t.SetBorders(Border{border, border, border, border})
@@ -296,7 +296,7 @@ func (t *Table) Append(row []string) {
 	t.lines = append(t.lines, line)
 }
 
-// Allow Support for Bulk Append
+// AppendBulk: Allow Support for Bulk Append
 // Eliminates repeated for loops
 func (t *Table) AppendBulk(rows [][]string) {
 	for _, row := range rows {
@@ -309,12 +309,12 @@ func (t *Table) NumLines() int {
 	return len(t.lines)
 }
 
-// Clear rows
+// ClearRows clears rows
 func (t *Table) ClearRows() {
 	t.lines = [][][]string{}
 }
 
-// Clear footer
+// ClearFooter clears footer
 func (t *Table) ClearFooter() {
 	t.footers = [][]string{}
 }

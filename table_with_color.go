@@ -99,7 +99,7 @@ func format(s string, codes interface{}) string {
 	return startFormat(seq) + s + stopFormat()
 }
 
-// Adding header colors (ANSI codes)
+// SetHeaderColor: Adding header colors (ANSI codes)
 func (t *Table) SetHeaderColor(colors ...Colors) {
 	if t.colSize != len(colors) {
 		panic("Number of header colors must be equal to number of headers.")
@@ -109,7 +109,7 @@ func (t *Table) SetHeaderColor(colors ...Colors) {
 	}
 }
 
-// Adding column colors (ANSI codes)
+// SetColumnColor: Adding column colors (ANSI codes)
 func (t *Table) SetColumnColor(colors ...Colors) {
 	if t.colSize != len(colors) {
 		panic("Number of column colors must be equal to number of headers.")
@@ -119,7 +119,7 @@ func (t *Table) SetColumnColor(colors ...Colors) {
 	}
 }
 
-// Adding column colors (ANSI codes)
+// SetFooterColor: Adding column colors (ANSI codes)
 func (t *Table) SetFooterColor(colors ...Colors) {
 	if len(t.footers) != len(colors) {
 		panic("Number of footer colors must be equal to number of footer.")
