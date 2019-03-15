@@ -131,7 +131,7 @@ func TestCSVInfo(t *testing.T) {
 
 	got := buf.String()
 	want := `   FIELD   |     TYPE     | NULL | KEY | DEFAULT |     EXTRA       
-+----------+--------------+------+-----+---------+----------------+
+-----------+--------------+------+-----+---------+-----------------
   user_id  | smallint(5)  | NO   | PRI | NULL    | auto_increment  
   username | varchar(10)  | NO   |     | NULL    |                 
   password | varchar(100) | NO   |     | NULL    |                 
@@ -167,6 +167,77 @@ func TestCSVSeparator(t *testing.T) {
 	checkEqual(t, buf.String(), want, "CSV info failed")
 }
 
+func TestCliTableStyle(t *testing.T) {
+	buf := &bytes.Buffer{}
+	table, err := NewCSV(buf, "testdata/test.csv", true)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	table.SetSeparators(Themes.CliTable)
+	// table.SetSeparators()
+	table.SetAlignment(ALIGN_LEFT)
+	table.Render()
+
+	want := `┌────────────┬───────────┬─────────┐
+│ FIRST NAME │ LAST NAME │   SSN   │
+├────────────┼───────────┼─────────┤
+│ John       │ Barry     │ 123456  │
+│ Kathy      │ Smith     │ 687987  │
+│ Bob        │ McCornick │ 3979870 │
+└────────────┴───────────┴─────────┘
+`
+
+	checkEqual(t, buf.String(), want, "CliTable theme failed")
+}
+
+func TestCliTableDoubleStyle(t *testing.T) {
+	buf := &bytes.Buffer{}
+	table, err := NewCSV(buf, "testdata/test.csv", true)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	table.SetSeparators(Themes.CliTableDouble)
+	// table.SetSeparators()
+	table.SetAlignment(ALIGN_LEFT)
+	table.Render()
+
+	want := `╔════════════╤═══════════╤═════════╗
+║ FIRST NAME │ LAST NAME │   SSN   ║
+╟────────────┼───────────┼─────────╢
+║ John       │ Barry     │ 123456  ║
+║ Kathy      │ Smith     │ 687987  ║
+║ Bob        │ McCornick │ 3979870 ║
+╚════════════╧═══════════╧═════════╝
+`
+
+	checkEqual(t, buf.String(), want, "CliTableDouble theme failed")
+}
+
+func TestCliTableStyleWithoutBorders(t *testing.T) {
+	buf := &bytes.Buffer{}
+	table, err := NewCSV(buf, "testdata/test.csv", true)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	table.SetSeparators(Themes.CliTable)
+	table.SetBorder(false)
+	// table.SetSeparators()
+	table.SetAlignment(ALIGN_LEFT)
+	table.Render()
+
+	want := `  FIRST NAME │ LAST NAME │   SSN    
+─────────────┼───────────┼──────────
+  John       │ Barry     │ 123456   
+  Kathy      │ Smith     │ 687987   
+  Bob        │ McCornick │ 3979870  
+`
+
+	checkEqual(t, buf.String(), want, "CliTable without border failed")
+}
+
 func TestNoBorder(t *testing.T) {
 	data := [][]string{
 		{"1/1/2014", "Domain name", "2233", "$10.98"},
@@ -187,7 +258,7 @@ func TestNoBorder(t *testing.T) {
 	table.Render()
 
 	want := `    DATE   |       DESCRIPTION        |  CV2  | AMOUNT   
-+----------+--------------------------+-------+---------+
+-----------+--------------------------+-------+----------
   1/1/2014 | Domain name              |  2233 | $10.98   
   1/1/2014 | January Hosting          |  2233 | $54.95   
            |     (empty)              |       |          
@@ -195,7 +266,7 @@ func TestNoBorder(t *testing.T) {
   1/4/2014 | February Hosting         |  2233 | $51.00   
   1/4/2014 | February Extra Bandwidth |  2233 | $30.00   
   1/4/2014 |     (Discount)           |  2233 | -$1.00   
-+----------+--------------------------+-------+---------+
+-----------+--------------------------+-------+----------
                                         TOTAL | $145.93  
                                       +-------+---------+
 `
@@ -395,12 +466,12 @@ func TestPrintCaptionWithFooter(t *testing.T) {
 	table.Render()
 
 	want := `    DATE   |       DESCRIPTION        |  CV2  | AMOUNT   
-+----------+--------------------------+-------+---------+
+-----------+--------------------------+-------+----------
   1/1/2014 | Domain name              |  2233 | $10.98   
   1/1/2014 | January Hosting          |  2233 | $54.95   
   1/4/2014 | February Hosting         |  2233 | $51.00   
   1/4/2014 | February Extra Bandwidth |  2233 | $30.00   
-+----------+--------------------------+-------+---------+
+-----------+--------------------------+-------+----------
                                         TOTAL | $146.93  
                                       +-------+---------+
 This is a very long caption. The text should wrap to the
@@ -713,7 +784,7 @@ func TestPrintLine(t *testing.T) {
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
 	table.SetHeader(header)
-	table.printLine(false)
+	table.printLine(false, topLine)
 	checkEqual(t, buf.String(), want, "line rendering failed")
 }
 
@@ -730,7 +801,7 @@ func TestAnsiStrip(t *testing.T) {
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
 	table.SetHeader(header)
-	table.printLine(false)
+	table.printLine(false, topLine)
 	checkEqual(t, buf.String(), want, "line rendering failed")
 }
 
