@@ -1082,6 +1082,36 @@ func TestCustomAlign(t *testing.T) {
 	checkEqual(t, buf.String(), want)
 }
 
+func TestCustomAlignString(t *testing.T) {
+	var (
+		buf    = &bytes.Buffer{}
+		table  = NewWriter(buf)
+		header = []string{"AAA", "BBB", "CCC"}
+		data   = [][]string{
+			{"a", "b", "c"},
+			{"1", "2", "3"},
+		}
+		footer = []string{"a", "b", "cccc"}
+		want   = `+-----+-----+-------+
+| AAA | BBB |  CCC  |
++-----+-----+-------+
+| a   |  b  |     c |
+| 1   |  2  |     3 |
++-----+-----+-------+
+|  A  |  B  | CCCC  |
++-----+-----+-------+
+`
+	)
+	table.SetHeader(header)
+	table.SetFooter(footer)
+	table.AppendBulk(data)
+	table.SetColMinWidth(2, 5)
+	table.SetColumnAlignment("<|>")
+	table.Render()
+
+	checkEqual(t, buf.String(), want)
+}
+
 func TestTitle(t *testing.T) {
 	ts := []struct {
 		text string

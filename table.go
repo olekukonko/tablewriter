@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"reflect"
 	"regexp"
 	"strings"
 )
@@ -225,8 +226,31 @@ func (t *Table) SetAlignment(align int) {
 	t.align = align
 }
 
-func (t *Table) SetColumnAlignment(keys []int) {
-	for _, v := range keys {
+func (t *Table) SetColumnAlignment(keys interface{}) {
+	aligns := []int{}
+
+	ks := reflect.ValueOf(keys)
+	if ks.Kind() == reflect.String {
+		s := keys.(string)
+		for i := 0; i < len(s); i++ {
+			var a int
+			switch s[i] {
+			case '<':
+				a = ALIGN_LEFT
+			case '>':
+				a = ALIGN_RIGHT
+			case '|':
+				a = ALIGN_CENTER
+			default:
+				a = ALIGN_DEFAULT
+			}
+			aligns = append(aligns, a)
+		}
+	} else {
+		aligns = keys.([]int)
+	}
+
+	for _, v := range aligns {
 		switch v {
 		case ALIGN_CENTER:
 			break
