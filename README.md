@@ -1,11 +1,13 @@
 ASCII Table Writer
 =========
 
-[![Build Status](https://travis-ci.org/olekukonko/tablewriter.png?branch=master)](https://travis-ci.org/olekukonko/tablewriter) [![Total views](https://img.shields.io/sourcegraph/rrc/github.com/olekukonko/tablewriter.svg)](https://sourcegraph.com/github.com/olekukonko/tablewriter)
+[![Build Status](https://travis-ci.org/olekukonko/tablewriter.png?branch=master)](https://travis-ci.org/olekukonko/tablewriter)
+[![Total views](https://img.shields.io/sourcegraph/rrc/github.com/olekukonko/tablewriter.svg)](https://sourcegraph.com/github.com/olekukonko/tablewriter)
+[![Godoc](https://godoc.org/github.com/olekukonko/tablewriter?status.svg)](https://godoc.org/github.com/olekukonko/tablewriter)
 
 Generate ASCII table on the fly ...  Installation is simple as
 
-    go get  github.com/olekukonko/tablewriter
+    go get github.com/olekukonko/tablewriter
 
 
 #### Features
@@ -23,7 +25,7 @@ Generate ASCII table on the fly ...  Installation is simple as
 - Set custom footer support
 - Optional identical cells merging
 - Set custom caption
-
+- Optional reflowing of paragrpahs in multi-line cells.
 
 #### Example   1 - Basic
 ```go
@@ -90,7 +92,7 @@ table.Render()
 
 #### Example 3 - CSV
 ```go
-table, _ := tablewriter.NewCSV(os.Stdout, "test_info.csv", true)
+table, _ := tablewriter.NewCSV(os.Stdout, "testdata/test_info.csv", true)
 table.SetAlignment(tablewriter.ALIGN_LEFT)   // Set Alignment
 table.Render()
 ```
@@ -108,12 +110,12 @@ table.Render()
 
 #### Example 4  - Custom Separator
 ```go
-table, _ := tablewriter.NewCSV(os.Stdout, "test.csv", true)
+table, _ := tablewriter.NewCSV(os.Stdout, "testdata/test.csv", true)
 table.SetRowLine(true)         // Enable row line
 
 // Change table lines
 table.SetCenterSeparator("*")
-table.SetColumnSeparator("‡")
+table.SetColumnSeparator("╪")
 table.SetRowSeparator("-")
 
 table.SetAlignment(tablewriter.ALIGN_LEFT)
@@ -199,10 +201,10 @@ table.Render()
 #### Table with color
 ```go
 data := [][]string{
-    []string{"1/1/2014", "Domain name", "2233", "$10.98"},
-    []string{"1/1/2014", "January Hosting", "2233", "$54.95"},
-    []string{"1/4/2014", "February Hosting", "2233", "$51.00"},
-    []string{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
+	[]string{"1/1/2014", "Domain name", "2233", "$10.98"},
+	[]string{"1/1/2014", "January Hosting", "2233", "$54.95"},
+	[]string{"1/4/2014", "February Hosting", "2233", "$51.00"},
+	[]string{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
 }
 
 table := tablewriter.NewWriter(os.Stdout)
@@ -210,19 +212,19 @@ table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
 table.SetFooter([]string{"", "", "Total", "$146.93"}) // Add Footer
 table.SetBorder(false)                                // Set Border to false
 
-table.SetHeaderAttributes(tablewriter.Add(tablewriter.Bold, tablewriter.BgGreenColor),
-			  tablewriter.Add(tablewriter.FgHiRedColor, tablewriter.Bold, tablewriter.BgBlackColor),
-			  tablewriter.Add(tablewriter.BgRedColor, tablewriter.FgWhiteColor),
-			  tablewriter.Add(tablewriter.BgCyanColor, tablewriter.FgWhiteColor))
+table.SetHeaderColor(tablewriter.Colors{tablewriter.Bold, tablewriter.BgGreenColor},
+	tablewriter.Colors{tablewriter.FgHiRedColor, tablewriter.Bold, tablewriter.BgBlackColor},
+	tablewriter.Colors{tablewriter.BgRedColor, tablewriter.FgWhiteColor},
+	tablewriter.Colors{tablewriter.BgCyanColor, tablewriter.FgWhiteColor})
 
-table.SetColumnAttributes(tablewriter.Add(tablewriter.Bold, tablewriter.FgHiBlackColor),
-			  tablewriter.Add(tablewriter.Bold, tablewriter.FgHiRedColor),
-			  tablewriter.Add(tablewriter.Bold, tablewriter.FgHiBlackColor),
-			  tablewriter.Add(tablewriter.Bold, tablewriter.FgBlackColor))
+table.SetColumnColor(tablewriter.Colors{tablewriter.Bold, tablewriter.FgHiBlackColor},
+	tablewriter.Colors{tablewriter.Bold, tablewriter.FgHiRedColor},
+	tablewriter.Colors{tablewriter.Bold, tablewriter.FgHiBlackColor},
+	tablewriter.Colors{tablewriter.Bold, tablewriter.FgBlackColor})
 
-table.SetFooterAttributes(tablewriter.Add(), tablewriter.Add(),
-                          tablewriter.Add(tablewriter.Bold),
-                          tablewriter.Add(tablewriter.FgHiRedColor))
+table.SetFooterColor(tablewriter.Colors{}, tablewriter.Colors{},
+	tablewriter.Colors{tablewriter.Bold},
+	tablewriter.Colors{tablewriter.FgHiRedColor})
 
 table.AppendBulk(data)
 table.Render()
@@ -265,13 +267,39 @@ Note: Caption text will wrap with total width of rendered table.
 Movie ratings.
 ```
 
+#### Render table into a string
+
+Instead of rendering the table to `io.Stdout` you can also render it into a string. Go 1.10 introduced the `strings.Builder` type which implements the `io.Writer` interface and can therefore be used for this task. Example:
+
+```go
+package main
+
+import (
+    "strings"
+    "fmt"
+
+    "github.com/olekukonko/tablewriter"
+)
+
+func main() {
+    tableString := &strings.Builder{}
+	table := tablewriter.NewWriter(tableString)
+
+    /*
+     * Code to fill the table
+     */
+
+    table.Render()
+
+    fmt.Println(tableString.String())
+}
+```
+
 #### TODO
 - ~~Import Directly from CSV~~  - `done`
 - ~~Support for `SetFooter`~~  - `done`
 - ~~Support for `SetBorder`~~  - `done`
 - ~~Support table with uneven rows~~ - `done`
-- Support custom alignment
+- ~~Support custom alignment~~
 - General Improvement & Optimisation
 - `NewHTML` Parse table from HTML
-
-
