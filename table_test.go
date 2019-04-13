@@ -841,14 +841,40 @@ func TestAutoMergeRows(t *testing.T) {
 | NAME |              SIGN              | RATING |
 +------+--------------------------------+--------+
 | A    | The Good                       |    500 |
-+------+--------------------------------+--------+
-| A    | The Very very very very very   |    288 |
++      +--------------------------------+--------+
+|      | The Very very very very very   |    288 |
 |      | Bad Man                        |        |
 +------+                                +--------+
 | B    |                                |    120 |
 |      |                                |        |
 +------+--------------------------------+--------+
 | C    | The Very very Bad Man          |    200 |
++------+--------------------------------+--------+
+`
+	checkEqual(t, buf.String(), want)
+
+	buf.Reset()
+	table = NewWriter(&buf)
+	table.SetHeader([]string{"Name", "Sign", "Rating"})
+
+	dataWithlongText2 := [][]string{
+		{"A", "The Good", "500"},
+		{"A", "The Very very very very very Bad Man", "288"},
+		{"B", "The Very very Bad Man", "120"},
+	}
+	table.AppendBulk(dataWithlongText2)
+	table.SetAutoMergeCells(true)
+	table.SetRowLine(true)
+	table.Render()
+	want = `+------+--------------------------------+--------+
+| NAME |              SIGN              | RATING |
++------+--------------------------------+--------+
+| A    | The Good                       |    500 |
++      +--------------------------------+--------+
+|      | The Very very very very very   |    288 |
+|      | Bad Man                        |        |
++------+--------------------------------+--------+
+| B    | The Very very Bad Man          |    120 |
 +------+--------------------------------+--------+
 `
 	checkEqual(t, buf.String(), want)
