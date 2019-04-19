@@ -76,6 +76,7 @@ type Table struct {
 	borders        Border
 	colSize        int
 	headerParams   []string
+	cellParams     [][]string
 	columnsParams  []string
 	footerParams   []string
 	columnsAlign   []int
@@ -661,7 +662,11 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 
 			// Embedding escape sequence with column value
 			if is_esc_seq {
-				str = format(str, t.columnsParams[y])
+				if t.cellParams[x][y] != "" {
+					str = format(str, t.cellParams[x][y])
+				} else {
+					str = format(str, t.columnsParams[y])
+				}
 			}
 
 			// This would print alignment
@@ -761,7 +766,11 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 
 			// Embedding escape sequence with column value
 			if is_esc_seq {
-				str = format(str, t.columnsParams[y])
+				if t.cellParams[x][y] != "" {
+					str = format(str, t.cellParams[x][y])
+				} else {
+					str = format(str, t.columnsParams[y])
+				}
 			}
 
 			if t.autoMergeCells {

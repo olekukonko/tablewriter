@@ -129,6 +129,16 @@ func (t *Table) SetFooterColor(colors ...Colors) {
 	}
 }
 
+// Adding color for cell (ANSI codes) {
+func (t *Table) SetCellColor(x, y int, color Colors) {
+	if x < 0 || x > t.colSize {
+		panic(fmt.Sprintf("X Value: %d is outside column size %d", x, t.colSize))
+	} else if y < 0 || y > len(t.rows) {
+		panic(fmt.Sprintf("Y Value: %d is outside row size %d", y, len(t.rows)))
+	}
+	t.cellParams[x][y] = makeSequence(color)
+}
+
 func Color(colors ...int) []int {
 	return colors
 }
