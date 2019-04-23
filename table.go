@@ -76,7 +76,7 @@ type Table struct {
 	borders        Border
 	colSize        int
 	headerParams   []string
-	cellParams     [][]string
+	cellParams     []CellColor
 	columnsParams  []string
 	footerParams   []string
 	columnsAlign   []int
@@ -113,6 +113,7 @@ func NewWriter(writer io.Writer) *Table {
 		borders:       Border{Left: true, Right: true, Bottom: true, Top: true},
 		colSize:       -1,
 		headerParams:  []string{},
+		cellParams:    []CellColor{},
 		columnsParams: []string{},
 		footerParams:  []string{},
 		columnsAlign:  []int{}}
@@ -637,7 +638,7 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 
 	// Checking for ANSI escape sequences for columns
 	is_esc_seq := false
-	if len(t.columnsParams) > 0 {
+	if len(t.columnsParams) > 0 || len(t.cellParams) > 0 {
 		is_esc_seq = true
 	}
 	t.fillAlignment(total)
@@ -662,8 +663,8 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 
 			// Embedding escape sequence with column value
 			if is_esc_seq {
-				if t.cellParams[x][y] != "" {
-					str = format(str, t.cellParams[x][y])
+				if val := t.getColorForCell(y, x+rowIdx); val != "" {
+					str = format(str, val)
 				} else {
 					str = format(str, t.columnsParams[y])
 				}
@@ -740,7 +741,7 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 
 	// Checking for ANSI escape sequences for columns
 	is_esc_seq := false
-	if len(t.columnsParams) > 0 {
+	if len(t.columnsParams) > 0 || len(t.cellParams) > 0 {
 		is_esc_seq = true
 	}
 	for i, line := range columns {
@@ -766,8 +767,8 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 
 			// Embedding escape sequence with column value
 			if is_esc_seq {
-				if t.cellParams[x][y] != "" {
-					str = format(str, t.cellParams[x][y])
+				if val := t.getColorForCell(y, x+rowIdx); val != "" {
+					str = format(str, val)
 				} else {
 					str = format(str, t.columnsParams[y])
 				}

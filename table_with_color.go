@@ -62,6 +62,14 @@ const (
 
 type Colors []int
 
+// CellColor Color information (ie FgHiBlackColor, FgHiRedColor, etc...)
+// For the column and row position in your table
+type CellColor struct {
+	column int
+	row    int
+	color  string
+}
+
 func startFormat(seq string) string {
 	return fmt.Sprintf("%s[%sm", ESC, seq)
 }
@@ -130,13 +138,31 @@ func (t *Table) SetFooterColor(colors ...Colors) {
 }
 
 // Adding color for cell (ANSI codes) {
-func (t *Table) SetCellColor(x, y int, color Colors) {
-	if x < 0 || x > t.colSize {
-		panic(fmt.Sprintf("X Value: %d is outside column size %d", x, t.colSize))
-	} else if y < 0 || y > len(t.rows) {
-		panic(fmt.Sprintf("Y Value: %d is outside row size %d", y, len(t.rows)))
+// Column and Rows start at 0
+// This does NOT do anything for header/footers
+func (t *Table) SetCellColor(column, row int, color Colors) {
+	if column < 0 || column > t.colSize-1 {
+		panic(fmt.Sprintf("Column Value: %d is outside column size %d", column, t.colSize-1))
+	} else if row < 0 || row > len(t.lines)-1 {
+		panic(fmt.Sprintf("Row Value: %d is outside row size %d", row, len(t.lines)-1))
 	}
-	t.cellParams[x][y] = makeSequence(color)
+
+	t.cellParams = append(t.cellParams, CellColor{
+		column: column,
+		row:    row,
+		color:  makeSequence(color),
+	})
+}
+
+// Returns makeSequence version of color by cell indices
+func (t *Table) getColorForCell(column, row int) string {
+	for _, colorInfo := range t.cellParams {
+		if column == colorInfo.column && row == colorInfo.row {
+			return colorInfo.color
+		}
+	}
+
+	return ""
 }
 
 func Color(colors ...int) []int {
