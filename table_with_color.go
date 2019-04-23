@@ -141,12 +141,6 @@ func (t *Table) SetFooterColor(colors ...Colors) {
 // Column and Rows start at 0
 // This does NOT do anything for header/footers
 func (t *Table) SetCellColor(column, row int, color Colors) {
-	if column < 0 || column > t.colSize-1 {
-		panic(fmt.Sprintf("Column Value: %d is outside column size %d", column, t.colSize-1))
-	} else if row < 0 || row > len(t.lines)-1 {
-		panic(fmt.Sprintf("Row Value: %d is outside row size %d", row, len(t.lines)-1))
-	}
-
 	t.cellParams = append(t.cellParams, CellColor{
 		column: column,
 		row:    row,
