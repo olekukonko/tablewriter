@@ -665,7 +665,7 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 			if is_esc_seq {
 				if val := t.getColorForCell(y, x+rowIdx); val != "" {
 					str = format(str, val)
-				} else {
+				} else if len(t.columnsParams) > y {
 					str = format(str, t.columnsParams[y])
 				}
 			}
@@ -769,7 +769,7 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 			if is_esc_seq {
 				if val := t.getColorForCell(y, x+rowIdx); val != "" {
 					str = format(str, val)
-				} else {
+				} else if len(t.columnsParams) > y {
 					str = format(str, t.columnsParams[y])
 				}
 			}
