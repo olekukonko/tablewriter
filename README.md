@@ -246,7 +246,7 @@ data := [][]string{
 	[]string{"Test2Merge", "HelloCol2 - 7", "HelloCol3 - 7", "HelloCol4 - 7"},
 	[]string{"Test3Merge", "HelloCol2 - 8", "HelloCol3 - 8", "HelloCol4 - 8"},
 	[]string{"Test3Merge", "HelloCol2 - 9", "HelloCol3 - 9", "HelloCol4 - 9"},
-	[]string{"Test3Merge", "HelloCol2 - 10", "HelloCol3 -10", "HelloCol4 10"},
+	[]string{"Test3Merge", "HelloCol2 - 10", "HelloCol3 -10", "HelloCol4 - 10"},
 }
 
 table := tablewriter.NewWriter(os.Stdout)
@@ -279,7 +279,7 @@ table.Render()
 ```
 
 #### Table cells with color Output
-![Table cells with Color](https://user-images.githubusercontent.com/9064687/56603772-5f6a9680-65ce-11e9-8e4d-8236ded100d0.png)
+![Table cells with Color](https://user-images.githubusercontent.com/9064687/56604451-ee2be300-65cf-11e9-9c7b-10234e4538ff.png)
 
 #### Example 6 - Set table caption
 ```go
