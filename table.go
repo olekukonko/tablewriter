@@ -72,6 +72,7 @@ type Table struct {
 	newLine        string
 	rowLine        bool
 	autoMergeCells bool
+	trimRowStart  bool
 	hdrLine        bool
 	borders        Border
 	colSize        int
@@ -223,6 +224,11 @@ func (t *Table) SetFooterAlignment(fAlign int) {
 // Set Table Alignment
 func (t *Table) SetAlignment(align int) {
 	t.align = align
+}
+
+// SetTrimRowStart is used to disable whitespaces in row start 
+func (t *Table) SetTrimRowStart(allow bool) {
+	t.trimRowStart = allow
 }
 
 func (t *Table) SetColumnAlignment(keys []int) {
@@ -654,9 +660,11 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 		for y := 0; y < total; y++ {
 
 			// Check if border is set
-			fmt.Fprint(t.out, ConditionString((!t.borders.Left && y == 0), SPACE, t.pColumn))
+			if !t.trimRowStart {
+				fmt.Fprint(t.out, ConditionString((!t.borders.Left && y == 0), SPACE, t.pColumn))
+				fmt.Fprintf(t.out, SPACE)
+			}
 
-			fmt.Fprintf(t.out, SPACE)
 			str := columns[y][x]
 
 			// Embedding escape sequence with column value
