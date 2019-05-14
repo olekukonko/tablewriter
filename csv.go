@@ -26,6 +26,12 @@ func NewCSV(writer io.Writer, fileName string, hasHeader bool) (*Table, error) {
 	return t, err
 }
 
+func NewCSVWithReader(writer io.Writer, reader io.Reader, hasHeader bool) (*Table, error) {
+	csvReader := csv.NewReader(reader)
+	t, err := NewCSVReader(writer, csvReader, hasHeader)
+	return t, err
+}
+
 //  Start a New Table Writer with csv.Reader
 // This enables customisation such as reader.Comma = ';'
 // See http://golang.org/src/pkg/encoding/csv/reader.go?s=3213:3671#L94
