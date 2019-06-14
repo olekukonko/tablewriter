@@ -139,6 +139,48 @@ func (t *Table) Render() {
 	}
 }
 
+func (t *Table) renderNoHeaders() {
+	if t.borders.Top {
+		t.printLine(true)
+	}
+	if t.autoMergeCells {
+		t.printRowsMergeCells()
+	} else {
+		t.printRows()
+	}
+	if !t.rowLine && t.borders.Bottom {
+		t.printLine(true)
+	}
+}
+
+func (t *Table) ContinuousRender(rows <-chan []string) {
+	printHeaders := true
+
+	for row := range rows {
+		colWidths := make(map[int]int)
+		for k, v := range t.cs {
+			colWidths[k] = v
+		}
+
+		t.Append(row)
+
+		for k, v := range t.cs {
+			if v != colWidths[k] {
+				printHeaders = true
+				break
+			}
+		}
+
+		if printHeaders {
+			t.Render()
+			printHeaders = false
+		} else {
+			t.renderNoHeaders()
+		}
+		t.lines = [][][]string{}
+	}
+}
+
 const (
 	headerRowIdx = -1
 	footerRowIdx = -2
