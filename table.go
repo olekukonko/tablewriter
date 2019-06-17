@@ -79,6 +79,7 @@ type Table struct {
 	columnsParams  []string
 	footerParams   []string
 	columnsAlign   []int
+	rowLineByIdx   map[int]bool
 }
 
 // Start New Table
@@ -114,8 +115,29 @@ func NewWriter(writer io.Writer) *Table {
 		headerParams:  []string{},
 		columnsParams: []string{},
 		footerParams:  []string{},
-		columnsAlign:  []int{}}
+		columnsAlign:  []int{},
+		rowLineByIdx:  make(map[int]bool),
+        }
 	return t
+}
+
+func (t *Table) rowPostProcess(rowIdx int, preProc bool) {
+	// Is it the last row? Do nothing, footer will take care of bottom border
+	if rowIdx == len(t.lines) - 1 {
+		return
+	}
+
+	// If we just generally apply row lines after each item
+	if !preProc && t.rowLine {
+		t.printLine(true)
+		return
+	}
+
+	// Manually added row line requested after the current line?
+	if t.rowLineByIdx[rowIdx] {
+		t.printLine(true)
+		return
+	}
 }
 
 // Render table output
@@ -128,9 +150,6 @@ func (t *Table) Render() {
 		t.printRowsMergeCells()
 	} else {
 		t.printRows()
-	}
-	if !t.rowLine && t.borders.Bottom {
-		t.printLine(true)
 	}
 	t.printFooter()
 
@@ -272,6 +291,13 @@ func (t *Table) SetBorder(border bool) {
 
 func (t *Table) SetBorders(border Border) {
 	t.borders = border
+}
+
+// Append a separator after the current line
+func (t *Table) AppendRowLine() {
+	if len(t.lines) > 0 {
+		t.rowLineByIdx[len(t.lines)-1] = true
+	}
 }
 
 // Append row to table
@@ -576,6 +602,10 @@ func (t Table) getTableWidth() int {
 func (t Table) printRows() {
 	for i, lines := range t.lines {
 		t.printRow(lines, i)
+		t.rowPostProcess(i, false)
+	}
+	if t.borders.Bottom {
+		t.printLine(true)
 	}
 }
 
@@ -668,10 +698,6 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 		fmt.Fprint(t.out, ConditionString(t.borders.Left, t.pColumn, SPACE))
 		fmt.Fprint(t.out, t.newLine)
 	}
-
-	if t.rowLine {
-		t.printLine(true)
-	}
 }
 
 // Print the rows of the table and merge the cells that are identical
@@ -688,9 +714,9 @@ func (t *Table) printRowsMergeCells() {
 			}
 		}
 		tmpWriter.WriteTo(t.out)
+		t.rowPostProcess(i, true)
 	}
-	//Print the end of the table
-	if t.rowLine {
+	if t.borders.Bottom {
 		t.printLine(true)
 	}
 }

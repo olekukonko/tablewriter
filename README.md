@@ -266,6 +266,34 @@ Note: Caption text will wrap with total width of rendered table.
 +------+-----------------------+--------+
 Movie ratings.
 ```
+#### Example   7 - Grouping by adding row lines
+```go
+table := tablewriter.NewWriter(os.Stdout)
+table.SetHeader([]string{"Food", "Rating"})
+
+table.Append([]string{"Filet Mignon", "****"})
+table.Append([]string{"New York Steak", "***"})
+
+table.AppendRowLine() // Manually add separator
+
+table.Append([]string{"Broccoli", "*"})
+table.Append([]string{"Cauliflower", "***"})
+
+table.Render() // Send output
+```
+
+##### Output  7
+```
++----------------+--------+
+|      FOOD      | RATING |
++----------------+--------+
+| Filet Mignon   | ****   |
+| New York Steak | ***    |
++----------------+--------+
+| Broccoli       | *      |
+| Cauliflower    | ***    |
++----------------+--------+
+```
 
 #### TODO
 - ~~Import Directly from CSV~~  - `done`

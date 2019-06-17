@@ -1119,3 +1119,78 @@ func TestTitle(t *testing.T) {
 		}
 	}
 }
+
+func ExampleRowLine() {
+	table := NewWriter(os.Stdout)
+	table.SetHeader([]string{"Food", "Rating"})
+
+	table.Append([]string{"Filet Mignon", "****"})
+	table.Append([]string{"New York Steak", "***"})
+
+	table.AppendRowLine()
+
+	table.Append([]string{"Broccoli", "*"})
+	table.Append([]string{"Cauliflower", "***"})
+
+	table.Render() // Send output
+
+	// Output: +----------------+--------+
+	// |      FOOD      | RATING |
+	// +----------------+--------+
+	// | Filet Mignon   | ****   |
+	// | New York Steak | ***    |
+	// +----------------+--------+
+	// | Broccoli       | *      |
+	// | Cauliflower    | ***    |
+	// +----------------+--------+
+}
+
+func TestRowLine(t *testing.T) {
+	buf := &bytes.Buffer{}
+	table := NewWriter(buf)
+	table.SetHeader([]string{"A", "B"})
+	table.AppendRowLine()
+	table.Append([]string{"A1", "B1"})
+	table.AppendRowLine()
+	table.AppendRowLine()
+	table.Append([]string{"A2", "B2"})
+	table.AppendRowLine() // should be ignored because of bottom border
+	table.Render()
+
+	got := buf.String()
+	want := `+----+----+
+| A  | B  |
++----+----+
+| A1 | B1 |
++----+----+
+| A2 | B2 |
++----+----+
+`
+	checkEqual(t, got, want, "AppendRowLine failed")
+}
+
+func TestRowLineAutoMergeCells(t *testing.T) {
+	buf := &bytes.Buffer{}
+	table := NewWriter(buf)
+	table.SetHeader([]string{"A", "B"})
+	table.AppendRowLine()
+	table.Append([]string{"A1", "B1"})
+	table.Append([]string{"A1", "B1"})
+	table.AppendRowLine()
+	table.Append([]string{"A2", "B2"})
+	table.AppendRowLine() // should be ignored because of bottom border
+	table.SetAutoMergeCells(true)
+	table.Render()
+
+	got := buf.String()
+	want := `+----+----+
+| A  | B  |
++----+----+
+| A1 | B1 |
+|    |    |
++----+----+
+| A2 | B2 |
++----+----+
+`
+	checkEqual(t, got, want, "AppendRowLine failed")
+}
