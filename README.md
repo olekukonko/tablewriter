@@ -283,7 +283,7 @@ import (
 
 func main() {
     tableString := &strings.Builder{}
-	table := tablewriter.NewWriter(tableString)
+    table := tablewriter.NewWriter(tableString)
 
     /*
      * Code to fill the table
