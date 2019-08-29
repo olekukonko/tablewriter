@@ -259,11 +259,6 @@ table.SetHeaderColor(tablewriter.Colors{tablewriter.Bold, tablewriter.BgGreenCol
 	tablewriter.Colors{tablewriter.BgRedColor, tablewriter.FgWhiteColor},
 	tablewriter.Colors{tablewriter.BgCyanColor, tablewriter.FgWhiteColor})
 
-table.SetCellColor(1, 3, tablewriter.Colors{tablewriter.Bold, tablewriter.FgHiBlueColor})
-table.SetCellColor(0, 0, tablewriter.Colors{tablewriter.Bold, tablewriter.FgHiYellowColor})
-table.SetCellColor(2, 1, tablewriter.Colors{tablewriter.Bold, tablewriter.FgHiGreenColor})
-table.SetCellColor(3, 9, tablewriter.Colors{tablewriter.Bold, tablewriter.BgGreenColor})
-
 table.SetColumnColor(tablewriter.Colors{tablewriter.Bold, tablewriter.FgHiBlackColor},
 	tablewriter.Colors{tablewriter.Bold, tablewriter.FgHiRedColor},
 	tablewriter.Colors{tablewriter.Bold, tablewriter.FgHiBlackColor},
@@ -273,13 +268,24 @@ table.SetFooterColor(tablewriter.Colors{}, tablewriter.Colors{},
 	tablewriter.Colors{tablewriter.Bold},
 	tablewriter.Colors{tablewriter.FgHiRedColor})
 
-table.AppendBulk(data)
+colorData1 := []string{"TestCOLOR1Merge", "HelloCol2 - COLOR1", "HelloCol3 - COLOR1", "HelloCol4 - COLOR1"}
+colorData2 := []string{"TestCOLOR2Merge", "HelloCol2 - COLOR2", "HelloCol3 - COLOR2", "HelloCol4 - COLOR2"}
+
+for i, row := range data {
+	if i == 4 {
+		table.Rich(colorData1, []tablewriter.Colors{tablewriter.Colors{}, tablewriter.Colors{tablewriter.Normal, tablewriter.FgCyanColor}, tablewriter.Colors{tablewriter.Bold, tablewriter.FgWhiteColor}, tablewriter.Colors{}})
+		table.Rich(colorData2, []tablewriter.Colors{tablewriter.Colors{tablewriter.Normal, tablewriter.FgMagentaColor}, tablewriter.Colors{}, tablewriter.Colors{tablewriter.Bold, tablewriter.BgRedColor}, tablewriter.Colors{tablewriter.FgHiGreenColor, tablewriter.Italic, tablewriter.BgHiCyanColor}})
+	}
+	table.Append(row)
+}
+
 table.SetAutoMergeCells(true)
 table.Render()
+
 ```
 
 #### Table cells with color Output
-![Table cells with Color](https://user-images.githubusercontent.com/9064687/56604451-ee2be300-65cf-11e9-9c7b-10234e4538ff.png)
+![Table cells with Color](https://user-images.githubusercontent.com/9064687/63969376-bcd88d80-ca6f-11e9-9466-c3d954700b25.png)
 
 #### Example 6 - Set table caption
 ```go
