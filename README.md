@@ -235,6 +235,8 @@ table.Render()
 
 #### Table Cells with Color
 
+Individual Cell Colors from `func Rich` take precedence over Column Colors
+
 ```go
 data := [][]string{
 	[]string{"Test1Merge", "HelloCol2 - 1", "HelloCol3 - 1", "HelloCol4 - 1"},
