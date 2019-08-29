@@ -62,14 +62,6 @@ const (
 
 type Colors []int
 
-// CellColor Color information (ie FgHiBlackColor, FgHiRedColor, etc...)
-// For the column and row position in your table
-type CellColor struct {
-	column int
-	row    int
-	color  string
-}
-
 func startFormat(seq string) string {
 	return fmt.Sprintf("%s[%sm", ESC, seq)
 }
@@ -135,28 +127,6 @@ func (t *Table) SetFooterColor(colors ...Colors) {
 	for i := 0; i < len(colors); i++ {
 		t.footerParams = append(t.footerParams, makeSequence(colors[i]))
 	}
-}
-
-// Adding color for cell (ANSI codes) {
-// Column and Rows start at 0
-// This does NOT do anything for header/footers
-func (t *Table) SetCellColor(column, row int, color Colors) {
-	t.cellParams = append(t.cellParams, CellColor{
-		column: column,
-		row:    row,
-		color:  makeSequence(color),
-	})
-}
-
-// Returns makeSequence version of color by cell indices
-func (t *Table) getColorForCell(column, row int) string {
-	for _, colorInfo := range t.cellParams {
-		if column == colorInfo.column && row == colorInfo.row {
-			return colorInfo.color
-		}
-	}
-
-	return ""
 }
 
 func Color(colors ...int) []int {
