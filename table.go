@@ -76,7 +76,6 @@ type Table struct {
 	borders        Border
 	colSize        int
 	headerParams   []string
-	cellParams     []CellColor
 	columnsParams  []string
 	footerParams   []string
 	columnsAlign   []int
@@ -113,7 +112,6 @@ func NewWriter(writer io.Writer) *Table {
 		borders:       Border{Left: true, Right: true, Bottom: true, Top: true},
 		colSize:       -1,
 		headerParams:  []string{},
-		cellParams:    []CellColor{},
 		columnsParams: []string{},
 		footerParams:  []string{},
 		columnsAlign:  []int{}}
@@ -313,6 +311,11 @@ func (t *Table) Rich(row []string, colors []Colors) {
 		// Detect String height
 		// Break strings into words
 		out := t.parseDimension(v, i, n)
+
+		if len(colors) > i {
+			color := colors[i]
+			out[0] = format(out[0], color)
+		}
 
 		// Append broken words
 		line = append(line, out)
