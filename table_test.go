@@ -196,7 +196,7 @@ func TestNoBorder(t *testing.T) {
   1/4/2014 | February Extra Bandwidth |  2233 | $30.00   
   1/4/2014 |     (Discount)           |  2233 | -$1.00   
 -----------+--------------------------+-------+----------
-                                        TOTAL | $145 93  
+                                        TOTAL | $145.93  
                                       --------+----------
 `
 
@@ -401,7 +401,7 @@ func TestPrintCaptionWithFooter(t *testing.T) {
   1/4/2014 | February Hosting         |  2233 | $51.00   
   1/4/2014 | February Extra Bandwidth |  2233 | $30.00   
 -----------+--------------------------+-------+----------
-                                        TOTAL | $146 93  
+                                        TOTAL | $146.93  
                                       --------+----------
 This is a very long caption. The text should wrap to the
 width of the table.
