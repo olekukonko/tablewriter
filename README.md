@@ -233,7 +233,7 @@ table.Render()
 #### Table with color Output
 ![Table with Color](https://cloud.githubusercontent.com/assets/6460392/21101956/bbc7b356-c0a1-11e6-9f36-dba694746efc.png)
 
-#### Example 6 - Set table caption
+#### Example 7 - Set table caption
 ```go
 data := [][]string{
     []string{"A", "The Good", "500"},
@@ -254,7 +254,7 @@ table.Render() // Send output
 
 Note: Caption text will wrap with total width of rendered table.
 
-##### Output 6
+##### Output 7
 ```
 +------+-----------------------+--------+
 | NAME |         SIGN          | RATING |
@@ -265,6 +265,36 @@ Note: Caption text will wrap with total width of rendered table.
 |  D   |      The Gopher       |    800 |
 +------+-----------------------+--------+
 Movie ratings.
+```
+
+#### Example 8 - Set KubeFormat option
+```go
+data := [][]string{
+    {"node1.example.com", "Ready", "compute", "1.11"},
+    {"node2.example.com", "Ready", "compute", "1.11"},
+    {"node3.example.com", "Ready", "compute", "1.11"},
+    {"node4.example.com", "NotReady", "compute", "1.11"},
+}
+
+table := tablewriter.NewWriter(os.Stdout)
+table.SetHeader([]string{"Name", "Status", "Role", "Version"})
+table.SetAutoWrapText(false)
+table.SetAutoFormatHeaders(true)
+table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+table.SetAlignment(tablewriter.ALIGN_LEFT)
+table.SetKubePadding("\t") // pad with tabs
+table.SetKubeFormat(true)
+table.AppendBulk(data) // Add Bulk Data
+table.Render()
+```
+
+##### Output 8
+```
+NAME             	STATUS  	ROLE   	VERSION 
+node1.example.com	Ready   	compute	1.11   	
+node2.example.com	Ready   	compute	1.11   	
+node3.example.com	Ready   	compute	1.11   	
+node4.example.com	NotReady	compute	1.11   	
 ```
 
 #### Render table into a string
