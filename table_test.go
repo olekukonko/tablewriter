@@ -1145,3 +1145,33 @@ func TestTitle(t *testing.T) {
 		}
 	}
 }
+
+func TestKubeFormat(t *testing.T) {
+	data := [][]string{
+		{"1/1/2014", "jan_hosting", "2233", "$10.98"},
+		{"1/1/2014", "feb_hosting", "2233", "$54.95"},
+		{"1/4/2014", "feb_extra_bandwidth", "2233", "$51.00"},
+		{"1/4/2014", "mar_hosting", "2233", "$30.00"},
+	}
+
+	var buf bytes.Buffer
+	table := NewWriter(&buf)
+	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
+	table.SetAutoWrapText(false)
+	table.SetAutoFormatHeaders(true)
+	table.SetHeaderAlignment(ALIGN_LEFT)
+	table.SetAlignment(ALIGN_LEFT)
+	table.SetKubePadding("\t") // pad with tabs
+	table.SetKubeFormat(true)
+	table.AppendBulk(data) // Add Bulk Data
+	table.Render()
+
+	want := `DATE    	DESCRIPTION        	CV2 	AMOUNT 
+1/1/2014	jan_hosting        	2233	$10.98	
+1/1/2014	feb_hosting        	2233	$54.95	
+1/4/2014	feb_extra_bandwidth	2233	$51.00	
+1/4/2014	mar_hosting        	2233	$30.00	
+`
+
+	checkEqual(t, buf.String(), want, "kube format rendering failed")
+}
