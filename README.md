@@ -280,10 +280,15 @@ table := tablewriter.NewWriter(os.Stdout)
 table.SetHeader([]string{"Name", "Status", "Role", "Version"})
 table.SetAutoWrapText(false)
 table.SetAutoFormatHeaders(true)
-table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-table.SetAlignment(tablewriter.ALIGN_LEFT)
-table.SetKubePadding("\t") // pad with tabs
-table.SetKubeFormat(true)
+table.SetHeaderAlignment(ALIGN_LEFT)
+table.SetAlignment(ALIGN_LEFT)
+table.SetCenterSeparator("")
+table.SetColumnSeparator("")
+table.SetRowSeparator("")
+table.SetHeaderLine(false)
+table.SetBorder(false)
+table.SetTablePadding("\t") // pad with tabs
+table.SetNoWhiteSpace(true)
 table.AppendBulk(data) // Add Bulk Data
 table.Render()
 ```

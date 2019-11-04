@@ -72,8 +72,8 @@ type Table struct {
 	newLine        string
 	rowLine        bool
 	autoMergeCells bool
-	kubeFormat     bool
-	kubePadding    string
+	noWhiteSpace   bool
+	tablePadding   string
 	hdrLine        bool
 	borders        Border
 	colSize        int
@@ -227,19 +227,14 @@ func (t *Table) SetAlignment(align int) {
 	t.align = align
 }
 
-// SetKubeFormat is used to format the table to be more like kubectl
-func (t *Table) SetKubeFormat(allow bool) {
-	t.kubeFormat = allow
-	t.pColumn = ""
-	t.pRow = ""
-	t.pCenter = ""
-	t.hdrLine = false
-	t.SetBorders(Border{false, false, false, false})
+// SetNoWhiteSpace is used to format the table to be more like kubectl
+func (t *Table) SetNoWhiteSpace(allow bool) {
+	t.noWhiteSpace = allow
 }
 
-// SetKubePadding is used to disable whitespaces in row start to be more like kubectl
-func (t *Table) SetKubePadding(padding string) {
-	t.kubePadding = padding
+// SetTablePadding is used to disable whitespaces in row start to be more like kubectl
+func (t *Table) SetTablePadding(padding string) {
+	t.tablePadding = padding
 }
 
 func (t *Table) SetColumnAlignment(keys []int) {
@@ -428,7 +423,7 @@ func (t *Table) printHeading() {
 	for x := 0; x < max; x++ {
 		// Check if border is set
 		// Replace with space if not set
-		if !t.kubeFormat {
+		if !t.noWhiteSpace {
 			fmt.Fprint(t.out, ConditionString(t.borders.Left, t.pColumn, SPACE))
 		}
 
@@ -443,11 +438,11 @@ func (t *Table) printHeading() {
 				h = Title(h)
 			}
 			pad := ConditionString((y == end && !t.borders.Left), SPACE, t.pColumn)
-			if t.kubeFormat {
-				pad = ConditionString((y == end && !t.borders.Left), SPACE, t.kubePadding)
+			if t.noWhiteSpace {
+				pad = ConditionString((y == end && !t.borders.Left), SPACE, t.tablePadding)
 			}
 			if is_esc_seq {
-				if !t.kubeFormat {
+				if !t.noWhiteSpace {
 					fmt.Fprintf(t.out, " %s %s",
 						format(padFunc(h, SPACE, v),
 							t.headerParams[y]), pad)
@@ -457,7 +452,7 @@ func (t *Table) printHeading() {
 							t.headerParams[y]), pad)
 				}
 			} else {
-				if !t.kubeFormat {
+				if !t.noWhiteSpace {
 					fmt.Fprintf(t.out, " %s %s",
 						padFunc(h, SPACE, v),
 						pad)
@@ -689,7 +684,7 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 		for y := 0; y < total; y++ {
 
 			// Check if border is set
-			if !t.kubeFormat {
+			if !t.noWhiteSpace {
 				fmt.Fprint(t.out, ConditionString((!t.borders.Left && y == 0), SPACE, t.pColumn))
 				fmt.Fprintf(t.out, SPACE)
 			}
@@ -725,15 +720,15 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 
 				}
 			}
-			if !t.kubeFormat {
+			if !t.noWhiteSpace {
 				fmt.Fprintf(t.out, SPACE)
 			} else {
-				fmt.Fprintf(t.out, t.kubePadding)
+				fmt.Fprintf(t.out, t.tablePadding)
 			}
 		}
 		// Check if border is set
 		// Replace with space if not set
-		if !t.kubeFormat {
+		if !t.noWhiteSpace {
 			fmt.Fprint(t.out, ConditionString(t.borders.Left, t.pColumn, SPACE))
 		}
 		fmt.Fprint(t.out, t.newLine)
