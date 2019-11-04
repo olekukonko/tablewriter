@@ -267,7 +267,7 @@ Note: Caption text will wrap with total width of rendered table.
 Movie ratings.
 ```
 
-#### Example 8 - Set KubeFormat option
+#### Example 8 - Set NoWhiteSpace and TablePadding option
 ```go
 data := [][]string{
     {"node1.example.com", "Ready", "compute", "1.11"},
