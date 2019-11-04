@@ -227,12 +227,12 @@ func (t *Table) SetAlignment(align int) {
 	t.align = align
 }
 
-// SetNoWhiteSpace is used to format the table to be more like kubectl
+// Set No White Space
 func (t *Table) SetNoWhiteSpace(allow bool) {
 	t.noWhiteSpace = allow
 }
 
-// SetTablePadding is used to disable whitespaces in row start to be more like kubectl
+// Set Table Padding
 func (t *Table) SetTablePadding(padding string) {
 	t.tablePadding = padding
 }
