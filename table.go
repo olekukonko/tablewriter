@@ -72,6 +72,8 @@ type Table struct {
 	newLine        string
 	rowLine        bool
 	autoMergeCells bool
+	noWhiteSpace   bool
+	tablePadding   string
 	hdrLine        bool
 	borders        Border
 	colSize        int
@@ -223,6 +225,16 @@ func (t *Table) SetFooterAlignment(fAlign int) {
 // Set Table Alignment
 func (t *Table) SetAlignment(align int) {
 	t.align = align
+}
+
+// Set No White Space
+func (t *Table) SetNoWhiteSpace(allow bool) {
+	t.noWhiteSpace = allow
+}
+
+// Set Table Padding
+func (t *Table) SetTablePadding(padding string) {
+	t.tablePadding = padding
 }
 
 func (t *Table) SetColumnAlignment(keys []int) {
@@ -438,11 +450,14 @@ func (t *Table) printHeading() {
 	for x := 0; x < max; x++ {
 		// Check if border is set
 		// Replace with space if not set
-		fmt.Fprint(t.out, ConditionString(t.borders.Left, t.pColumn, SPACE))
+		if !t.noWhiteSpace {
+			fmt.Fprint(t.out, ConditionString(t.borders.Left, t.pColumn, SPACE))
+		}
 
 		for y := 0; y <= end; y++ {
 			v := t.cs[y]
 			h := ""
+
 			if y < len(t.headers) && x < len(t.headers[y]) {
 				h = t.headers[y][x]
 			}
@@ -450,15 +465,30 @@ func (t *Table) printHeading() {
 				h = Title(h)
 			}
 			pad := ConditionString((y == end && !t.borders.Left), SPACE, t.pColumn)
-
+			if t.noWhiteSpace {
+				pad = ConditionString((y == end && !t.borders.Left), SPACE, t.tablePadding)
+			}
 			if is_esc_seq {
-				fmt.Fprintf(t.out, " %s %s",
-					format(padFunc(h, SPACE, v),
-						t.headerParams[y]), pad)
+				if !t.noWhiteSpace {
+					fmt.Fprintf(t.out, " %s %s",
+						format(padFunc(h, SPACE, v),
+							t.headerParams[y]), pad)
+				} else {
+					fmt.Fprintf(t.out, "%s %s",
+						format(padFunc(h, SPACE, v),
+							t.headerParams[y]), pad)
+				}
 			} else {
-				fmt.Fprintf(t.out, " %s %s",
-					padFunc(h, SPACE, v),
-					pad)
+				if !t.noWhiteSpace {
+					fmt.Fprintf(t.out, " %s %s",
+						padFunc(h, SPACE, v),
+						pad)
+				} else {
+					// the spaces between breaks the kube formatting
+					fmt.Fprintf(t.out, "%s%s",
+						padFunc(h, SPACE, v),
+						pad)
+				}
 			}
 		}
 		// Next line
@@ -681,9 +711,11 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 		for y := 0; y < total; y++ {
 
 			// Check if border is set
-			fmt.Fprint(t.out, ConditionString((!t.borders.Left && y == 0), SPACE, t.pColumn))
+			if !t.noWhiteSpace {
+				fmt.Fprint(t.out, ConditionString((!t.borders.Left && y == 0), SPACE, t.pColumn))
+				fmt.Fprintf(t.out, SPACE)
+			}
 
-			fmt.Fprintf(t.out, SPACE)
 			str := columns[y][x]
 
 			// Embedding escape sequence with column value
@@ -715,11 +747,17 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 
 				}
 			}
-			fmt.Fprintf(t.out, SPACE)
+			if !t.noWhiteSpace {
+				fmt.Fprintf(t.out, SPACE)
+			} else {
+				fmt.Fprintf(t.out, t.tablePadding)
+			}
 		}
 		// Check if border is set
 		// Replace with space if not set
-		fmt.Fprint(t.out, ConditionString(t.borders.Left, t.pColumn, SPACE))
+		if !t.noWhiteSpace {
+			fmt.Fprint(t.out, ConditionString(t.borders.Left, t.pColumn, SPACE))
+		}
 		fmt.Fprint(t.out, t.newLine)
 	}
 
@@ -793,7 +831,7 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 
 			if t.autoMergeCells {
 				//Store the full line to merge mutli-lines cells
-				fullLine := strings.Join(columns[y], " ")
+				fullLine := strings.TrimRight(strings.Join(columns[y], " "), " ")
 				if len(previousLine) > y && fullLine == previousLine[y] && fullLine != "" {
 					// If this cell is identical to the one above but not empty, we don't display the border and keep the cell empty.
 					displayCellBorder = append(displayCellBorder, false)
@@ -831,7 +869,7 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 	//The new previous line is the current one
 	previousLine = make([]string, total)
 	for y := 0; y < total; y++ {
-		previousLine[y] = strings.Join(columns[y], " ") //Store the full line for multi-lines cells
+		previousLine[y] = strings.TrimRight(strings.Join(columns[y], " "), " ") //Store the full line for multi-lines cells
 	}
 	//Returns the newly added line and wether or not a border should be displayed above.
 	return previousLine, displayCellBorder
