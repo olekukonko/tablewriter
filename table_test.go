@@ -1180,3 +1180,88 @@ func TestKubeFormat(t *testing.T) {
 
 	checkEqual(t, buf.String(), want, "kube format rendering failed")
 }
+
+func Example_trim_right_whitespace() {
+	fmt.Println("First table:")
+	data := [][]string{
+		{"1/1/2014", "Domain name", "2233", "$10.98"},
+		{"1/1/2014", "January Hosting", "2233", "$54.95"},
+		{"1/4/2014", "February Hosting", "2233", "$51.00"},
+		{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
+	}
+
+	table := NewWriter(os.Stdout)
+	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
+	table.SetFooter([]string{"", "", "Total", "$146.93"})                                                  // Add Footer
+	table.SetCaption(true, "This is a very long caption. The text should wrap to the width of the table.") // Add caption
+	table.SetBorder(false)                                                                                 // Set Border to false
+	table.AppendBulk(data)                                                                                 // Add Bulk Data
+	table.SetTrimWhiteSpaceAtEOL(true)
+	table.Render()
+
+	fmt.Println("Second table:")
+	buf := &bytes.Buffer{}
+	table, err := NewCSV(buf, "testdata/test_info.csv", true)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "woops: %v", err)
+		return
+	}
+	table.SetAlignment(ALIGN_LEFT)
+	table.SetBorder(false)
+	table.SetTrimWhiteSpaceAtEOL(true)
+	table.Render()
+	fmt.Print(buf.String())
+
+	fmt.Println("Third table:")
+	data = [][]string{
+		{"1/1/2014", "Domain name", "2233", "$10.98"},
+		{"1/1/2014", "January Hosting", "2233", "$54.95"},
+		{"", "    (empty)\n    (empty)", "", ""},
+		{"1/4/2014", "February Hosting", "2233", "$51.00"},
+		{"1/4/2014", "February Extra Bandwidth", "2233", "$30.00"},
+		{"1/4/2014", "    (Discount)", "2233", "-$1.00"},
+	}
+
+	table = NewWriter(os.Stdout)
+	table.SetAutoWrapText(false)
+	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
+	table.SetFooter([]string{"", "", "Total", "$145.93"}) // Add Footer
+	table.SetBorder(false)                                // Set Border to false
+	table.AppendBulk(data)                                // Add Bulk Data
+	table.SetTrimWhiteSpaceAtEOL(true)
+	table.Render()
+
+	// Output:
+	// First table:
+	//     DATE   |       DESCRIPTION        |  CV2  | AMOUNT
+	// -----------+--------------------------+-------+----------
+	//   1/1/2014 | Domain name              |  2233 | $10.98
+	//   1/1/2014 | January Hosting          |  2233 | $54.95
+	//   1/4/2014 | February Hosting         |  2233 | $51.00
+	//   1/4/2014 | February Extra Bandwidth |  2233 | $30.00
+	// -----------+--------------------------+-------+----------
+	//                                         TOTAL | $146.93
+	//                                       --------+----------
+	// This is a very long caption. The text should wrap to the
+	// width of the table.
+	// Second table:
+	//    FIELD   |     TYPE     | NULL | KEY | DEFAULT |     EXTRA
+	// -----------+--------------+------+-----+---------+-----------------
+	//   user_id  | smallint(5)  | NO   | PRI | NULL    | auto_increment
+	//   username | varchar(10)  | NO   |     | NULL    |
+	//   password | varchar(100) | NO   |     | NULL    |
+	// Third table:
+	//     DATE   |       DESCRIPTION        |  CV2  | AMOUNT
+	// -----------+--------------------------+-------+----------
+	//   1/1/2014 | Domain name              |  2233 | $10.98
+	//   1/1/2014 | January Hosting          |  2233 | $54.95
+	//            |     (empty)              |       |
+	//            |     (empty)              |       |
+	//   1/4/2014 | February Hosting         |  2233 | $51.00
+	//   1/4/2014 | February Extra Bandwidth |  2233 | $30.00
+	//   1/4/2014 |     (Discount)           |  2233 | -$1.00
+	// -----------+--------------------------+-------+----------
+	//                                         TOTAL | $145.93
+	//                                       --------+----------
+
+}

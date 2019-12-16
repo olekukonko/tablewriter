@@ -14,6 +14,7 @@ import (
 	"io"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 const (
@@ -73,6 +74,7 @@ type Table struct {
 	rowLine        bool
 	autoMergeCells bool
 	noWhiteSpace   bool
+	trimRight      bool
 	tablePadding   string
 	hdrLine        bool
 	borders        Border
@@ -230,6 +232,11 @@ func (t *Table) SetAlignment(align int) {
 // Set No White Space
 func (t *Table) SetNoWhiteSpace(allow bool) {
 	t.noWhiteSpace = allow
+}
+
+// Set Trim White Space At EOL
+func (t *Table) SetTrimWhiteSpaceAtEOL(trim bool) {
+	t.trimRight = trim
 }
 
 // Set Table Padding
@@ -447,11 +454,18 @@ func (t *Table) printHeading() {
 	max := t.rs[headerRowIdx]
 
 	// Print Heading
+	var buf strings.Builder
 	for x := 0; x < max; x++ {
+		rowBuf := t.out
+		if t.trimRight {
+			buf.Reset()
+			rowBuf = &buf
+		}
+
 		// Check if border is set
 		// Replace with space if not set
 		if !t.noWhiteSpace {
-			fmt.Fprint(t.out, ConditionString(t.borders.Left, t.pColumn, SPACE))
+			fmt.Fprint(rowBuf, ConditionString(t.borders.Left, t.pColumn, SPACE))
 		}
 
 		for y := 0; y <= end; y++ {
@@ -470,27 +484,32 @@ func (t *Table) printHeading() {
 			}
 			if is_esc_seq {
 				if !t.noWhiteSpace {
-					fmt.Fprintf(t.out, " %s %s",
+					fmt.Fprintf(rowBuf, " %s %s",
 						format(padFunc(h, SPACE, v),
 							t.headerParams[y]), pad)
 				} else {
-					fmt.Fprintf(t.out, "%s %s",
+					fmt.Fprintf(rowBuf, "%s %s",
 						format(padFunc(h, SPACE, v),
 							t.headerParams[y]), pad)
 				}
 			} else {
 				if !t.noWhiteSpace {
-					fmt.Fprintf(t.out, " %s %s",
+					fmt.Fprintf(rowBuf, " %s %s",
 						padFunc(h, SPACE, v),
 						pad)
 				} else {
 					// the spaces between breaks the kube formatting
-					fmt.Fprintf(t.out, "%s%s",
+					fmt.Fprintf(rowBuf, "%s%s",
 						padFunc(h, SPACE, v),
 						pad)
 				}
 			}
 		}
+
+		if t.trimRight {
+			fmt.Fprint(t.out, strings.TrimRightFunc(buf.String(), unicode.IsSpace))
+		}
+
 		// Next line
 		fmt.Fprint(t.out, t.newLine)
 	}
@@ -527,11 +546,18 @@ func (t *Table) printFooter() {
 	max := t.rs[footerRowIdx]
 
 	// Print Footer
+	var buf strings.Builder
 	erasePad := make([]bool, len(t.footers))
 	for x := 0; x < max; x++ {
+		rowBuf := t.out
+		if t.trimRight {
+			buf.Reset()
+			rowBuf = &buf
+		}
+
 		// Check if border is set
 		// Replace with space if not set
-		fmt.Fprint(t.out, ConditionString(t.borders.Bottom, t.pColumn, SPACE))
+		fmt.Fprint(rowBuf, ConditionString(t.borders.Bottom, t.pColumn, SPACE))
 
 		for y := 0; y <= end; y++ {
 			v := t.cs[y]
@@ -550,19 +576,24 @@ func (t *Table) printFooter() {
 			}
 
 			if is_esc_seq {
-				fmt.Fprintf(t.out, " %s %s",
+				fmt.Fprintf(rowBuf, " %s %s",
 					format(padFunc(f, SPACE, v),
 						t.footerParams[y]), pad)
 			} else {
-				fmt.Fprintf(t.out, " %s %s",
+				fmt.Fprintf(rowBuf, " %s %s",
 					padFunc(f, SPACE, v),
 					pad)
 			}
 
-			//fmt.Fprintf(t.out, " %s %s",
+			//fmt.Fprintf(rowBuf, " %s %s",
 			//	padFunc(f, SPACE, v),
 			//	pad)
 		}
+
+		if t.trimRight {
+			fmt.Fprint(t.out, strings.TrimRightFunc(buf.String(), unicode.IsSpace))
+		}
+
 		// Next line
 		fmt.Fprint(t.out, t.newLine)
 		//t.printLine(true)
@@ -707,13 +738,19 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 		}
 	}
 	//fmt.Println(max, "\n")
+	var buf strings.Builder
 	for x := 0; x < max; x++ {
+		rowBuf := t.out
+		if t.trimRight {
+			buf.Reset()
+			rowBuf = &buf
+		}
 		for y := 0; y < total; y++ {
 
 			// Check if border is set
 			if !t.noWhiteSpace {
-				fmt.Fprint(t.out, ConditionString((!t.borders.Left && y == 0), SPACE, t.pColumn))
-				fmt.Fprintf(t.out, SPACE)
+				fmt.Fprint(rowBuf, ConditionString((!t.borders.Left && y == 0), SPACE, t.pColumn))
+				fmt.Fprintf(rowBuf, SPACE)
 			}
 
 			str := columns[y][x]
@@ -727,36 +764,39 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 			// Default alignment  would use multiple configuration
 			switch t.columnsAlign[y] {
 			case ALIGN_CENTER: //
-				fmt.Fprintf(t.out, "%s", Pad(str, SPACE, t.cs[y]))
+				fmt.Fprintf(rowBuf, "%s", Pad(str, SPACE, t.cs[y]))
 			case ALIGN_RIGHT:
-				fmt.Fprintf(t.out, "%s", PadLeft(str, SPACE, t.cs[y]))
+				fmt.Fprintf(rowBuf, "%s", PadLeft(str, SPACE, t.cs[y]))
 			case ALIGN_LEFT:
-				fmt.Fprintf(t.out, "%s", PadRight(str, SPACE, t.cs[y]))
+				fmt.Fprintf(rowBuf, "%s", PadRight(str, SPACE, t.cs[y]))
 			default:
 				if decimal.MatchString(strings.TrimSpace(str)) || percent.MatchString(strings.TrimSpace(str)) {
-					fmt.Fprintf(t.out, "%s", PadLeft(str, SPACE, t.cs[y]))
+					fmt.Fprintf(rowBuf, "%s", PadLeft(str, SPACE, t.cs[y]))
 				} else {
-					fmt.Fprintf(t.out, "%s", PadRight(str, SPACE, t.cs[y]))
+					fmt.Fprintf(rowBuf, "%s", PadRight(str, SPACE, t.cs[y]))
 
 					// TODO Custom alignment per column
 					//if max == 1 || pads[y] > 0 {
-					//	fmt.Fprintf(t.out, "%s", Pad(str, SPACE, t.cs[y]))
+					//	fmt.Fprintf(rowBuf, "%s", Pad(str, SPACE, t.cs[y]))
 					//} else {
-					//	fmt.Fprintf(t.out, "%s", PadRight(str, SPACE, t.cs[y]))
+					//	fmt.Fprintf(rowBuf, "%s", PadRight(str, SPACE, t.cs[y]))
 					//}
 
 				}
 			}
 			if !t.noWhiteSpace {
-				fmt.Fprintf(t.out, SPACE)
+				fmt.Fprintf(rowBuf, SPACE)
 			} else {
-				fmt.Fprintf(t.out, t.tablePadding)
+				fmt.Fprintf(rowBuf, t.tablePadding)
 			}
 		}
 		// Check if border is set
 		// Replace with space if not set
 		if !t.noWhiteSpace {
-			fmt.Fprint(t.out, ConditionString(t.borders.Left, t.pColumn, SPACE))
+			fmt.Fprint(rowBuf, ConditionString(t.borders.Left, t.pColumn, SPACE))
+		}
+		if t.trimRight {
+			fmt.Fprint(t.out, strings.TrimRightFunc(buf.String(), unicode.IsSpace))
 		}
 		fmt.Fprint(t.out, t.newLine)
 	}
@@ -790,7 +830,9 @@ func (t *Table) printRowsMergeCells() {
 // Print Row Information to a writer and merge identical cells.
 // Adjust column alignment based on type
 
-func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx int, previousLine []string) ([]string, []bool) {
+func (t *Table) printRowMergeCells(
+	writer io.Writer, columns [][]string, rowIdx int, previousLine []string,
+) ([]string, []bool) {
 	// Get Maximum Height
 	max := t.rs[rowIdx]
 	total := len(columns)
@@ -814,13 +856,20 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 
 	var displayCellBorder []bool
 	t.fillAlignment(total)
+	var buf strings.Builder
 	for x := 0; x < max; x++ {
+		rowBuf := writer
+		if t.trimRight {
+			buf.Reset()
+			rowBuf = &buf
+		}
+
 		for y := 0; y < total; y++ {
 
 			// Check if border is set
-			fmt.Fprint(writer, ConditionString((!t.borders.Left && y == 0), SPACE, t.pColumn))
+			fmt.Fprint(rowBuf, ConditionString((!t.borders.Left && y == 0), SPACE, t.pColumn))
 
-			fmt.Fprintf(writer, SPACE)
+			fmt.Fprintf(rowBuf, SPACE)
 
 			str := columns[y][x]
 
@@ -846,23 +895,28 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 			// Default alignment  would use multiple configuration
 			switch t.columnsAlign[y] {
 			case ALIGN_CENTER: //
-				fmt.Fprintf(writer, "%s", Pad(str, SPACE, t.cs[y]))
+				fmt.Fprintf(rowBuf, "%s", Pad(str, SPACE, t.cs[y]))
 			case ALIGN_RIGHT:
-				fmt.Fprintf(writer, "%s", PadLeft(str, SPACE, t.cs[y]))
+				fmt.Fprintf(rowBuf, "%s", PadLeft(str, SPACE, t.cs[y]))
 			case ALIGN_LEFT:
-				fmt.Fprintf(writer, "%s", PadRight(str, SPACE, t.cs[y]))
+				fmt.Fprintf(rowBuf, "%s", PadRight(str, SPACE, t.cs[y]))
 			default:
 				if decimal.MatchString(strings.TrimSpace(str)) || percent.MatchString(strings.TrimSpace(str)) {
-					fmt.Fprintf(writer, "%s", PadLeft(str, SPACE, t.cs[y]))
+					fmt.Fprintf(rowBuf, "%s", PadLeft(str, SPACE, t.cs[y]))
 				} else {
-					fmt.Fprintf(writer, "%s", PadRight(str, SPACE, t.cs[y]))
+					fmt.Fprintf(rowBuf, "%s", PadRight(str, SPACE, t.cs[y]))
 				}
 			}
-			fmt.Fprintf(writer, SPACE)
+			fmt.Fprintf(rowBuf, SPACE)
 		}
 		// Check if border is set
 		// Replace with space if not set
-		fmt.Fprint(writer, ConditionString(t.borders.Left, t.pColumn, SPACE))
+		fmt.Fprint(rowBuf, ConditionString(t.borders.Left, t.pColumn, SPACE))
+
+		if t.trimRight {
+			fmt.Fprint(writer, strings.TrimRightFunc(buf.String(), unicode.IsSpace))
+		}
+
 		fmt.Fprint(writer, t.newLine)
 	}
 
