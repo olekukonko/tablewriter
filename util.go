@@ -8,7 +8,6 @@
 package tablewriter
 
 import (
-	"math"
 	"regexp"
 	"strings"
 
@@ -65,7 +64,7 @@ func Title(name string) string {
 func Pad(s, pad string, width int) string {
 	gap := width - DisplayWidth(s)
 	if gap > 0 {
-		gapLeft := int(math.Ceil(float64(gap / 2)))
+		gapLeft := int(float64(gap / 2))
 		gapRight := gap - gapLeft
 		return strings.Repeat(string(pad), gapLeft) + s + strings.Repeat(string(pad), gapRight)
 	}
