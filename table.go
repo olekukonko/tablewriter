@@ -240,12 +240,7 @@ func (t *Table) SetTablePadding(padding string) {
 func (t *Table) SetColumnAlignment(keys []int) {
 	for _, v := range keys {
 		switch v {
-		case ALIGN_CENTER:
-			break
-		case ALIGN_LEFT:
-			break
-		case ALIGN_RIGHT:
-			break
+		case ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT:
 		default:
 			v = ALIGN_DEFAULT
 		}
