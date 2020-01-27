@@ -688,9 +688,6 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 	//	}
 	//}
 
-	// Pad Each Height
-	pads := []int{}
-
 	// Checking for ANSI escape sequences for columns
 	is_esc_seq := false
 	if len(t.columnsParams) > 0 {
@@ -701,7 +698,6 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 	for i, line := range columns {
 		length := len(line)
 		pad := max - length
-		pads = append(pads, pad)
 		for n := 0; n < pad; n++ {
 			columns[i] = append(columns[i], "  ")
 		}
@@ -795,9 +791,6 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 	max := t.rs[rowIdx]
 	total := len(columns)
 
-	// Pad Each Height
-	pads := []int{}
-
 	// Checking for ANSI escape sequences for columns
 	is_esc_seq := false
 	if len(t.columnsParams) > 0 {
@@ -806,7 +799,6 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 	for i, line := range columns {
 		length := len(line)
 		pad := max - length
-		pads = append(pads, pad)
 		for n := 0; n < pad; n++ {
 			columns[i] = append(columns[i], "  ")
 		}
