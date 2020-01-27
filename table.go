@@ -799,9 +799,9 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 	pads := []int{}
 
 	// Checking for ANSI escape sequences for columns
-	is_esc_seq := false
+	isEscSeq := false
 	if len(t.columnsParams) > 0 {
-		is_esc_seq = true
+		isEscSeq = true
 	}
 	for i, line := range columns {
 		length := len(line)
@@ -825,7 +825,7 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 			str := columns[y][x]
 
 			// Embedding escape sequence with column value
-			if is_esc_seq {
+			if isEscSeq {
 				str = format(str, t.columnsParams[y])
 			}
 
