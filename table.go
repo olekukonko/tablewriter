@@ -713,7 +713,7 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 			// Check if border is set
 			if !t.noWhiteSpace {
 				fmt.Fprint(t.out, ConditionString((!t.borders.Left && y == 0), SPACE, t.pColumn))
-				fmt.Fprintf(t.out, SPACE)
+				fmt.Fprint(t.out, SPACE)
 			}
 
 			str := columns[y][x]
@@ -748,9 +748,9 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 				}
 			}
 			if !t.noWhiteSpace {
-				fmt.Fprintf(t.out, SPACE)
+				fmt.Fprint(t.out, SPACE)
 			} else {
-				fmt.Fprintf(t.out, t.tablePadding)
+				fmt.Fprint(t.out, t.tablePadding)
 			}
 		}
 		// Check if border is set
@@ -820,7 +820,7 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 			// Check if border is set
 			fmt.Fprint(writer, ConditionString((!t.borders.Left && y == 0), SPACE, t.pColumn))
 
-			fmt.Fprintf(writer, SPACE)
+			fmt.Fprint(writer, SPACE)
 
 			str := columns[y][x]
 
@@ -858,7 +858,7 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 					fmt.Fprintf(writer, "%s", PadRight(str, SPACE, t.cs[y]))
 				}
 			}
-			fmt.Fprintf(writer, SPACE)
+			fmt.Fprint(writer, SPACE)
 		}
 		// Check if border is set
 		// Replace with space if not set
