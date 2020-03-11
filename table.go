@@ -48,6 +48,7 @@ type Border struct {
 }
 
 type Table struct {
+	separators     []int
 	out            io.Writer
 	rows           [][]string
 	lines          [][][]string
@@ -87,6 +88,7 @@ type Table struct {
 // Take io.Writer Directly
 func NewWriter(writer io.Writer) *Table {
 	t := &Table{
+		separators:    []int{},
 		out:           writer,
 		rows:          [][]string{},
 		lines:         [][][]string{},
@@ -118,6 +120,10 @@ func NewWriter(writer io.Writer) *Table {
 		footerParams:  []string{},
 		columnsAlign:  []int{}}
 	return t
+}
+
+func (t *Table) AddSeparator() {
+	t.separators = append(t.separators, len(t.lines))
 }
 
 // Render table output
@@ -658,7 +664,14 @@ func (t Table) getTableWidth() int {
 }
 
 func (t Table) printRows() {
+	sepIdx := 0
 	for i, lines := range t.lines {
+		if sepIdx < len(t.separators) && i == t.separators[sepIdx] {
+			t.printLine(true)
+			if sepIdx < len(t.separators) {
+				sepIdx++
+			}
+		}
 		t.printRow(lines, i)
 	}
 }

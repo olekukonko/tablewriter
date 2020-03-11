@@ -26,6 +26,7 @@ Generate ASCII table on the fly ...  Installation is simple as
 - Optional identical cells merging
 - Set custom caption
 - Optional reflowing of paragrpahs in multi-line cells.
+- Optional arbitrary separator via `AddSeparator` (only for non-merged tables)
 
 #### Example   1 - Basic
 ```go
@@ -195,6 +196,40 @@ table.Render()
 +----------+--------------------------+-------+---------+
 |                                       TOTAL | $146 93 |
 +----------+--------------------------+-------+---------+
+```
+
+#### Example   7 - Separator
+```go
+data := [][]string{
+    []string{"A", "The Good", "500"},
+    []string{"B", "The Very very Bad Man", "288"},
+    []string{"C", "The Ugly", "120"},
+    []string{"D", "The Gopher", "800"},
+}
+
+table := tablewriter.NewWriter(os.Stdout)
+table.SetHeader([]string{"Name", "Sign", "Rating"})
+
+for i, v := range data {
+    table.Append(v)
+    if i == 1 {
+        table.AddSeparator()
+    }
+}
+table.Render() // Send output
+```
+
+##### Output  7
+```
++------+-----------------------+--------+
+| NAME |         SIGN          | RATING |
++------+-----------------------+--------+
+|  A   |       The Good        |    500 |
+|  B   | The Very very Bad Man |    288 |
++------+-----------------------+--------+
+|  C   |       The Ugly        |    120 |
+|  D   |      The Gopher       |    800 |
++------+-----------------------+--------+
 ```
 
 
