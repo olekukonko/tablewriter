@@ -54,6 +54,36 @@ func ExampleShort() {
 	// +------+-----------------------+--------+
 }
 
+func ExampleSeparator() {
+	data := [][]string{
+		{"A", "The Good", "500"},
+		{"B", "The Very very Bad Man", "288"},
+		{"C", "The Ugly", "120"},
+		{"D", "The Gopher", "800"},
+	}
+
+	table := NewWriter(os.Stdout)
+	table.SetHeader([]string{"Name", "Sign", "Rating"})
+
+	for _, v := range data {
+		table.Append(v)
+		if v[0] == "B" {
+			table.AddSeparator()
+		}
+	}
+	table.Render()
+
+	// Output: +------+-----------------------+--------+
+	// | NAME |         SIGN          | RATING |
+	// +------+-----------------------+--------+
+	// | A    | The Good              |    500 |
+	// | B    | The Very very Bad Man |    288 |
+	// +------+-----------------------+--------+
+	// | C    | The Ugly              |    120 |
+	// | D    | The Gopher            |    800 |
+	// +------+-----------------------+--------+
+}
+
 func ExampleLong() {
 	data := [][]string{
 		{"Learn East has computers with adapted keyboards with enlarged print etc", "  Some Data  ", " Another Data"},
