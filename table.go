@@ -72,7 +72,7 @@ type Table struct {
 	newLine                 string
 	rowLine                 bool
 	autoMergeCells          bool
-	columnsToAutoMergeCells []int
+	columnsToAutoMergeCells map[int]bool
 	noWhiteSpace            bool
 	tablePadding            string
 	hdrLine                 bool
@@ -279,9 +279,17 @@ func (t *Table) SetAutoMergeCells(auto bool) {
 
 // Set Auto Merge Cells By Column Index
 // This would enable / disable the merge of cells with identical values for specific columns
+// If cols is empty, it is the same as `SetAutoMergeCells(true)`.
 func (t *Table) SetAutoMergeCellsByColumnIndex(cols []int) {
 	t.autoMergeCells = true
-	t.columnsToAutoMergeCells = cols
+
+	if len(cols) > 0 {
+		m := make(map[int]bool)
+		for _, col := range cols {
+			m[col] = true
+		}
+		t.columnsToAutoMergeCells = m
+	}
 }
 
 // Set Table Border
@@ -841,15 +849,11 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 				var mergeCell bool
 				if t.columnsToAutoMergeCells != nil {
 					// Check to see if the column index is in columnsToAutoMergeCells.
-					for _, c := range t.columnsToAutoMergeCells {
-						if y == c {
-							// index found.
-							mergeCell = true
-							break
-						}
+					if t.columnsToAutoMergeCells[y] {
+						mergeCell = true
 					}
 				} else {
-					// columnsToAutoMergeCells was not set or was set to nil.
+					// columnsToAutoMergeCells was not set.
 					mergeCell = true
 				}
 				//Store the full line to merge mutli-lines cells
