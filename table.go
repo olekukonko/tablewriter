@@ -800,10 +800,18 @@ func (t *Table) printRowsMergeCells() {
 	var previousLine []string
 	var displayCellBorder []bool
 	var tmpWriter bytes.Buffer
+
+	sepIdx := 0
 	for i, lines := range t.lines {
 		// We store the display of the current line in a tmp writer, as we need to know which border needs to be print above
 		previousLine, displayCellBorder = t.printRowMergeCells(&tmpWriter, lines, i, previousLine)
-		if i > 0 { //We don't need to print borders above first line
+		if i > 0 { // We don't need to print borders above first line
+			if sepIdx < len(t.separators) && i == t.separators[sepIdx] {
+				t.printLine(true)
+				if sepIdx < len(t.separators) {
+					sepIdx++
+				}
+			}
 			if t.rowLine {
 				t.printLineOptionalCellSeparators(true, displayCellBorder)
 			}
@@ -859,6 +867,13 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 			}
 
 			if t.autoMergeCells {
+				// Skip separator lines
+				for _, i := range t.separators {
+					if i == rowIdx {
+						continue
+					}
+				}
+
 				var mergeCell bool
 				if t.columnsToAutoMergeCells != nil {
 					// Check to see if the column index is in columnsToAutoMergeCells.

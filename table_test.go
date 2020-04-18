@@ -84,6 +84,49 @@ func ExampleSeparator() {
 	// +------+-----------------------+--------+
 }
 
+func ExampleSeparatorWithMerge() {
+	data := [][]string{
+		{"A", "The Good", "500"},
+		{"A", "The Good", "800"},
+		{"A", "The Good", "1000"},
+		{"B", "The Very very Bad Man", "288"},
+		{"C", "The Ugly", "120"},
+		{"C", "The Ugly", "320"},
+		{"C", "The Ugly", "500"},
+		{"D", "The Gopher", "800"},
+	}
+
+	table := NewWriter(os.Stdout)
+	table.SetHeader([]string{"Name", "Sign", "Rating"})
+	table.SetAutoMergeCellsByColumnIndex([]int{0, 1})
+
+	lastName := data[0][0]
+	for _, v := range data {
+		if v[0] != lastName {
+			table.AddSeparator()
+			lastName = v[0]
+		}
+		table.Append(v)
+	}
+	table.Render()
+
+	// Output: +------+-----------------------+--------+
+	// | NAME |         SIGN          | RATING |
+	// +------+-----------------------+--------+
+	// | A    | The Good              |    500 |
+	// |      |                       |    800 |
+	// |      |                       |   1000 |
+	// +------+-----------------------+--------+
+	// | B    | The Very very Bad Man |    288 |
+	// +------+-----------------------+--------+
+	// | C    | The Ugly              |    120 |
+	// |      |                       |    320 |
+	// |      |                       |    500 |
+	// +------+-----------------------+--------+
+	// | D    | The Gopher            |    800 |
+	// +------+-----------------------+--------+
+}
+
 func ExampleLong() {
 	data := [][]string{
 		{"Learn East has computers with adapted keyboards with enlarged print etc", "  Some Data  ", " Another Data"},
