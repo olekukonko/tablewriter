@@ -1,4 +1,4 @@
-module github.com/guumaster/tablewriter
+module github.com/olekukonko/tablewriter
 
 go 1.12
 
