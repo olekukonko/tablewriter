@@ -25,7 +25,7 @@ Generate ASCII table on the fly ...  Installation is simple as
 - Set custom footer support
 - Optional identical cells merging
 - Set custom caption
-- Optional reflowing of paragrpahs in multi-line cells.
+- Optional reflowing of paragraphs in multi-line cells.
 
 #### Example   1 - Basic
 ```go
