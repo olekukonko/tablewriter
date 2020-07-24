@@ -17,12 +17,14 @@ import (
 
 var ansi = regexp.MustCompile("\033\\[(?:[0-9]{1,3}(?:;[0-9]{1,3})*)?[m|K]")
 
+// DisplayWidth returns string's size (without spaces)
 func DisplayWidth(str string) int {
 	return runewidth.StringWidth(ansi.ReplaceAllLiteralString(str, ""))
 }
 
 // Simple Condition for string
-// Returns value based on condition
+
+// ConditionString returns value based on condition
 func ConditionString(cond bool, valid, inValid string) string {
 	if cond {
 		return valid
@@ -35,7 +37,8 @@ func isNumOrSpace(r rune) bool {
 }
 
 // Format Table Header
-// Replace _ , . and spaces
+
+// Title replace _ , . and spaces
 func Title(name string) string {
 	origLen := len(name)
 	rs := []rune(name)
@@ -72,7 +75,7 @@ func Pad(s, pad string, width int) string {
 	return s
 }
 
-// Pad String Right position
+// PadRight pad string right position
 // This would place string at the left side of the screen
 func PadRight(s, pad string, width int) string {
 	gap := width - DisplayWidth(s)
@@ -82,7 +85,7 @@ func PadRight(s, pad string, width int) string {
 	return s
 }
 
-// Pad String Left position
+// PadLeft pad string left position
 // This would place string at the right side of the screen
 func PadLeft(s, pad string, width int) string {
 	gap := width - DisplayWidth(s)

@@ -5,7 +5,7 @@
 // This module is a Table Writer  API for the Go Programming Language.
 // The protocols were written in pure Go and works on windows and unix systems
 
-// Create & Generate text based table
+// Package tablewriter create & generate text based table
 package tablewriter
 
 import (
@@ -17,21 +17,31 @@ import (
 )
 
 const (
+	// MAX_ROW_WIDTH is a maximum row width
 	MAX_ROW_WIDTH = 30
 )
 
 const (
-	CENTER  = "+"
-	ROW     = "-"
-	COLUMN  = "|"
-	SPACE   = " "
+	// CENTER separator for center
+	CENTER = "+"
+	// ROW separator for rows
+	ROW = "-"
+	// COLUMN separator for columns
+	COLUMN = "|"
+	// SPACE space separator
+	SPACE = " "
+	// NEWLINE new line
 	NEWLINE = "\n"
 )
 
 const (
+	// ALIGN_DEFAULT align default
 	ALIGN_DEFAULT = iota
+	// ALIGN_CENTER center align
 	ALIGN_CENTER
+	// ALIGN_RIGHT right align
 	ALIGN_RIGHT
+	// ALIGN_LEFT left align
 	ALIGN_LEFT
 )
 
@@ -40,6 +50,7 @@ var (
 	percent = regexp.MustCompile(`^-?\d+\.?\d*$%$`)
 )
 
+// Border defines a border type
 type Border struct {
 	Left   bool
 	Right  bool
@@ -47,6 +58,7 @@ type Border struct {
 	Bottom bool
 }
 
+// Table defines a table to render
 type Table struct {
 	out                     io.Writer
 	rows                    [][]string
@@ -84,7 +96,7 @@ type Table struct {
 	columnsAlign            []int
 }
 
-// Start New Table
+// NewWriter starts a new table
 // Take io.Writer Directly
 func NewWriter(writer io.Writer) *Table {
 	t := &Table{
@@ -147,7 +159,7 @@ const (
 	footerRowIdx = -2
 )
 
-// Set table header
+// SetHeader sets table header.
 func (t *Table) SetHeader(keys []string) {
 	t.colSize = len(keys)
 	for i, v := range keys {
@@ -156,7 +168,7 @@ func (t *Table) SetHeader(keys []string) {
 	}
 }
 
-// Set table Footer
+// SetFooter sets table Footer.
 func (t *Table) SetFooter(keys []string) {
 	//t.colSize = len(keys)
 	for i, v := range keys {
@@ -165,7 +177,7 @@ func (t *Table) SetFooter(keys []string) {
 	}
 }
 
-// Set table Caption
+// SetCaption sets table Caption.
 func (t *Table) SetCaption(caption bool, captionText ...string) {
 	t.caption = caption
 	if len(captionText) == 1 {
@@ -173,71 +185,72 @@ func (t *Table) SetCaption(caption bool, captionText ...string) {
 	}
 }
 
-// Turn header autoformatting on/off. Default is on (true).
+// SetAutoFormatHeaders turns header autoformatting on/off. Default is on (true).
 func (t *Table) SetAutoFormatHeaders(auto bool) {
 	t.autoFmt = auto
 }
 
-// Turn automatic multiline text adjustment on/off. Default is on (true).
+// SetAutoWrapText turns automatic multiline text adjustment on/off. Default is on (true).
 func (t *Table) SetAutoWrapText(auto bool) {
 	t.autoWrap = auto
 }
 
-// Turn automatic reflowing of multiline text when rewrapping. Default is on (true).
+// SetReflowDuringAutoWrap turns automatic reflowing of multiline text when rewrapping. Default is on (true).
 func (t *Table) SetReflowDuringAutoWrap(auto bool) {
 	t.reflowText = auto
 }
 
-// Set the Default column width
+// SetColWidth sets the Default column width.
 func (t *Table) SetColWidth(width int) {
 	t.mW = width
 }
 
-// Set the minimal width for a column
+// SetColMinWidth sets the minimal width for a column.
 func (t *Table) SetColMinWidth(column int, width int) {
 	t.cs[column] = width
 }
 
-// Set the Column Separator
+// SetColumnSeparator sets the Column Separator.
 func (t *Table) SetColumnSeparator(sep string) {
 	t.pColumn = sep
 }
 
-// Set the Row Separator
+// SetRowSeparator sets the Row Separator.
 func (t *Table) SetRowSeparator(sep string) {
 	t.pRow = sep
 }
 
-// Set the center Separator
+// SetCenterSeparator sets the center Separator.
 func (t *Table) SetCenterSeparator(sep string) {
 	t.pCenter = sep
 }
 
-// Set Header Alignment
+// SetHeaderAlignment sets Header Alignment.
 func (t *Table) SetHeaderAlignment(hAlign int) {
 	t.hAlign = hAlign
 }
 
-// Set Footer Alignment
+// SetFooterAlignment sets Footer Alignment.
 func (t *Table) SetFooterAlignment(fAlign int) {
 	t.fAlign = fAlign
 }
 
-// Set Table Alignment
+// SetAlignment sets Table Alignment.
 func (t *Table) SetAlignment(align int) {
 	t.align = align
 }
 
-// Set No White Space
+// SetNoWhiteSpace sets No White Space.
 func (t *Table) SetNoWhiteSpace(allow bool) {
 	t.noWhiteSpace = allow
 }
 
-// Set Table Padding
+// SetTablePadding sets Table Padding.
 func (t *Table) SetTablePadding(padding string) {
 	t.tablePadding = padding
 }
 
+// SetColumnAlignment sets alignment type.
 func (t *Table) SetColumnAlignment(keys []int) {
 	for _, v := range keys {
 		switch v {
@@ -254,30 +267,30 @@ func (t *Table) SetColumnAlignment(keys []int) {
 	}
 }
 
-// Set New Line
+// SetNewLine sets new line.
 func (t *Table) SetNewLine(nl string) {
 	t.newLine = nl
 }
 
-// Set Header Line
+// SetHeaderLine sets header line.
 // This would enable / disable a line after the header
 func (t *Table) SetHeaderLine(line bool) {
 	t.hdrLine = line
 }
 
-// Set Row Line
+// SetRowLine sets row line.
 // This would enable / disable a line on each row of the table
 func (t *Table) SetRowLine(line bool) {
 	t.rowLine = line
 }
 
-// Set Auto Merge Cells
+// SetAutoMergeCells sets auto merge cells.
 // This would enable / disable the merge of cells with identical values
 func (t *Table) SetAutoMergeCells(auto bool) {
 	t.autoMergeCells = auto
 }
 
-// Set Auto Merge Cells By Column Index
+// SetAutoMergeCellsByColumnIndex sets auto merge cells by column index.
 // This would enable / disable the merge of cells with identical values for specific columns
 // If cols is empty, it is the same as `SetAutoMergeCells(true)`.
 func (t *Table) SetAutoMergeCellsByColumnIndex(cols []int) {
@@ -292,12 +305,13 @@ func (t *Table) SetAutoMergeCellsByColumnIndex(cols []int) {
 	}
 }
 
-// Set Table Border
+// SetBorder sets table border.
 // This would enable / disable line around the table
 func (t *Table) SetBorder(border bool) {
 	t.SetBorders(Border{border, border, border, border})
 }
 
+// SetBorders sets borders
 func (t *Table) SetBorders(border Border) {
 	t.borders = border
 }
@@ -324,7 +338,7 @@ func (t *Table) Append(row []string) {
 	t.lines = append(t.lines, line)
 }
 
-// Append row to table with color attributes
+// Rich appends row to table with color attributes.
 func (t *Table) Rich(row []string, colors []Colors) {
 	rowSize := len(t.headers)
 	if rowSize > t.colSize {
@@ -351,7 +365,7 @@ func (t *Table) Rich(row []string, colors []Colors) {
 	t.lines = append(t.lines, line)
 }
 
-// Allow Support for Bulk Append
+// AppendBulk allows support for Bulk Append
 // Eliminates repeated for loops
 func (t *Table) AppendBulk(rows [][]string) {
 	for _, row := range rows {
@@ -364,12 +378,12 @@ func (t *Table) NumLines() int {
 	return len(t.lines)
 }
 
-// Clear rows
+// ClearRows clears rows.
 func (t *Table) ClearRows() {
 	t.lines = [][][]string{}
 }
 
-// Clear footer
+// ClearFooter clears footer.
 func (t *Table) ClearFooter() {
 	t.footers = [][]string{}
 }
@@ -454,9 +468,9 @@ func (t *Table) printHeading() {
 	padFunc := pad(t.hAlign)
 
 	// Checking for ANSI escape sequences for header
-	is_esc_seq := false
+	isEscSeq := false
 	if len(t.headerParams) > 0 {
-		is_esc_seq = true
+		isEscSeq = true
 	}
 
 	// Maximum height.
@@ -484,7 +498,7 @@ func (t *Table) printHeading() {
 			if t.noWhiteSpace {
 				pad = ConditionString((y == end && !t.borders.Left), SPACE, t.tablePadding)
 			}
-			if is_esc_seq {
+			if isEscSeq {
 				if !t.noWhiteSpace {
 					fmt.Fprintf(t.out, " %s %s",
 						format(padFunc(h, SPACE, v),
@@ -534,9 +548,9 @@ func (t *Table) printFooter() {
 	padFunc := pad(t.fAlign)
 
 	// Checking for ANSI escape sequences for header
-	is_esc_seq := false
+	isEscSeq := false
 	if len(t.footerParams) > 0 {
-		is_esc_seq = true
+		isEscSeq = true
 	}
 
 	// Maximum height.
@@ -565,7 +579,7 @@ func (t *Table) printFooter() {
 				erasePad[y] = true
 			}
 
-			if is_esc_seq {
+			if isEscSeq {
 				fmt.Fprintf(t.out, " %s %s",
 					format(padFunc(f, SPACE, v),
 						t.footerParams[y]), pad)
@@ -708,9 +722,9 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 	pads := []int{}
 
 	// Checking for ANSI escape sequences for columns
-	is_esc_seq := false
+	isEscSeq := false
 	if len(t.columnsParams) > 0 {
-		is_esc_seq = true
+		isEscSeq = true
 	}
 	t.fillAlignment(total)
 
@@ -735,7 +749,7 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 			str := columns[y][x]
 
 			// Embedding escape sequence with column value
-			if is_esc_seq {
+			if isEscSeq {
 				str = format(str, t.columnsParams[y])
 			}
 
@@ -815,9 +829,9 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 	pads := []int{}
 
 	// Checking for ANSI escape sequences for columns
-	is_esc_seq := false
+	isEscSeq := false
 	if len(t.columnsParams) > 0 {
-		is_esc_seq = true
+		isEscSeq = true
 	}
 	for i, line := range columns {
 		length := len(line)
@@ -841,7 +855,7 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 			str := columns[y][x]
 
 			// Embedding escape sequence with column value
-			if is_esc_seq {
+			if isEscSeq {
 				str = format(str, t.columnsParams[y])
 			}
 
