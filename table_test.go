@@ -37,10 +37,10 @@ func ExampleShort() {
 	}
 
 	table := NewWriter(os.Stdout)
-	table.SetHeader([]string{"Name", "Sign", "Rating"})
+	table.SetHeader("Name", "Sign", "Rating")
 
 	for _, v := range data {
-		table.Append(v)
+		table.Append(v...)
 	}
 	table.Render()
 
@@ -61,12 +61,12 @@ func ExampleLong() {
 	}
 
 	table := NewWriter(os.Stdout)
-	table.SetHeader([]string{"Name", "Sign", "Rating"})
+	table.SetHeader("Name", "Sign", "Rating")
 	table.SetCenterSeparator("*")
 	table.SetRowSeparator("=")
 
 	for _, v := range data {
-		table.Append(v)
+		table.Append(v...)
 	}
 	table.Render()
 
@@ -108,10 +108,10 @@ func TestNumLines(t *testing.T) {
 
 	buf := &bytes.Buffer{}
 	table := NewWriter(buf)
-	table.SetHeader([]string{"Name", "Sign", "Rating"})
+	table.SetHeader("Name", "Sign", "Rating")
 
 	for i, v := range data {
-		table.Append(v)
+		table.Append(v...)
 		checkEqual(t, table.NumLines(), i+1, "Number of lines failed")
 	}
 
@@ -180,10 +180,10 @@ func TestNoBorder(t *testing.T) {
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
 	table.SetAutoWrapText(false)
-	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
-	table.SetFooter([]string{"", "", "Total", "$145.93"}) // Add Footer
-	table.SetBorder(false)                                // Set Border to false
-	table.AppendBulk(data)                                // Add Bulk Data
+	table.SetHeader("Date", "Description", "CV2", "Amount")
+	table.SetFooter("", "", "Total", "$145.93") // Add Footer
+	table.SetBorder(false)                      // Set Border to false
+	table.AppendBulk(data...)                   // Add Bulk Data
 	table.Render()
 
 	want := `    DATE   |       DESCRIPTION        |  CV2  | AMOUNT   
@@ -216,9 +216,9 @@ func TestWithBorder(t *testing.T) {
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
 	table.SetAutoWrapText(false)
-	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
-	table.SetFooter([]string{"", "", "Total", "$145.93"}) // Add Footer
-	table.AppendBulk(data)                                // Add Bulk Data
+	table.SetHeader("Date", "Description", "CV2", "Amount")
+	table.SetFooter("", "", "Total", "$145.93") // Add Footer
+	table.AppendBulk(data...)                   // Add Bulk Data
 	table.Render()
 
 	want := `+----------+--------------------------+-------+---------+
@@ -249,8 +249,8 @@ func TestPrintingInMarkdown(t *testing.T) {
 
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
-	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
-	table.AppendBulk(data) // Add Bulk Data
+	table.SetHeader("Date", "Description", "CV2", "Amount")
+	table.AppendBulk(data...) // Add Bulk Data
 	table.SetBorders(Border{Left: true, Top: false, Right: true, Bottom: false})
 	table.SetCenterSeparator("|")
 	table.Render()
@@ -268,7 +268,7 @@ func TestPrintingInMarkdown(t *testing.T) {
 func TestPrintHeading(t *testing.T) {
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
-	table.SetHeader([]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c"})
+	table.SetHeader("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c")
 	table.printHeading()
 	want := `| 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | A | B | C |
 +---+---+---+---+---+---+---+---+---+---+---+---+
@@ -279,7 +279,7 @@ func TestPrintHeading(t *testing.T) {
 func TestPrintHeadingWithoutAutoFormat(t *testing.T) {
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
-	table.SetHeader([]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c"})
+	table.SetHeader("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c")
 	table.SetAutoFormatHeaders(false)
 	table.printHeading()
 	want := `| 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | a | b | c |
@@ -291,8 +291,8 @@ func TestPrintHeadingWithoutAutoFormat(t *testing.T) {
 func TestPrintFooter(t *testing.T) {
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
-	table.SetHeader([]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c"})
-	table.SetFooter([]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c"})
+	table.SetHeader("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c")
+	table.SetFooter("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c")
 	table.printFooter()
 	want := `| 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | A | B | C |
 +---+---+---+---+---+---+---+---+---+---+---+---+
@@ -304,8 +304,8 @@ func TestPrintFooterWithoutAutoFormat(t *testing.T) {
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
 	table.SetAutoFormatHeaders(false)
-	table.SetHeader([]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c"})
-	table.SetFooter([]string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c"})
+	table.SetHeader("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c")
+	table.SetFooter("1", "2", "3", "4", "5", "6", "7", "8", "9", "a", "b", "c")
 	table.printFooter()
 	want := `| 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | a | b | c |
 +---+---+---+---+---+---+---+---+---+---+---+---+
@@ -323,11 +323,11 @@ func TestPrintShortCaption(t *testing.T) {
 	}
 
 	table := NewWriter(&buf)
-	table.SetHeader([]string{"Name", "Sign", "Rating"})
+	table.SetHeader("Name", "Sign", "Rating")
 	table.SetCaption(true, "Short caption.")
 
 	for _, v := range data {
-		table.Append(v)
+		table.Append(v...)
 	}
 	table.Render()
 
@@ -354,11 +354,11 @@ func TestPrintLongCaptionWithShortExample(t *testing.T) {
 	}
 
 	table := NewWriter(&buf)
-	table.SetHeader([]string{"Name", "Sign", "Rating"})
+	table.SetHeader("Name", "Sign", "Rating")
 	table.SetCaption(true, "This is a very long caption. The text should wrap. If not, we have a problem that needs to be solved.")
 
 	for _, v := range data {
-		table.Append(v)
+		table.Append(v...)
 	}
 	table.Render()
 
@@ -387,11 +387,11 @@ func TestPrintCaptionWithFooter(t *testing.T) {
 
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
-	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
-	table.SetFooter([]string{"", "", "Total", "$146.93"})                                                  // Add Footer
+	table.SetHeader("Date", "Description", "CV2", "Amount")
+	table.SetFooter("", "", "Total", "$146.93")                                                            // Add Footer
 	table.SetCaption(true, "This is a very long caption. The text should wrap to the width of the table.") // Add caption
 	table.SetBorder(false)                                                                                 // Set Border to false
-	table.AppendBulk(data)                                                                                 // Add Bulk Data
+	table.AppendBulk(data...)                                                                              // Add Bulk Data
 	table.Render()
 
 	want := `    DATE   |       DESCRIPTION        |  CV2  | AMOUNT   
@@ -418,10 +418,10 @@ func TestPrintLongCaptionWithLongExample(t *testing.T) {
 
 	table := NewWriter(&buf)
 	table.SetCaption(true, "This is a very long caption. The text should wrap. If not, we have a problem that needs to be solved.")
-	table.SetHeader([]string{"Name", "Sign", "Rating"})
+	table.SetHeader("Name", "Sign", "Rating")
 
 	for _, v := range data {
-		table.Append(v)
+		table.Append(v...)
 	}
 	table.Render()
 
@@ -468,21 +468,21 @@ string with some lines being really long.`
 					t.SetAutoWrapText(autoWrap)
 					t.SetReflowDuringAutoWrap(reflow)
 					if mode == testHeader {
-						t.SetHeader([]string{"woo", multiline})
+						t.SetHeader("woo", multiline)
 					} else {
-						t.SetHeader([]string{"woo", "waa"})
+						t.SetHeader("woo", "waa")
 					}
 					if mode == testRow {
-						t.Append([]string{"woo", multiline})
+						t.Append("woo", multiline)
 					} else {
-						t.Append([]string{"woo", "waa"})
+						t.Append("woo", "waa")
 					}
 					if mode == testFooter {
-						t.SetFooter([]string{"woo", multiline})
+						t.SetFooter("woo", multiline)
 					} else if mode == testFooter2 {
-						t.SetFooter([]string{"", multiline})
+						t.SetFooter("", multiline)
 					} else {
-						t.SetFooter([]string{"woo", "waa"})
+						t.SetFooter("woo", "waa")
 					}
 					t.Render()
 				}
@@ -712,7 +712,7 @@ func TestPrintLine(t *testing.T) {
 	want = want + "+"
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
-	table.SetHeader(header)
+	table.SetHeader(header...)
 	table.printLine(false)
 	checkEqual(t, buf.String(), want, "line rendering failed")
 }
@@ -729,7 +729,7 @@ func TestAnsiStrip(t *testing.T) {
 	want = want + "+"
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
-	table.SetHeader(header)
+	table.SetHeader(header...)
 	table.printLine(false)
 	checkEqual(t, buf.String(), want, "line rendering failed")
 }
@@ -741,7 +741,7 @@ func NewCustomizedTable(out io.Writer) *Table {
 	table.SetRowSeparator("")
 	table.SetBorder(false)
 	table.SetAlignment(ALIGN_LEFT)
-	table.SetHeader([]string{})
+	table.SetHeader()
 	return table
 }
 
@@ -757,7 +757,7 @@ func TestSubclass(t *testing.T) {
 	}
 
 	for _, v := range data {
-		table.Append(v)
+		table.Append(v...)
 	}
 	table.Render()
 
@@ -778,10 +778,10 @@ func TestAutoMergeRows(t *testing.T) {
 	}
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
-	table.SetHeader([]string{"Name", "Sign", "Rating"})
+	table.SetHeader("Name", "Sign", "Rating")
 
 	for _, v := range data {
-		table.Append(v)
+		table.Append(v...)
 	}
 	table.SetAutoMergeCells(true)
 	table.Render()
@@ -801,10 +801,10 @@ func TestAutoMergeRows(t *testing.T) {
 
 	buf.Reset()
 	table = NewWriter(&buf)
-	table.SetHeader([]string{"Name", "Sign", "Rating"})
+	table.SetHeader("Name", "Sign", "Rating")
 
 	for _, v := range data {
-		table.Append(v)
+		table.Append(v...)
 	}
 	table.SetAutoMergeCells(true)
 	table.SetRowLine(true)
@@ -825,7 +825,7 @@ func TestAutoMergeRows(t *testing.T) {
 
 	buf.Reset()
 	table = NewWriter(&buf)
-	table.SetHeader([]string{"Name", "Sign", "Rating"})
+	table.SetHeader("Name", "Sign", "Rating")
 
 	dataWithlongText := [][]string{
 		{"A", "The Good", "500"},
@@ -833,7 +833,7 @@ func TestAutoMergeRows(t *testing.T) {
 		{"B", "The Very very very very very Bad Man", "120"},
 		{"C", "The Very very Bad Man", "200"},
 	}
-	table.AppendBulk(dataWithlongText)
+	table.AppendBulk(dataWithlongText...)
 	table.SetAutoMergeCells(true)
 	table.SetRowLine(true)
 	table.Render()
@@ -855,14 +855,14 @@ func TestAutoMergeRows(t *testing.T) {
 
 	buf.Reset()
 	table = NewWriter(&buf)
-	table.SetHeader([]string{"Name", "Sign", "Rating"})
+	table.SetHeader("Name", "Sign", "Rating")
 
 	dataWithlongText2 := [][]string{
 		{"A", "The Good", "500"},
 		{"A", "The Very very very very very Bad Man", "288"},
 		{"B", "The Very very Bad Man", "120"},
 	}
-	table.AppendBulk(dataWithlongText2)
+	table.AppendBulk(dataWithlongText2...)
 	table.SetAutoMergeCells(true)
 	table.SetRowLine(true)
 	table.Render()
@@ -888,9 +888,9 @@ func TestClearRows(t *testing.T) {
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
 	table.SetAutoWrapText(false)
-	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
-	table.SetFooter([]string{"", "", "Total", "$145.93"}) // Add Footer
-	table.AppendBulk(data)                                // Add Bulk Data
+	table.SetHeader("Date", "Description", "CV2", "Amount")
+	table.SetFooter("", "", "Total", "$145.93") // Add Footer
+	table.AppendBulk(data...)                   // Add Bulk Data
 	table.Render()
 
 	originalWant := `+----------+-------------+-------+---------+
@@ -920,7 +920,7 @@ func TestClearRows(t *testing.T) {
 	checkEqual(t, buf.String(), want, "table clear rows failed")
 
 	buf.Reset()
-	table.AppendBulk(data) // Add Bulk Data
+	table.AppendBulk(data...) // Add Bulk Data
 	table.Render()
 
 	want = `+----------+-------------+-------+---------+
@@ -943,9 +943,9 @@ func TestClearFooters(t *testing.T) {
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
 	table.SetAutoWrapText(false)
-	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
-	table.SetFooter([]string{"", "", "Total", "$145.93"}) // Add Footer
-	table.AppendBulk(data)                                // Add Bulk Data
+	table.SetHeader("Date", "Description", "CV2", "Amount")
+	table.SetFooter("", "", "Total", "$145.93") // Add Footer
+	table.AppendBulk(data...)                   // Add Bulk Data
 	table.Render()
 
 	buf.Reset()
@@ -979,9 +979,9 @@ func TestMoreDataColumnsThanHeaders(t *testing.T) {
 +---+---+---+---+
 `
 	)
-	table.SetHeader(header)
+	table.SetHeader(header...)
 	// table.SetFooter(ctx.tableCtx.footer)
-	table.AppendBulk(data)
+	table.AppendBulk(data...)
 	table.Render()
 
 	checkEqual(t, buf.String(), want)
@@ -1007,9 +1007,9 @@ func TestMoreFooterColumnsThanHeaders(t *testing.T) {
 +---+---+---+---+---+
 `
 	)
-	table.SetHeader(header)
-	table.SetFooter(footer)
-	table.AppendBulk(data)
+	table.SetHeader(header...)
+	table.SetFooter(footer...)
+	table.AppendBulk(data...)
 	table.Render()
 
 	checkEqual(t, buf.String(), want)
@@ -1035,9 +1035,9 @@ func TestSetColMinWidth(t *testing.T) {
 +-----+-----+-------+
 `
 	)
-	table.SetHeader(header)
-	table.SetFooter(footer)
-	table.AppendBulk(data)
+	table.SetHeader(header...)
+	table.SetFooter(footer...)
+	table.AppendBulk(data...)
 	table.SetColMinWidth(2, 5)
 	table.Render()
 
@@ -1072,7 +1072,7 @@ func TestNumberAlign(t *testing.T) {
 +---------------+---------------+----------------+
 `
 	)
-	table.AppendBulk(data)
+	table.AppendBulk(data...)
 	table.Render()
 
 	checkEqual(t, buf.String(), want)
@@ -1098,11 +1098,11 @@ func TestCustomAlign(t *testing.T) {
 +-----+-----+-------+
 `
 	)
-	table.SetHeader(header)
-	table.SetFooter(footer)
-	table.AppendBulk(data)
+	table.SetHeader(header...)
+	table.SetFooter(footer...)
+	table.AppendBulk(data...)
 	table.SetColMinWidth(2, 5)
-	table.SetColumnAlignment([]int{ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT})
+	table.SetColumnAlignment(ALIGN_LEFT, ALIGN_CENTER, ALIGN_RIGHT)
 	table.Render()
 
 	checkEqual(t, buf.String(), want)
@@ -1156,7 +1156,7 @@ func TestKubeFormat(t *testing.T) {
 
 	var buf bytes.Buffer
 	table := NewWriter(&buf)
-	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
+	table.SetHeader("Date", "Description", "CV2", "Amount")
 	table.SetAutoWrapText(false)
 	table.SetAutoFormatHeaders(true)
 	table.SetHeaderAlignment(ALIGN_LEFT)
@@ -1168,7 +1168,7 @@ func TestKubeFormat(t *testing.T) {
 	table.SetBorder(false)
 	table.SetTablePadding("\t") // pad with tabs
 	table.SetNoWhiteSpace(true)
-	table.AppendBulk(data) // Add Bulk Data
+	table.AppendBulk(data...) // Add Bulk Data
 	table.Render()
 
 	want := `DATE    	DESCRIPTION        	CV2 	AMOUNT 
