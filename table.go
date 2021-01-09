@@ -82,6 +82,7 @@ type Table struct {
 	columnsParams           []string
 	footerParams            []string
 	columnsAlign            []int
+	mdAlign                 bool
 }
 
 // Start New Table
@@ -117,7 +118,9 @@ func NewWriter(writer io.Writer) *Table {
 		headerParams:  []string{},
 		columnsParams: []string{},
 		footerParams:  []string{},
-		columnsAlign:  []int{}}
+		columnsAlign:  []int{},
+		mdAlign:       false,
+	}
 	return t
 }
 
@@ -186,6 +189,11 @@ func (t *Table) SetAutoWrapText(auto bool) {
 // Turn automatic reflowing of multiline text when rewrapping. Default is on (true).
 func (t *Table) SetReflowDuringAutoWrap(auto bool) {
 	t.reflowText = auto
+}
+
+// Use markdown alignment characters (":") make markdown rendering match text alignment
+func (t *Table) SetMarkdownColumnAlignment(val bool) {
+	t.mdAlign = val
 }
 
 // Set the Default column width
@@ -387,15 +395,34 @@ func (t *Table) center(i int) string {
 	return t.pCenter
 }
 
+func (t *Table) lineEdges(col int) (left, right string) {
+	if !t.mdAlign {
+		return t.pRow, t.pRow
+	}
+	t.fillAlignment(len(t.cs))
+	const mdAlignChar = ":"
+	switch t.columnsAlign[col] {
+	case ALIGN_CENTER:
+		return mdAlignChar, mdAlignChar
+	case ALIGN_LEFT:
+		return mdAlignChar, t.pRow
+	case ALIGN_RIGHT:
+		return t.pRow, mdAlignChar
+	default:
+		return t.pRow, t.pRow
+	}
+}
+
 // Print line based on row width
 func (t *Table) printLine(nl bool) {
 	fmt.Fprint(t.out, t.center(-1))
 	for i := 0; i < len(t.cs); i++ {
+		lEdge, rEdge := t.lineEdges(i)
 		v := t.cs[i]
 		fmt.Fprintf(t.out, "%s%s%s%s",
-			t.pRow,
+			lEdge,
 			strings.Repeat(string(t.pRow), v),
-			t.pRow,
+			rEdge,
 			t.center(i))
 	}
 	if nl {
