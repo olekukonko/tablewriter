@@ -18,7 +18,6 @@ var (
 	align     = flag.String("a", "none", "Set alignment with eg. none|left|right|center")
 	pipe      = flag.Bool("p", false, "Support for Piping from STDIN")
 	border    = flag.Bool("b", true, "Enable / disable table border")
-	casing    = flag.Bool("c", false, "Set header to be title case")
 )
 
 func main() {
@@ -77,10 +76,6 @@ func process(r io.Reader) {
 		table.SetAlignment(tablewriter.ALIGN_CENTER)
 	}
 	table.SetBorder(*border)
-	if *casing {
-		table.SetAutoFormatHeaders(false)
-		table.SetTitleCase(*casing)
-	}
 	table.Render()
 }
 
