@@ -121,6 +121,33 @@ func NewWriter(writer io.Writer) *Table {
 	return t
 }
 
+// SetOutput sets the table output target.
+func (t *Table) SetOutput(w io.Writer) {
+	t.out = w
+}
+
+// RenderRowOnce renders a single row without actually appending to the existing, so it can be re-used more than one times.
+// It will also render without caption, headers and footer, it can be used after the table has been printed at least once.
+func (t *Table) RenderRowOnce(row []string) int {
+	// don't print headers
+	// but keep the `t.cs` which will help align the rows based on the previous renders.
+	bckp := t.lines
+	t.lines = [][][]string{}
+
+	t.Append(row)
+
+	if t.autoMergeCells {
+		t.printRowsMergeCells()
+	} else {
+		t.printRows()
+	}
+
+	t.lines = bckp
+	n := t.NumLines()
+
+	return n
+}
+
 // Render table output
 func (t *Table) Render() {
 	if t.borders.Top {
@@ -302,8 +329,7 @@ func (t *Table) SetBorders(border Border) {
 	t.borders = border
 }
 
-// Append row to table
-func (t *Table) Append(row []string) {
+func (t *Table) extractLine(row []string) [][]string {
 	rowSize := len(t.headers)
 	if rowSize > t.colSize {
 		t.colSize = rowSize
@@ -321,6 +347,13 @@ func (t *Table) Append(row []string) {
 		// Append broken words
 		line = append(line, out)
 	}
+
+	return line
+}
+
+// Append row to table
+func (t *Table) Append(row []string) {
+	line := t.extractLine(row)
 	t.lines = append(t.lines, line)
 }
 
@@ -367,6 +400,18 @@ func (t *Table) NumLines() int {
 // Clear rows
 func (t *Table) ClearRows() {
 	t.lines = [][][]string{}
+}
+
+// ClearHeaders removes all the table's headers.
+func (t *Table) ClearHeaders() {
+	t.headers = t.headers[0:0]
+
+	// reset the column separators, otherwise we will have empty headers if the length of the new headers is smaller than the current one.
+	if len(t.cs) > 0 {
+		for k := range t.cs {
+			delete(t.cs, k)
+		}
+	}
 }
 
 // Clear footer
