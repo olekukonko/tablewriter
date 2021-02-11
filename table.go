@@ -10,8 +10,10 @@ package tablewriter
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"regexp"
 	"strings"
 )
@@ -300,6 +302,69 @@ func (t *Table) SetBorder(border bool) {
 
 func (t *Table) SetBorders(border Border) {
 	t.borders = border
+}
+
+// SetStructs sets header and rows from slice of struct.
+// If something that is not a slice is passed, error will be returned.
+// The tag specified by "tablewriter" for the struct becomes the header.
+// If not specified or empty, the field name will be used.
+func (t *Table) SetStructs(v interface{}) error {
+	vt := reflect.TypeOf(v)
+	vv := reflect.ValueOf(v)
+	switch vt.Kind() {
+	case reflect.Slice, reflect.Array:
+		if vv.Len() < 1 {
+			return errors.New("empty value")
+		}
+		first := vv.Index(0)
+		e := first.Type()
+		switch e.Kind() {
+		case reflect.Struct:
+			// OK
+		case reflect.Ptr:
+			e = first.Elem().Type()
+			if e.Kind() != reflect.Struct {
+				return fmt.Errorf("invalid kind %s", e.Kind())
+			}
+		default:
+			return fmt.Errorf("invalid kind %s", e.Kind())
+		}
+		n := e.NumField()
+		headers := make([]string, n)
+		for i := 0; i < n; i++ {
+			f := e.Field(i)
+			header := f.Tag.Get("tablewriter")
+			if header == "" {
+				header = f.Name
+			}
+			headers[i] = header
+		}
+		t.SetHeader(headers)
+		for i := 0; i < vv.Len(); i++ {
+			item := reflect.Indirect(vv.Index(i))
+			itemType := reflect.TypeOf(item)
+			switch itemType.Kind() {
+			case reflect.Struct:
+				// OK
+			default:
+				return fmt.Errorf("invalid item type %v", itemType.Kind())
+			}
+			nf := item.NumField()
+			rows := make([]string, nf)
+			for j := 0; j < nf; j++ {
+				f := item.Field(j)
+				if s, ok := f.Interface().(fmt.Stringer); ok {
+					rows[j] = s.String()
+					continue
+				}
+				rows[j] = fmt.Sprint(f)
+			}
+			t.Append(rows)
+		}
+	default:
+		return fmt.Errorf("invalid type %T", v)
+	}
+	return nil
 }
 
 // Append row to table

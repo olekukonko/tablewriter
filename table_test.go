@@ -18,6 +18,7 @@ import (
 )
 
 func checkEqual(t *testing.T, got, want interface{}, msgs ...interface{}) {
+	t.Helper()
 	if !reflect.DeepEqual(got, want) {
 		buf := bytes.Buffer{}
 		buf.WriteString("got:\n[%v]\nwant:\n[%v]\n")
@@ -1179,4 +1180,83 @@ func TestKubeFormat(t *testing.T) {
 `
 
 	checkEqual(t, buf.String(), want, "kube format rendering failed")
+}
+
+type testStringerType struct{}
+
+func (t testStringerType) String() string { return "testStringerType" }
+
+func TestStructs(t *testing.T) {
+	type testType struct {
+		A string
+		B int
+		C testStringerType
+		D bool `tablewriter:"DD"`
+	}
+	tests := []struct {
+		name    string
+		values  interface{}
+		wantErr bool
+		want    string
+	}{
+		{
+			name: "slice of struct",
+			values: []testType{
+				{A: "AAA", B: 11, D: true},
+				{A: "BBB", B: 22},
+			},
+			want: `+-----+----+------------------+-------+
+|  A  | B  |        C         |  DD   |
++-----+----+------------------+-------+
+| AAA | 11 | testStringerType | true  |
+| BBB | 22 | testStringerType | false |
++-----+----+------------------+-------+
+`,
+		},
+		{
+			name: "slice of struct pointer",
+			values: []*testType{
+				{A: "AAA", B: 11, D: true},
+				{A: "BBB", B: 22},
+			},
+			want: `+-----+----+------------------+-------+
+|  A  | B  |        C         |  DD   |
++-----+----+------------------+-------+
+| AAA | 11 | testStringerType | true  |
+| BBB | 22 | testStringerType | false |
++-----+----+------------------+-------+
+`,
+		},
+		{
+			name:    "invalid input",
+			values:  interface{}(1),
+			wantErr: true,
+		},
+		{
+			name:    "invalid input",
+			values:  testType{},
+			wantErr: true,
+		},
+		{
+			name:    "invalid input",
+			values:  &testType{},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			table := NewWriter(&buf)
+			err := table.SetStructs(tt.values)
+			if tt.wantErr != (err != nil) {
+				t.Fatal(tt.wantErr, err)
+			}
+			if tt.wantErr {
+				t.Log(err)
+				return
+			}
+			table.Render()
+			checkEqual(t, buf.String(), tt.want)
+		})
+	}
 }
