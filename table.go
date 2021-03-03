@@ -380,11 +380,10 @@ func (t *Table) SetStructs(v interface{}) error {
 						rows[j] = s.String()
 						continue
 					}
+					rows[j] = fmt.Sprint(f)
 				} else {
 					rows[j] = "nil"
-					continue
 				}
-				rows[j] = fmt.Sprint(f)
 			}
 			t.Append(rows)
 		}
