@@ -308,7 +308,9 @@ func (t *Table) SetBorders(border Border) {
 // If something that is not a slice is passed, error will be returned.
 // The tag specified by "tablewriter" for the struct becomes the header.
 // If not specified or empty, the field name will be used.
-// If field implements fmt.Stringer, the result will be used.
+// The field of the first element of the slice is used as the header.
+// If the element implements fmt.Stringer, the result will be used.
+// And the slice contains nil, it will be skipped without rendering.
 func (t *Table) SetStructs(v interface{}) error {
 	if v == nil {
 		return errors.New("nil value")
@@ -320,12 +322,17 @@ func (t *Table) SetStructs(v interface{}) error {
 		if vv.Len() < 1 {
 			return errors.New("empty value")
 		}
+
+		// check first element to set header
 		first := vv.Index(0)
 		e := first.Type()
 		switch e.Kind() {
 		case reflect.Struct:
 			// OK
 		case reflect.Ptr:
+			if first.IsNil() {
+				return errors.New("the first element is nil")
+			}
 			e = first.Elem().Type()
 			if e.Kind() != reflect.Struct {
 				return fmt.Errorf("invalid kind %s", e.Kind())
@@ -344,6 +351,7 @@ func (t *Table) SetStructs(v interface{}) error {
 			headers[i] = header
 		}
 		t.SetHeader(headers)
+
 		for i := 0; i < vv.Len(); i++ {
 			item := reflect.Indirect(vv.Index(i))
 			itemType := reflect.TypeOf(item)
@@ -353,7 +361,14 @@ func (t *Table) SetStructs(v interface{}) error {
 			default:
 				return fmt.Errorf("invalid item type %v", itemType.Kind())
 			}
+			if !item.IsValid() {
+				// skip rendering
+				continue
+			}
 			nf := item.NumField()
+			if n != nf {
+				return errors.New("invalid num of field")
+			}
 			rows := make([]string, nf)
 			for j := 0; j < nf; j++ {
 				f := reflect.Indirect(item.Field(j))

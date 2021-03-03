@@ -1323,6 +1323,42 @@ func TestStructs(t *testing.T) {
 			values:  nil,
 			wantErr: true,
 		},
+		{
+			name:    "the first element is nil",
+			values:  []*testType{nil, nil},
+			wantErr: true,
+		},
+		{
+			name:    "empty slice",
+			values:  []testType{},
+			wantErr: true,
+		},
+		{
+			name: "mixed slice", // TODO: Should we support this case?
+			values: []interface{}{
+				testType{A: "a", B: 2, C: c, D: false},
+				testType2{A: &a, B: &b, C: &c, D: &d},
+				testType3{A: &ap, B: &bp, C: &cp, D: &dp},
+			},
+			wantErr: true,
+		},
+		{
+			name: "skip nil element",
+			values: []*testType{
+				{A: "a", B: 1, D: true},
+				nil,
+				nil,
+				{A: "A", B: 3, D: false},
+			},
+			want: `
++---+---+------------------+-------+
+| A | B |        C         |  DD   |
++---+---+------------------+-------+
+| a | 1 | testStringerType | true  |
+| A | 3 | testStringerType | false |
++---+---+------------------+-------+
+`,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
