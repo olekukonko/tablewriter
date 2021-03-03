@@ -54,7 +54,7 @@ func ExampleShort() {
 	// +------+-----------------------+--------+
 }
 
-func ExampleLong() {
+func ExampleTable() {
 	data := [][]string{
 		{"Learn East has computers with adapted keyboards with enlarged print etc", "  Some Data  ", " Another Data"},
 		{"Instead of lining up the letters all ", "the way across, he splits the keyboard in two", "Like most ergonomic keyboards", "See Data"},
@@ -81,7 +81,7 @@ func ExampleLong() {
 	// *================================*================================*===============================*==========*
 }
 
-func ExampleCSV() {
+func ExampleNewCSV() {
 	table, _ := NewCSV(os.Stdout, "testdata/test.csv", true)
 	table.SetCenterSeparator("*")
 	table.SetRowSeparator("=")
