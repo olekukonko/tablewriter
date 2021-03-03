@@ -1193,6 +1193,28 @@ func TestStructs(t *testing.T) {
 		C testStringerType
 		D bool `tablewriter:"DD"`
 	}
+	type testType2 struct {
+		A *string
+		B *int
+		C *testStringerType
+		D *bool `tablewriter:"DD"`
+	}
+	type testType3 struct {
+		A **string
+		B **int
+		C **testStringerType
+		D **bool `tablewriter:"DD"`
+	}
+	a := "a"
+	b := 1
+	c := testStringerType{}
+	d := true
+
+	ap := &a
+	bp := &b
+	cp := &c
+	dp := &d
+
 	tests := []struct {
 		name    string
 		values  interface{}
@@ -1205,7 +1227,8 @@ func TestStructs(t *testing.T) {
 				{A: "AAA", B: 11, D: true},
 				{A: "BBB", B: 22},
 			},
-			want: `+-----+----+------------------+-------+
+			want: `
++-----+----+------------------+-------+
 |  A  | B  |        C         |  DD   |
 +-----+----+------------------+-------+
 | AAA | 11 | testStringerType | true  |
@@ -1219,12 +1242,65 @@ func TestStructs(t *testing.T) {
 				{A: "AAA", B: 11, D: true},
 				{A: "BBB", B: 22},
 			},
-			want: `+-----+----+------------------+-------+
+			want: `
++-----+----+------------------+-------+
 |  A  | B  |        C         |  DD   |
 +-----+----+------------------+-------+
 | AAA | 11 | testStringerType | true  |
 | BBB | 22 | testStringerType | false |
 +-----+----+------------------+-------+
+`,
+		},
+		{
+			name: "pointer field",
+			values: []*testType2{
+				{A: &a, B: &b, C: &c, D: &d},
+			},
+			want: `
++---+---+------------------+------+
+| A | B |        C         |  DD  |
++---+---+------------------+------+
+| a | 1 | testStringerType | true |
++---+---+------------------+------+
+`,
+		},
+		{
+			name: "nil pointer field",
+			values: []*testType2{
+				{A: nil, B: nil, C: nil, D: nil},
+			},
+			want: `
++-----+-----+-----+-----+
+|  A  |  B  |  C  | DD  |
++-----+-----+-----+-----+
+| nil | nil | nil | nil |
++-----+-----+-----+-----+
+`,
+		},
+		{
+			name: "typed nil pointer field",
+			values: []*testType2{
+				{A: (*string)(nil), B: (*int)(nil), C: (*testStringerType)(nil), D: (*bool)(nil)},
+			},
+			want: `
++-----+-----+-----+-----+
+|  A  |  B  |  C  | DD  |
++-----+-----+-----+-----+
+| nil | nil | nil | nil |
++-----+-----+-----+-----+
+`,
+		},
+		{
+			name: "pointer of pointer field",
+			values: []*testType3{
+				{A: &ap, B: &bp, C: &cp, D: &dp},
+			},
+			want: `
++---+---+------------------+------+
+| A | B |        C         |  DD  |
++---+---+------------------+------+
+| a | 1 | testStringerType | true |
++---+---+------------------+------+
 `,
 		},
 		{
@@ -1242,6 +1318,11 @@ func TestStructs(t *testing.T) {
 			values:  &testType{},
 			wantErr: true,
 		},
+		{
+			name:    "nil value",
+			values:  nil,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1256,7 +1337,7 @@ func TestStructs(t *testing.T) {
 				return
 			}
 			table.Render()
-			checkEqual(t, buf.String(), tt.want)
+			checkEqual(t, buf.String(), strings.TrimPrefix(tt.want, "\n"))
 		})
 	}
 }

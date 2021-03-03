@@ -308,7 +308,11 @@ func (t *Table) SetBorders(border Border) {
 // If something that is not a slice is passed, error will be returned.
 // The tag specified by "tablewriter" for the struct becomes the header.
 // If not specified or empty, the field name will be used.
+// If field implements fmt.Stringer, the result will be used.
 func (t *Table) SetStructs(v interface{}) error {
+	if v == nil {
+		return errors.New("nil value")
+	}
 	vt := reflect.TypeOf(v)
 	vv := reflect.ValueOf(v)
 	switch vt.Kind() {
@@ -352,9 +356,17 @@ func (t *Table) SetStructs(v interface{}) error {
 			nf := item.NumField()
 			rows := make([]string, nf)
 			for j := 0; j < nf; j++ {
-				f := item.Field(j)
-				if s, ok := f.Interface().(fmt.Stringer); ok {
-					rows[j] = s.String()
+				f := reflect.Indirect(item.Field(j))
+				if f.Kind() == reflect.Ptr {
+					f = f.Elem()
+				}
+				if f.IsValid() {
+					if s, ok := f.Interface().(fmt.Stringer); ok {
+						rows[j] = s.String()
+						continue
+					}
+				} else {
+					rows[j] = "nil"
 					continue
 				}
 				rows[j] = fmt.Sprint(f)
