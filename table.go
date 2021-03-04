@@ -150,7 +150,7 @@ const (
 )
 
 // Set table header
-func (t *Table) SetHeader(keys []string) {
+func (t *Table) SetHeader(keys ...string) {
 	t.colSize = len(keys)
 	for i, v := range keys {
 		lines := t.parseDimension(v, i, headerRowIdx)
@@ -159,7 +159,7 @@ func (t *Table) SetHeader(keys []string) {
 }
 
 // Set table Footer
-func (t *Table) SetFooter(keys []string) {
+func (t *Table) SetFooter(keys ...string) {
 	//t.colSize = len(keys)
 	for i, v := range keys {
 		lines := t.parseDimension(v, i, footerRowIdx)
@@ -240,7 +240,7 @@ func (t *Table) SetTablePadding(padding string) {
 	t.tablePadding = padding
 }
 
-func (t *Table) SetColumnAlignment(keys []int) {
+func (t *Table) SetColumnAlignment(keys ...int) {
 	for _, v := range keys {
 		switch v {
 		case ALIGN_CENTER:
@@ -282,7 +282,7 @@ func (t *Table) SetAutoMergeCells(auto bool) {
 // Set Auto Merge Cells By Column Index
 // This would enable / disable the merge of cells with identical values for specific columns
 // If cols is empty, it is the same as `SetAutoMergeCells(true)`.
-func (t *Table) SetAutoMergeCellsByColumnIndex(cols []int) {
+func (t *Table) SetAutoMergeCellsByColumnIndex(cols ...int) {
 	t.autoMergeCells = true
 
 	if len(cols) > 0 {
@@ -394,7 +394,7 @@ func (t *Table) SetStructs(v interface{}) error {
 }
 
 // Append row to table
-func (t *Table) Append(row []string) {
+func (t *Table) Append(row ...string) {
 	rowSize := len(t.headers)
 	if rowSize > t.colSize {
 		t.colSize = rowSize
@@ -444,9 +444,9 @@ func (t *Table) Rich(row []string, colors []Colors) {
 
 // Allow Support for Bulk Append
 // Eliminates repeated for loops
-func (t *Table) AppendBulk(rows [][]string) {
+func (t *Table) AppendBulk(rows ...[]string) {
 	for _, row := range rows {
-		t.Append(row)
+		t.Append(row...)
 	}
 }
 
