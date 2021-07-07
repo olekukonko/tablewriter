@@ -1377,3 +1377,38 @@ func TestStructs(t *testing.T) {
 		})
 	}
 }
+
+func TestAlignWithEmptyHeader(t *testing.T) {
+	var (
+		buf    = &bytes.Buffer{}
+		table  = NewWriter(buf)
+		header = []string{"", "", "col2"}
+		lines  = []string{
+			"Lorem ipsum dolor",
+			"quis commodo odio",
+		}
+		linesWithNewline = strings.Join(lines, "\n")
+		data             = [][]string{
+			{" ", "b", "c"},
+			{" ", "e", linesWithNewline},
+		}
+		want = `    |   |       COL2         
+----+---+--------------------
+    | b | c                  
+----+---+--------------------
+    | e | Lorem ipsum dolor  
+    |   | quis commodo odio  
+----+---+--------------------
+`
+	)
+	table.SetHeader(header)
+	table.SetBorder(false)
+	table.SetColMinWidth(2, 15)
+	table.SetAutoWrapText(false)
+	table.SetRowLine(true)
+	table.AppendBulk(data)
+
+	table.Render()
+
+	checkEqual(t, buf.String(), want)
+}
