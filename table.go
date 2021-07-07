@@ -809,8 +809,10 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 		length := len(line)
 		pad := max - length
 		pads = append(pads, pad)
+		// used to fill empty rows
+		empty := strings.Repeat(" ", len(line))
 		for n := 0; n < pad; n++ {
-			columns[i] = append(columns[i], "  ")
+			columns[i] = append(columns[i], empty)
 		}
 	}
 	//fmt.Println(max, "\n")
