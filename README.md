@@ -1,7 +1,7 @@
 ASCII Table Writer
 =========
 
-[![Build Status](https://travis-ci.org/olekukonko/tablewriter.png?branch=master)](https://travis-ci.org/olekukonko/tablewriter)
+[![ci](https://github.com/olekukonko/tablewriter/workflows/ci/badge.svg?branch=master)](https://github.com/olekukonko/tablewriter/actions?query=workflow%3Aci)
 [![Total views](https://img.shields.io/sourcegraph/rrc/github.com/olekukonko/tablewriter.svg)](https://sourcegraph.com/github.com/olekukonko/tablewriter)
 [![Godoc](https://godoc.org/github.com/olekukonko/tablewriter?status.svg)](https://godoc.org/github.com/olekukonko/tablewriter)
 
@@ -25,8 +25,7 @@ Generate ASCII table on the fly ...  Installation is simple as
 - Set custom footer support
 - Optional identical cells merging
 - Set custom caption
-- Optional reflowing of paragrpahs in multi-line cells.
-- Optional arbitrary separator via `AddSeparator` (only for non-merged tables)
+- Optional reflowing of paragraphs in multi-line cells.
 
 #### Example   1 - Basic
 ```go
@@ -231,40 +230,6 @@ table.Render()
 +----------+--------------------------+-------+---------+
 |                                       TOTAL | $146.93 |
 +----------+--------------------------+-------+---------+
-```
-
-#### Example   8 - Separator
-```go
-data := [][]string{
-    []string{"A", "The Good", "500"},
-    []string{"B", "The Very very Bad Man", "288"},
-    []string{"C", "The Ugly", "120"},
-    []string{"D", "The Gopher", "800"},
-}
-
-table := tablewriter.NewWriter(os.Stdout)
-table.SetHeader([]string{"Name", "Sign", "Rating"})
-
-for i, v := range data {
-    table.Append(v)
-    if i == 1 {
-        table.AddSeparator()
-    }
-}
-table.Render() // Send output
-```
-
-##### Output  8
-```
-+------+-----------------------+--------+
-| NAME |         SIGN          | RATING |
-+------+-----------------------+--------+
-|  A   |       The Good        |    500 |
-|  B   | The Very very Bad Man |    288 |
-+------+-----------------------+--------+
-|  C   |       The Ugly        |    120 |
-|  D   |      The Gopher       |    800 |
-+------+-----------------------+--------+
 ```
 
 
