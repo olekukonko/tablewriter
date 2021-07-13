@@ -55,7 +55,7 @@ func ExampleShort() {
 	// +------+-----------------------+--------+
 }
 
-func ExampleSeparator() {
+func ExampleTable_separator() {
 	data := [][]string{
 		{"A", "The Good", "500"},
 		{"B", "The Very very Bad Man", "288"},
@@ -85,7 +85,7 @@ func ExampleSeparator() {
 	// +------+-----------------------+--------+
 }
 
-func ExampleSeparatorWithMerge() {
+func ExampleTable_separatorWithMerge() {
 	data := [][]string{
 		{"A", "The Good", "500"},
 		{"A", "The Good", "800"},
