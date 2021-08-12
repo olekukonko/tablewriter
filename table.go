@@ -123,8 +123,10 @@ func NewWriter(writer io.Writer) *Table {
 	return t
 }
 
-// Render table output
-func (t *Table) Render() {
+// Render table output, returns the number of lines of data (includes any newline that the table wraps).
+func (t *Table) Render() int {
+	dataLines := 0
+
 	if t.borders.Top {
 		t.printLine(true)
 	}
@@ -132,7 +134,7 @@ func (t *Table) Render() {
 	if t.autoMergeCells {
 		t.printRowsMergeCells()
 	} else {
-		t.printRows()
+		dataLines = t.printRows()
 	}
 	if !t.rowLine && t.borders.Bottom {
 		t.printLine(true)
@@ -142,6 +144,8 @@ func (t *Table) Render() {
 	if t.caption {
 		t.printCaption()
 	}
+
+	return dataLines
 }
 
 const (
@@ -764,10 +768,13 @@ func (t Table) getTableWidth() int {
 	return (chars + (3 * t.colSize) + 2)
 }
 
-func (t Table) printRows() {
+func (t Table) printRows() int {
+	rows := 0
 	for i, lines := range t.lines {
-		t.printRow(lines, i)
+		rows += t.printRow(lines, i)
 	}
+
+	return rows
 }
 
 func (t *Table) fillAlignment(num int) {
@@ -782,7 +789,7 @@ func (t *Table) fillAlignment(num int) {
 // Print Row Information
 // Adjust column alignment based on type
 
-func (t *Table) printRow(columns [][]string, rowIdx int) {
+func (t *Table) printRow(columns [][]string, rowIdx int) int {
 	// Get Maximum Height
 	max := t.rs[rowIdx]
 	total := len(columns)
@@ -871,6 +878,8 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 	if t.rowLine {
 		t.printLine(true)
 	}
+
+	return max
 }
 
 // Print the rows of the table and merge the cells that are identical
