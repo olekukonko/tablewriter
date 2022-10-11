@@ -14,7 +14,7 @@ func NewHTML(writer io.Writer, fileName string, headingsNum int) (*Table, error)
 	}
 	defer file.Close()
 	// Parse the html
-	htmlParser := html.NewTokenizer(file) // file must utf-8 encoded html or error
+	htmlParser := html.NewTokenizer(file) // file must be a utf-8 encoded html or error
 
 	var isTh bool
 	var isTd bool
@@ -30,7 +30,7 @@ func NewHTML(writer io.Writer, fileName string, headingsNum int) (*Table, error)
 		switch {
 		case tt == html.ErrorToken:
 			return  &Table{}, nil
-		// if the token gets to start tag that is td or th, make isTd and isTh true
+		// if the token gets to a start tag that is td or th, make isTd and isTh true
 		case tt == html.StartTagToken:
 			t := htmlParser.Token()
 			isTd = t.Data == "td"
