@@ -15,7 +15,7 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-var ansi = regexp.MustCompile("\033\\[(?:[0-9]{1,3}(?:;[0-9]{1,3})*)?[m|K]")
+var ansi = regexp.MustCompile("\033(?:\\[(?:[0-9]{1,3}(?:;[0-9]{1,3})*)?[m|K]|\\]8;;.*?\033\\\\)")
 
 func DisplayWidth(str string) int {
 	return runewidth.StringWidth(ansi.ReplaceAllLiteralString(str, ""))
