@@ -29,7 +29,7 @@ func NewHTML(writer io.Writer, fileName string, headingsNum int) (*Table, error)
 		tt := htmlParser.Next()
 		switch {
 		case tt == html.ErrorToken:
-			return  &Table{}, nil
+			return  table, nil
 		// if the token gets to a start tag that is td or th, make isTd and isTh true
 		case tt == html.StartTagToken:
 			t := htmlParser.Token()
