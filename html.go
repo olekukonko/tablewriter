@@ -6,31 +6,28 @@ import (
 	"golang.org/x/net/html"
 )
 
-func NewHTML(writer io.Writer, fileName string, headingsNum int) (*Table, error) {
+func NewHTML(writer io.Writer, fileName string, columnNum int) (*Table, error) {
 	file, err := os.Open(fileName)
 
 	if err != nil {
 		return  &Table{}, err
 	}
 	defer file.Close()
-	// Parse the html
-	htmlParser := html.NewTokenizer(file) // file must be a utf-8 encoded html or error
+	
+	htmlParser := html.NewTokenizer(file) 
 
 	var isTh bool
 	var isTd bool
-	var n int // n is the number of th tags in the html file
 	var depth int
 	var headings []string
-	var records []string
+	var cellData []string
 	table := NewWriter(writer)
 	
-	// start a loop tokenizing the html
 	for {
 		tt := htmlParser.Next()
 		switch {
 		case tt == html.ErrorToken:
 			return  table, nil
-		// if the token gets to a start tag that is td or th, make isTd and isTh true
 		case tt == html.StartTagToken:
 			t := htmlParser.Token()
 			isTd = t.Data == "td"
@@ -38,18 +35,18 @@ func NewHTML(writer io.Writer, fileName string, headingsNum int) (*Table, error)
 		case tt == html.TextToken:
 			t := htmlParser.Token()
 			if isTd {
-				records = append(records, t.Data)
-				depth++	
+				cellData = append(cellData, t.Data)
+				depth++
 			}
 			if isTh {
 				headings = append(headings, t.Data)
-				n++
+				depth++
 			}
-			if isTd && depth % headingsNum == 0 {
-				table.Append(records)
-				records = nil
+			if isTd && depth % columnNum == 0 {
+				table.Append(cellData)
+				cellData = nil
 			}
-			if isTh && n % headingsNum == 0 {
+			if isTh && depth % columnNum == 0 {
 				table.SetHeader(headings)
 			}
 			isTd = false

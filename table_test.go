@@ -98,8 +98,8 @@ func ExampleNewCSV() {
 	// *============*===========*=========*
 }
 
-func ExampleNewHTML() {
-	table, _ := NewHTML(os.Stdout, "testdata/test.html", 4)
+func ExampleNewHTMLWithHeadings() {
+	table, _ := NewHTML(os.Stdout, "testdata/test1.html", 4)
 	table.SetCenterSeparator("*")
 	table.SetRowSeparator("=")
 
@@ -117,6 +117,48 @@ func ExampleNewHTML() {
 // |   4 | Seun   |  20 | Watching movie and making      |
 // |     |        |     | money                          |
 // *=====*========*=====*================================*
+}
+
+func ExampleNewHTMLWithoutHeadings() {
+	table, _ := NewHTML(os.Stdout, "testdata/test3.html", 4)
+	table.SetCenterSeparator("*")
+	table.SetRowSeparator("=")
+
+	table.Render()
+
+	//Output:  *===*========*====*================================*
+	// | 1 | Sydney | 20 | Coding, Partying and trolling  |
+	// |    |        |    | on Twitter                     |
+	// | 2 | Harith | 21 | Coding, Praying and learning   |
+	// |    |        |    | new things                     |
+	// | 3 | Iyanu  | 20 | Coding, Arguing and listening  |
+	// |    |        |    | to weird Music                 |
+	// | 4 | Seun   | 20 | Watching movie and making      |
+	// |    |        |    | money                          |
+	// *===*========*====*================================*
+}
+
+func ExampleNewMalHTML() {
+	// html has some unclosed tags
+	table, _ := NewHTML(os.Stdout, "testdata/test2.html", 4)
+	table.SetCenterSeparator("*")
+	table.SetRowSeparator("=")
+
+	table.Render()
+
+	// Output: *==========*==========*==========*================================*
+	// |   S/N    |   NAME   |   AGE    |            HOBBIES             |
+	// |          |          |          |                                |
+	// *==========*==========*==========*================================*
+	// | 1        | Sydney   | 20       | Coding, Partying and trolling  |
+	// |          |          |          | on Twitter                     |
+	// |        2 | Harith   |       21 | Coding, Praying and learning   |
+	// |          |          |          | new things                     |
+	// |        3 | Iyanu    |       20 | Coding, Arguing and listening  |
+	// |          |          |          | to weird Music                 |
+	// |        4 | Seun     |       20 | Watching movie and making      |
+	// |          |          |          | money                          |
+	// *==========*==========*==========*================================*
 }
 
 // TestNumLines to test the numbers of lines
