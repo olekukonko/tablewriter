@@ -399,6 +399,9 @@ func (t *Table) Append(row []string) {
 	if rowSize > t.colSize {
 		t.colSize = rowSize
 	}
+	if len(row) > t.colSize {
+		t.colSize = len(row)
+	}
 
 	n := len(t.lines)
 	line := [][]string{}
