@@ -634,6 +634,10 @@ func (t *Table) printFooter() {
 	max := t.rs[footerRowIdx]
 
 	// Print Footer
+	for i := 0; i < (len(t.cs) - len(t.footers)); i++ {
+		lines := t.parseDimension(" ", len(t.footers), footerRowIdx)
+		t.footers = append(t.footers, lines)
+	}
 	erasePad := make([]bool, len(t.footers))
 	for x := 0; x < max; x++ {
 		// Check if border is set
