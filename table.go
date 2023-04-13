@@ -990,7 +990,7 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 	for y := 0; y < total; y++ {
 		previousLine[y] = strings.TrimRight(strings.Join(columns[y], SPACE), SPACE) //Store the full line for multi-lines cells
 	}
-	//Returns the newly added line and wether or not a border should be displayed above.
+	//Returns the newly added line and whether a border should be displayed above.
 	return previousLine, displayCellBorder
 }
 
