@@ -20,6 +20,7 @@ var (
 	border    = flag.Bool("b", true, "Enable / disable table border")
 )
 
+// main go function
 func main() {
 	flag.Parse()
 	fmt.Println()
@@ -37,6 +38,7 @@ func main() {
 	fmt.Println()
 }
 
+// check if argument exists
 func hasArg(name string) bool {
 	for _, v := range os.Args {
 		if name == v {
@@ -45,6 +47,8 @@ func hasArg(name string) bool {
 	}
 	return false
 }
+
+// simple file processing
 func processFile() {
 	r, err := os.Open(*fileName)
 	if err != nil {
@@ -53,6 +57,8 @@ func processFile() {
 	defer r.Close()
 	process(r)
 }
+
+// process file
 func process(r io.Reader) {
 	csvReader := csv.NewReader(r)
 	rune, size := utf8.DecodeRuneInString(*delimiter)
@@ -79,6 +85,7 @@ func process(r io.Reader) {
 	table.Render()
 }
 
+// exit
 func exit(err error) {
 	fmt.Fprintf(os.Stderr, "#Error : %s", err)
 	os.Exit(1)
