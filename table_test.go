@@ -98,7 +98,7 @@ func ExampleNewCSV() {
 	// *============*===========*=========*
 }
 
-func ExampleTable_SetUnicodeHV() {
+func ExampleUnicode() {
 	data := [][]string{
 		{"Regular", "regular line", "1"},
 		{"Thick", "particularly thick line", "2"},
@@ -161,7 +161,7 @@ func TestUnicodeWithoutBorder(t *testing.T) {
 	table.SetHeader([]string{"Constant", "Meaning", "Seq"})
 	table.SetFooter([]string{"Constant", "Meaning", "Seq"})
 	table.SetUnicodeHV(Regular, Regular)
-	table.EnableBorder(false)
+	table.SetBorder(false)
 	table.AppendBulk(data)
 	table.Render()
 
@@ -213,7 +213,7 @@ func TestUnicodeWithoutBorderOrHeader(t *testing.T) {
 
 	table := NewWriter(buf)
 	table.SetUnicodeHV(Regular, Regular)
-	table.EnableBorder(false)
+	table.SetBorder(false)
 	table.AppendBulk(data)
 	table.Render()
 
@@ -254,7 +254,7 @@ func TestCSVInfo(t *testing.T) {
 		return
 	}
 	table.SetAlignment(ALIGN_LEFT)
-	table.EnableBorder(false)
+	table.SetBorder(false)
 	table.Render()
 
 	got := buf.String()
@@ -310,7 +310,7 @@ func TestNoBorder(t *testing.T) {
 	table.SetAutoWrapText(false)
 	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
 	table.SetFooter([]string{"", "", "Total", "$145.93"}) // Add Footer
-	table.EnableBorder(false)                             // Set Border to false
+	table.SetBorder(false)                                // Set Border to false
 	table.AppendBulk(data)                                // Add Bulk Data
 	table.Render()
 
@@ -347,7 +347,7 @@ func TestNoBorderUnicode(t *testing.T) {
 	table.SetAutoWrapText(false)
 	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
 	table.SetFooter([]string{"", "", "Total", "$145.93"}) // Add Footer
-	table.EnableBorder(false)                             // Set Border to false
+	table.SetBorder(false)                                // Set Border to false
 	table.AppendBulk(data)                                // Add Bulk Data
 	table.SetUnicodeHV(Regular, Regular)
 	table.Render()
@@ -629,7 +629,7 @@ func TestPrintCaptionWithFooter(t *testing.T) {
 	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
 	table.SetFooter([]string{"", "", "Total", "$146.93"})                                                  // Add Footer
 	table.SetCaption(true, "This is a very long caption. The text should wrap to the width of the table.") // Add caption
-	table.EnableBorder(false)                                                                              // Set Border to false
+	table.SetBorder(false)                                                                                 // Set Border to false
 	table.AppendBulk(data)                                                                                 // Add Bulk Data
 	table.Render()
 
@@ -978,7 +978,7 @@ func NewCustomizedTable(out io.Writer) *Table {
 	table.SetCenterSeparator("")
 	table.SetColumnSeparator("")
 	table.SetRowSeparator("")
-	table.EnableBorder(false)
+	table.SetBorder(false)
 	table.SetAlignment(ALIGN_LEFT)
 	table.SetHeader([]string{})
 	return table
@@ -1477,7 +1477,7 @@ func TestKubeFormat(t *testing.T) {
 	table.SetColumnSeparator("")
 	table.SetRowSeparator("")
 	table.SetHeaderLine(false)
-	table.EnableBorder(false)
+	table.SetBorder(false)
 	table.SetTablePadding("\t") // pad with tabs
 	table.SetNoWhiteSpace(true)
 	table.AppendBulk(data) // Add Bulk Data
