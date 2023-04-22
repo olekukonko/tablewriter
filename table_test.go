@@ -98,7 +98,7 @@ func ExampleNewCSV() {
 	// *============*===========*=========*
 }
 
-func ExampleUnicode() {
+func ExampleTable_SetUnicodeHV() {
 	data := [][]string{
 		{"Regular", "regular line", "1"},
 		{"Thick", "particularly thick line", "2"},
