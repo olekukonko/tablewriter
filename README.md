@@ -69,7 +69,7 @@ data := [][]string{
 table := tablewriter.NewWriter(os.Stdout)
 table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
 table.SetFooter([]string{"", "", "Total", "$146.93"}) // Add Footer
-table.SetBorder(false)                                // Set Border to false
+table.EnableBorder(false)                                // Set Border to false
 table.AppendBulk(data)                                // Add Bulk Data
 table.Render()
 ```
@@ -245,7 +245,7 @@ data := [][]string{
 table := tablewriter.NewWriter(os.Stdout)
 table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
 table.SetFooter([]string{"", "", "Total", "$146.93"}) // Add Footer
-table.SetBorder(false)                                // Set Border to false
+table.EnableBorder(false)                                // Set Border to false
 
 table.SetHeaderColor(tablewriter.Colors{tablewriter.Bold, tablewriter.BgGreenColor},
 	tablewriter.Colors{tablewriter.FgHiRedColor, tablewriter.Bold, tablewriter.BgBlackColor},
@@ -289,7 +289,7 @@ data := [][]string{
 table := tablewriter.NewWriter(os.Stdout)
 table.SetHeader([]string{"Col1", "Col2", "Col3", "Col4"})
 table.SetFooter([]string{"", "", "Footer3", "Footer4"})
-table.SetBorder(false)
+table.EnableBorder(false)
 
 table.SetHeaderColor(tablewriter.Colors{tablewriter.Bold, tablewriter.BgGreenColor},
 	tablewriter.Colors{tablewriter.FgHiRedColor, tablewriter.Bold, tablewriter.BgBlackColor},
@@ -377,7 +377,7 @@ table.SetCenterSeparator("")
 table.SetColumnSeparator("")
 table.SetRowSeparator("")
 table.SetHeaderLine(false)
-table.SetBorder(false)
+table.EnableBorder(false)
 table.SetTablePadding("\t") // pad with tabs
 table.SetNoWhiteSpace(true)
 table.AppendBulk(data) // Add Bulk Data
