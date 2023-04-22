@@ -1301,6 +1301,32 @@ func TestMoreFooterColumnsThanHeaders(t *testing.T) {
 	checkEqual(t, buf.String(), want)
 }
 
+func TestLessFooterColumnsThanHeaders(t *testing.T) {
+	var (
+		buf    = &bytes.Buffer{}
+		table  = NewWriter(buf)
+		header = []string{"A", "B", "C"}
+		data   = [][]string{
+			{"1", "2", "3"},
+		}
+		footer = []string{"a", "b"}
+		want   = `+---+---+---+
+| A | B | C |
++---+---+---+
+| 1 | 2 | 3 |
++---+---+---+
+| A | B |   |
++---+---+---+
+`
+	)
+	table.SetHeader(header)
+	table.SetFooter(footer)
+	table.AppendBulk(data)
+	table.Render()
+
+	checkEqual(t, buf.String(), want)
+}
+
 func TestSetColMinWidth(t *testing.T) {
 	var (
 		buf    = &bytes.Buffer{}
