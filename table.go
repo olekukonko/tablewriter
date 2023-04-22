@@ -5,7 +5,7 @@
 // This module is a Table Writer  API for the Go Programming Language.
 // The protocols were written in pure Go and works on windows and unix systems
 
-// Package tablewriter Create & Generate text based table
+// Create & Generate text based table
 package tablewriter
 
 import (
@@ -42,7 +42,6 @@ var (
 	percent = regexp.MustCompile(`^-?\d+\.?\d*$%$`)
 )
 
-// Border Default Struct
 type Border struct {
 	Left   bool
 	Right  bool
@@ -50,7 +49,25 @@ type Border struct {
 	Bottom bool
 }
 
-// Table Default struct
+type symbolID int
+
+// Symbol ID constants which indicates the compass points, in order NESW, where
+// a given symbol has connections to. The order here matches the order of box
+// drawing unicode symbols.
+const (
+	symEW symbolID = iota
+	symNS
+	symES
+	symSW
+	symNE
+	symNW
+	symNES
+	symNSW
+	symESW
+	symNEW
+	symNESW
+)
+
 type Table struct {
 	out                     io.Writer
 	rows                    [][]string
@@ -65,6 +82,7 @@ type Table struct {
 	autoWrap                bool
 	reflowText              bool
 	mW                      int
+	syms                    []string
 	pCenter                 string
 	pRow                    string
 	pColumn                 string
@@ -88,7 +106,7 @@ type Table struct {
 	columnsAlign            []int
 }
 
-// NewWriter Start New Table
+// Start New Table
 // Take io.Writer Directly
 func NewWriter(writer io.Writer) *Table {
 	t := &Table{
@@ -105,6 +123,7 @@ func NewWriter(writer io.Writer) *Table {
 		autoWrap:      true,
 		reflowText:    true,
 		mW:            MAX_ROW_WIDTH,
+		syms:          simpleSyms(CENTER, ROW, COLUMN),
 		pCenter:       CENTER,
 		pRow:          ROW,
 		pColumn:       COLUMN,
@@ -128,7 +147,7 @@ func NewWriter(writer io.Writer) *Table {
 // Render table output
 func (t *Table) Render() {
 	if t.borders.Top {
-		t.printLine(true)
+		t.printLine(true, false)
 	}
 	t.printHeading()
 	if t.autoMergeCells {
@@ -137,7 +156,7 @@ func (t *Table) Render() {
 		t.printRows()
 	}
 	if !t.rowLine && t.borders.Bottom {
-		t.printLine(true)
+		t.printLine(false, len(t.footers) == 0)
 	}
 	t.printFooter()
 
@@ -151,7 +170,7 @@ const (
 	footerRowIdx = -2
 )
 
-// SetHeader Set table header
+// Set table header
 func (t *Table) SetHeader(keys []string) {
 	t.colSize = len(keys)
 	for i, v := range keys {
@@ -160,7 +179,7 @@ func (t *Table) SetHeader(keys []string) {
 	}
 }
 
-// SetFooter Set table Footer
+// Set table Footer
 func (t *Table) SetFooter(keys []string) {
 	//t.colSize = len(keys)
 	for i, v := range keys {
@@ -169,7 +188,7 @@ func (t *Table) SetFooter(keys []string) {
 	}
 }
 
-// SetCaption Set table Caption
+// Set table Caption
 func (t *Table) SetCaption(caption bool, captionText ...string) {
 	t.caption = caption
 	if len(captionText) == 1 {
@@ -177,67 +196,70 @@ func (t *Table) SetCaption(caption bool, captionText ...string) {
 	}
 }
 
-// SetAutoFormatHeaders Turn header autoformatting on/off. Default is on (true).
+// Turn header autoformatting on/off. Default is on (true).
 func (t *Table) SetAutoFormatHeaders(auto bool) {
 	t.autoFmt = auto
 }
 
-// SetAutoWrapText Turn automatic multiline text adjustment on/off. Default is on (true).
+// Turn automatic multiline text adjustment on/off. Default is on (true).
 func (t *Table) SetAutoWrapText(auto bool) {
 	t.autoWrap = auto
 }
 
-// SetReflowDuringAutoWrap Turn automatic reflowing of multiline text when rewrapping. Default is on (true).
+// Turn automatic reflowing of multiline text when rewrapping. Default is on (true).
 func (t *Table) SetReflowDuringAutoWrap(auto bool) {
 	t.reflowText = auto
 }
 
-// SetColWidth Set the Default column width
+// Set the Default column width
 func (t *Table) SetColWidth(width int) {
 	t.mW = width
 }
 
-// SetColMinWidth Set the minimal width for a column
+// Set the minimal width for a column
 func (t *Table) SetColMinWidth(column int, width int) {
 	t.cs[column] = width
 }
 
-// SetColumnSeparator Set the Column Separator
+// Set the Column Separator
 func (t *Table) SetColumnSeparator(sep string) {
 	t.pColumn = sep
+	t.syms = simpleSyms(t.pCenter, t.pRow, t.pColumn)
 }
 
-// SetRowSeparator Set the Row Separator
+// Set the Row Separator
 func (t *Table) SetRowSeparator(sep string) {
 	t.pRow = sep
+	t.syms = simpleSyms(t.pCenter, t.pRow, t.pColumn)
 }
 
-// SetCenterSeparator Set the center Separator
+// Set the center Separator
 func (t *Table) SetCenterSeparator(sep string) {
 	t.pCenter = sep
+	t.syms = simpleSyms(t.pCenter, t.pRow, t.pColumn)
 }
 
-// SetHeaderAlignment Set Header Alignment
+// Set Header Alignment
 func (t *Table) SetHeaderAlignment(hAlign int) {
 	t.hAlign = hAlign
 }
 
-// SetFooterAlignment Set Footer Alignment
+// Set Footer Alignment
 func (t *Table) SetFooterAlignment(fAlign int) {
 	t.fAlign = fAlign
 }
 
-// SetAlignment Set Table Alignment
+// Set Table Alignment
 func (t *Table) SetAlignment(align int) {
 	t.align = align
 }
 
-// SetNoWhiteSpace Set No White Space
+// Set No White Space
 func (t *Table) SetNoWhiteSpace(allow bool) {
 	t.noWhiteSpace = allow
 }
 
-// SetTablePadding Set Table Padding
+// Set Table Padding
 func (t *Table) SetTablePadding(padding string) {
 	t.tablePadding = padding
 }
@@ -258,27 +280,30 @@ func (t *Table) SetColumnAlignment(keys []int) {
 	}
 }
 
-// SetNewLine Set New Line
+// Set New Line
 func (t *Table) SetNewLine(nl string) {
 	t.newLine = nl
 }
 
-// SetHeaderLine This would enable / disable a line after the header
+// Set Header Line
+// This would enable / disable a line after the header
 func (t *Table) SetHeaderLine(line bool) {
 	t.hdrLine = line
 }
 
-// SetRowLine This would enable / disable a line on each row of the table
+// Set Row Line
+// This would enable / disable a line on each row of the table
 func (t *Table) SetRowLine(line bool) {
 	t.rowLine = line
 }
 
-// SetAutoMergeCells This would enable / disable the merge of cells with identical values
+// Set Auto Merge Cells
+// This would enable / disable the merge of cells with identical values
 func (t *Table) SetAutoMergeCells(auto bool) {
 	t.autoMergeCells = auto
 }
 
-// SetAutoMergeCellsByColumnIndex Set Auto Merge Cells By Column Index
+// Set Auto Merge Cells By Column Index
 // This would enable / disable the merge of cells with identical values for specific columns
 // If cols is empty, it is the same as `SetAutoMergeCells(true)`.
 func (t *Table) SetAutoMergeCellsByColumnIndex(cols []int) {
@@ -293,15 +318,12 @@ func (t *Table) SetAutoMergeCellsByColumnIndex(cols []int) {
 	}
 }
 
-// SetBorder Set Table Border
+// Set Table Border
 // This would enable / disable line around the table
 func (t *Table) SetBorder(border bool) {
 	t.SetBorders(Border{border, border, border, border})
 }
 
-// SetBorders Set your own border
-// This definitely for pool named
-// This would enable / disable line around the table
 func (t *Table) SetBorders(border Border) {
 	t.borders = border
 }
@@ -417,7 +439,7 @@ func (t *Table) Append(row []string) {
 	t.lines = append(t.lines, line)
 }
 
-// Rich Append row to table with color attributes
+// Append row to table with color attributes
 func (t *Table) Rich(row []string, colors []Colors) {
 	rowSize := len(t.headers)
 	if rowSize > t.colSize {
@@ -444,7 +466,7 @@ func (t *Table) Rich(row []string, colors []Colors) {
 	t.lines = append(t.lines, line)
 }
 
-// AppendBulk Allow Support for Bulk Append
+// Allow Support for Bulk Append
 // Eliminates repeated for loops
 func (t *Table) AppendBulk(rows [][]string) {
 	for _, row := range rows {
@@ -457,62 +479,88 @@ func (t *Table) NumLines() int {
 	return len(t.lines)
 }
 
-// ClearRows Clear rows
+// Clear rows
 func (t *Table) ClearRows() {
 	t.lines = [][][]string{}
 }
 
-// ClearFooter Clear footer
+// Clear footer
 func (t *Table) ClearFooter() {
 	t.footers = [][]string{}
 }
 
 // Center based on position and border.
-func (t *Table) center(i int) string {
-	if i == -1 && !t.borders.Left {
-		return t.pRow
+func (t *Table) center(i int, isFirstRow, isLastRow bool) string {
+	if i == -1 {
+		if !t.borders.Left {
+			return t.syms[symEW]
+		}
+		if isFirstRow {
+			return t.syms[symES]
+		}
+		if isLastRow {
+			return t.syms[symNE]
+		}
+		return t.syms[symNES]
 	}
 
-	if i == len(t.cs)-1 && !t.borders.Right {
-		return t.pRow
+	if i == len(t.cs)-1 {
+		if !t.borders.Right {
+			return t.syms[symEW]
+		}
+		if isFirstRow {
+			return t.syms[symSW]
+		}
+		if isLastRow {
+			return t.syms[symNW]
+		}
+		return t.syms[symNSW]
 	}
 
-	return t.pCenter
+	if isFirstRow {
+		return t.syms[symESW]
+	}
+	if isLastRow {
+		return t.syms[symNEW]
+	}
+	return t.syms[symNESW]
 }
 
 // Print line based on row width
-func (t *Table) printLine(nl bool) {
-	fmt.Fprint(t.out, t.center(-1))
+func (t *Table) printLine(isFirst, isLast bool) {
+	fmt.Fprint(t.out, t.center(-1, isFirst, isLast))
 	for i := 0; i < len(t.cs); i++ {
 		v := t.cs[i]
 		fmt.Fprintf(t.out, "%s%s%s%s",
-			t.pRow,
-			strings.Repeat(string(t.pRow), v),
-			t.pRow,
-			t.center(i))
+			t.syms[symEW],
+			strings.Repeat(t.syms[symEW], v),
+			t.syms[symEW],
+			t.center(i, isFirst, isLast))
 	}
-	if nl {
-		fmt.Fprint(t.out, t.newLine)
-	}
+	fmt.Fprint(t.out, t.newLine)
 }
 
 // Print line based on row width with our without cell separator
 func (t *Table) printLineOptionalCellSeparators(nl bool, displayCellSeparator []bool) {
-	fmt.Fprint(t.out, t.pCenter)
+	fmt.Fprint(t.out, t.syms[symNES])
+	centerSym := symNESW
 	for i := 0; i < len(t.cs); i++ {
 		v := t.cs[i]
+		if i == len(t.cs)-1 {
+			centerSym = symNSW
+		}
 		if i > len(displayCellSeparator) || displayCellSeparator[i] {
 			// Display the cell separator
 			fmt.Fprintf(t.out, "%s%s%s%s",
-				t.pRow,
-				strings.Repeat(string(t.pRow), v),
-				t.pRow,
-				t.pCenter)
+				t.syms[symEW],
+				strings.Repeat(string(t.syms[symEW]), v),
+				t.syms[symEW],
+				t.syms[centerSym])
 		} else {
 			// Don't display the cell separator for this cell
 			fmt.Fprintf(t.out, "%s%s",
-				strings.Repeat(SPACE, v+2),
-				t.pCenter)
+				strings.Repeat(" ", v+2),
+				t.syms[centerSym])
 		}
 	}
 	if nl {
@@ -560,7 +608,7 @@ func (t *Table) printHeading() {
 		// Check if border is set
 		// Replace with space if not set
 		if !t.noWhiteSpace {
-			fmt.Fprint(t.out, ConditionString(t.borders.Left, t.pColumn, SPACE))
+			fmt.Fprint(t.out, ConditionString(t.borders.Left, t.syms[symNS], SPACE))
 		}
 
 		for y := 0; y <= end; y++ {
@@ -573,7 +621,7 @@ func (t *Table) printHeading() {
 			if t.autoFmt {
 				h = Title(h)
 			}
-			pad := ConditionString((y == end && !t.borders.Left), SPACE, t.pColumn)
+			pad := ConditionString((y == end && !t.borders.Left), SPACE, t.syms[symNS])
 			if t.noWhiteSpace {
 				pad = ConditionString((y == end && !t.borders.Left), SPACE, t.tablePadding)
 			}
@@ -604,7 +652,7 @@ func (t *Table) printHeading() {
 		fmt.Fprint(t.out, t.newLine)
 	}
 	if t.hdrLine {
-		t.printLine(true)
+		t.printLine(false, false)
 	}
 }
 
@@ -617,7 +665,7 @@ func (t *Table) printFooter() {
 
 	// Only print line if border is not set
 	if !t.borders.Bottom {
-		t.printLine(true)
+		t.printLine(false, false)
 	}
 
 	// Identify last column
@@ -636,11 +684,15 @@ func (t *Table) printFooter() {
 	max := t.rs[footerRowIdx]
 
 	// Print Footer
+	for i := 0; i < (len(t.cs) - len(t.footers)); i++ {
+		lines := t.parseDimension(" ", len(t.footers), footerRowIdx)
+		t.footers = append(t.footers, lines)
+	}
 	erasePad := make([]bool, len(t.footers))
 	for x := 0; x < max; x++ {
 		// Check if border is set
 		// Replace with space if not set
-		fmt.Fprint(t.out, ConditionString(t.borders.Bottom, t.pColumn, SPACE))
+		fmt.Fprint(t.out, ConditionString(t.borders.Bottom, t.syms[symNS], SPACE))
 
 		for y := 0; y <= end; y++ {
 			v := t.cs[y]
@@ -651,7 +703,7 @@ func (t *Table) printFooter() {
 			if t.autoFmt {
 				f = Title(f)
 			}
-			pad := ConditionString((y == end && !t.borders.Top), SPACE, t.pColumn)
+			pad := ConditionString((y == end && !t.borders.Top), SPACE, t.syms[symNS])
 
 			if erasePad[y] || (x == 0 && len(f) == 0) {
 				pad = SPACE
@@ -674,15 +726,14 @@ func (t *Table) printFooter() {
 		}
 		// Next line
 		fmt.Fprint(t.out, t.newLine)
-		//t.printLine(true)
 	}
 
 	hasPrinted := false
 
 	for i := 0; i <= end; i++ {
 		v := t.cs[i]
-		pad := t.pRow
-		center := t.pCenter
+		pad := t.syms[symEW]
+		center := t.syms[symNEW]
 		length := len(t.footers[i][0])
 
 		if length > 0 {
@@ -697,7 +748,9 @@ func (t *Table) printFooter() {
 		// Print first junction
 		if i == 0 {
 			if length > 0 && !t.borders.Left {
-				center = t.pRow
+				center = t.syms[symEW]
+			} else if center != SPACE {
+				center = t.syms[symNE]
 			}
 			fmt.Fprint(t.out, center)
 		}
@@ -708,14 +761,18 @@ func (t *Table) printFooter() {
 		}
 		// Ignore left space as it has printed before
 		if hasPrinted || t.borders.Left {
-			pad = t.pRow
-			center = t.pCenter
+			pad = t.syms[symEW]
+			center = t.syms[symNEW]
 		}
 
 		// Change Center end position
 		if center != SPACE {
-			if i == end && !t.borders.Right {
-				center = t.pRow
+			if i == end {
+				if t.borders.Right {
+					center = t.syms[symNW]
+				} else {
+					center = t.syms[symEW]
+				}
 			}
 		}
 
@@ -723,9 +780,9 @@ func (t *Table) printFooter() {
 		if center == SPACE {
 			if i < end && len(t.footers[i+1][0]) != 0 {
 				if !t.borders.Left {
-					center = t.pRow
+					center = t.syms[symEW]
 				} else {
-					center = t.pCenter
+					center = t.syms[symNEW]
 				}
 			}
 		}
@@ -743,7 +800,7 @@ func (t *Table) printFooter() {
 }
 
 // Print caption text
-func (t *Table) printCaption() {
+func (t Table) printCaption() {
 	width := t.getTableWidth()
 	paragraph, _ := WrapString(t.captionText, width)
 	for linecount := 0; linecount < len(paragraph); linecount++ {
@@ -752,7 +809,7 @@ func (t *Table) printCaption() {
 }
 
 // Calculate the total number of characters in a row
-func (t *Table) getTableWidth() int {
+func (t Table) getTableWidth() int {
 	var chars int
 	for _, v := range t.cs {
 		chars += v
@@ -766,7 +823,7 @@ func (t *Table) getTableWidth() int {
 	return (chars + (3 * t.colSize) + 2)
 }
 
-func (t *Table) printRows() {
+func (t Table) printRows() {
 	for i, lines := range t.lines {
 		t.printRow(lines, i)
 	}
@@ -821,7 +878,7 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 
 			// Check if border is set
 			if !t.noWhiteSpace {
-				fmt.Fprint(t.out, ConditionString((!t.borders.Left && y == 0), SPACE, t.pColumn))
+				fmt.Fprint(t.out, ConditionString((!t.borders.Left && y == 0), SPACE, t.syms[symNS]))
 				fmt.Fprintf(t.out, SPACE)
 			}
 
@@ -865,13 +922,13 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 		// Check if border is set
 		// Replace with space if not set
 		if !t.noWhiteSpace {
-			fmt.Fprint(t.out, ConditionString(t.borders.Left, t.pColumn, SPACE))
+			fmt.Fprint(t.out, ConditionString(t.borders.Left, t.syms[symNS], SPACE))
 		}
 		fmt.Fprint(t.out, t.newLine)
 	}
 
 	if t.rowLine {
-		t.printLine(true)
+		t.printLine(false, rowIdx == len(t.lines)-1 && len(t.footers) == 0)
 	}
 }
 
@@ -892,7 +949,7 @@ func (t *Table) printRowsMergeCells() {
 	}
 	//Print the end of the table
 	if t.rowLine {
-		t.printLine(true)
+		t.printLine(false, true)
 	}
 }
 
@@ -927,7 +984,7 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 		for y := 0; y < total; y++ {
 
 			// Check if border is set
-			fmt.Fprint(writer, ConditionString((!t.borders.Left && y == 0), SPACE, t.pColumn))
+			fmt.Fprint(writer, ConditionString((!t.borders.Left && y == 0), SPACE, t.syms[symNS]))
 
 			fmt.Fprintf(writer, SPACE)
 
@@ -950,7 +1007,7 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 					mergeCell = true
 				}
 				//Store the full line to merge mutli-lines cells
-				fullLine := strings.TrimRight(strings.Join(columns[y], SPACE), SPACE)
+				fullLine := strings.TrimRight(strings.Join(columns[y], " "), " ")
 				if len(previousLine) > y && fullLine == previousLine[y] && fullLine != "" && mergeCell {
 					// If this cell is identical to the one above but not empty, we don't display the border and keep the cell empty.
 					displayCellBorder = append(displayCellBorder, false)
@@ -981,16 +1038,16 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 		}
 		// Check if border is set
 		// Replace with space if not set
-		fmt.Fprint(writer, ConditionString(t.borders.Left, t.pColumn, SPACE))
+		fmt.Fprint(writer, ConditionString(t.borders.Left, t.syms[symNS], SPACE))
 		fmt.Fprint(writer, t.newLine)
 	}
 
 	//The new previous line is the current one
 	previousLine = make([]string, total)
 	for y := 0; y < total; y++ {
-		previousLine[y] = strings.TrimRight(strings.Join(columns[y], SPACE), SPACE) //Store the full line for multi-lines cells
+		previousLine[y] = strings.TrimRight(strings.Join(columns[y], " "), " ") //Store the full line for multi-lines cells
 	}
-	//Returns the newly added line and whether a border should be displayed above.
+	//Returns the newly added line and wether or not a border should be displayed above.
 	return previousLine, displayCellBorder
 }
 
@@ -1024,7 +1081,7 @@ func (t *Table) parseDimension(str string, colKey, rowKey int) []string {
 
 		if t.reflowText {
 			// Make a single paragraph of everything.
-			raw = []string{strings.Join(raw, SPACE)}
+			raw = []string{strings.Join(raw, " ")}
 		}
 		for i, para := range raw {
 			paraLines, _ := WrapString(para, maxWidth)
@@ -1034,7 +1091,7 @@ func (t *Table) parseDimension(str string, colKey, rowKey int) []string {
 				}
 			}
 			if i > 0 {
-				newRaw = append(newRaw, SPACE)
+				newRaw = append(newRaw, " ")
 			}
 			newRaw = append(newRaw, paraLines...)
 		}
