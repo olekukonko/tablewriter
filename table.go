@@ -567,15 +567,24 @@ func (t *Table) printLine(isFirst, isLast bool) {
 
 // Print line based on row width with our without cell separator
 func (t *Table) printLineOptionalCellSeparators(nl bool, displayCellSeparator []bool) {
-	fmt.Fprint(t.out, t.syms[symNSbE])
-	centerSym := symNESW
+	for len(displayCellSeparator) < len(t.cs) {
+		displayCellSeparator = append(displayCellSeparator, true)
+	}
+	centerSym := symNSbE
+	if !displayCellSeparator[0] {
+		centerSym = symNSb
+	}
+	fmt.Fprint(t.out, t.syms[centerSym])
 	for i := 0; i < len(t.cs); i++ {
 		v := t.cs[i]
-		if i == len(t.cs)-1 {
-			centerSym = symNSbW
-		}
-		if i > len(displayCellSeparator) || displayCellSeparator[i] {
+		if displayCellSeparator[i] {
 			// Display the cell separator
+			centerSym = symNESW
+			if i == len(t.cs)-1 {
+				centerSym = symNSbW
+			} else if !displayCellSeparator[i+1] {
+				centerSym = symNSW
+			}
 			fmt.Fprintf(t.out, "%s%s%s%s",
 				t.syms[symEW],
 				strings.Repeat(string(t.syms[symEW]), v),
@@ -583,6 +592,12 @@ func (t *Table) printLineOptionalCellSeparators(nl bool, displayCellSeparator []
 				t.syms[centerSym])
 		} else {
 			// Don't display the cell separator for this cell
+			centerSym = symNES
+			if i == len(t.cs)-1 {
+				centerSym = symNSb
+			} else if !displayCellSeparator[i+1] {
+				centerSym = symNS
+			}
 			fmt.Fprintf(t.out, "%s%s",
 				strings.Repeat(" ", v+2),
 				t.syms[centerSym])
