@@ -53,7 +53,10 @@ type symbolID int
 
 // Symbol ID constants which indicates the compass points, in order NESW, where
 // a given symbol has connections to. The order here matches the order of box
-// drawing unicode symbols.
+// drawing unicode symbols. The symbols with a 'b' in their name have the
+// connections before the b on the boundary and the ones after the b on the
+// inside. E.g. symEWbS is an east-west connection on the (upper) boundary, and
+// an inner line from that to the south.
 const (
 	symEW symbolID = iota
 	symNS
@@ -66,6 +69,16 @@ const (
 	symESW
 	symNEW
 	symNESW
+	symEWb
+	symNSb
+	symESb
+	symSWb
+	symNEb
+	symNWb
+	symNSbE
+	symNSbW
+	symEWbS
+	symEWbN
 )
 
 type Table struct {
@@ -504,12 +517,12 @@ func (t *Table) center(i int, isFirstRow, isLastRow bool) string {
 			return t.syms[symEW]
 		}
 		if isFirstRow {
-			return t.syms[symES]
+			return t.syms[symESb]
 		}
 		if isLastRow {
-			return t.syms[symNE]
+			return t.syms[symNEb]
 		}
-		return t.syms[symNES]
+		return t.syms[symNSbE]
 	}
 
 	if i == len(t.cs)-1 {
@@ -517,19 +530,19 @@ func (t *Table) center(i int, isFirstRow, isLastRow bool) string {
 			return t.syms[symEW]
 		}
 		if isFirstRow {
-			return t.syms[symSW]
+			return t.syms[symSWb]
 		}
 		if isLastRow {
-			return t.syms[symNW]
+			return t.syms[symNWb]
 		}
-		return t.syms[symNSW]
+		return t.syms[symNSbW]
 	}
 
 	if isFirstRow {
-		return t.syms[symESW]
+		return t.syms[symEWbS]
 	}
 	if isLastRow {
-		return t.syms[symNEW]
+		return t.syms[symEWbN]
 	}
 	return t.syms[symNESW]
 }
@@ -537,12 +550,16 @@ func (t *Table) center(i int, isFirstRow, isLastRow bool) string {
 // Print line based on row width
 func (t *Table) printLine(isFirst, isLast bool) {
 	fmt.Fprint(t.out, t.center(-1, isFirst, isLast))
+	horizontal := t.syms[symEW]
+	if isFirst || isLast {
+		horizontal = t.syms[symEWb]
+	}
 	for i := 0; i < len(t.cs); i++ {
 		v := t.cs[i]
 		fmt.Fprintf(t.out, "%s%s%s%s",
-			t.syms[symEW],
-			strings.Repeat(t.syms[symEW], v),
-			t.syms[symEW],
+			horizontal,
+			strings.Repeat(horizontal, v),
+			horizontal,
 			t.center(i, isFirst, isLast))
 	}
 	fmt.Fprint(t.out, t.newLine)
@@ -550,12 +567,12 @@ func (t *Table) printLine(isFirst, isLast bool) {
 
 // Print line based on row width with our without cell separator
 func (t *Table) printLineOptionalCellSeparators(nl bool, displayCellSeparator []bool) {
-	fmt.Fprint(t.out, t.syms[symNES])
+	fmt.Fprint(t.out, t.syms[symNSbE])
 	centerSym := symNESW
 	for i := 0; i < len(t.cs); i++ {
 		v := t.cs[i]
 		if i == len(t.cs)-1 {
-			centerSym = symNSW
+			centerSym = symNSbW
 		}
 		if i > len(displayCellSeparator) || displayCellSeparator[i] {
 			// Display the cell separator
@@ -616,7 +633,7 @@ func (t *Table) printHeading() {
 		// Check if border is set
 		// Replace with space if not set
 		if !t.noWhiteSpace {
-			fmt.Fprint(t.out, ConditionString(t.borders.Left, t.syms[symNS], SPACE))
+			fmt.Fprint(t.out, ConditionString(t.borders.Left, t.syms[symNSb], SPACE))
 		}
 
 		for y := 0; y <= end; y++ {
@@ -629,7 +646,11 @@ func (t *Table) printHeading() {
 			if t.autoFmt {
 				h = Title(h)
 			}
-			pad := ConditionString((y == end && !t.borders.Left), SPACE, t.syms[symNS])
+			vertical := symNS
+			if y == end {
+				vertical = symNSb
+			}
+			pad := ConditionString((y == end && !t.borders.Left), SPACE, t.syms[vertical])
 			if t.noWhiteSpace {
 				pad = ConditionString((y == end && !t.borders.Left), SPACE, t.tablePadding)
 			}
@@ -700,7 +721,7 @@ func (t *Table) printFooter() {
 	for x := 0; x < max; x++ {
 		// Check if border is set
 		// Replace with space if not set
-		fmt.Fprint(t.out, ConditionString(t.borders.Bottom, t.syms[symNS], SPACE))
+		fmt.Fprint(t.out, ConditionString(t.borders.Bottom, t.syms[symNSb], SPACE))
 
 		for y := 0; y <= end; y++ {
 			v := t.cs[y]
@@ -711,7 +732,11 @@ func (t *Table) printFooter() {
 			if t.autoFmt {
 				f = Title(f)
 			}
-			pad := ConditionString((y == end && !t.borders.Top), SPACE, t.syms[symNS])
+			vertical := symNS
+			if y == end {
+				vertical = symNSb
+			}
+			pad := ConditionString((y == end && !t.borders.Top), SPACE, t.syms[vertical])
 
 			if erasePad[y] || (x == 0 && len(f) == 0) {
 				pad = SPACE
@@ -740,8 +765,8 @@ func (t *Table) printFooter() {
 
 	for i := 0; i <= end; i++ {
 		v := t.cs[i]
-		pad := t.syms[symEW]
-		center := t.syms[symNEW]
+		pad := t.syms[symEWb]
+		center := t.syms[symEWbN]
 		length := len(t.footers[i][0])
 
 		if length > 0 {
@@ -756,9 +781,9 @@ func (t *Table) printFooter() {
 		// Print first junction
 		if i == 0 {
 			if length > 0 && !t.borders.Left {
-				center = t.syms[symEW]
+				center = t.syms[symEWb]
 			} else if center != SPACE {
-				center = t.syms[symNE]
+				center = t.syms[symNEb]
 			}
 			fmt.Fprint(t.out, center)
 		}
@@ -769,17 +794,17 @@ func (t *Table) printFooter() {
 		}
 		// Ignore left space as it has printed before
 		if hasPrinted || t.borders.Left {
-			pad = t.syms[symEW]
-			center = t.syms[symNEW]
+			pad = t.syms[symEWb]
+			center = t.syms[symEWbN]
 		}
 
 		// Change Center end position
 		if center != SPACE {
 			if i == end {
 				if t.borders.Right {
-					center = t.syms[symNW]
+					center = t.syms[symNWb]
 				} else {
-					center = t.syms[symEW]
+					center = t.syms[symEWb]
 				}
 			}
 		}
@@ -788,9 +813,9 @@ func (t *Table) printFooter() {
 		if center == SPACE {
 			if i < end && len(t.footers[i+1][0]) != 0 {
 				if !t.borders.Left {
-					center = t.syms[symEW]
+					center = t.syms[symEWb]
 				} else {
-					center = t.syms[symNEW]
+					center = t.syms[symEWbN]
 				}
 			}
 		}
@@ -887,7 +912,11 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 
 			// Check if border is set
 			if !t.noWhiteSpace {
-				fmt.Fprint(t.out, ConditionString((!t.borders.Left && y == 0), SPACE, t.syms[symNS]))
+				vertical := symNS
+				if y == 0 {
+					vertical = symNSb
+				}
+				fmt.Fprint(t.out, ConditionString((!t.borders.Left && y == 0), SPACE, t.syms[vertical]))
 				fmt.Fprintf(t.out, SPACE)
 			}
 
@@ -931,7 +960,7 @@ func (t *Table) printRow(columns [][]string, rowIdx int) {
 		// Check if border is set
 		// Replace with space if not set
 		if !t.noWhiteSpace {
-			fmt.Fprint(t.out, ConditionString(t.borders.Left, t.syms[symNS], SPACE))
+			fmt.Fprint(t.out, ConditionString(t.borders.Left, t.syms[symNSb], SPACE))
 		}
 		fmt.Fprint(t.out, t.newLine)
 	}
@@ -992,7 +1021,11 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 		for y := 0; y < total; y++ {
 
 			// Check if border is set
-			fmt.Fprint(writer, ConditionString((!t.borders.Left && y == 0), SPACE, t.syms[symNS]))
+			vertical := symNS
+			if y == 0 {
+				vertical = symNSb
+			}
+			fmt.Fprint(writer, ConditionString((!t.borders.Left && y == 0), SPACE, t.syms[vertical]))
 
 			fmt.Fprintf(writer, SPACE)
 
@@ -1046,7 +1079,7 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 		}
 		// Check if border is set
 		// Replace with space if not set
-		fmt.Fprint(writer, ConditionString(t.borders.Left, t.syms[symNS], SPACE))
+		fmt.Fprint(writer, ConditionString(t.borders.Left, t.syms[symNSb], SPACE))
 		fmt.Fprint(writer, t.newLine)
 	}
 

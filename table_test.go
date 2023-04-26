@@ -121,7 +121,30 @@ func ExampleTable_SetUnicodeHV() {
 	// ╘══════════╧═════════════════════════╧═════╛
 }
 
-func TestUnicodeRegularThick(t *testing.T) {
+func ExampleTable_SetUnicodeOuterInner() {
+	data := [][]string{
+		{"Regular", "regular line", "1"},
+		{"Thick", "particularly thick line", "2"},
+		{"Double", "double line", "3"},
+	}
+
+	table := NewWriter(os.Stdout)
+	table.SetHeader([]string{"Constant", "Meaning", "Seq"})
+	table.SetUnicodeOuterInner(Double, Regular)
+	table.AppendBulk(data)
+	table.Render()
+
+	// Output:
+	// ╔══════════╤═════════════════════════╤═════╗
+	// ║ CONSTANT │         MEANING         │ SEQ ║
+	// ╟──────────┼─────────────────────────┼─────╢
+	// ║ Regular  │ regular line            │   1 ║
+	// ║ Thick    │ particularly thick line │   2 ║
+	// ║ Double   │ double line             │   3 ║
+	// ╚══════════╧═════════════════════════╧═════╝
+}
+
+func TestUnicodeHorizontalRegularVerticalThick(t *testing.T) {
 	data := [][]string{
 		{"Regular", "regular line", "1"},
 		{"Thick", "particularly thick line", "2"},
@@ -148,6 +171,33 @@ func TestUnicodeRegularThick(t *testing.T) {
 	checkEqual(t, buf.String(), want, "Unicode without thick vertical lines failed")
 }
 
+func TestUnicodeOuterRegularInnerDouble(t *testing.T) {
+	data := [][]string{
+		{"Regular", "regular line", "1"},
+		{"Thick", "particularly thick line", "2"},
+		{"Double", "double line", "3"},
+	}
+	buf := &bytes.Buffer{}
+	buf.WriteRune('\n') // Makes the want literal easier to read.
+
+	table := NewWriter(buf)
+	table.SetFooter([]string{"Constant", "Meaning", "Seq"})
+	table.SetUnicodeOuterInner(Regular, Double)
+	table.AppendBulk(data)
+	table.Render()
+
+	want := `
+┌──────────╥─────────────────────────╥─────┐
+│ Regular  ║ regular line            ║   1 │
+│ Thick    ║ particularly thick line ║   2 │
+│ Double   ║ double line             ║   3 │
+╞══════════╬═════════════════════════╬═════╡
+│ CONSTANT ║         MEANING         ║ SEQ │
+└──────────╨─────────────────────────╨─────┘
+`
+	checkEqual(t, buf.String(), want, "Unicode without thick vertical lines failed")
+}
+
 func TestUnicodeWithoutBorder(t *testing.T) {
 	data := [][]string{
 		{"Regular", "regular line", "1"},
@@ -160,7 +210,7 @@ func TestUnicodeWithoutBorder(t *testing.T) {
 	table := NewWriter(buf)
 	table.SetHeader([]string{"Constant", "Meaning", "Seq"})
 	table.SetFooter([]string{"Constant", "Meaning", "Seq"})
-	table.SetUnicodeHV(Regular, Regular)
+	table.SetUnicodeOuterInner(Double, Regular)
 	table.EnableBorder(false)
 	table.AppendBulk(data)
 	table.Render()
@@ -173,7 +223,7 @@ func TestUnicodeWithoutBorder(t *testing.T) {
   Double   │ double line             │   3  $
 ───────────┼─────────────────────────┼──────$
   CONSTANT │         MEANING         │ SEQ  $
-───────────┴─────────────────────────┴──────$
+═══════════╧═════════════════════════╧══════$
 `, "$", "") // The $ only serve to make the trailing spaces more visible.
 	checkEqual(t, buf.String(), want, "Unicode without border failed")
 }
@@ -188,16 +238,16 @@ func TestUnicodeWithoutHeader(t *testing.T) {
 	buf.WriteRune('\n') // Makes the want literal easier to read.
 
 	table := NewWriter(buf)
-	table.SetUnicodeHV(Regular, Regular)
+	table.SetUnicodeOuterInner(Double, Regular)
 	table.AppendBulk(data)
 	table.Render()
 
 	want := `
-┌─────────┬─────────────────────────┬───┐
-│ Regular │ regular line            │ 1 │
-│ Thick   │ particularly thick line │ 2 │
-│ Double  │ double line             │ 3 │
-└─────────┴─────────────────────────┴───┘
+╔═════════╤═════════════════════════╤═══╗
+║ Regular │ regular line            │ 1 ║
+║ Thick   │ particularly thick line │ 2 ║
+║ Double  │ double line             │ 3 ║
+╚═════════╧═════════════════════════╧═══╝
 `
 	checkEqual(t, buf.String(), want, "Unicode without border failed")
 }
@@ -212,7 +262,7 @@ func TestUnicodeWithoutBorderOrHeader(t *testing.T) {
 	buf.WriteRune('\n') // Makes the want literal easier to read.
 
 	table := NewWriter(buf)
-	table.SetUnicodeHV(Regular, Regular)
+	table.SetUnicodeOuterInner(Double, Regular)
 	table.EnableBorder(false)
 	table.AppendBulk(data)
 	table.Render()
@@ -349,7 +399,7 @@ func TestNoBorderUnicode(t *testing.T) {
 	table.SetFooter([]string{"", "", "Total", "$145.93"}) // Add Footer
 	table.EnableBorder(false)                             // Set Border to false
 	table.AppendBulk(data)                                // Add Bulk Data
-	table.SetUnicodeHV(Regular, Regular)
+	table.SetUnicodeOuterInner(Double, Regular)
 	table.Render()
 
 	want := `
@@ -364,7 +414,7 @@ func TestNoBorderUnicode(t *testing.T) {
   1/4/2014 │     (Discount)           │  2233 │ -$1.00   
 ───────────┴──────────────────────────┴───────┼──────────
                                         TOTAL │ $145.93  
-                                      ────────┴──────────
+                                      ════════╧══════════
 `
 	// The above is what we actually would prefer, but the below is what the code
 	// currently generates. Fixes welcome.
@@ -380,7 +430,7 @@ func TestNoBorderUnicode(t *testing.T) {
   1/4/2014 │     (Discount)           │  2233 │ -$1.00   
 ───────────┼──────────────────────────┼───────┼──────────
                                         TOTAL │ $145.93  
-                                      ────────┴──────────
+                                      ════════╧══════════
 `
 
 	checkEqual(t, buf.String(), want, "border table rendering failed")
@@ -439,40 +489,40 @@ func TestWithBorderUnicode(t *testing.T) {
 	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
 	table.SetFooter([]string{"", "", "Total", "$145.93"}) // Add Footer
 	table.AppendBulk(data)                                // Add Bulk Data
-	table.SetUnicodeHV(Regular, Regular)
+	table.SetUnicodeOuterInner(Double, Regular)
 	table.Render()
 
 	want := `
-┌──────────┬──────────────────────────┬───────┬─────────┐
-│   DATE   │       DESCRIPTION        │  CV2  │ AMOUNT  │
-├──────────┼──────────────────────────┼───────┼─────────┤
-│ 1/1/2014 │ Domain name              │  2233 │ $10.98  │
-│ 1/1/2014 │ January Hosting          │  2233 │ $54.95  │
-│          │     (empty)              │       │         │
-│          │     (empty)              │       │         │
-│ 1/4/2014 │ February Hosting         │  2233 │ $51.00  │
-│ 1/4/2014 │ February Extra Bandwidth │  2233 │ $30.00  │
-│ 1/4/2014 │     (Discount)           │  2233 │ -$1.00  │
-├──────────┴──────────────────────────┴───────┼─────────┤
-│                                       TOTAL │ $145.93 │
-└─────────────────────────────────────────────┴─────────┘
+╔══════════╤══════════════════════════╤═══════╤═════════╗
+║   DATE   │       DESCRIPTION        │  CV2  │ AMOUNT  ║
+╟──────────┼──────────────────────────┼───────┼─────────╢
+║ 1/1/2014 │ Domain name              │  2233 │ $10.98  ║
+║ 1/1/2014 │ January Hosting          │  2233 │ $54.95  ║
+║          │     (empty)              │       │         ║
+║          │     (empty)              │       │         ║
+║ 1/4/2014 │ February Hosting         │  2233 │ $51.00  ║
+║ 1/4/2014 │ February Extra Bandwidth │  2233 │ $30.00  ║
+║ 1/4/2014 │     (Discount)           │  2233 │ -$1.00  ║
+╟──────────┴──────────────────────────┴───────┼─────────╢
+║                                       TOTAL │ $145.93 ║
+╚═════════════════════════════════════════════╧═════════╝
 `
 	// The above is what we actually would prefer, but the below is what the code
 	// currently generates. Fixes welcome.
 	want = `
-┌──────────┬──────────────────────────┬───────┬─────────┐
-│   DATE   │       DESCRIPTION        │  CV2  │ AMOUNT  │
-├──────────┼──────────────────────────┼───────┼─────────┤
-│ 1/1/2014 │ Domain name              │  2233 │ $10.98  │
-│ 1/1/2014 │ January Hosting          │  2233 │ $54.95  │
-│          │     (empty)              │       │         │
-│          │     (empty)              │       │         │
-│ 1/4/2014 │ February Hosting         │  2233 │ $51.00  │
-│ 1/4/2014 │ February Extra Bandwidth │  2233 │ $30.00  │
-│ 1/4/2014 │     (Discount)           │  2233 │ -$1.00  │
-├──────────┼──────────────────────────┼───────┼─────────┤
-│                                       TOTAL │ $145.93 │
-└──────────┴──────────────────────────┴───────┴─────────┘
+╔══════════╤══════════════════════════╤═══════╤═════════╗
+║   DATE   │       DESCRIPTION        │  CV2  │ AMOUNT  ║
+╟──────────┼──────────────────────────┼───────┼─────────╢
+║ 1/1/2014 │ Domain name              │  2233 │ $10.98  ║
+║ 1/1/2014 │ January Hosting          │  2233 │ $54.95  ║
+║          │     (empty)              │       │         ║
+║          │     (empty)              │       │         ║
+║ 1/4/2014 │ February Hosting         │  2233 │ $51.00  ║
+║ 1/4/2014 │ February Extra Bandwidth │  2233 │ $30.00  ║
+║ 1/4/2014 │     (Discount)           │  2233 │ -$1.00  ║
+╟──────────┼──────────────────────────┼───────┼─────────╢
+║                                       TOTAL │ $145.93 ║
+╚══════════╧══════════════════════════╧═══════╧═════════╝
 `
 
 	checkEqual(t, buf.String(), want, "border table rendering failed")
@@ -1133,35 +1183,35 @@ func TestAutoMergeRowsUnicode(t *testing.T) {
 	table.AppendBulk(data)
 	table.SetAutoMergeCells(true)
 	table.SetRowLine(true)
-	table.SetUnicodeHV(Regular, Regular)
+	table.SetUnicodeOuterInner(Double, Regular)
 	table.Render()
 	want := `
-┌──────┬───────────────────────┬────────┐
-│ NAME │         SIGN          │ RATING │
-├──────┼───────────────────────┼────────┤
-│ A    │ The Good              │    500 │
-│      ├───────────────────────┼────────┤
-│      │ The Very very Bad Man │    288 │
-├──────┤                       ├────────┤
-│ B    │                       │    120 │
-│      │                       ├────────┤
-│      │                       │    200 │
-└──────┴───────────────────────┴────────┘
+╔══════╤═══════════════════════╤════════╗
+║ NAME │         SIGN          │ RATING ║
+╟──────┼───────────────────────┼────────╢
+║ A    │ The Good              │    500 ║
+║      ├───────────────────────┼────────╢
+║      │ The Very very Bad Man │    288 ║
+╟──────┤                       ├────────╢
+║ B    │                       │    120 ║
+║      │                       ├────────╢
+║      │                       │    200 ║
+╚══════╧═══════════════════════╧════════╝
 `
 	// The above is what we actually would prefer, but the below is what the code
 	// currently generates. Fixes welcome.
 	want = `
-┌──────┬───────────────────────┬────────┐
-│ NAME │         SIGN          │ RATING │
-├──────┼───────────────────────┼────────┤
-│ A    │ The Good              │    500 │
-├      ┼───────────────────────┼────────┤
-│      │ The Very very Bad Man │    288 │
-├──────┼                       ┼────────┤
-│ B    │                       │    120 │
-├      ┼                       ┼────────┤
-│      │                       │    200 │
-└──────┴───────────────────────┴────────┘
+╔══════╤═══════════════════════╤════════╗
+║ NAME │         SIGN          │ RATING ║
+╟──────┼───────────────────────┼────────╢
+║ A    │ The Good              │    500 ║
+╟      ┼───────────────────────┼────────╢
+║      │ The Very very Bad Man │    288 ║
+╟──────┼                       ┼────────╢
+║ B    │                       │    120 ║
+╟      ┼                       ┼────────╢
+║      │                       │    200 ║
+╚══════╧═══════════════════════╧════════╝
 `
 	checkEqual(t, buf.String(), want)
 }
