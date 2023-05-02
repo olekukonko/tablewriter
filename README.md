@@ -1,7 +1,7 @@
 ASCII Table Writer
 =========
 
-[![Build Status](https://travis-ci.org/olekukonko/tablewriter.png?branch=master)](https://travis-ci.org/olekukonko/tablewriter)
+[![ci](https://github.com/olekukonko/tablewriter/workflows/ci/badge.svg?branch=master)](https://github.com/olekukonko/tablewriter/actions?query=workflow%3Aci)
 [![Total views](https://img.shields.io/sourcegraph/rrc/github.com/olekukonko/tablewriter.svg)](https://sourcegraph.com/github.com/olekukonko/tablewriter)
 [![Godoc](https://godoc.org/github.com/olekukonko/tablewriter?status.svg)](https://godoc.org/github.com/olekukonko/tablewriter)
 
@@ -69,7 +69,7 @@ data := [][]string{
 table := tablewriter.NewWriter(os.Stdout)
 table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
 table.SetFooter([]string{"", "", "Total", "$146.93"}) // Add Footer
-table.SetBorder(false)                                // Set Border to false
+table.EnableBorder(false)                                // Set Border to false
 table.AppendBulk(data)                                // Add Bulk Data
 table.Render()
 ```
@@ -245,7 +245,7 @@ data := [][]string{
 table := tablewriter.NewWriter(os.Stdout)
 table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
 table.SetFooter([]string{"", "", "Total", "$146.93"}) // Add Footer
-table.SetBorder(false)                                // Set Border to false
+table.EnableBorder(false)                                // Set Border to false
 
 table.SetHeaderColor(tablewriter.Colors{tablewriter.Bold, tablewriter.BgGreenColor},
 	tablewriter.Colors{tablewriter.FgHiRedColor, tablewriter.Bold, tablewriter.BgBlackColor},
@@ -289,7 +289,7 @@ data := [][]string{
 table := tablewriter.NewWriter(os.Stdout)
 table.SetHeader([]string{"Col1", "Col2", "Col3", "Col4"})
 table.SetFooter([]string{"", "", "Footer3", "Footer4"})
-table.SetBorder(false)
+table.EnableBorder(false)
 
 table.SetHeaderColor(tablewriter.Colors{tablewriter.Bold, tablewriter.BgGreenColor},
 	tablewriter.Colors{tablewriter.FgHiRedColor, tablewriter.Bold, tablewriter.BgBlackColor},
@@ -371,13 +371,13 @@ table := tablewriter.NewWriter(os.Stdout)
 table.SetHeader([]string{"Name", "Status", "Role", "Version"})
 table.SetAutoWrapText(false)
 table.SetAutoFormatHeaders(true)
-table.SetHeaderAlignment(ALIGN_LEFT)
-table.SetAlignment(ALIGN_LEFT)
+table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+table.SetAlignment(tablewriter.ALIGN_LEFT)
 table.SetCenterSeparator("")
 table.SetColumnSeparator("")
 table.SetRowSeparator("")
 table.SetHeaderLine(false)
-table.SetBorder(false)
+table.EnableBorder(false)
 table.SetTablePadding("\t") // pad with tabs
 table.SetNoWhiteSpace(true)
 table.AppendBulk(data) // Add Bulk Data
