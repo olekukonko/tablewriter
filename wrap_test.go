@@ -55,4 +55,7 @@ func TestDisplayWidth(t *testing.T) {
 	}
 	input = "\033[43;30m" + input + "\033[00m"
 	checkEqual(t, DisplayWidth(input), want)
+
+	input = "\033]8;;https://github.com/olekukonko/tablewriter/pull/220\033\\Github PR\033]8;;\033\\"
+	checkEqual(t, DisplayWidth(input), 9)
 }

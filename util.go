@@ -15,10 +15,29 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-var ansi = regexp.MustCompile("\033\\[(?:[0-9]{1,3}(?:;[0-9]{1,3})*)?[m|K]")
+// StripANSIEscapes removes non-print ANSI escape codes from strings so that their width can be determined accurately
+// Based on https://en.wikipedia.org/wiki/ANSI_escape_code#Fe_Escape_sequences
+func StripANSIEscapes(str string) string {
+	var regESC = "\x1b" // ASCII escape
+	var regBEL = "\x07" // ASCII bell
+
+	// String Terminator - ends ANSI sequences
+	var regST = "(" + regESC + "\\\\" + "|" + regBEL + ")"
+
+	// Control Sequence Introducer - usually color codes
+	// esc + [ + zero or more 0x30-0x3f + zero or more 0x20-0x2f and a single 0x40-0x7e
+	var regCSI = regESC + "\\[" + "[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]"
+
+	// Operating System Command - hyperlinks
+	// esc + ] + any number of any chars + ST
+	var regOSC = regESC + "\\]" + ".*?" + regST
+
+	var ansi = regexp.MustCompile("(" + regCSI + "|" + regOSC + ")")
+	return ansi.ReplaceAllLiteralString(str, "")
+}
 
 func DisplayWidth(str string) int {
-	return runewidth.StringWidth(ansi.ReplaceAllLiteralString(str, ""))
+	return runewidth.StringWidth(StripANSIEscapes(str))
 }
 
 // ConditionString Simple Condition for string
