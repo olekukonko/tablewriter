@@ -1,6 +1,10 @@
 package tablewriter
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/jwalton/gchalk"
+)
 
 type UnicodeLineStyle int
 
@@ -28,6 +32,11 @@ func simpleSyms(center, row, column string) []string {
 // Note that combinations of thick and double lines are not supported.
 // Will return an error in case of unsupported combinations.
 func (t *Table) SetUnicodeHV(horizontal, vertical UnicodeLineStyle) error {
+	return t.SetUnicodeHVC(horizontal, vertical, gchalk.Ansi256(15))
+}
+
+// Set Unicode Table with Colored borders
+func (t *Table) SetUnicodeHVC(horizontal, vertical UnicodeLineStyle, color gchalk.ColorFn) error {
 	var syms string
 	switch {
 	case horizontal == Regular && vertical == Regular:
@@ -49,7 +58,7 @@ func (t *Table) SetUnicodeHV(horizontal, vertical UnicodeLineStyle) error {
 	}
 	t.syms = make([]string, 0, 11)
 	for _, sym := range []rune(syms) {
-		t.syms = append(t.syms, string(sym))
+		t.syms = append(t.syms, color(string(sym)))
 	}
 	return nil
 }
