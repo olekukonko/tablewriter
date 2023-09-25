@@ -74,7 +74,7 @@ func ExampleTable() {
 	// Output: *================================*================================*===============================*==========*
 	// |              NAME              |              SIGN              |            RATING             |          |
 	// *================================*================================*===============================*==========*
-	// | Learn East has computers       |   Some Data                    |  Another Data                 |
+	// | Learn East has computers       | Some Data                      | Another Data                  |
 	// | with adapted keyboards with    |                                |                               |
 	// | enlarged print etc             |                                |                               |
 	// | Instead of lining up the       | the way across, he splits the  | Like most ergonomic keyboards | See Data |
