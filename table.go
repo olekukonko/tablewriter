@@ -19,7 +19,8 @@ import (
 )
 
 const (
-	MAX_ROW_WIDTH = 30
+	MAX_ROW_WIDTH     = 128
+	DEFAULT_ROW_WIDTH = 64
 )
 
 const (
@@ -142,6 +143,17 @@ func NewWriter(writer io.Writer) *Table {
 		footerParams:  []string{},
 		columnsAlign:  []int{}}
 	return t
+}
+
+// SetRowWidth sets output row width
+func (t *Table) SetRowWidth(w int) {
+	// if width > MAX_ROW_WIDTH, sets row width to DEFAULT_ROW_WIDTH (Default)
+	// MAX_ROW_WIDTH added for controlling table borders. 
+	if w > MAX_ROW_WIDTH {
+		t.mW = DEFAULT_ROW_WIDTH
+	} else {
+		t.mW = w
+	}
 }
 
 // Render table output
