@@ -2,8 +2,11 @@ package tablewriter
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
+
+	"golang.org/x/term"
 )
 
 const ESC = "\033"
@@ -103,6 +106,10 @@ func format(s string, codes interface{}) string {
 
 // Adding header colors (ANSI codes)
 func (t *Table) SetHeaderColor(colors ...Colors) {
+	if !term.IsTerminal(int(os.Stdout.Fd())) {
+		return
+	}
+
 	if t.colSize != len(colors) {
 		panic("Number of header colors must be equal to number of headers.")
 	}
