@@ -679,6 +679,48 @@ solved.
 	checkEqual(t, buf.String(), want, "long caption for long example rendering failed")
 }
 
+func TestRichAppendMultilineRows(t *testing.T) {
+	data := [][]string{
+		{"1/1/2014", "Domain name", "2233", "$10.98"},
+		{"1/1/2014", "January Hosting", "2233", "$54.95"},
+		{"", "    (empty)\n    (empty)", "", ""},
+		{"1/4/2014", "February Hosting", "2233", "$51.00"},
+		{"1/4/2014", "February Extra Bandwidth\nExtra Line\nAnother Extra", "2233", "$30.00"},
+		{"1/4/2014", "    (Discount)", "2233", "-$1.00"},
+	}
+
+	var buf bytes.Buffer
+	table := NewWriter(&buf)
+	table.SetAutoWrapText(false)
+	table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
+	table.SetFooter([]string{"", "", "Total", "$145.93"})
+
+	for _, row := range data {
+		table.Rich(row, []Colors{{}, {FgRedColor}, {}, {}})
+	}
+
+	table.Render()
+
+	want := `+----------+--------------------------+-------+---------+
+|   DATE   |       DESCRIPTION        |  CV2  | AMOUNT  |
++----------+--------------------------+-------+---------+
+| 1/1/2014 | ` + "\033[31m" + `Domain name` + "\033[0m" + `              |  2233 | $10.98  |
+| 1/1/2014 | ` + "\033[31m" + `January Hosting` + "\033[0m" + `          |  2233 | $54.95  |
+|          | ` + "\033[31m" + `    (empty)` + "\033[0m" + `              |       |         |
+|          | ` + "\033[31m" + `    (empty)` + "\033[0m" + `              |       |         |
+| 1/4/2014 | ` + "\033[31m" + `February Hosting` + "\033[0m" + `         |  2233 | $51.00  |
+| 1/4/2014 | ` + "\033[31m" + `February Extra Bandwidth` + "\033[0m" + ` |  2233 | $30.00  |
+|          | ` + "\033[31m" + `Extra Line` + "\033[0m" + `               |       |         |
+|          | ` + "\033[31m" + `Another Extra` + "\033[0m" + `            |       |         |
+| 1/4/2014 | ` + "\033[31m" + `    (Discount)` + "\033[0m" + `           |  2233 | -$1.00  |
++----------+--------------------------+-------+---------+
+|                                       TOTAL | $145.93 |
++----------+--------------------------+-------+---------+
+`
+
+	checkEqual(t, buf.String(), want, "rich table rendering failed")
+}
+
 func Example_autowrap() {
 	var multiline = `A multiline
 string with some lines being really long.`
