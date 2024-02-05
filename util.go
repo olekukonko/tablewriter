@@ -15,9 +15,13 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-// StripANSIEscapes removes non-print ANSI escape codes from strings so that their width can be determined accurately
+var ansi = generateEscapeFilterRegex()
+
+// generateEscapeFilterRegex builds a regex to remove non-printing ANSI escape codes from strings so
+// that their display width can be determined accurately. The regex is complicated enough that it's
+// better to build it programmatically than to write it by hand.
 // Based on https://en.wikipedia.org/wiki/ANSI_escape_code#Fe_Escape_sequences
-func StripANSIEscapes(str string) string {
+func generateEscapeFilterRegex() *regexp.Regexp {
 	var regESC = "\x1b" // ASCII escape
 	var regBEL = "\x07" // ASCII bell
 
@@ -32,12 +36,11 @@ func StripANSIEscapes(str string) string {
 	// esc + ] + any number of any chars + ST
 	var regOSC = regESC + "\\]" + ".*?" + regST
 
-	var ansi = regexp.MustCompile("(" + regCSI + "|" + regOSC + ")")
-	return ansi.ReplaceAllLiteralString(str, "")
+	return regexp.MustCompile("(" + regCSI + "|" + regOSC + ")")
 }
 
 func DisplayWidth(str string) int {
-	return runewidth.StringWidth(StripANSIEscapes(str))
+	return runewidth.StringWidth(ansi.ReplaceAllLiteralString(str, ""))
 }
 
 // ConditionString Simple Condition for string
