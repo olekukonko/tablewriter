@@ -8,6 +8,9 @@
 package tablewriter
 
 import (
+	"os"
+	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -58,4 +61,88 @@ func TestDisplayWidth(t *testing.T) {
 
 	input = "\033]8;;https://github.com/olekukonko/tablewriter/pull/220\033\\Github PR\033]8;;\033\\"
 	checkEqual(t, DisplayWidth(input), 9)
+}
+
+// WrapString was extremely memory greedy, it performed insane number of
+// allocations for what it was doing. See BenchmarkWrapString for details.
+func TestWrapStringAllocation(t *testing.T) {
+	originalTextBytes, err := os.ReadFile("testdata/long-text.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalText := string(originalTextBytes)
+
+	wantWrappedBytes, err := os.ReadFile("testdata/long-text-wrapped.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantWrappedText := string(wantWrappedBytes)
+
+	var ms runtime.MemStats
+	runtime.ReadMemStats(&ms)
+	heapAllocBefore := int64(ms.HeapAlloc / 1024 / 1024)
+
+	// When
+	gotLines, gotLim := WrapString(originalText, 80)
+
+	// Then
+	wantLim := 80
+	if gotLim != wantLim {
+		t.Errorf("Invalid limit: want=%d, got=%d", wantLim, gotLim)
+	}
+
+	gotWrappedText := strings.Join(gotLines, "\n")
+	if gotWrappedText != wantWrappedText {
+		t.Errorf("Invalid lines: want=\n%s\n got=\n%s", wantWrappedText, gotWrappedText)
+	}
+
+	runtime.ReadMemStats(&ms)
+	heapAllocAfter := int64(ms.HeapAlloc / 1024 / 1024)
+	heapAllocDelta := heapAllocAfter - heapAllocBefore
+	if heapAllocDelta > 1 {
+		t.Fatalf("heap allocation should not be greater than 1Mb, got=%dMb", heapAllocDelta)
+	}
+}
+
+// Before optimization:
+// BenchmarkWrapString-16    	       1	2490331031 ns/op	2535184104 B/op	50905550 allocs/op
+// After optimization:
+// BenchmarkWrapString-16    	    1652	    658098 ns/op	    230223 B/op	    5176 allocs/op
+func BenchmarkWrapString(b *testing.B) {
+	d, err := os.ReadFile("testdata/long-text.txt")
+	if err != nil {
+		b.Fatal(err)
+	}
+	for i := 0; i < b.N; i++ {
+		WrapString(string(d), 128)
+	}
+}
+
+func TestSplitWords(t *testing.T) {
+	for _, tt := range []struct {
+		in  string
+		out []string
+	}{{
+		in:  "",
+		out: []string{},
+	}, {
+		in:  "a",
+		out: []string{"a"},
+	}, {
+		in:  "a b",
+		out: []string{"a", "b"},
+	}, {
+		in:  "   a   b   ",
+		out: []string{"a", "b"},
+	}, {
+		in:  "\r\na\t\t \r\t b\r\n  ",
+		out: []string{"a", "b"},
+	}} {
+		t.Run(tt.in, func(t *testing.T) {
+			got := splitWords(tt.in)
+			if !reflect.DeepEqual(tt.out, got) {
+				t.Errorf("want=%s, got=%s", tt.out, got)
+			}
+		})
+	}
 }
