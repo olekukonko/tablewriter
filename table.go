@@ -23,11 +23,12 @@ const (
 )
 
 const (
-	CENTER  = "+"
-	ROW     = "-"
-	COLUMN  = "|"
-	SPACE   = " "
-	NEWLINE = "\n"
+	CENTER                       = "+"
+	ROW                          = "-"
+	COLUMN                       = "|"
+	SPACE                        = " "
+	NEWLINE                      = "\n"
+	DEAULT_MERGED_LINE_SEPERATOR = "*&*"
 )
 
 const (
@@ -443,6 +444,32 @@ func (t *Table) Append(row []string) {
 
 		// Append broken words
 		line = append(line, out)
+	}
+
+	// If autMerge is true and cells are set, we will merge current line into pre line.
+	// This will reduce the height of the table. Because we only print one line with merged cells.
+	if t.autoMergeCells && len(t.columnsToAutoMergeCells) > 0 && n > 0 {
+		pre := t.lines[n-1]
+		equal := true
+		for col := range t.columnsToAutoMergeCells {
+			if !reflect.DeepEqual(pre[col], line[col]) {
+				equal = false
+			}
+		}
+		if equal {
+			max := t.rs[n-1]
+			for i := range pre {
+				if t.columnsToAutoMergeCells[i] {
+					continue
+				}
+				pre[i] = append(pre[i], DEAULT_MERGED_LINE_SEPERATOR)
+				pre[i] = append(pre[i], line[i]...)
+				if len(pre[i]) > max {
+					t.rs[n-1] = len(pre[i])
+				}
+			}
+			return
+		}
 	}
 	t.lines = append(t.lines, line)
 }
@@ -994,12 +1021,20 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 			// Check if border is set
 			fmt.Fprint(writer, ConditionString((!t.borders.Left && y == 0), SPACE, t.syms[symNS]))
 
-			fmt.Fprintf(writer, SPACE)
-
 			str := columns[y][x]
+			isMergedLine := false
+			if str == DEAULT_MERGED_LINE_SEPERATOR {
+				isMergedLine = true
+				v := t.cs[y]
+				str = fmt.Sprintf("%s%s%s", t.pRow, strings.Repeat(string(t.pRow), v), t.pRow)
+			}
+
+			if !isMergedLine {
+				fmt.Fprintf(writer, SPACE)
+			}
 
 			// Embedding escape sequence with column value
-			if isEscSeq {
+			if isEscSeq && !isMergedLine {
 				str = format(str, t.columnsParams[y])
 			}
 
@@ -1042,7 +1077,10 @@ func (t *Table) printRowMergeCells(writer io.Writer, columns [][]string, rowIdx 
 					fmt.Fprintf(writer, "%s", PadRight(str, SPACE, t.cs[y]))
 				}
 			}
-			fmt.Fprintf(writer, SPACE)
+
+			if !isMergedLine {
+				fmt.Fprintf(writer, SPACE)
+			}
 		}
 		// Check if border is set
 		// Replace with space if not set
