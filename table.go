@@ -692,7 +692,7 @@ func (t *Table) printFooter() {
 	max := t.rs[footerRowIdx]
 
 	// Print Footer
-	for i := 0; i < (len(t.cs) - len(t.footers)); i++ {
+	for len(t.cs)-len(t.footers) > 0 {
 		lines := t.parseDimension(" ", len(t.footers), footerRowIdx)
 		t.footers = append(t.footers, lines)
 	}
