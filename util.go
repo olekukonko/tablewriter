@@ -17,8 +17,19 @@ import (
 
 var ansi = regexp.MustCompile("\033\\[(?:[0-9]{1,3}(?:;[0-9]{1,3})*)?[m|K]")
 
+var linkRe = regexp.MustCompile(`\x1b]8;;.*?\x1b\\(.*?)(\x1b]8;;\x1b\\)?`)
+
 func DisplayWidth(str string) int {
-	return runewidth.StringWidth(ansi.ReplaceAllLiteralString(str, ""))
+	linkFreeText := CleanHyperlinksInTerminalEmulators(str)
+	return runewidth.StringWidth(ansi.ReplaceAllLiteralString(linkFreeText, ""))
+}
+
+// CleanHyperlinksInTerminalEmulators
+// https://github.com/Alhadis/OSC8-Adoption/
+// printf '\033]8;;http://example.com\033\\This is a link\033]8;;\033\\\n'
+// -> "This is a link\n"
+func CleanHyperlinksInTerminalEmulators(str string) string {
+	return linkRe.ReplaceAllString(str, "$1")
 }
 
 // ConditionString Simple Condition for string
