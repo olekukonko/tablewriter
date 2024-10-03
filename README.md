@@ -69,7 +69,7 @@ data := [][]string{
 table := tablewriter.NewWriter(os.Stdout)
 table.SetHeader([]string{"Date", "Description", "CV2", "Amount"})
 table.SetFooter([]string{"", "", "Total", "$146.93"}) // Add Footer
-table.EnableBorder(false)                                // Set Border to false
+table.SetBorder(false)                                // Set Border to false
 table.AppendBulk(data)                                // Add Bulk Data
 table.Render()
 ```
