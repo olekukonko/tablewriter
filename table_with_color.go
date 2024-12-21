@@ -6,8 +6,10 @@ import (
 	"strings"
 )
 
-const ESC = "\033"
-const SEP = ";"
+const (
+	ESC = "\033"
+	SEP = ";"
+)
 
 const (
 	BgBlackColor int = iota + 40
@@ -104,7 +106,7 @@ func format(s string, codes interface{}) string {
 // Adding header colors (ANSI codes)
 func (t *Table) SetHeaderColor(colors ...Colors) {
 	if t.colSize != len(colors) {
-		panic("Number of header colors must be equal to number of headers.")
+		fmt.Println("Number of header colors must be equal to number of headers.")
 	}
 	for i := 0; i < len(colors); i++ {
 		t.headerParams = append(t.headerParams, makeSequence(colors[i]))
@@ -114,7 +116,7 @@ func (t *Table) SetHeaderColor(colors ...Colors) {
 // Adding column colors (ANSI codes)
 func (t *Table) SetColumnColor(colors ...Colors) {
 	if t.colSize != len(colors) {
-		panic("Number of column colors must be equal to number of headers.")
+		fmt.Println("Number of column colors must be equal to number of headers.")
 	}
 	for i := 0; i < len(colors); i++ {
 		t.columnsParams = append(t.columnsParams, makeSequence(colors[i]))
@@ -124,7 +126,7 @@ func (t *Table) SetColumnColor(colors ...Colors) {
 // Adding column colors (ANSI codes)
 func (t *Table) SetFooterColor(colors ...Colors) {
 	if len(t.footers) != len(colors) {
-		panic("Number of footer colors must be equal to number of footer.")
+		fmt.Println("Number of footer colors must be equal to number of footer.")
 	}
 	for i := 0; i < len(colors); i++ {
 		t.footerParams = append(t.footerParams, makeSequence(colors[i]))
