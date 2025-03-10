@@ -16,8 +16,12 @@ import (
 )
 
 var ansi = regexp.MustCompile("\033\\[(?:[0-9]{1,3}(?:;[0-9]{1,3})*)?[m|K]")
+var osc8 = regexp.MustCompile("\033\\]8;;(?:.*?)\033\\\\(.*?)\033\\]8;;\033\\\\")
 
 func DisplayWidth(str string) int {
+	// replace OSC 8 hyperlinks with just their text content.
+	// ref: https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda
+	str = osc8.ReplaceAllString(str, "$1")
 	return runewidth.StringWidth(ansi.ReplaceAllLiteralString(str, ""))
 }
 
