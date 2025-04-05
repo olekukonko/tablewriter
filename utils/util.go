@@ -1,13 +1,7 @@
-// Copyright 2014 Oleku Konko All rights reserved.
-// Use of this source code is governed by a MIT
-// license that can be found in the LICENSE file.
-
-// This module is a Table Writer  API for the Go Programming Language.
-// The protocols were written in pure Go and works on windows and unix systems
-
 package utils
 
 import (
+	"bytes"
 	"math"
 	"regexp"
 	"strconv"
@@ -18,45 +12,47 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
+// ansi is a compiled regular expression used to filter out ANSI escape sequences.
 var ansi = generateEscapeFilterRegex()
 
+// generateEscapeFilterRegex generates a regular expression to filter out ANSI escape sequences.
+// It returns a compiled regexp that matches both control sequences and operating system commands.
 func generateEscapeFilterRegex() *regexp.Regexp {
 	var regESC = "\x1b" // ASCII escape
 	var regBEL = "\x07" // ASCII bell
 
-	// String Terminator - ends ANSI sequences
+	// String Terminator - ends ANSI sequences.
 	var regST = "(" + regESC + "\\\\" + "|" + regBEL + ")"
 
-	// Control Sequence Introducer - usually color codes
-	// esc + [ + zero or more 0x30-0x3f + zero or more 0x20-0x2f and a single 0x40-0x7e
+	// Control Sequence Introducer - usually for color codes.
+	// Matches: esc + [ + zero or more characters in [0x30-0x3f] + zero or more characters in [0x20-0x2f] + a single character in [0x40-0x7e].
 	var regCSI = regESC + "\\[" + "[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]"
 
-	// Operating System Command - hyperlinks
-	// esc + ] + any number of any chars + ST
+	// Operating System Command - e.g., hyperlinks.
+	// Matches: esc + ] + any characters (non-greedy) + string terminator.
 	var regOSC = regESC + "\\]" + ".*?" + regST
 
 	return regexp.MustCompile("(" + regCSI + "|" + regOSC + ")")
 }
 
-func DisplayWidth(str string) int {
+// RuneWidth returns the display width of a string by first removing any ANSI escape sequences.
+// This is useful for calculating the true length of strings when formatting table outputs.
+func RuneWidth(str string) int {
 	return runewidth.StringWidth(ansi.ReplaceAllLiteralString(str, ""))
 }
 
-// ConditionString Simple Condition for string
-// Returns value based on condition
-func ConditionString(cond bool, valid, inValid string) string {
+// ConditionOr returns the 'valid' string if the condition is true; otherwise, it returns 'inValid'.
+// This is a simple helper to choose between two strings based on a boolean condition.
+func ConditionOr(cond bool, valid, inValid string) string {
 	if cond {
 		return valid
 	}
 	return inValid
 }
 
-func isNumOrSpace(r rune) bool {
-	return ('0' <= r && r <= '9') || r == ' '
-}
-
-// Title Format Table Header
-// Replace _ , . and spaces
+// Title formats a table header by replacing underscores and dots (where appropriate) with spaces,
+// trimming whitespace, and converting the result to uppercase.
+// If the resulting string is empty (but the original had characters), it returns a single space.
 func Title(name string) string {
 	origLen := len(name)
 	rs := []rune(name)
@@ -65,8 +61,8 @@ func Title(name string) string {
 		case '_':
 			rs[i] = ' '
 		case '.':
-			// ignore floating number 0.0
-			if (i != 0 && !isNumOrSpace(rs[i-1])) || (i != len(rs)-1 && !isNumOrSpace(rs[i+1])) {
+			// Ignore a dot in a floating number (e.g., 0.0) if adjacent to numeric characters.
+			if (i != 0 && !IsNumOrSpace(rs[i-1])) || (i != len(rs)-1 && !IsNumOrSpace(rs[i+1])) {
 				rs[i] = ' '
 			}
 		}
@@ -74,61 +70,72 @@ func Title(name string) string {
 	name = string(rs)
 	name = strings.TrimSpace(name)
 	if len(name) == 0 && origLen > 0 {
-		// Keep at least one character. This is important to preserve
-		// empty lines in multi-line headers/footers.
+		// Preserve at least one character for empty lines in multi-line headers/footers.
 		name = " "
 	}
 	return strings.ToUpper(name)
 }
 
-// Pad String
-// Attempts to place string in the center
+// Pad centers the string 's' within a field of a given 'width' by padding it with the provided 'pad' string.
+// If the string is shorter than 'width', the remaining space is split evenly (with left side receiving the extra space if needed).
 func Pad(s, pad string, width int) string {
-	gap := width - DisplayWidth(s)
+	gap := width - RuneWidth(s)
 	if gap > 0 {
-		gapLeft := int(math.Ceil(float64(gap / 2)))
+		gapLeft := int(math.Ceil(float64(gap) / 2))
 		gapRight := gap - gapLeft
-		return strings.Repeat(string(pad), gapLeft) + s + strings.Repeat(string(pad), gapRight)
+		return strings.Repeat(pad, gapLeft) + s + strings.Repeat(pad, gapRight)
 	}
 	return s
 }
 
-// PadRight Pad String Right position
-// This would place string at the left side of the screen
+// PadRight pads the string 's' on the right with the 'pad' string until it reaches the specified 'width'.
+// This effectively left-aligns the string.
 func PadRight(s, pad string, width int) string {
-	gap := width - DisplayWidth(s)
+	gap := width - RuneWidth(s)
 	if gap > 0 {
-		return s + strings.Repeat(string(pad), gap)
+		return s + strings.Repeat(pad, gap)
 	}
 	return s
 }
 
-// PadLeft Pad String Left position
-// This would place string at the right side of the screen
+// PadLeft pads the string 's' on the left with the 'pad' string until it reaches the specified 'width'.
+// This effectively right-aligns the string.
 func PadLeft(s, pad string, width int) string {
-	gap := width - DisplayWidth(s)
+	gap := width - RuneWidth(s)
 	if gap > 0 {
-		return strings.Repeat(string(pad), gap) + s
+		return strings.Repeat(pad, gap) + s
 	}
 	return s
 }
+
+// IsNumOrSpace checks whether the rune 'r' is a numeric digit (0-9) or a space.
+// It returns true if the rune meets these conditions.
+func IsNumOrSpace(r rune) bool {
+	return ('0' <= r && r <= '9') || r == ' '
+}
+
+// IsNumeric checks whether a string represents a numeric value.
+// It returns true for valid integers or floating-point numbers, and false otherwise.
 func IsNumeric(s string) bool {
 	s = strings.TrimSpace(s)
 	if s == "" {
 		return false
 	}
-	// Check for plain numbers
+	// Check for plain integer numbers.
 	_, err := strconv.Atoi(s)
 	if err == nil {
 		return true
 	}
-	// Check for floats
+	// Check for floating-point numbers.
 	_, err = strconv.ParseFloat(s, 64)
 	return err == nil
 }
 
+// SplitCamelCase splits a camel case string into its constituent words.
+// It handles transitions such as an uppercase letter followed by lowercase letters
+// (e.g., "PDFLoader" becomes ["PDF", "Loader"]).
 func SplitCamelCase(src string) (entries []string) {
-	// don't split invalid utf8
+	// Do not split if the string is invalid UTF-8.
 	if !utf8.ValidString(src) {
 		return []string{src}
 	}
@@ -136,9 +143,9 @@ func SplitCamelCase(src string) (entries []string) {
 	var runes [][]rune
 	lastClass := 0
 	class := 0
-	// split into fields based on class of unicode character
+	// Split into fields based on the Unicode class of each character.
 	for _, r := range src {
-		switch true {
+		switch {
 		case unicode.IsLower(r):
 			class = 1
 		case unicode.IsUpper(r):
@@ -155,19 +162,56 @@ func SplitCamelCase(src string) (entries []string) {
 		}
 		lastClass = class
 	}
-	// handle upper case -> lower case sequences, e.g.
-	// "PDFL", "oader" -> "PDF", "Loader"
+	// Handle transitions from uppercase sequences to lowercase (e.g., "PDFLoader").
 	for i := 0; i < len(runes)-1; i++ {
 		if unicode.IsUpper(runes[i][0]) && unicode.IsLower(runes[i+1][0]) {
 			runes[i+1] = append([]rune{runes[i][len(runes[i])-1]}, runes[i+1]...)
 			runes[i] = runes[i][:len(runes[i])-1]
 		}
 	}
-	// construct []string from results
+	// Convert rune slices to strings and collect non-empty entries.
 	for _, s := range runes {
 		if len(s) > 0 {
 			entries = append(entries, string(s))
 		}
 	}
 	return
+}
+
+// TruncateString truncates a string to fit within maxWidth while preserving ANSI codes
+func TruncateString(s string, maxWidth int) string {
+	if maxWidth <= 0 {
+		return ""
+	}
+
+	// First strip ANSI codes to measure real content width
+	stripped := ansi.ReplaceAllLiteralString(s, "")
+	if runewidth.StringWidth(stripped) <= maxWidth {
+		return s
+	}
+
+	// Preserve ANSI codes while truncating
+	var buf bytes.Buffer
+	var currentWidth int
+	ansiEnabled := false
+
+	for _, r := range s {
+		if r == '\x1b' {
+			ansiEnabled = true
+		}
+		buf.WriteRune(r)
+
+		if !ansiEnabled {
+			currentWidth += runewidth.RuneWidth(r)
+			if currentWidth >= maxWidth {
+				break
+			}
+		}
+
+		if ansiEnabled && r == 'm' {
+			ansiEnabled = false
+		}
+	}
+
+	return buf.String()
 }

@@ -1,19 +1,68 @@
 package tablewriter
 
 import (
-	"fmt"
-	"github.com/olekukonko/tablewriter/symbols"
-	"github.com/olekukonko/tablewriter/theme"
-	"github.com/olekukonko/tablewriter/utils"
+	"github.com/olekukonko/errors"
 	"io"
-	"os"
 	"reflect"
 	"strings"
+
+	"github.com/olekukonko/tablewriter/renderer"
+	"github.com/olekukonko/tablewriter/symbols"
+	"github.com/olekukonko/tablewriter/utils"
 )
 
 // Iterator defines a generic iterator interface
 type Iterator[T any] interface {
 	Next() (T, bool)
+}
+
+// CellConfig defines pre-processing settings for a table section
+type CellConfig struct {
+	MaxWidth     int
+	AutoWrap     bool
+	Alignment    string
+	ColumnAligns []string
+	AutoFormat   bool
+	Filter       func([]string) []string // Updated to return []string
+	Callback     func()
+	Padding      symbols.Padding
+	AutoMerge    bool // Added to support cell merging
+}
+
+// Config holds the shared configuration for table content preparation
+type Config struct {
+	Header  CellConfig
+	Row     CellConfig
+	Footer  CellConfig
+	Symbols symbols.Symbols
+}
+
+// DefaultConfig returns a default configuration
+func DefaultConfig() Config {
+	s := symbols.NewSymbols(symbols.StyleASCII)
+	defaultPadding := symbols.Padding{Left: " ", Right: " ", Top: "", Bottom: ""}
+	return Config{
+		Header: CellConfig{
+			MaxWidth:   0,
+			AutoWrap:   true,
+			Alignment:  renderer.AlignCenter,
+			AutoFormat: true,
+			Padding:    defaultPadding,
+		},
+		Row: CellConfig{
+			MaxWidth:  0,
+			AutoWrap:  true,
+			Alignment: renderer.AlignLeft,
+			Padding:   defaultPadding,
+		},
+		Footer: CellConfig{
+			MaxWidth:  0,
+			AutoWrap:  true,
+			Alignment: renderer.AlignRight,
+			Padding:   defaultPadding,
+		},
+		Symbols: s,
+	}
 }
 
 // Table represents a text-based table writer
@@ -24,8 +73,8 @@ type Table struct {
 	footers    []string
 	colWidths  map[int]int
 	rowHeights map[int]int
-	theme      theme.Structure
-	config     theme.Config
+	renderer   renderer.Structure
+	config     Config
 	stringer   any
 	newLine    string
 	hasPrinted bool
@@ -44,17 +93,14 @@ func WithFooter(footers []string) Option {
 	return func(t *Table) { t.footers = footers }
 }
 
-// WithFormatter sets a custom theme
-func WithFormatter(f theme.Structure) Option {
-	return func(t *Table) { t.theme = f }
+// WithFormatter sets a custom renderer
+func WithFormatter(f renderer.Structure) Option {
+	return func(t *Table) { t.renderer = f }
 }
 
 // WithConfig sets the table configuration
-func WithConfig(cfg theme.Config) Option {
-	return func(t *Table) {
-		t.config = cfg
-		t.theme = theme.NewDefault(cfg)
-	}
+func WithConfig(cfg Config) Option {
+	return func(t *Table) { t.config = cfg }
 }
 
 // WithStringer sets a custom stringer callback for type T
@@ -62,16 +108,15 @@ func WithStringer[T any](s func(T) []string) Option {
 	return func(t *Table) { t.stringer = s }
 }
 
-// NewTable creates a new table writer with a default theme
+// NewTable creates a new table writer with a default renderer
 func NewTable(w io.Writer, opts ...Option) *Table {
-	cfg := theme.DefaultConfig()
 	t := &Table{
 		writer:     w,
 		colWidths:  make(map[int]int),
 		rowHeights: make(map[int]int),
-		theme:      theme.NewDefault(cfg),
-		config:     cfg,
-		newLine:    symbols.NEWLINE,
+		renderer:   renderer.NewDefault(),
+		config:     DefaultConfig(),
+		newLine:    symbols.NewLine,
 	}
 	for _, opt := range opts {
 		opt(t)
@@ -79,25 +124,34 @@ func NewTable(w io.Writer, opts ...Option) *Table {
 	return t
 }
 
-// NewWriter creates a table with default configurations (legacy compatibility)
-func NewWriter(w io.Writer) *Table {
-	return NewTable(w)
+// Append adds a single row to the table
+func (t *Table) Append(row interface{}) error {
+	t.ensureInitialized()
+	lines, err := t.toStringLines(row)
+	if err != nil {
+		return err
+	}
+	if t.config.Row.Filter != nil {
+		for i := range lines {
+			lines[i] = t.config.Row.Filter(lines[i])
+		}
+	}
+	t.rows = append(t.rows, lines)
+	for _, line := range lines {
+		t.parseDimension(line, renderer.Row)
+	}
+	return nil
 }
 
-// ensureInitialized ensures the table is in a valid state
-func (t *Table) ensureInitialized() {
-	if t.colWidths == nil {
-		t.colWidths = make(map[int]int)
+// AppendBulk adds multiple rows to the table at once
+func (t *Table) AppendBulk(rows []interface{}) error {
+	t.ensureInitialized()
+	for _, row := range rows {
+		if err := t.Append(row); err != nil {
+			return err
+		}
 	}
-	if t.rowHeights == nil {
-		t.rowHeights = make(map[int]int)
-	}
-	if t.theme == nil {
-		t.theme = theme.NewDefault()
-	}
-	if t.config.Symbols == nil {
-		t.config.Symbols = symbols.NewSymbols(symbols.StyleASCII)
-	}
+	return nil
 }
 
 // SetHeader sets the table header
@@ -107,17 +161,18 @@ func (t *Table) SetHeader(headers []string) {
 	for i, h := range headers {
 		if t.config.Header.AutoFormat {
 			h = utils.Title(strings.Join(utils.SplitCamelCase(h), " "))
-			fmt.Fprintf(os.Stderr, "Formatted header %d: %q\n", i, h)
 		}
 		if t.config.Header.AutoWrap && t.config.Header.MaxWidth > 0 {
 			lines, _ := utils.WrapString(h, t.config.Header.MaxWidth)
-			formatted[i] = strings.Join(lines, "\n")
-		} else {
-			formatted[i] = h
+			h = strings.Join(lines, t.newLine)
 		}
+		if t.config.Header.Filter != nil {
+			h = t.config.Header.Filter([]string{h})[0]
+		}
+		formatted[i] = h
 	}
 	t.headers = formatted
-	t.parseDimension(t.headers, -1)
+	t.parseDimension(t.headers, renderer.Header)
 }
 
 // SetFooter sets the table footer
@@ -138,240 +193,128 @@ func (t *Table) SetFooter(footers []string) {
 			padded[i] = ""
 		}
 	}
+	if t.config.Footer.Filter != nil {
+		padded = t.config.Footer.Filter(padded)
+	}
 	t.footers = padded
-	t.parseDimension(t.footers, len(t.rows))
-}
-
-// Append adds a row to the table
-func (t *Table) Append(row interface{}) error {
-	t.ensureInitialized()
-	lines, err := t.toStringLines(row)
-	if err != nil {
-		return err
-	}
-	t.rows = append(t.rows, lines)
-	t.parseDimension(lines[0], len(t.rows)-1)
-	return nil
-}
-
-// AppendStructs adds rows from a slice of structs
-func (t *Table) AppendStructs(v interface{}) error {
-	t.ensureInitialized()
-	if v == nil {
-		return fmt.Errorf("nil value")
-	}
-	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Slice && rv.Kind() != reflect.Array {
-		return fmt.Errorf("input must be a slice or array, got %T", v)
-	}
-	if rv.Len() == 0 {
-		return fmt.Errorf("empty slice")
-	}
-
-	first := rv.Index(0)
-	if first.Kind() == reflect.Ptr && first.IsNil() {
-		return fmt.Errorf("first element is nil")
-	}
-	typ := first.Type()
-	if typ.Kind() == reflect.Ptr {
-		typ = typ.Elem()
-	}
-	if typ.Kind() != reflect.Struct {
-		return fmt.Errorf("elements must be structs or pointers to structs, got %s", typ.Kind())
-	}
-
-	numFields := typ.NumField()
-	if len(t.headers) == 0 {
-		headers := make([]string, numFields)
-		for i := 0; i < numFields; i++ {
-			field := typ.Field(i)
-			if tag := field.Tag.Get("tablewriter"); tag != "" {
-				headers[i] = tag
-			} else {
-				headers[i] = field.Name
-			}
-		}
-		t.headers = headers
-	}
-
-	for i := 0; i < rv.Len(); i++ {
-		item := rv.Index(i)
-		if item.Kind() == reflect.Ptr && item.IsNil() {
-			continue
-		}
-		if item.Kind() == reflect.Ptr {
-			item = item.Elem()
-		}
-		if !item.IsValid() || item.Kind() != reflect.Struct {
-			return fmt.Errorf("invalid item at index %d: %v", i, item.Kind())
-		}
-
-		cells := make([]string, numFields)
-		for j := 0; j < numFields; j++ {
-			field := item.Field(j)
-			if field.Kind() == reflect.Ptr && field.IsNil() {
-				cells[j] = "nil"
-			} else {
-				if field.Kind() == reflect.Ptr {
-					field = field.Elem()
-				}
-				if s, ok := field.Interface().(fmt.Stringer); ok && field.IsValid() {
-					cells[j] = s.String()
-				} else if field.IsValid() {
-					cells[j] = fmt.Sprint(field.Interface())
-				} else {
-					cells[j] = "nil"
-				}
-			}
-		}
-		lines := t.splitLines(cells)
-		t.rows = append(t.rows, lines)
-		t.parseDimension(cells, len(t.rows)-1)
-	}
-	return nil
-}
-
-// StreamRow renders a row immediately
-func (t *Table) StreamRow(row interface{}) error {
-	t.ensureInitialized()
-	f := t.theme
-	if !t.hasPrinted {
-		f.FormatLine(t.writer, t.colWidths, symbols.Top)
-		if len(t.headers) > 0 {
-			f.FormatHeader(t.writer, t.headers, t.colWidths)
-		}
-		t.hasPrinted = true
-	}
-	lines, err := t.toStringLines(row)
-	if err != nil {
-		return err
-	}
-	for i, line := range lines {
-		t.parseDimension(line, len(t.rows))
-		f.FormatRow(t.writer, line, t.colWidths, i == 0)
-	}
-	t.rows = append(t.rows, lines)
-	return nil
-}
-
-// RenderFromIterator renders the table from an iterator
-func (t *Table) RenderFromIterator(iter interface{}) error {
-	t.ensureInitialized()
-	f := t.theme
-	f.FormatLine(t.writer, t.colWidths, symbols.Top)
-	if len(t.headers) > 0 {
-		f.FormatHeader(t.writer, t.headers, t.colWidths)
-	}
-	t.hasPrinted = true
-
-	switch v := iter.(type) {
-	case Iterator[[]string]:
-		for row, ok := v.Next(); ok; row, ok = v.Next() {
-			lines := t.splitLines(row)
-			for i, line := range lines {
-				t.parseDimension(line, len(t.rows))
-				f.FormatRow(t.writer, line, t.colWidths, i == 0)
-			}
-			t.rows = append(t.rows, lines)
-		}
-	default:
-		rv := reflect.ValueOf(iter)
-		if rv.Kind() != reflect.Interface || rv.IsNil() {
-			return fmt.Errorf("invalid iterator type: %T", iter)
-		}
-		iterType := rv.Elem().Type()
-		if iterType.Kind() != reflect.Struct {
-			return fmt.Errorf("iterator must be a struct implementing Iterator[T]")
-		}
-		nextMethod := rv.MethodByName("Next")
-		if !nextMethod.IsValid() {
-			return fmt.Errorf("iterator must implement Next() (T, bool)")
-		}
-		for {
-			results := nextMethod.Call(nil)
-			if len(results) != 2 {
-				return fmt.Errorf("next() must return (T, bool)")
-			}
-			ok := results[1].Bool()
-			if !ok {
-				break
-			}
-			lines, err := t.toStringLines(results[0].Interface())
-			if err != nil {
-				return err
-			}
-			for i, line := range lines {
-				t.parseDimension(line, len(t.rows))
-				f.FormatRow(t.writer, line, t.colWidths, i == 0)
-			}
-			t.rows = append(t.rows, lines)
-		}
-	}
-
-	if len(t.footers) > 0 {
-		f.FormatLine(t.writer, t.colWidths, symbols.Middle)
-		f.FormatFooter(t.writer, t.footers, t.colWidths)
-	}
-	f.FormatLine(t.writer, t.colWidths, symbols.Bottom)
-	return nil
+	t.parseDimension(t.footers, renderer.Footer)
 }
 
 // Render outputs the table to the writer
 func (t *Table) Render() error {
 	t.ensureInitialized()
 	t.colWidths = make(map[int]int)
-	for i, w := range t.theme.GetColumnWidths() {
-		if w > 0 {
-			t.colWidths[i] = w
-		}
-	}
+
+	// Calculate widths for all sections
 	if len(t.headers) > 0 {
-		t.parseDimension(t.headers, -1)
+		t.parseDimension(t.headers, renderer.Header)
 	}
-	for i, lines := range t.rows {
+	for _, lines := range t.rows {
 		for _, line := range lines {
-			t.parseDimension(line, i)
+			t.parseDimension(line, renderer.Row)
 		}
 	}
 	if len(t.footers) > 0 {
-		t.parseDimension(t.footers, len(t.rows))
+		t.parseDimension(t.footers, renderer.Footer)
 	}
 
-	f := t.theme
-	f.FormatLine(t.writer, t.colWidths, symbols.Top)
+	f := t.renderer
+	f.FormatLine(t.writer, renderer.Context{Widths: t.colWidths, Level: renderer.Top})
+
+	// Header
 	if len(t.headers) > 0 {
-		f.FormatHeader(t.writer, t.headers, t.colWidths)
+		colAligns := make(map[int]string)
+		colPadding := make(map[int]symbols.Padding)
+		for i := range t.headers {
+			colAligns[i] = t.config.Header.Alignment
+			colPadding[i] = t.config.Header.Padding
+		}
+		f.FormatHeader(t.writer, t.headers, renderer.Context{
+			Widths:     t.colWidths,
+			Align:      t.config.Header.Alignment,
+			Padding:    t.config.Header.Padding,
+			ColPadding: colPadding,
+			ColAligns:  colAligns,
+		})
 	}
+
+	// Rows with optional cell merging
 	for i, lines := range t.rows {
 		for j, line := range lines {
-			f.FormatRow(t.writer, line, t.colWidths, j == 0 && i == 0)
+			colPadding := make(map[int]symbols.Padding)
+			colAligns := make(map[int]string)
+			for colKey := range line {
+				colPadding[colKey] = t.config.Row.Padding
+				if colKey < len(t.config.Row.ColumnAligns) && t.config.Row.ColumnAligns[colKey] != "" {
+					colAligns[colKey] = t.config.Row.ColumnAligns[colKey]
+				} else {
+					colAligns[colKey] = t.config.Row.Alignment
+				}
+			}
+			// Apply cell merging if enabled
+			if t.config.Row.AutoMerge && i > 0 && j == 0 {
+				prevLines := t.rows[i-1]
+				if len(prevLines) > 0 && len(prevLines[0]) == len(line) {
+					for colKey := range line {
+						if colKey == 0 && line[colKey] == prevLines[0][colKey] {
+							line[colKey] = "" // Merge by clearing duplicate value
+						}
+					}
+				}
+			}
+			f.FormatRow(t.writer, line, renderer.Context{
+				Widths:     t.colWidths,
+				Level:      renderer.Middle,
+				Align:      t.config.Row.Alignment,
+				Padding:    t.config.Row.Padding,
+				ColPadding: colPadding,
+				ColAligns:  colAligns,
+				First:      i == 0 && j == 0,
+			})
 		}
 	}
+
+	// Footer
 	if len(t.footers) > 0 {
-		f.FormatLine(t.writer, t.colWidths, symbols.Middle)
-		f.FormatFooter(t.writer, t.footers, t.colWidths)
-		f.FormatLine(t.writer, t.colWidths, symbols.Bottom)
+		f.FormatLine(t.writer, renderer.Context{Widths: t.colWidths, Level: renderer.Middle})
+		colPadding := make(map[int]symbols.Padding)
+		colAligns := make(map[int]string)
+		for i := range t.footers {
+			colPadding[i] = t.config.Footer.Padding
+			if i < len(t.config.Footer.ColumnAligns) && t.config.Footer.ColumnAligns[i] != "" {
+				colAligns[i] = t.config.Footer.ColumnAligns[i]
+			} else {
+				colAligns[i] = t.config.Footer.Alignment
+			}
+		}
+		f.FormatFooter(t.writer, t.footers, renderer.Context{
+			Widths:     t.colWidths,
+			Align:      t.config.Footer.Alignment,
+			Padding:    t.config.Footer.Padding,
+			ColPadding: colPadding,
+			ColAligns:  colAligns,
+		})
+		f.FormatLine(t.writer, renderer.Context{Widths: t.colWidths, Level: renderer.Bottom})
 	} else {
-		f.FormatLine(t.writer, t.colWidths, symbols.Bottom)
+		f.FormatLine(t.writer, renderer.Context{Widths: t.colWidths, Level: renderer.Bottom})
 	}
+	t.hasPrinted = true
 	return nil
 }
 
-// Metrics returns statistics about the table
-func (t *Table) Metrics() struct {
-	HeaderCount int
-	RowCount    int
-	FooterCount int
-} {
-	t.ensureInitialized()
-	return struct {
-		HeaderCount int
-		RowCount    int
-		FooterCount int
-	}{
-		HeaderCount: len(t.headers),
-		RowCount:    len(t.rows),
-		FooterCount: len(t.footers),
+// ensureInitialized ensures the table is in a valid state
+func (t *Table) ensureInitialized() {
+	if t.colWidths == nil {
+		t.colWidths = make(map[int]int)
+	}
+	if t.rowHeights == nil {
+		t.rowHeights = make(map[int]int)
+	}
+	if t.renderer == nil {
+		t.renderer = renderer.NewDefault()
+	}
+	if t.config.Symbols == nil {
+		t.config.Symbols = symbols.NewSymbols(symbols.StyleASCII)
 	}
 }
 
@@ -379,30 +322,59 @@ func (t *Table) Metrics() struct {
 func (t *Table) toStringLines(row interface{}) ([][]string, error) {
 	switch v := row.(type) {
 	case []string:
-		if t.config.Row.AutoWrap && t.config.Row.MaxWidth > 0 {
-			wrapped := make([]string, len(v))
-			for i, cell := range v {
-				lines, _ := utils.WrapString(cell, t.config.Row.MaxWidth)
-				wrapped[i] = strings.Join(lines, "\n")
+		result := make([][]string, len(v))
+		for i, cell := range v {
+			var lines []string
+			if t.config.Row.AutoWrap && t.config.Row.MaxWidth > 0 {
+				wrapped, _ := utils.WrapString(cell, t.config.Row.MaxWidth)
+				lines = wrapped
+			} else {
+				lines = strings.Split(cell, "\n")
 			}
-			return t.splitLines(wrapped), nil
+			paddedLines := make([]string, len(lines))
+			for j, line := range lines {
+				paddedLines[j] = t.config.Row.Padding.Left + line + t.config.Row.Padding.Right
+			}
+			result[i] = paddedLines
 		}
-		return t.splitLines(v), nil
+		return t.normalizeLines(result), nil
 	default:
 		if t.stringer == nil {
-			return nil, fmt.Errorf("no stringer provided for type %T", row)
+			return nil, errors.Newf("no stringer provided for type %T", row)
 		}
 		rv := reflect.ValueOf(t.stringer)
 		if rv.Kind() != reflect.Func || rv.Type().NumIn() != 1 || rv.Type().NumOut() != 1 {
-			return nil, fmt.Errorf("stringer must be a func(T) []string")
+			return nil, errors.Newf("stringer must be a func(T) []string")
 		}
 		in := []reflect.Value{reflect.ValueOf(row)}
 		out := rv.Call(in)
 		if len(out) != 1 || out[0].Kind() != reflect.Slice || out[0].Type().Elem().Kind() != reflect.String {
-			return nil, fmt.Errorf("stringer must return []string")
+			return nil, errors.Newf("stringer must return []string")
 		}
 		return t.splitLines(out[0].Interface().([]string)), nil
 	}
+}
+
+// normalizeLines ensures all columns have the same number of lines
+func (t *Table) normalizeLines(lines [][]string) [][]string {
+	maxLines := 0
+	for _, col := range lines {
+		if len(col) > maxLines {
+			maxLines = len(col)
+		}
+	}
+	result := make([][]string, maxLines)
+	for i := 0; i < maxLines; i++ {
+		result[i] = make([]string, len(lines))
+		for j, col := range lines {
+			if i < len(col) {
+				result[i][j] = col[i]
+			} else {
+				result[i][j] = t.config.Row.Padding.Left + t.config.Row.Padding.Right
+			}
+		}
+	}
+	return result
 }
 
 // splitLines splits multi-line strings into separate lines
@@ -430,74 +402,38 @@ func (t *Table) splitLines(row []string) [][]string {
 	return result
 }
 
-// parseDimension parses table dimensions for a row
-func (t *Table) parseDimension(row []string, rowKey int) {
-	var cfg *theme.CellConfig
-	switch rowKey {
-	case -1: // Headers
+// parseDimension calculates column widths and prepares content without padding
+func (t *Table) parseDimension(row []string, position renderer.Position) int {
+	var cfg *CellConfig
+	switch position {
+	case renderer.Header:
 		cfg = &t.config.Header
-	case len(t.rows): // Footers
+	case renderer.Footer:
 		cfg = &t.config.Footer
-	default: // Rows
+	default:
 		cfg = &t.config.Row
 	}
-	for colKey, cell := range row {
+
+	maxWidth := 0
+	for i, cell := range row {
 		lines := strings.Split(cell, "\n")
-		maxWidth := 0
 		for _, line := range lines {
-			w := utils.DisplayWidth(line)
-			if cfg.AutoWrap && cfg.MaxWidth > 0 {
-				wrapped, _ := utils.WrapString(line, cfg.MaxWidth)
-				for _, wrappedLine := range wrapped {
-					if w := utils.DisplayWidth(wrappedLine); w > maxWidth {
-						maxWidth = w
-					}
-				}
-			} else if w > maxWidth {
-				maxWidth = w
+			contentWidth := utils.RuneWidth(line)
+			totalWidth := contentWidth +
+				utils.RuneWidth(cfg.Padding.Left) +
+				utils.RuneWidth(cfg.Padding.Right)
+
+			if cfg.MaxWidth > 0 && totalWidth > cfg.MaxWidth {
+				totalWidth = cfg.MaxWidth
 			}
-		}
-		// Calculate rendered width with padding
-		align := cfg.Alignment
-		if colKey < len(cfg.ColumnAligns) && cfg.ColumnAligns[colKey] != theme.ALIGN_DEFAULT {
-			align = cfg.ColumnAligns[colKey]
-		}
-		var padded string
-		switch align {
-		case theme.ALIGN_CENTER:
-			padded = utils.Pad(strings.Join(lines, "\n"), symbols.SPACE, maxWidth)
-		case theme.ALIGN_RIGHT:
-			padded = utils.PadLeft(strings.Join(lines, "\n"), symbols.SPACE, maxWidth)
-		case theme.ALIGN_LEFT, theme.ALIGN_DEFAULT:
-			padded = utils.PadRight(strings.Join(lines, "\n"), symbols.SPACE, maxWidth)
-		}
-		if w := utils.DisplayWidth(padded); w > maxWidth {
-			maxWidth = w
-		}
-		// Apply theme-based width overrides
-		if widths := t.theme.GetColumnWidths(); len(widths) > colKey && widths[colKey] > 0 {
-			if maxWidth < widths[colKey] {
-				maxWidth = widths[colKey]
+
+			if current, exists := t.colWidths[i]; !exists || totalWidth > current {
+				t.colWidths[i] = totalWidth
 			}
-		}
-		// Enforce maxWidth cap from config
-		if cfg.MaxWidth > 0 && maxWidth > cfg.MaxWidth {
-			maxWidth = cfg.MaxWidth
-		}
-		// Update column width
-		if current, exists := t.colWidths[colKey]; !exists || maxWidth > current {
-			t.colWidths[colKey] = maxWidth
-		}
-		// Update row height
-		if h := len(lines); h > 0 {
-			if curr, ok := t.rowHeights[rowKey]; !ok || h > curr {
-				t.rowHeights[rowKey] = h
+			if totalWidth > maxWidth {
+				maxWidth = totalWidth
 			}
 		}
 	}
-}
-
-// Theme returns the current theme for configuration
-func (t *Table) Theme() theme.Structure {
-	return t.theme
+	return maxWidth
 }
