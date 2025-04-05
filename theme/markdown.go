@@ -1,5 +1,5 @@
 // formatter/markdown.go
-package formatter
+package theme
 
 import (
 	"fmt"
@@ -10,38 +10,38 @@ import (
 	"github.com/olekukonko/tablewriter/symbols"
 )
 
-type MarkdownFormatter struct {
+type Markdown struct {
 	alignment int
 	newLine   string
 }
 
-func NewMarkdownFormatter() Formatter {
-	return &MarkdownFormatter{
+func NewMarkdownFormatter() Structure {
+	return &Markdown{
 		alignment: ALIGN_DEFAULT,
 		newLine:   symbols.NEWLINE,
 	}
 }
 
-func (f *MarkdownFormatter) FormatHeader(w io.Writer, headers []string, colWidths map[int]int) {
+func (f *Markdown) FormatHeader(w io.Writer, headers []string, colWidths map[int]int) {
 	padFunc := f.pad(f.alignment)
 	cells := f.padCells(headers, padFunc, colWidths)
 	fmt.Fprintf(w, "| %s |%s", strings.Join(cells, " | "), f.newLine)
 	f.FormatLine(w, colWidths, false)
 }
 
-func (f *MarkdownFormatter) FormatRow(w io.Writer, row []string, colWidths map[int]int, isFirstRow bool) {
+func (f *Markdown) FormatRow(w io.Writer, row []string, colWidths map[int]int, isFirstRow bool) {
 	padFunc := f.pad(f.alignment)
 	cells := f.padCells(row, padFunc, colWidths)
 	fmt.Fprintf(w, "| %s |%s", strings.Join(cells, " | "), f.newLine)
 }
 
-func (f *MarkdownFormatter) FormatFooter(w io.Writer, footers []string, colWidths map[int]int) {
+func (f *Markdown) FormatFooter(w io.Writer, footers []string, colWidths map[int]int) {
 	padFunc := f.pad(f.alignment)
 	cells := f.padCells(footers, padFunc, colWidths)
 	fmt.Fprintf(w, "| %s |%s", strings.Join(cells, " | "), f.newLine)
 }
 
-func (f *MarkdownFormatter) FormatLine(w io.Writer, colWidths map[int]int, isTop bool) {
+func (f *Markdown) FormatLine(w io.Writer, colWidths map[int]int, isTop bool) {
 	var separators []string
 	for i := 0; i < len(colWidths); i++ {
 		w := colWidths[i]
@@ -50,15 +50,15 @@ func (f *MarkdownFormatter) FormatLine(w io.Writer, colWidths map[int]int, isTop
 	fmt.Fprintf(w, "| %s |%s", strings.Join(separators, " | "), f.newLine)
 }
 
-func (f *MarkdownFormatter) Configure(opt Option) {
+func (f *Markdown) Configure(opt Option) {
 	opt(f)
 }
 
-func (f *MarkdownFormatter) Reset() {
+func (f *Markdown) Reset() {
 	// No internal state to reset
 }
 
-func (f *MarkdownFormatter) padCells(cells []string, padFunc func(string, string, int) string, colWidths map[int]int) []string {
+func (f *Markdown) padCells(cells []string, padFunc func(string, string, int) string, colWidths map[int]int) []string {
 	padded := make([]string, len(cells))
 	for i, cell := range cells {
 		w := colWidths[i]
@@ -67,7 +67,7 @@ func (f *MarkdownFormatter) padCells(cells []string, padFunc func(string, string
 	return padded
 }
 
-func (f *MarkdownFormatter) pad(align int) func(string, string, int) string {
+func (f *Markdown) pad(align int) func(string, string, int) string {
 	switch align {
 	case ALIGN_CENTER:
 		return utils.Pad

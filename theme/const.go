@@ -1,5 +1,5 @@
 // formatter/const.go
-package formatter
+package theme
 
 import "io"
 
@@ -14,8 +14,8 @@ const (
 // DefaultMaxWidth is the default maximum column width
 const DefaultMaxWidth = 30
 
-// Formatter defines the interface for formatting table elements
-type Formatter interface {
+// Structure defines the interface for formatting table elements
+type Structure interface {
 	FormatHeader(w io.Writer, headers []string, colWidths map[int]int)
 	FormatRow(w io.Writer, row []string, colWidths map[int]int, isFirstRow bool)
 	FormatFooter(w io.Writer, footers []string, colWidths map[int]int)
@@ -30,9 +30,4 @@ type Border struct {
 	Right  bool
 	Top    bool
 	Bottom bool
-}
-
-// simpleSyms generates a basic symbol set (placeholder from original)
-func simpleSyms(center, row, column string) []string {
-	return []string{row, column, center, center, center, center, center, center, center, center, center}
 }

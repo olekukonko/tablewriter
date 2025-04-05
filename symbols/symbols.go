@@ -40,24 +40,24 @@ func (s UnicodeStyle) String() string {
 	}[s]
 }
 
-// DefaultSymbols provides the default ASCII symbols
-type DefaultSymbols struct{}
+// Default provides the default ASCII symbols
+type Default struct{}
 
-func (s DefaultSymbols) Center() string { return "+" }
-func (s DefaultSymbols) Row() string    { return "-" }
-func (s DefaultSymbols) Column() string { return "|" }
+func (s Default) Center() string { return "+" }
+func (s Default) Row() string    { return "-" }
+func (s Default) Column() string { return "|" }
 
-// UnicodeSymbols provides Unicode box-drawing symbols
-type UnicodeSymbols struct {
+// Unicode provides Unicode box-drawing symbols
+type Unicode struct {
 	style UnicodeStyle
 }
 
-// NewUnicodeSymbols creates a new UnicodeSymbols instance with the specified style
-func NewUnicodeSymbols(style UnicodeStyle) *UnicodeSymbols {
-	return &UnicodeSymbols{style: style}
+// NewUnicodeSymbols creates a new Unicode instance with the specified style
+func NewUnicodeSymbols(style UnicodeStyle) *Unicode {
+	return &Unicode{style: style}
 }
 
-func (s *UnicodeSymbols) Center() string {
+func (s *Unicode) Center() string {
 	switch s.style {
 	case RegularRegular:
 		return "┼"
@@ -78,7 +78,7 @@ func (s *UnicodeSymbols) Center() string {
 	}
 }
 
-func (s *UnicodeSymbols) Row() string {
+func (s *Unicode) Row() string {
 	switch s.style {
 	case RegularRegular, RegularThick, RegularDouble:
 		return "─"
@@ -91,7 +91,7 @@ func (s *UnicodeSymbols) Row() string {
 	}
 }
 
-func (s *UnicodeSymbols) Column() string {
+func (s *Unicode) Column() string {
 	switch s.style {
 	case RegularRegular, ThickRegular, DoubleRegular:
 		return "│"
@@ -103,3 +103,30 @@ func (s *UnicodeSymbols) Column() string {
 		return "|"
 	}
 }
+
+//@todo add Terminal
+//var cliTableDoubleTheme = Separators{
+//	Top: SeparatorRow{
+//		Line:  "═",
+//		Left:  "╔",
+//		Right: "╗",
+//		Mid:   "╤",
+//	},
+//	Bottom: SeparatorRow{
+//		Line:  "═",
+//		Left:  "╚",
+//		Right: "╝",
+//		Mid:   "╧",
+//	},
+//	Middle: SeparatorRow{
+//		Line:  "─",
+//		Left:  "╟",
+//		Right: "╢",
+//		Mid:   "┼",
+//	},
+//	Data: SeparatorDataRow{
+//		Left:  "║",
+//		Right: "║",
+//		Mid:   "│",
+//	},
+//}

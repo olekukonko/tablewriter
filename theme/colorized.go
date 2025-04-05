@@ -1,5 +1,5 @@
 // formatter/color.go
-package formatter
+package theme
 
 import (
 	"fmt"
@@ -11,8 +11,8 @@ import (
 	"github.com/olekukonko/tablewriter/symbols"
 )
 
-// ColorFormatter implements colored ASCII table formatting
-type ColorFormatter struct {
+// Colorized implements colored ASCII table formatting
+type Colorized struct {
 	borders         Border
 	centerSeparator string
 	rowSeparator    string
@@ -84,9 +84,9 @@ const (
 	Italic
 )
 
-func NewColorFormatter() Formatter {
-	s := symbols.DefaultSymbols{}
-	return &ColorFormatter{
+func NewColorFormatter() Structure {
+	s := symbols.Default{}
+	return &Colorized{
 		borders:         Border{Left: true, Right: true, Top: true, Bottom: true},
 		centerSeparator: s.Center(),
 		rowSeparator:    s.Row(),
@@ -101,7 +101,7 @@ func NewColorFormatter() Formatter {
 	}
 }
 
-func (f *ColorFormatter) FormatHeader(w io.Writer, headers []string, colWidths map[int]int) {
+func (f *Colorized) FormatHeader(w io.Writer, headers []string, colWidths map[int]int) {
 	padFunc := f.pad(f.headerAlignment)
 	cells := f.padCells(headers, padFunc, colWidths)
 	for i, cell := range cells {
@@ -117,7 +117,7 @@ func (f *ColorFormatter) FormatHeader(w io.Writer, headers []string, colWidths m
 	}
 }
 
-func (f *ColorFormatter) FormatRow(w io.Writer, row []string, colWidths map[int]int, isFirstRow bool) {
+func (f *Colorized) FormatRow(w io.Writer, row []string, colWidths map[int]int, isFirstRow bool) {
 	padFunc := f.pad(f.alignment)
 	cells := f.padCells(row, padFunc, colWidths)
 	for i, cell := range cells {
@@ -130,7 +130,7 @@ func (f *ColorFormatter) FormatRow(w io.Writer, row []string, colWidths map[int]
 	fmt.Fprintf(w, "%s %s %s%s", prefix, strings.Join(cells, " "+f.columnSeparator+" "), suffix, f.newLine)
 }
 
-func (f *ColorFormatter) FormatFooter(w io.Writer, footers []string, colWidths map[int]int) {
+func (f *Colorized) FormatFooter(w io.Writer, footers []string, colWidths map[int]int) {
 	padFunc := f.pad(f.footerAlignment)
 	cells := f.padCells(footers, padFunc, colWidths)
 	for i, cell := range cells {
@@ -143,7 +143,7 @@ func (f *ColorFormatter) FormatFooter(w io.Writer, footers []string, colWidths m
 	fmt.Fprintf(w, "%s %s %s%s", prefix, strings.Join(cells, " "+f.columnSeparator+" "), suffix, f.newLine)
 }
 
-func (f *ColorFormatter) FormatLine(w io.Writer, colWidths map[int]int, isTop bool) {
+func (f *Colorized) FormatLine(w io.Writer, colWidths map[int]int, isTop bool) {
 	prefix := f.centerSeparator
 	if !f.borders.Left {
 		prefix = f.rowSeparator
@@ -156,15 +156,15 @@ func (f *ColorFormatter) FormatLine(w io.Writer, colWidths map[int]int, isTop bo
 	fmt.Fprint(w, f.newLine)
 }
 
-func (f *ColorFormatter) Configure(opt Option) {
+func (f *Colorized) Configure(opt Option) {
 	opt(f)
 }
 
-func (f *ColorFormatter) Reset() {
+func (f *Colorized) Reset() {
 	f.cache = colorCache{}
 }
 
-func (f *ColorFormatter) padCells(cells []string, padFunc func(string, string, int) string, colWidths map[int]int) []string {
+func (f *Colorized) padCells(cells []string, padFunc func(string, string, int) string, colWidths map[int]int) []string {
 	padded := make([]string, len(cells))
 	for i, cell := range cells {
 		w := colWidths[i]
@@ -173,7 +173,7 @@ func (f *ColorFormatter) padCells(cells []string, padFunc func(string, string, i
 	return padded
 }
 
-func (f *ColorFormatter) pad(align int) func(string, string, int) string {
+func (f *Colorized) pad(align int) func(string, string, int) string {
 	switch align {
 	case ALIGN_CENTER:
 		return utils.Pad
@@ -186,7 +186,7 @@ func (f *ColorFormatter) pad(align int) func(string, string, int) string {
 	}
 }
 
-func (f *ColorFormatter) format(s string, codes Colors) string {
+func (f *Colorized) format(s string, codes Colors) string {
 	if len(codes) == 0 {
 		return s
 	}
@@ -200,7 +200,7 @@ func (f *ColorFormatter) format(s string, codes Colors) string {
 	return formatted
 }
 
-func (f *ColorFormatter) makeSequence(codes []int) string {
+func (f *Colorized) makeSequence(codes []int) string {
 	codesInString := make([]string, len(codes))
 	for i, code := range codes {
 		codesInString[i] = fmt.Sprintf("%d", code)
@@ -208,15 +208,15 @@ func (f *ColorFormatter) makeSequence(codes []int) string {
 	return strings.Join(codesInString, ";")
 }
 
-func (f *ColorFormatter) startFormat(seq string) string {
+func (f *Colorized) startFormat(seq string) string {
 	return fmt.Sprintf("\033[%sm", seq)
 }
 
-func (f *ColorFormatter) stopFormat() string {
+func (f *Colorized) stopFormat() string {
 	return fmt.Sprintf("\033[%dm", Normal)
 }
 
-func (f *ColorFormatter) updateSymbols() {
+func (f *Colorized) updateSymbols() {
 	f.centerSeparator = f.symbols.Center()
 	f.rowSeparator = f.symbols.Row()
 	f.columnSeparator = f.symbols.Column()

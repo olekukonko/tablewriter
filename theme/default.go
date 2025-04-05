@@ -1,5 +1,5 @@
 // formatter/default.go
-package formatter
+package theme
 
 import (
 	"fmt"
@@ -25,8 +25,8 @@ type DefaultFormatter struct {
 	autoFormat      bool
 }
 
-func NewDefaultFormatter() Formatter {
-	s := symbols.DefaultSymbols{}
+func NewDefaultFormatter() Structure {
+	s := symbols.Default{}
 	return &DefaultFormatter{
 		borders:         Border{Left: true, Right: true, Top: true, Bottom: true},
 		centerSeparator: s.Center(),
@@ -125,4 +125,9 @@ func (f *DefaultFormatter) updateSymbols() {
 	f.rowSeparator = f.symbols.Row()
 	f.columnSeparator = f.symbols.Column()
 	f.syms = simpleSyms(f.centerSeparator, f.rowSeparator, f.columnSeparator)
+}
+
+// simpleSyms generates a basic symbol set (placeholder from original)
+func simpleSyms(center, row, column string) []string {
+	return []string{row, column, center, center, center, center, center, center, center, center, center}
 }
