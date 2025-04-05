@@ -1,193 +1,247 @@
 package symbols
 
-// Default symbols
+// Basic constants
 const (
 	SPACE   = " "
 	NEWLINE = "\n"
 )
 
-// Symbols defines the interface for table symbols
-type Symbols interface {
-	Center() string      // e.g., "╬" for junctions
-	Row() string         // e.g., "═" for horizontal lines
-	Column() string      // e.g., "║" for vertical lines
-	TopLeft() string     // e.g., "╔"
-	TopMid() string      // e.g., "╦"
-	TopRight() string    // e.g., "╗"
-	MidLeft() string     // e.g., "╠"
-	MidRight() string    // e.g., "╣"
-	BottomLeft() string  // e.g., "╚"
-	BottomMid() string   // e.g., "╩"
-	BottomRight() string // e.g., "╝"
-}
-
-// UnicodeStyle represents different Unicode box drawing styles
-type UnicodeStyle int
-
-// Unicode line style constants
 const (
-	RegularRegular UnicodeStyle = iota
-	ThickThick
-	DoubleDouble
-	RegularThick
-	ThickRegular
-	RegularDouble
-	DoubleRegular
+	Top    = "top"
+	Middle = "middle"
+	Bottom = "bottom"
 )
 
-// String representation of Unicode styles
-func (s UnicodeStyle) String() string {
+// Symbols defines the interface for table border symbols
+type Symbols interface {
+	// Basic components
+	Center() string // Junction symbol (where lines cross)
+	Row() string    // Horizontal line symbol
+	Column() string // Vertical line symbol
+
+	// Corners and junctions
+	TopLeft() string     // Top-left corner
+	TopMid() string      // Top junction
+	TopRight() string    // Top-right corner
+	MidLeft() string     // Left junction
+	MidRight() string    // Right junction
+	BottomLeft() string  // Bottom-left corner
+	BottomMid() string   // Bottom junction
+	BottomRight() string // Bottom-right corner
+
+	// Optional: Header separator specific symbols
+	HeaderLeft() string
+	HeaderMid() string
+	HeaderRight() string
+}
+
+// BorderStyle defines different border styling options
+type BorderStyle int
+
+const (
+	StyleNone BorderStyle = iota
+	StyleASCII
+	StyleLight
+	StyleHeavy
+	StyleDouble
+	StyleLightHeavy
+	StyleHeavyLight
+	StyleLightDouble
+	StyleDoubleLight
+	StyleRounded
+	StyleMarkdown
+)
+
+// String representation of border styles
+func (s BorderStyle) String() string {
 	return [...]string{
-		"RegularRegular",
-		"ThickThick",
-		"DoubleDouble",
-		"RegularThick",
-		"ThickRegular",
-		"RegularDouble",
-		"DoubleRegular",
+		"None",
+		"ASCII",
+		"Light",
+		"Heavy",
+		"Double",
+		"LightHeavy",
+		"HeavyLight",
+		"LightDouble",
+		"DoubleLight",
+		"Rounded",
+		"Markdown",
 	}[s]
 }
 
-// Default provides the default ASCII symbols
-type Default struct{}
+// NewSymbols creates a new Symbols instance with the specified style
+func NewSymbols(style BorderStyle) Symbols {
+	switch style {
+	case StyleASCII:
+		return &ASCII{}
+	case StyleLight:
+		return &Unicode{
+			row:    "─",
+			column: "│",
+			center: "┼",
+			corners: [9]string{
+				"┌", "┬", "┐",
+				"├", "┼", "┤",
+				"└", "┴", "┘",
+			},
+		}
+	case StyleHeavy:
+		return &Unicode{
+			row:    "━",
+			column: "┃",
+			center: "╋",
+			corners: [9]string{
+				"┏", "┳", "┓",
+				"┣", "╋", "┫",
+				"┗", "┻", "┛",
+			},
+		}
+	case StyleDouble:
+		return &Unicode{
+			row:    "═",
+			column: "║",
+			center: "╬",
+			corners: [9]string{
+				"╔", "╦", "╗",
+				"╠", "╬", "╣",
+				"╚", "╩", "╝",
+			},
+		}
+	case StyleLightHeavy:
+		return &Unicode{
+			row:    "─",
+			column: "┃",
+			center: "╂",
+			corners: [9]string{
+				"┍", "┯", "┑",
+				"┝", "╂", "┥",
+				"┕", "┷", "┙",
+			},
+		}
+	case StyleHeavyLight:
+		return &Unicode{
+			row:    "━",
+			column: "│",
+			center: "┿",
+			corners: [9]string{
+				"┎", "┰", "┒",
+				"┠", "┿", "┨",
+				"┖", "┸", "┚",
+			},
+		}
+	case StyleLightDouble:
+		return &Unicode{
+			row:    "─",
+			column: "║",
+			center: "╫",
+			corners: [9]string{
+				"╓", "╥", "╖",
+				"╟", "╫", "╢",
+				"╙", "╨", "╜",
+			},
+		}
+	case StyleDoubleLight:
+		return &Unicode{
+			row:    "═",
+			column: "│",
+			center: "╪",
+			corners: [9]string{
+				"╒", "╤", "╕",
+				"╞", "╪", "╡",
+				"╘", "╧", "╛",
+			},
+		}
+	case StyleRounded:
+		return &Unicode{
+			row:    "─",
+			column: "│",
+			center: "┼",
+			corners: [9]string{
+				"╭", "┬", "╮",
+				"├", "┼", "┤",
+				"╰", "┴", "╯",
+			},
+		}
+	case StyleMarkdown:
+		return &Markdown{}
+	default:
+		return &Empty{}
+	}
+}
 
-func (s Default) Center() string      { return "+" }
-func (s Default) Row() string         { return "-" }
-func (s Default) Column() string      { return "|" }
-func (s Default) TopLeft() string     { return "+" }
-func (s Default) TopMid() string      { return "+" }
-func (s Default) TopRight() string    { return "+" }
-func (s Default) MidLeft() string     { return "+" }
-func (s Default) MidRight() string    { return "+" }
-func (s Default) BottomLeft() string  { return "+" }
-func (s Default) BottomMid() string   { return "+" }
-func (s Default) BottomRight() string { return "+" }
+// ASCII provides basic ASCII border symbols
+type ASCII struct{}
 
-// Unicode provides Unicode box-drawing symbols
+func (s *ASCII) Center() string      { return "+" }
+func (s *ASCII) Row() string         { return "-" }
+func (s *ASCII) Column() string      { return "|" }
+func (s *ASCII) TopLeft() string     { return "+" }
+func (s *ASCII) TopMid() string      { return "+" }
+func (s *ASCII) TopRight() string    { return "+" }
+func (s *ASCII) MidLeft() string     { return "+" }
+func (s *ASCII) MidRight() string    { return "+" }
+func (s *ASCII) BottomLeft() string  { return "+" }
+func (s *ASCII) BottomMid() string   { return "+" }
+func (s *ASCII) BottomRight() string { return "+" }
+func (s *ASCII) HeaderLeft() string  { return "+" }
+func (s *ASCII) HeaderMid() string   { return "+" }
+func (s *ASCII) HeaderRight() string { return "+" }
+
+// Unicode provides configurable Unicode border symbols
 type Unicode struct {
-	style UnicodeStyle
+	row     string
+	column  string
+	center  string
+	corners [9]string // [topLeft, topMid, topRight, midLeft, center, midRight, bottomLeft, bottomMid, bottomRight]
 }
 
-// NewUnicodeSymbols creates a new Unicode instance with the specified style
-func NewUnicodeSymbols(style UnicodeStyle) *Unicode {
-	return &Unicode{style: style}
-}
+func (s *Unicode) Center() string      { return s.center }
+func (s *Unicode) Row() string         { return s.row }
+func (s *Unicode) Column() string      { return s.column }
+func (s *Unicode) TopLeft() string     { return s.corners[0] }
+func (s *Unicode) TopMid() string      { return s.corners[1] }
+func (s *Unicode) TopRight() string    { return s.corners[2] }
+func (s *Unicode) MidLeft() string     { return s.corners[3] }
+func (s *Unicode) MidRight() string    { return s.corners[5] }
+func (s *Unicode) BottomLeft() string  { return s.corners[6] }
+func (s *Unicode) BottomMid() string   { return s.corners[7] }
+func (s *Unicode) BottomRight() string { return s.corners[8] }
+func (s *Unicode) HeaderLeft() string  { return s.MidLeft() }
+func (s *Unicode) HeaderMid() string   { return s.Center() }
+func (s *Unicode) HeaderRight() string { return s.MidRight() }
 
-func (s *Unicode) Center() string {
-	switch s.style {
-	case RegularRegular:
-		return "┼"
-	case ThickThick:
-		return "╋"
-	case DoubleDouble:
-		return "╬"
-	case RegularThick:
-		return "╂"
-	case ThickRegular:
-		return "┿"
-	case RegularDouble:
-		return "╫"
-	case DoubleRegular:
-		return "╪"
-	default:
-		return "+"
-	}
-}
+// Markdown provides symbols for Markdown-style tables
+type Markdown struct{}
 
-func (s *Unicode) Row() string {
-	switch s.style {
-	case RegularRegular, RegularThick, RegularDouble:
-		return "─"
-	case ThickThick, ThickRegular:
-		return "━"
-	case DoubleDouble, DoubleRegular:
-		return "═"
-	default:
-		return "-"
-	}
-}
+func (s *Markdown) Center() string      { return "|" }
+func (s *Markdown) Row() string         { return "-" }
+func (s *Markdown) Column() string      { return "|" }
+func (s *Markdown) TopLeft() string     { return "" }
+func (s *Markdown) TopMid() string      { return "" }
+func (s *Markdown) TopRight() string    { return "" }
+func (s *Markdown) MidLeft() string     { return "|" }
+func (s *Markdown) MidRight() string    { return "|" }
+func (s *Markdown) BottomLeft() string  { return "" }
+func (s *Markdown) BottomMid() string   { return "" }
+func (s *Markdown) BottomRight() string { return "" }
+func (s *Markdown) HeaderLeft() string  { return "|" }
+func (s *Markdown) HeaderMid() string   { return "|" }
+func (s *Markdown) HeaderRight() string { return "|" }
 
-func (s *Unicode) Column() string {
-	switch s.style {
-	case RegularRegular, ThickRegular, DoubleRegular:
-		return "│"
-	case ThickThick, RegularThick:
-		return "┃"
-	case DoubleDouble, RegularDouble:
-		return "║"
-	default:
-		return "|"
-	}
-}
+// Empty provides no border symbols
+type Empty struct{}
 
-func (s *Unicode) TopLeft() string {
-	switch s.style {
-	case DoubleDouble:
-		return "╔"
-	default:
-		return "+"
-	}
-}
-
-func (s *Unicode) TopMid() string {
-	switch s.style {
-	case DoubleDouble:
-		return "╦"
-	default:
-		return "+"
-	}
-}
-
-func (s *Unicode) TopRight() string {
-	switch s.style {
-	case DoubleDouble:
-		return "╗"
-	default:
-		return "+"
-	}
-}
-
-func (s *Unicode) MidLeft() string {
-	switch s.style {
-	case DoubleDouble:
-		return "╠"
-	default:
-		return "+"
-	}
-}
-
-func (s *Unicode) MidRight() string {
-	switch s.style {
-	case DoubleDouble:
-		return "╣"
-	default:
-		return "+"
-	}
-}
-
-func (s *Unicode) BottomLeft() string {
-	switch s.style {
-	case DoubleDouble:
-		return "╚"
-	default:
-		return "+"
-	}
-}
-
-func (s *Unicode) BottomMid() string {
-	switch s.style {
-	case DoubleDouble:
-		return "╩"
-	default:
-		return "+"
-	}
-}
-
-func (s *Unicode) BottomRight() string {
-	switch s.style {
-	case DoubleDouble:
-		return "╝"
-	default:
-		return "+"
-	}
-}
+func (s *Empty) Center() string      { return "" }
+func (s *Empty) Row() string         { return "" }
+func (s *Empty) Column() string      { return "" }
+func (s *Empty) TopLeft() string     { return "" }
+func (s *Empty) TopMid() string      { return "" }
+func (s *Empty) TopRight() string    { return "" }
+func (s *Empty) MidLeft() string     { return "" }
+func (s *Empty) MidRight() string    { return "" }
+func (s *Empty) BottomLeft() string  { return "" }
+func (s *Empty) BottomMid() string   { return "" }
+func (s *Empty) BottomRight() string { return "" }
+func (s *Empty) HeaderLeft() string  { return "" }
+func (s *Empty) HeaderMid() string   { return "" }
+func (s *Empty) HeaderRight() string { return "" }

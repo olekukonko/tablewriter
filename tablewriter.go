@@ -6,6 +6,7 @@ import (
 	"github.com/olekukonko/tablewriter/theme"
 	"github.com/olekukonko/tablewriter/utils"
 	"io"
+	"os"
 	"reflect"
 	"strings"
 )
@@ -18,17 +19,16 @@ type Iterator[T any] interface {
 // Table represents a text-based table writer
 type Table struct {
 	writer     io.Writer
-	rows       [][][]string // Multi-line rows
+	rows       [][][]string
 	headers    []string
 	footers    []string
-	colWidths  map[int]int // Column widths
-	rowHeights map[int]int // Row heights (number of lines per row)
+	colWidths  map[int]int
+	rowHeights map[int]int
 	theme      theme.Structure
-	stringer   any  // func(T) []string for custom types
-	maxWidth   int  // Maximum width for wrapping
-	autoWrap   bool // Whether to wrap text
+	config     theme.Config
+	stringer   any
 	newLine    string
-	hasPrinted bool // Tracks if any content has been rendered
+	hasPrinted bool
 }
 
 // Option defines a configuration function for Table
@@ -39,7 +39,7 @@ func WithHeader(headers []string) Option {
 	return func(t *Table) { t.headers = headers }
 }
 
-// WithFooter sets the table footer (legacy compatibility)
+// WithFooter sets the table footer
 func WithFooter(footers []string) Option {
 	return func(t *Table) { t.footers = footers }
 }
@@ -49,29 +49,28 @@ func WithFormatter(f theme.Structure) Option {
 	return func(t *Table) { t.theme = f }
 }
 
+// WithConfig sets the table configuration
+func WithConfig(cfg theme.Config) Option {
+	return func(t *Table) {
+		t.config = cfg
+		t.theme = theme.NewDefault(cfg)
+	}
+}
+
 // WithStringer sets a custom stringer callback for type T
 func WithStringer[T any](s func(T) []string) Option {
 	return func(t *Table) { t.stringer = s }
 }
 
-// WithMaxWidth sets the maximum column width
-func WithMaxWidth(width int) Option {
-	return func(t *Table) { t.maxWidth = width }
-}
-
-// WithAutoWrap enables or disables text wrapping
-func WithAutoWrap(wrap bool) Option {
-	return func(t *Table) { t.autoWrap = wrap }
-}
-
 // NewTable creates a new table writer with a default theme
 func NewTable(w io.Writer, opts ...Option) *Table {
+	cfg := theme.DefaultConfig()
 	t := &Table{
 		writer:     w,
 		colWidths:  make(map[int]int),
 		rowHeights: make(map[int]int),
-		theme:      theme.NewDefault(),
-		maxWidth:   theme.DefaultMaxWidth,
+		theme:      theme.NewDefault(cfg),
+		config:     cfg,
 		newLine:    symbols.NEWLINE,
 	}
 	for _, opt := range opts {
@@ -96,26 +95,51 @@ func (t *Table) ensureInitialized() {
 	if t.theme == nil {
 		t.theme = theme.NewDefault()
 	}
+	if t.config.Symbols == nil {
+		t.config.Symbols = symbols.NewSymbols(symbols.StyleASCII)
+	}
+}
+
+// SetHeader sets the table header
+func (t *Table) SetHeader(headers []string) {
+	t.ensureInitialized()
+	formatted := make([]string, len(headers))
+	for i, h := range headers {
+		if t.config.Header.AutoFormat {
+			h = utils.Title(strings.Join(utils.SplitCamelCase(h), " "))
+			fmt.Fprintf(os.Stderr, "Formatted header %d: %q\n", i, h)
+		}
+		if t.config.Header.AutoWrap && t.config.Header.MaxWidth > 0 {
+			lines, _ := utils.WrapString(h, t.config.Header.MaxWidth)
+			formatted[i] = strings.Join(lines, "\n")
+		} else {
+			formatted[i] = h
+		}
+	}
+	t.headers = formatted
+	t.parseDimension(t.headers, -1)
 }
 
 // SetFooter sets the table footer
 func (t *Table) SetFooter(footers []string) {
 	t.ensureInitialized()
 	numCols := len(t.colWidths)
-	if len(t.headers) > numCols {
-		numCols = len(t.headers)
-	}
-	if len(footers) < numCols {
-		padded := make([]string, numCols)
+	padded := make([]string, numCols)
+	if t.config.Footer.AutoWrap && t.config.Footer.MaxWidth > 0 {
+		for i, f := range footers {
+			if i < numCols {
+				lines, _ := utils.WrapString(f, t.config.Footer.MaxWidth)
+				padded[i] = strings.Join(lines, t.newLine)
+			}
+		}
+	} else {
 		copy(padded, footers)
 		for i := len(footers); i < numCols; i++ {
 			padded[i] = ""
 		}
-		t.footers = padded
-	} else {
-		t.footers = footers
 	}
-	t.parseDimension(t.footers, len(t.rows)) // Treat footer as a row for width/height
+	t.footers = padded
+	t.parseDimension(t.footers, len(t.rows))
 }
 
 // Append adds a row to the table
@@ -126,7 +150,7 @@ func (t *Table) Append(row interface{}) error {
 		return err
 	}
 	t.rows = append(t.rows, lines)
-	t.parseDimension(lines[0], len(t.rows)-1) // Parse first line for width, height
+	t.parseDimension(lines[0], len(t.rows)-1)
 	return nil
 }
 
@@ -212,7 +236,7 @@ func (t *Table) StreamRow(row interface{}) error {
 	t.ensureInitialized()
 	f := t.theme
 	if !t.hasPrinted {
-		f.FormatLine(t.writer, t.colWidths, true)
+		f.FormatLine(t.writer, t.colWidths, symbols.Top)
 		if len(t.headers) > 0 {
 			f.FormatHeader(t.writer, t.headers, t.colWidths)
 		}
@@ -226,7 +250,7 @@ func (t *Table) StreamRow(row interface{}) error {
 		t.parseDimension(line, len(t.rows))
 		f.FormatRow(t.writer, line, t.colWidths, i == 0)
 	}
-	t.rows = append(t.rows, lines) // Still store for metrics
+	t.rows = append(t.rows, lines)
 	return nil
 }
 
@@ -234,7 +258,7 @@ func (t *Table) StreamRow(row interface{}) error {
 func (t *Table) RenderFromIterator(iter interface{}) error {
 	t.ensureInitialized()
 	f := t.theme
-	f.FormatLine(t.writer, t.colWidths, true)
+	f.FormatLine(t.writer, t.colWidths, symbols.Top)
 	if len(t.headers) > 0 {
 		f.FormatHeader(t.writer, t.headers, t.colWidths)
 	}
@@ -266,7 +290,7 @@ func (t *Table) RenderFromIterator(iter interface{}) error {
 		for {
 			results := nextMethod.Call(nil)
 			if len(results) != 2 {
-				return fmt.Errorf("Next() must return (T, bool)")
+				return fmt.Errorf("next() must return (T, bool)")
 			}
 			ok := results[1].Bool()
 			if !ok {
@@ -285,17 +309,36 @@ func (t *Table) RenderFromIterator(iter interface{}) error {
 	}
 
 	if len(t.footers) > 0 {
+		f.FormatLine(t.writer, t.colWidths, symbols.Middle)
 		f.FormatFooter(t.writer, t.footers, t.colWidths)
 	}
-	f.FormatLine(t.writer, t.colWidths, false)
+	f.FormatLine(t.writer, t.colWidths, symbols.Bottom)
 	return nil
 }
 
 // Render outputs the table to the writer
 func (t *Table) Render() error {
 	t.ensureInitialized()
+	t.colWidths = make(map[int]int)
+	for i, w := range t.theme.GetColumnWidths() {
+		if w > 0 {
+			t.colWidths[i] = w
+		}
+	}
+	if len(t.headers) > 0 {
+		t.parseDimension(t.headers, -1)
+	}
+	for i, lines := range t.rows {
+		for _, line := range lines {
+			t.parseDimension(line, i)
+		}
+	}
+	if len(t.footers) > 0 {
+		t.parseDimension(t.footers, len(t.rows))
+	}
+
 	f := t.theme
-	f.FormatLine(t.writer, t.colWidths, true)
+	f.FormatLine(t.writer, t.colWidths, symbols.Top)
 	if len(t.headers) > 0 {
 		f.FormatHeader(t.writer, t.headers, t.colWidths)
 	}
@@ -305,9 +348,12 @@ func (t *Table) Render() error {
 		}
 	}
 	if len(t.footers) > 0 {
+		f.FormatLine(t.writer, t.colWidths, symbols.Middle)
 		f.FormatFooter(t.writer, t.footers, t.colWidths)
+		f.FormatLine(t.writer, t.colWidths, symbols.Bottom)
+	} else {
+		f.FormatLine(t.writer, t.colWidths, symbols.Bottom)
 	}
-	f.FormatLine(t.writer, t.colWidths, false)
 	return nil
 }
 
@@ -333,6 +379,14 @@ func (t *Table) Metrics() struct {
 func (t *Table) toStringLines(row interface{}) ([][]string, error) {
 	switch v := row.(type) {
 	case []string:
+		if t.config.Row.AutoWrap && t.config.Row.MaxWidth > 0 {
+			wrapped := make([]string, len(v))
+			for i, cell := range v {
+				lines, _ := utils.WrapString(cell, t.config.Row.MaxWidth)
+				wrapped[i] = strings.Join(lines, "\n")
+			}
+			return t.splitLines(wrapped), nil
+		}
 		return t.splitLines(v), nil
 	default:
 		if t.stringer == nil {
@@ -378,46 +432,62 @@ func (t *Table) splitLines(row []string) [][]string {
 
 // parseDimension parses table dimensions for a row
 func (t *Table) parseDimension(row []string, rowKey int) {
-	formatterWidths := t.theme.GetColumnWidths()
+	var cfg *theme.CellConfig
+	switch rowKey {
+	case -1: // Headers
+		cfg = &t.config.Header
+	case len(t.rows): // Footers
+		cfg = &t.config.Footer
+	default: // Rows
+		cfg = &t.config.Row
+	}
 	for colKey, cell := range row {
 		lines := strings.Split(cell, "\n")
 		maxWidth := 0
 		for _, line := range lines {
-			if w := utils.DisplayWidth(line); w > maxWidth {
+			w := utils.DisplayWidth(line)
+			if cfg.AutoWrap && cfg.MaxWidth > 0 {
+				wrapped, _ := utils.WrapString(line, cfg.MaxWidth)
+				for _, wrappedLine := range wrapped {
+					if w := utils.DisplayWidth(wrappedLine); w > maxWidth {
+						maxWidth = w
+					}
+				}
+			} else if w > maxWidth {
 				maxWidth = w
 			}
 		}
-
-		// Apply wrapping if enabled
-		if t.autoWrap && t.maxWidth > 0 {
-			if maxWidth > t.maxWidth {
-				maxWidth = t.maxWidth
-			}
-			newMaxWidth := maxWidth
-			newLines := make([]string, 0)
-			for _, line := range lines {
-				wrapped, _ := utils.WrapString(line, maxWidth)
-				for _, wrappedLine := range wrapped {
-					if w := utils.DisplayWidth(wrappedLine); w > newMaxWidth {
-						newMaxWidth = w
-					}
-					newLines = append(newLines, wrappedLine)
-				}
-			}
-			lines = newLines
-			maxWidth = newMaxWidth
+		// Calculate rendered width with padding
+		align := cfg.Alignment
+		if colKey < len(cfg.ColumnAligns) && cfg.ColumnAligns[colKey] != theme.ALIGN_DEFAULT {
+			align = cfg.ColumnAligns[colKey]
 		}
-
-		// Enforce theme's column width as minimum if specified
-		if colKey < len(formatterWidths) && formatterWidths[colKey] > 0 && formatterWidths[colKey] > maxWidth {
-			maxWidth = formatterWidths[colKey]
+		var padded string
+		switch align {
+		case theme.ALIGN_CENTER:
+			padded = utils.Pad(strings.Join(lines, "\n"), symbols.SPACE, maxWidth)
+		case theme.ALIGN_RIGHT:
+			padded = utils.PadLeft(strings.Join(lines, "\n"), symbols.SPACE, maxWidth)
+		case theme.ALIGN_LEFT, theme.ALIGN_DEFAULT:
+			padded = utils.PadRight(strings.Join(lines, "\n"), symbols.SPACE, maxWidth)
 		}
-
+		if w := utils.DisplayWidth(padded); w > maxWidth {
+			maxWidth = w
+		}
+		// Apply theme-based width overrides
+		if widths := t.theme.GetColumnWidths(); len(widths) > colKey && widths[colKey] > 0 {
+			if maxWidth < widths[colKey] {
+				maxWidth = widths[colKey]
+			}
+		}
+		// Enforce maxWidth cap from config
+		if cfg.MaxWidth > 0 && maxWidth > cfg.MaxWidth {
+			maxWidth = cfg.MaxWidth
+		}
 		// Update column width
-		if curr, ok := t.colWidths[colKey]; !ok || maxWidth > curr {
+		if current, exists := t.colWidths[colKey]; !exists || maxWidth > current {
 			t.colWidths[colKey] = maxWidth
 		}
-
 		// Update row height
 		if h := len(lines); h > 0 {
 			if curr, ok := t.rowHeights[rowKey]; !ok || h > curr {
