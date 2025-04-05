@@ -15,7 +15,25 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-var ansi = regexp.MustCompile("\033\\[(?:[0-9]{1,3}(?:;[0-9]{1,3})*)?[m|K]")
+var ansi = generateEscapeFilterRegex()
+
+func generateEscapeFilterRegex() *regexp.Regexp {
+	var regESC = "\x1b" // ASCII escape
+	var regBEL = "\x07" // ASCII bell
+
+	// String Terminator - ends ANSI sequences
+	var regST = "(" + regESC + "\\\\" + "|" + regBEL + ")"
+
+	// Control Sequence Introducer - usually color codes
+	// esc + [ + zero or more 0x30-0x3f + zero or more 0x20-0x2f and a single 0x40-0x7e
+	var regCSI = regESC + "\\[" + "[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]"
+
+	// Operating System Command - hyperlinks
+	// esc + ] + any number of any chars + ST
+	var regOSC = regESC + "\\]" + ".*?" + regST
+
+	return regexp.MustCompile("(" + regCSI + "|" + regOSC + ")")
+}
 
 func DisplayWidth(str string) int {
 	return runewidth.StringWidth(ansi.ReplaceAllLiteralString(str, ""))

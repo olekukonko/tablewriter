@@ -58,6 +58,10 @@ func TestDisplayWidth(t *testing.T) {
 	}
 	input = "\033[43;30m" + input + "\033[00m"
 	checkEqual(t, DisplayWidth(input), want)
+
+	input = "\033]8;;idea://open/?file=/path/somefile.php&line=12\033\\some URL\033]8;;\033\\"
+	checkEqual(t, DisplayWidth(input), 8)
+
 }
 
 // WrapString was extremely memory greedy, it performed insane number of
