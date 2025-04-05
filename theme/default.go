@@ -1,4 +1,3 @@
-// formatter/default.go
 package theme
 
 import (
@@ -6,44 +5,99 @@ import (
 	"github.com/olekukonko/tablewriter/symbols"
 	"github.com/olekukonko/tablewriter/utils"
 	"io"
+	"os"
 	"strings"
 )
 
-// DefaultFormatter implements classic ASCII table formatting
-type DefaultFormatter struct {
-	borders         Border
-	centerSeparator string
-	rowSeparator    string
-	columnSeparator string
-	headerAlignment int
-	footerAlignment int
-	alignment       int
-	headerLine      bool
-	newLine         string
-	syms            []string
-	symbols         symbols.Symbols
-	autoFormat      bool
+// Default implements classic ASCII table formatting
+type Default struct {
+	borders          Border
+	centerSeparator  string
+	rowSeparator     string
+	columnSeparator  string
+	headerAlignment  int
+	footerAlignment  int
+	alignment        int   // Default body alignment
+	columnAlignments []int // Per-column body alignment overrides
+	columnWidths     []int // Per-column width overrides
+	headerLine       bool
+	newLine          string
+	syms             []string
+	symbols          symbols.Symbols
+	autoFormat       bool
 }
 
-func NewDefaultFormatter() Structure {
+// DefaultConfig holds configuration options for Default
+type DefaultConfig struct {
+	Borders          Border          // Table border settings
+	HeaderAlignment  int             // Alignment for header cells
+	FooterAlignment  int             // Alignment for footer cells
+	Alignment        int             // Default alignment for body (rows)
+	ColumnAlignments []int           // Per-column alignment overrides for body (rows)
+	ColumnWidths     []int           // Per-column width overrides (0 means auto-calculate)
+	HeaderLine       bool            // Whether to draw a line under the header
+	CenterSeparator  string          // Custom center separator (e.g., "+")
+	RowSeparator     string          // Custom row separator (e.g., "-")
+	ColumnSeparator  string          // Custom column separator (e.g., "|")
+	AutoFormat       bool            // Whether to auto-format headers (e.g., capitalize)
+	Symbols          symbols.Symbols // Symbol set (e.g., ASCII, Unicode)
+}
+
+// NewDefault creates a new Default with the given configuration
+func NewDefault(config ...DefaultConfig) *Default {
 	s := symbols.Default{}
-	return &DefaultFormatter{
-		borders:         Border{Left: true, Right: true, Top: true, Bottom: true},
-		centerSeparator: s.Center(),
-		rowSeparator:    s.Row(),
-		columnSeparator: s.Column(),
-		headerAlignment: ALIGN_DEFAULT,
-		footerAlignment: ALIGN_DEFAULT,
-		alignment:       ALIGN_DEFAULT,
-		headerLine:      true,
-		newLine:         symbols.NEWLINE,
-		syms:            simpleSyms(s.Center(), s.Row(), s.Column()),
-		symbols:         s,
-		autoFormat:      true,
+	// Default configuration
+	cfg := DefaultConfig{
+		Borders:         Border{Left: true, Right: true, Top: true, Bottom: true},
+		HeaderAlignment: ALIGN_DEFAULT,
+		FooterAlignment: ALIGN_DEFAULT,
+		Alignment:       ALIGN_DEFAULT,
+		HeaderLine:      true,
+		AutoFormat:      true,
+		Symbols:         s,
 	}
+	if len(config) > 0 {
+		cfg = config[0] // Use provided config if present
+	}
+	// Ensure symbols are set even if nil in config
+	if cfg.Symbols == nil {
+		cfg.Symbols = s
+	}
+
+	f := &Default{
+		borders:          cfg.Borders,
+		centerSeparator:  cfg.CenterSeparator,
+		rowSeparator:     cfg.RowSeparator,
+		columnSeparator:  cfg.ColumnSeparator,
+		headerAlignment:  cfg.HeaderAlignment,
+		footerAlignment:  cfg.FooterAlignment,
+		alignment:        cfg.Alignment,
+		columnAlignments: cfg.ColumnAlignments,
+		columnWidths:     cfg.ColumnWidths,
+		headerLine:       cfg.HeaderLine,
+		newLine:          symbols.NEWLINE,
+		syms:             simpleSyms(cfg.Symbols.Center(), cfg.Symbols.Row(), cfg.Symbols.Column()),
+		symbols:          cfg.Symbols,
+		autoFormat:       cfg.AutoFormat,
+	}
+	// Apply symbols correctly, overriding with custom separators if provided
+	if f.centerSeparator == "" {
+		f.centerSeparator = f.symbols.Center()
+	}
+	if f.rowSeparator == "" {
+		f.rowSeparator = f.symbols.Row()
+	}
+	if f.columnSeparator == "" {
+		f.columnSeparator = f.symbols.Column()
+	}
+	f.updateSymbols()
+
+	// Debug: Print symbols to verify
+	fmt.Fprintf(os.Stderr, "Default Symbols: Center=%q, Row=%q, Column=%q\n", f.centerSeparator, f.rowSeparator, f.columnSeparator)
+	return f
 }
 
-func (f *DefaultFormatter) FormatHeader(w io.Writer, headers []string, colWidths map[int]int) {
+func (f *Default) FormatHeader(w io.Writer, headers []string, colWidths map[int]int) {
 	padFunc := f.pad(f.headerAlignment)
 	cells := make([]string, len(headers))
 	copy(cells, headers)
@@ -51,8 +105,12 @@ func (f *DefaultFormatter) FormatHeader(w io.Writer, headers []string, colWidths
 		if f.autoFormat {
 			cells[i] = utils.Title(h)
 		}
+		width := colWidths[i]
+		if i < len(f.columnWidths) && f.columnWidths[i] > 0 {
+			width = f.columnWidths[i]
+		}
+		cells[i] = padFunc(cells[i], symbols.SPACE, width)
 	}
-	cells = f.padCells(cells, padFunc, colWidths)
 	prefix := utils.ConditionString(f.borders.Left, f.columnSeparator, symbols.SPACE)
 	suffix := utils.ConditionString(f.borders.Right, f.columnSeparator, symbols.SPACE)
 	fmt.Fprintf(w, "%s %s %s%s", prefix, strings.Join(cells, " "+f.columnSeparator+" "), suffix, f.newLine)
@@ -61,53 +119,80 @@ func (f *DefaultFormatter) FormatHeader(w io.Writer, headers []string, colWidths
 	}
 }
 
-func (f *DefaultFormatter) FormatRow(w io.Writer, row []string, colWidths map[int]int, isFirstRow bool) {
-	padFunc := f.pad(f.alignment)
-	cells := f.padCells(row, padFunc, colWidths)
-	prefix := utils.ConditionString(f.borders.Left, f.columnSeparator, symbols.SPACE)
-	suffix := utils.ConditionString(f.borders.Right, f.columnSeparator, symbols.SPACE)
-	fmt.Fprintf(w, "%s %s %s%s", prefix, strings.Join(cells, " "+f.columnSeparator+" "), suffix, f.newLine)
-}
-
-func (f *DefaultFormatter) FormatFooter(w io.Writer, footers []string, colWidths map[int]int) {
-	padFunc := f.pad(f.footerAlignment)
-	cells := f.padCells(footers, padFunc, colWidths)
-	prefix := utils.ConditionString(f.borders.Left, f.columnSeparator, symbols.SPACE)
-	suffix := utils.ConditionString(f.borders.Right, f.columnSeparator, symbols.SPACE)
-	fmt.Fprintf(w, "%s %s %s%s", prefix, strings.Join(cells, " "+f.columnSeparator+" "), suffix, f.newLine)
-}
-
-func (f *DefaultFormatter) FormatLine(w io.Writer, colWidths map[int]int, isTop bool) {
-	prefix := f.centerSeparator
-	if !f.borders.Left {
-		prefix = f.rowSeparator
+func (f *Default) FormatRow(w io.Writer, row []string, colWidths map[int]int, isFirstRow bool) {
+	cells := make([]string, len(row))
+	for i, cell := range row {
+		align := f.alignment
+		if i < len(f.columnAlignments) && f.columnAlignments[i] != ALIGN_DEFAULT {
+			align = f.columnAlignments[i]
+		}
+		width := colWidths[i]
+		if i < len(f.columnWidths) && f.columnWidths[i] > 0 {
+			width = f.columnWidths[i]
+		}
+		padFunc := f.pad(align)
+		cells[i] = padFunc(cell, symbols.SPACE, width)
 	}
-	fmt.Fprint(w, prefix)
+	prefix := utils.ConditionString(f.borders.Left, f.columnSeparator, symbols.SPACE)
+	suffix := utils.ConditionString(f.borders.Right, f.columnSeparator, symbols.SPACE)
+	fmt.Fprintf(w, "%s %s %s%s", prefix, strings.Join(cells, " "+f.columnSeparator+" "), suffix, f.newLine)
+}
+
+func (f *Default) FormatFooter(w io.Writer, footers []string, colWidths map[int]int) {
+	padFunc := f.pad(f.footerAlignment)
+	cells := make([]string, len(footers))
+	for i, cell := range footers {
+		width := colWidths[i]
+		if i < len(f.columnWidths) && f.columnWidths[i] > 0 {
+			width = f.columnWidths[i]
+		}
+		cells[i] = padFunc(cell, symbols.SPACE, width)
+	}
+	prefix := utils.ConditionString(f.borders.Left, f.columnSeparator, symbols.SPACE)
+	suffix := utils.ConditionString(f.borders.Right, f.columnSeparator, symbols.SPACE)
+	fmt.Fprintf(w, "%s %s %s%s", prefix, strings.Join(cells, " "+f.columnSeparator+" "), suffix, f.newLine)
+}
+
+func (f *Default) FormatLine(w io.Writer, colWidths map[int]int, isTop bool) {
+	var prefix, suffix, mid string
+	if isTop && f.borders.Top {
+		prefix = utils.ConditionString(f.borders.Left, f.symbols.TopLeft(), f.rowSeparator)
+		suffix = utils.ConditionString(f.borders.Right, f.symbols.TopRight(), "")
+		mid = f.symbols.TopMid()
+	} else if !isTop && f.borders.Bottom {
+		prefix = utils.ConditionString(f.borders.Left, f.symbols.BottomLeft(), f.rowSeparator)
+		suffix = utils.ConditionString(f.borders.Right, f.symbols.BottomRight(), "")
+		mid = f.symbols.BottomMid()
+	} else {
+		prefix = utils.ConditionString(f.borders.Left, f.symbols.MidLeft(), f.rowSeparator)
+		suffix = utils.ConditionString(f.borders.Right, f.symbols.MidRight(), "")
+		mid = f.centerSeparator
+	}
+
+	line := prefix
 	for i := 0; i < len(colWidths); i++ {
 		width := colWidths[i]
-		fmt.Fprintf(w, "%s%s%s%s", f.rowSeparator, strings.Repeat(f.rowSeparator, width), f.rowSeparator, f.centerSeparator)
+		if i < len(f.columnWidths) && f.columnWidths[i] > 0 {
+			width = f.columnWidths[i]
+		}
+		if i > 0 {
+			line += mid
+		}
+		line += strings.Repeat(f.rowSeparator, width)
 	}
-	fmt.Fprint(w, f.newLine)
+	line += suffix
+	fmt.Fprintf(w, "%s%s", line, f.newLine)
 }
 
-func (f *DefaultFormatter) Configure(opt Option) {
-	opt(f)
+func (f *Default) GetColumnWidths() []int {
+	return f.columnWidths
 }
 
-func (f *DefaultFormatter) Reset() {
+func (f *Default) Reset() {
 	// No internal state to reset
 }
 
-func (f *DefaultFormatter) padCells(cells []string, padFunc func(string, string, int) string, colWidths map[int]int) []string {
-	padded := make([]string, len(cells))
-	for i, cell := range cells {
-		w := colWidths[i]
-		padded[i] = padFunc(cell, symbols.SPACE, w)
-	}
-	return padded
-}
-
-func (f *DefaultFormatter) pad(align int) func(string, string, int) string {
+func (f *Default) pad(align int) func(string, string, int) string {
 	switch align {
 	case ALIGN_CENTER:
 		return utils.Pad
@@ -120,14 +205,11 @@ func (f *DefaultFormatter) pad(align int) func(string, string, int) string {
 	}
 }
 
-func (f *DefaultFormatter) updateSymbols() {
-	f.centerSeparator = f.symbols.Center()
-	f.rowSeparator = f.symbols.Row()
-	f.columnSeparator = f.symbols.Column()
+func (f *Default) updateSymbols() {
 	f.syms = simpleSyms(f.centerSeparator, f.rowSeparator, f.columnSeparator)
 }
 
-// simpleSyms generates a basic symbol set (placeholder from original)
+// simpleSyms generates a basic symbol set
 func simpleSyms(center, row, column string) []string {
 	return []string{row, column, center, center, center, center, center, center, center, center, center}
 }

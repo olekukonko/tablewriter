@@ -1,15 +1,13 @@
-// tablewriter.go
 package tablewriter
 
 import (
 	"fmt"
+	"github.com/olekukonko/tablewriter/symbols"
+	"github.com/olekukonko/tablewriter/theme"
+	"github.com/olekukonko/tablewriter/utils"
 	"io"
 	"reflect"
 	"strings"
-
-	"github.com/olekukonko/tablewriter/formatter"
-	"github.com/olekukonko/tablewriter/symbols"
-	"github.com/olekukonko/tablewriter/utils"
 )
 
 // Iterator defines a generic iterator interface
@@ -23,10 +21,12 @@ type Table struct {
 	rows       [][][]string // Multi-line rows
 	headers    []string
 	footers    []string
-	colWidths  map[int]int
-	formatter  formatter.Formatter
-	stringer   any // func(T) []string for custom types
-	maxWidth   int
+	colWidths  map[int]int // Column widths
+	rowHeights map[int]int // Row heights (number of lines per row)
+	theme      theme.Structure
+	stringer   any  // func(T) []string for custom types
+	maxWidth   int  // Maximum width for wrapping
+	autoWrap   bool // Whether to wrap text
 	newLine    string
 	hasPrinted bool // Tracks if any content has been rendered
 }
@@ -39,14 +39,14 @@ func WithHeader(headers []string) Option {
 	return func(t *Table) { t.headers = headers }
 }
 
-// WithFooter sets the table footer
+// WithFooter sets the table footer (legacy compatibility)
 func WithFooter(footers []string) Option {
 	return func(t *Table) { t.footers = footers }
 }
 
-// WithFormatter sets a custom formatter
-func WithFormatter(f formatter.Formatter) Option {
-	return func(t *Table) { t.formatter = f }
+// WithFormatter sets a custom theme
+func WithFormatter(f theme.Structure) Option {
+	return func(t *Table) { t.theme = f }
 }
 
 // WithStringer sets a custom stringer callback for type T
@@ -59,14 +59,20 @@ func WithMaxWidth(width int) Option {
 	return func(t *Table) { t.maxWidth = width }
 }
 
-// NewTable creates a new table writer with a default formatter
+// WithAutoWrap enables or disables text wrapping
+func WithAutoWrap(wrap bool) Option {
+	return func(t *Table) { t.autoWrap = wrap }
+}
+
+// NewTable creates a new table writer with a default theme
 func NewTable(w io.Writer, opts ...Option) *Table {
 	t := &Table{
-		writer:    w,
-		colWidths: make(map[int]int),
-		formatter: formatter.NewDefaultFormatter(),
-		maxWidth:  formatter.DefaultMaxWidth,
-		newLine:   symbols.NEWLINE,
+		writer:     w,
+		colWidths:  make(map[int]int),
+		rowHeights: make(map[int]int),
+		theme:      theme.NewDefault(),
+		maxWidth:   theme.DefaultMaxWidth,
+		newLine:    symbols.NEWLINE,
 	}
 	for _, opt := range opts {
 		opt(t)
@@ -84,9 +90,32 @@ func (t *Table) ensureInitialized() {
 	if t.colWidths == nil {
 		t.colWidths = make(map[int]int)
 	}
-	if t.formatter == nil {
-		t.formatter = formatter.NewDefaultFormatter()
+	if t.rowHeights == nil {
+		t.rowHeights = make(map[int]int)
 	}
+	if t.theme == nil {
+		t.theme = theme.NewDefault()
+	}
+}
+
+// SetFooter sets the table footer
+func (t *Table) SetFooter(footers []string) {
+	t.ensureInitialized()
+	numCols := len(t.colWidths)
+	if len(t.headers) > numCols {
+		numCols = len(t.headers)
+	}
+	if len(footers) < numCols {
+		padded := make([]string, numCols)
+		copy(padded, footers)
+		for i := len(footers); i < numCols; i++ {
+			padded[i] = ""
+		}
+		t.footers = padded
+	} else {
+		t.footers = footers
+	}
+	t.parseDimension(t.footers, len(t.rows)) // Treat footer as a row for width/height
 }
 
 // Append adds a row to the table
@@ -97,9 +126,7 @@ func (t *Table) Append(row interface{}) error {
 		return err
 	}
 	t.rows = append(t.rows, lines)
-	for _, line := range lines {
-		t.updateWidths(line)
-	}
+	t.parseDimension(lines[0], len(t.rows)-1) // Parse first line for width, height
 	return nil
 }
 
@@ -117,7 +144,6 @@ func (t *Table) AppendStructs(v interface{}) error {
 		return fmt.Errorf("empty slice")
 	}
 
-	// Set headers from the first element
 	first := rv.Index(0)
 	if first.Kind() == reflect.Ptr && first.IsNil() {
 		return fmt.Errorf("first element is nil")
@@ -144,11 +170,10 @@ func (t *Table) AppendStructs(v interface{}) error {
 		t.headers = headers
 	}
 
-	// Append rows
 	for i := 0; i < rv.Len(); i++ {
 		item := rv.Index(i)
 		if item.Kind() == reflect.Ptr && item.IsNil() {
-			continue // Skip nil pointers
+			continue
 		}
 		if item.Kind() == reflect.Ptr {
 			item = item.Elem()
@@ -177,9 +202,7 @@ func (t *Table) AppendStructs(v interface{}) error {
 		}
 		lines := t.splitLines(cells)
 		t.rows = append(t.rows, lines)
-		for _, line := range lines {
-			t.updateWidths(line)
-		}
+		t.parseDimension(cells, len(t.rows)-1)
 	}
 	return nil
 }
@@ -187,9 +210,9 @@ func (t *Table) AppendStructs(v interface{}) error {
 // StreamRow renders a row immediately
 func (t *Table) StreamRow(row interface{}) error {
 	t.ensureInitialized()
-	f := t.formatter
+	f := t.theme
 	if !t.hasPrinted {
-		f.FormatLine(t.writer, t.colWidths, true) // Top line for all formatters
+		f.FormatLine(t.writer, t.colWidths, true)
 		if len(t.headers) > 0 {
 			f.FormatHeader(t.writer, t.headers, t.colWidths)
 		}
@@ -200,17 +223,18 @@ func (t *Table) StreamRow(row interface{}) error {
 		return err
 	}
 	for i, line := range lines {
-		t.updateWidths(line)
+		t.parseDimension(line, len(t.rows))
 		f.FormatRow(t.writer, line, t.colWidths, i == 0)
 	}
+	t.rows = append(t.rows, lines) // Still store for metrics
 	return nil
 }
 
 // RenderFromIterator renders the table from an iterator
 func (t *Table) RenderFromIterator(iter interface{}) error {
 	t.ensureInitialized()
-	f := t.formatter
-	f.FormatLine(t.writer, t.colWidths, true) // Top line for all formatters
+	f := t.theme
+	f.FormatLine(t.writer, t.colWidths, true)
 	if len(t.headers) > 0 {
 		f.FormatHeader(t.writer, t.headers, t.colWidths)
 	}
@@ -221,9 +245,10 @@ func (t *Table) RenderFromIterator(iter interface{}) error {
 		for row, ok := v.Next(); ok; row, ok = v.Next() {
 			lines := t.splitLines(row)
 			for i, line := range lines {
-				t.updateWidths(line)
+				t.parseDimension(line, len(t.rows))
 				f.FormatRow(t.writer, line, t.colWidths, i == 0)
 			}
+			t.rows = append(t.rows, lines)
 		}
 	default:
 		rv := reflect.ValueOf(iter)
@@ -252,24 +277,25 @@ func (t *Table) RenderFromIterator(iter interface{}) error {
 				return err
 			}
 			for i, line := range lines {
-				t.updateWidths(line)
+				t.parseDimension(line, len(t.rows))
 				f.FormatRow(t.writer, line, t.colWidths, i == 0)
 			}
+			t.rows = append(t.rows, lines)
 		}
 	}
 
 	if len(t.footers) > 0 {
 		f.FormatFooter(t.writer, t.footers, t.colWidths)
 	}
-	f.FormatLine(t.writer, t.colWidths, false) // Bottom line for all formatters
+	f.FormatLine(t.writer, t.colWidths, false)
 	return nil
 }
 
 // Render outputs the table to the writer
 func (t *Table) Render() error {
 	t.ensureInitialized()
-	f := t.formatter
-	f.FormatLine(t.writer, t.colWidths, true) // Top line for all formatters
+	f := t.theme
+	f.FormatLine(t.writer, t.colWidths, true)
 	if len(t.headers) > 0 {
 		f.FormatHeader(t.writer, t.headers, t.colWidths)
 	}
@@ -281,8 +307,26 @@ func (t *Table) Render() error {
 	if len(t.footers) > 0 {
 		f.FormatFooter(t.writer, t.footers, t.colWidths)
 	}
-	f.FormatLine(t.writer, t.colWidths, false) // Bottom line for all formatters
+	f.FormatLine(t.writer, t.colWidths, false)
 	return nil
+}
+
+// Metrics returns statistics about the table
+func (t *Table) Metrics() struct {
+	HeaderCount int
+	RowCount    int
+	FooterCount int
+} {
+	t.ensureInitialized()
+	return struct {
+		HeaderCount int
+		RowCount    int
+		FooterCount int
+	}{
+		HeaderCount: len(t.headers),
+		RowCount:    len(t.rows),
+		FooterCount: len(t.footers),
+	}
 }
 
 // toStringLines converts a row to a slice of string slices (multi-line support)
@@ -332,17 +376,58 @@ func (t *Table) splitLines(row []string) [][]string {
 	return result
 }
 
-// updateWidths updates column widths based on a row
-func (t *Table) updateWidths(row []string) {
-	for i, cell := range row {
-		w := utils.DisplayWidth(cell)
-		if curr, ok := t.colWidths[i]; !ok || w > curr {
-			t.colWidths[i] = w
+// parseDimension parses table dimensions for a row
+func (t *Table) parseDimension(row []string, rowKey int) {
+	formatterWidths := t.theme.GetColumnWidths()
+	for colKey, cell := range row {
+		lines := strings.Split(cell, "\n")
+		maxWidth := 0
+		for _, line := range lines {
+			if w := utils.DisplayWidth(line); w > maxWidth {
+				maxWidth = w
+			}
+		}
+
+		// Apply wrapping if enabled
+		if t.autoWrap && t.maxWidth > 0 {
+			if maxWidth > t.maxWidth {
+				maxWidth = t.maxWidth
+			}
+			newMaxWidth := maxWidth
+			newLines := make([]string, 0)
+			for _, line := range lines {
+				wrapped, _ := utils.WrapString(line, maxWidth)
+				for _, wrappedLine := range wrapped {
+					if w := utils.DisplayWidth(wrappedLine); w > newMaxWidth {
+						newMaxWidth = w
+					}
+					newLines = append(newLines, wrappedLine)
+				}
+			}
+			lines = newLines
+			maxWidth = newMaxWidth
+		}
+
+		// Enforce theme's column width as minimum if specified
+		if colKey < len(formatterWidths) && formatterWidths[colKey] > 0 && formatterWidths[colKey] > maxWidth {
+			maxWidth = formatterWidths[colKey]
+		}
+
+		// Update column width
+		if curr, ok := t.colWidths[colKey]; !ok || maxWidth > curr {
+			t.colWidths[colKey] = maxWidth
+		}
+
+		// Update row height
+		if h := len(lines); h > 0 {
+			if curr, ok := t.rowHeights[rowKey]; !ok || h > curr {
+				t.rowHeights[rowKey] = h
+			}
 		}
 	}
 }
 
-// Formatter returns the current formatter for configuration
-func (t *Table) Formatter() formatter.Formatter {
-	return t.formatter
+// Theme returns the current theme for configuration
+func (t *Table) Theme() theme.Structure {
+	return t.theme
 }

@@ -8,9 +8,17 @@ const (
 
 // Symbols defines the interface for table symbols
 type Symbols interface {
-	Center() string
-	Row() string
-	Column() string
+	Center() string      // e.g., "╬" for junctions
+	Row() string         // e.g., "═" for horizontal lines
+	Column() string      // e.g., "║" for vertical lines
+	TopLeft() string     // e.g., "╔"
+	TopMid() string      // e.g., "╦"
+	TopRight() string    // e.g., "╗"
+	MidLeft() string     // e.g., "╠"
+	MidRight() string    // e.g., "╣"
+	BottomLeft() string  // e.g., "╚"
+	BottomMid() string   // e.g., "╩"
+	BottomRight() string // e.g., "╝"
 }
 
 // UnicodeStyle represents different Unicode box drawing styles
@@ -43,9 +51,17 @@ func (s UnicodeStyle) String() string {
 // Default provides the default ASCII symbols
 type Default struct{}
 
-func (s Default) Center() string { return "+" }
-func (s Default) Row() string    { return "-" }
-func (s Default) Column() string { return "|" }
+func (s Default) Center() string      { return "+" }
+func (s Default) Row() string         { return "-" }
+func (s Default) Column() string      { return "|" }
+func (s Default) TopLeft() string     { return "+" }
+func (s Default) TopMid() string      { return "+" }
+func (s Default) TopRight() string    { return "+" }
+func (s Default) MidLeft() string     { return "+" }
+func (s Default) MidRight() string    { return "+" }
+func (s Default) BottomLeft() string  { return "+" }
+func (s Default) BottomMid() string   { return "+" }
+func (s Default) BottomRight() string { return "+" }
 
 // Unicode provides Unicode box-drawing symbols
 type Unicode struct {
@@ -104,29 +120,74 @@ func (s *Unicode) Column() string {
 	}
 }
 
-//@todo add Terminal
-//var cliTableDoubleTheme = Separators{
-//	Top: SeparatorRow{
-//		Line:  "═",
-//		Left:  "╔",
-//		Right: "╗",
-//		Mid:   "╤",
-//	},
-//	Bottom: SeparatorRow{
-//		Line:  "═",
-//		Left:  "╚",
-//		Right: "╝",
-//		Mid:   "╧",
-//	},
-//	Middle: SeparatorRow{
-//		Line:  "─",
-//		Left:  "╟",
-//		Right: "╢",
-//		Mid:   "┼",
-//	},
-//	Data: SeparatorDataRow{
-//		Left:  "║",
-//		Right: "║",
-//		Mid:   "│",
-//	},
-//}
+func (s *Unicode) TopLeft() string {
+	switch s.style {
+	case DoubleDouble:
+		return "╔"
+	default:
+		return "+"
+	}
+}
+
+func (s *Unicode) TopMid() string {
+	switch s.style {
+	case DoubleDouble:
+		return "╦"
+	default:
+		return "+"
+	}
+}
+
+func (s *Unicode) TopRight() string {
+	switch s.style {
+	case DoubleDouble:
+		return "╗"
+	default:
+		return "+"
+	}
+}
+
+func (s *Unicode) MidLeft() string {
+	switch s.style {
+	case DoubleDouble:
+		return "╠"
+	default:
+		return "+"
+	}
+}
+
+func (s *Unicode) MidRight() string {
+	switch s.style {
+	case DoubleDouble:
+		return "╣"
+	default:
+		return "+"
+	}
+}
+
+func (s *Unicode) BottomLeft() string {
+	switch s.style {
+	case DoubleDouble:
+		return "╚"
+	default:
+		return "+"
+	}
+}
+
+func (s *Unicode) BottomMid() string {
+	switch s.style {
+	case DoubleDouble:
+		return "╩"
+	default:
+		return "+"
+	}
+}
+
+func (s *Unicode) BottomRight() string {
+	switch s.style {
+	case DoubleDouble:
+		return "╝"
+	default:
+		return "+"
+	}
+}

@@ -31,13 +31,14 @@ func NewCSV(writer io.Writer, fileName string, hasHeader bool) (*Table, error) {
 // See http://golang.org/src/pkg/encoding/csv/reader.go?s=3213:3671#L94
 func NewCSVReader(writer io.Writer, csvReader *csv.Reader, hasHeader bool) (*Table, error) {
 	t := NewWriter(writer)
+	// @todo fix this later
 	if hasHeader {
 		// Read the first row
 		//headers, err := csvReader.Read()
 		//if err != nil {
 		//	return &Table{}, err
 		//}
-		//@todo fix this later
+		//
 		// t.SetHeader(headers)
 	}
 	for {
