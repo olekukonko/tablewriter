@@ -19,10 +19,9 @@ type Structure interface {
 	FormatHeader(w io.Writer, headers []string, colWidths map[int]int)
 	FormatRow(w io.Writer, row []string, colWidths map[int]int, isFirstRow bool)
 	FormatFooter(w io.Writer, footers []string, colWidths map[int]int)
-	FormatLine(w io.Writer, colWidths map[int]int, isTop bool)
-	GetColumnWidths() []int // Returns per-column width overrides
-	Reset()                 // Clears internal state
-
+	FormatLine(w io.Writer, colWidths map[int]int, lineType string)
+	GetColumnWidths() []int
+	Reset()
 }
 
 // Border defines table border settings

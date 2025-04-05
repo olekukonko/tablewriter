@@ -2,67 +2,18 @@ package theme
 
 import (
 	"fmt"
+	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter/symbols"
 	"github.com/olekukonko/tablewriter/utils"
 	"io"
 	"os"
 	"strings"
-	"sync"
 )
 
-const (
-	BgBlackColor int = iota + 40
-	BgRedColor
-	BgGreenColor
-	BgYellowColor
-	BgBlueColor
-	BgMagentaColor
-	BgCyanColor
-	BgWhiteColor
-)
+// ... (ALIGN_* constants unchanged) ...
 
-const (
-	FgBlackColor int = iota + 30
-	FgRedColor
-	FgGreenColor
-	FgYellowColor
-	FgBlueColor
-	FgMagentaColor
-	FgCyanColor
-	FgWhiteColor
-)
-
-const (
-	BgHiBlackColor int = iota + 100
-	BgHiRedColor
-	BgHiGreenColor
-	BgHiYellowColor
-	BgHiBlueColor
-	BgHiMagentaColor
-	BgHiCyanColor
-	BgHiWhiteColor
-)
-
-const (
-	FgHiBlackColor int = iota + 90
-	FgHiRedColor
-	FgHiGreenColor
-	FgHiYellowColor
-	FgHiBlueColor
-	FgHiMagentaColor
-	FgHiCyanColor
-	FgHiWhiteColor
-)
-
-const (
-	Normal          = 0
-	Bold            = 1
-	UnderlineSingle = 4
-	Italic
-)
-
-// Colors represents ANSI color codes
-type Colors []int
+// Colors represents color attributes from fatih/color
+type Colors []color.Attribute
 
 // Colorized implements colored ASCII table formatting
 type Colorized struct {
@@ -72,9 +23,9 @@ type Colorized struct {
 	columnSeparator  string
 	headerAlignment  int
 	footerAlignment  int
-	alignment        int   // Default body alignment
-	columnAlignments []int // Per-column body alignment overrides
-	columnWidths     []int // Per-column width overrides
+	alignment        int
+	columnAlignments []int
+	columnWidths     []int
 	headerLine       bool
 	newLine          string
 	headerColors     []Colors
@@ -82,31 +33,41 @@ type Colorized struct {
 	footerColors     []Colors
 	syms             []string
 	symbols          symbols.Symbols
-	cache            colorCache
+	headerMaxWidth   int
+	rowMaxWidth      int
+	footerMaxWidth   int
+	headerAutoWrap   bool
+	rowAutoWrap      bool
+	footerAutoWrap   bool
 }
 
 // ColorizedConfig holds configuration options for Colorized
 type ColorizedConfig struct {
-	Borders          Border          // Table border settings
-	HeaderAlignment  int             // Alignment for header cells
-	FooterAlignment  int             // Alignment for footer cells
-	Alignment        int             // Default alignment for body (rows)
-	ColumnAlignments []int           // Per-column alignment overrides for body (rows)
-	ColumnWidths     []int           // Per-column width overrides (0 means auto-calculate)
-	HeaderLine       bool            // Whether to draw a line under the header
-	CenterSeparator  string          // Custom center separator (e.g., "+")
-	RowSeparator     string          // Custom row separator (e.g., "-")
-	ColumnSeparator  string          // Custom column separator (e.g., "|")
-	HeaderColors     []Colors        // Colors for header cells
-	ColumnColors     []Colors        // Colors for body columns
-	FooterColors     []Colors        // Colors for footer cells
-	Symbols          symbols.Symbols // Symbol set (e.g., ASCII, Unicode)
+	Borders          Border
+	HeaderAlignment  int
+	FooterAlignment  int
+	Alignment        int
+	ColumnAlignments []int
+	ColumnWidths     []int
+	HeaderLine       bool
+	CenterSeparator  string
+	RowSeparator     string
+	ColumnSeparator  string
+	HeaderColors     []Colors
+	ColumnColors     []Colors
+	FooterColors     []Colors
+	Symbols          symbols.Symbols
+	HeaderMaxWidth   int
+	RowMaxWidth      int
+	FooterMaxWidth   int
+	HeaderAutoWrap   bool
+	RowAutoWrap      bool
+	FooterAutoWrap   bool
 }
 
-// NewColorized creates a new Colorized formatter with the given configuration
+// NewColorized creates a new Colorized formatter
 func NewColorized(config ...ColorizedConfig) *Colorized {
-	s := symbols.Default{}
-	// Default configuration
+	s := symbols.NewSymbols(symbols.StyleASCII)
 	cfg := ColorizedConfig{
 		Borders:         Border{Left: true, Right: true, Top: true, Bottom: true},
 		HeaderAlignment: ALIGN_DEFAULT,
@@ -114,11 +75,13 @@ func NewColorized(config ...ColorizedConfig) *Colorized {
 		Alignment:       ALIGN_DEFAULT,
 		HeaderLine:      true,
 		Symbols:         s,
+		HeaderAutoWrap:  true,
+		RowAutoWrap:     true,
+		FooterAutoWrap:  true,
 	}
 	if len(config) > 0 {
-		cfg = config[0] // Use provided config if present
+		cfg = config[0]
 	}
-	// Ensure symbols are set even if nil in config
 	if cfg.Symbols == nil {
 		cfg.Symbols = s
 	}
@@ -140,8 +103,13 @@ func NewColorized(config ...ColorizedConfig) *Colorized {
 		footerColors:     cfg.FooterColors,
 		syms:             simpleSyms(cfg.Symbols.Center(), cfg.Symbols.Row(), cfg.Symbols.Column()),
 		symbols:          cfg.Symbols,
+		headerMaxWidth:   cfg.HeaderMaxWidth,
+		rowMaxWidth:      cfg.RowMaxWidth,
+		footerMaxWidth:   cfg.FooterMaxWidth,
+		headerAutoWrap:   cfg.HeaderAutoWrap,
+		rowAutoWrap:      cfg.RowAutoWrap,
+		footerAutoWrap:   cfg.FooterAutoWrap,
 	}
-	// Apply symbols correctly, overriding with custom separators if provided
 	if f.centerSeparator == "" {
 		f.centerSeparator = f.symbols.Center()
 	}
@@ -152,85 +120,137 @@ func NewColorized(config ...ColorizedConfig) *Colorized {
 		f.columnSeparator = f.symbols.Column()
 	}
 	f.updateSymbols()
-
-	// Debug: Print symbols to verify
 	fmt.Fprintf(os.Stderr, "Colorized Symbols: Center=%q, Row=%q, Column=%q\n", f.centerSeparator, f.rowSeparator, f.columnSeparator)
 	return f
 }
 
+// FormatHeader renders the header row with multi-line support
 func (f *Colorized) FormatHeader(w io.Writer, headers []string, colWidths map[int]int) {
-	padFunc := f.pad(f.headerAlignment)
-	cells := make([]string, len(headers))
+	maxLines := 1
+	splitHeaders := make([][]string, len(headers))
 	for i, h := range headers {
-		width := colWidths[i]
-		if i < len(f.columnWidths) && f.columnWidths[i] > 0 {
-			width = f.columnWidths[i] // Override with specified width
-		}
-		cells[i] = padFunc(h, symbols.SPACE, width)
-		if i < len(f.headerColors) && len(f.headerColors[i]) > 0 {
-			cells[i] = f.format(cells[i], f.headerColors[i])
+		lines := strings.Split(h, "\n")
+		splitHeaders[i] = lines
+		if len(lines) > maxLines {
+			maxLines = len(lines)
 		}
 	}
-	prefix := utils.ConditionString(f.borders.Left, f.columnSeparator, symbols.SPACE)
-	suffix := utils.ConditionString(f.borders.Right, f.columnSeparator, symbols.SPACE)
-	fmt.Fprintf(w, "%s %s %s%s", prefix, strings.Join(cells, " "+f.columnSeparator+" "), suffix, f.newLine)
+
+	for lineIdx := 0; lineIdx < maxLines; lineIdx++ {
+		cells := make([]string, len(headers))
+		for i := range headers {
+			width := colWidths[i]
+			if i < len(f.columnWidths) && f.columnWidths[i] > 0 {
+				width = f.columnWidths[i]
+			}
+			var content string
+			if lineIdx < len(splitHeaders[i]) {
+				content = splitHeaders[i][lineIdx]
+			}
+			padFunc := f.pad(f.headerAlignment)
+			cells[i] = padFunc(content, symbols.SPACE, width)
+			if i < len(f.headerColors) && len(f.headerColors[i]) > 0 {
+				c := color.New(f.headerColors[i]...).SprintFunc()
+				cells[i] = c(cells[i])
+			}
+		}
+		prefix := utils.ConditionString(f.borders.Left, f.columnSeparator, "")
+		suffix := utils.ConditionString(f.borders.Right, f.columnSeparator, "")
+		fmt.Fprintf(w, "%s%s%s%s", prefix, strings.Join(cells, f.columnSeparator), suffix, f.newLine)
+	}
 	if f.headerLine {
-		f.FormatLine(w, colWidths, false)
+		f.FormatLine(w, colWidths, symbols.Middle)
 	}
 }
 
+// FormatRow renders a data row with multi-line support
 func (f *Colorized) FormatRow(w io.Writer, row []string, colWidths map[int]int, isFirstRow bool) {
-	cells := make([]string, len(row))
+	maxLines := 1
+	splitRows := make([][]string, len(row))
 	for i, cell := range row {
-		align := f.alignment // Use body alignment
-		if i < len(f.columnAlignments) && f.columnAlignments[i] != ALIGN_DEFAULT {
-			align = f.columnAlignments[i] // Override with per-column body alignment
-		}
-		width := colWidths[i]
-		if i < len(f.columnWidths) && f.columnWidths[i] > 0 {
-			width = f.columnWidths[i] // Override with specified width
-		}
-		padFunc := f.pad(align)
-		cells[i] = padFunc(cell, symbols.SPACE, width)
-		if i < len(f.columnColors) && len(f.columnColors[i]) > 0 {
-			cells[i] = f.format(cells[i], f.columnColors[i])
+		lines := strings.Split(cell, "\n")
+		splitRows[i] = lines
+		if len(lines) > maxLines {
+			maxLines = len(lines)
 		}
 	}
-	prefix := utils.ConditionString(f.borders.Left, f.columnSeparator, symbols.SPACE)
-	suffix := utils.ConditionString(f.borders.Right, f.columnSeparator, symbols.SPACE)
-	fmt.Fprintf(w, "%s %s %s%s", prefix, strings.Join(cells, " "+f.columnSeparator+" "), suffix, f.newLine)
+
+	for lineIdx := 0; lineIdx < maxLines; lineIdx++ {
+		cells := make([]string, len(row))
+		for i := range row {
+			align := f.alignment
+			if i < len(f.columnAlignments) && f.columnAlignments[i] != ALIGN_DEFAULT {
+				align = f.columnAlignments[i]
+			}
+			width := colWidths[i]
+			if i < len(f.columnWidths) && f.columnWidths[i] > 0 {
+				width = f.columnWidths[i]
+			}
+			var content string
+			if lineIdx < len(splitRows[i]) {
+				content = splitRows[i][lineIdx]
+			}
+			padFunc := f.pad(align)
+			cells[i] = padFunc(content, symbols.SPACE, width)
+			if i < len(f.columnColors) && len(f.columnColors[i]) > 0 {
+				c := color.New(f.columnColors[i]...).SprintFunc()
+				cells[i] = c(cells[i])
+			}
+		}
+		prefix := utils.ConditionString(f.borders.Left, f.columnSeparator, "")
+		suffix := utils.ConditionString(f.borders.Right, f.columnSeparator, "")
+		fmt.Fprintf(w, "%s%s%s%s", prefix, strings.Join(cells, f.columnSeparator), suffix, f.newLine)
+	}
 }
 
+// FormatFooter renders the footer row with multi-line support
 func (f *Colorized) FormatFooter(w io.Writer, footers []string, colWidths map[int]int) {
-	padFunc := f.pad(f.footerAlignment)
-	cells := make([]string, len(footers))
+	maxLines := 1
+	splitFooters := make([][]string, len(footers))
 	for i, cell := range footers {
-		width := colWidths[i]
-		if i < len(f.columnWidths) && f.columnWidths[i] > 0 {
-			width = f.columnWidths[i] // Override with specified width
-		}
-		cells[i] = padFunc(cell, symbols.SPACE, width)
-		if i < len(f.footerColors) && len(f.footerColors[i]) > 0 {
-			cells[i] = f.format(cells[i], f.footerColors[i])
+		lines := strings.Split(cell, "\n")
+		splitFooters[i] = lines
+		if len(lines) > maxLines {
+			maxLines = len(lines)
 		}
 	}
-	prefix := utils.ConditionString(f.borders.Left, f.columnSeparator, symbols.SPACE)
-	suffix := utils.ConditionString(f.borders.Right, f.columnSeparator, symbols.SPACE)
-	fmt.Fprintf(w, "%s %s %s%s", prefix, strings.Join(cells, " "+f.columnSeparator+" "), suffix, f.newLine)
+	for lineIdx := 0; lineIdx < maxLines; lineIdx++ {
+		cells := make([]string, len(footers))
+		for i := range footers {
+			width := colWidths[i]
+			if i < len(f.columnWidths) && f.columnWidths[i] > 0 {
+				width = f.columnWidths[i]
+			}
+			var content string
+			if lineIdx < len(splitFooters[i]) {
+				content = splitFooters[i][lineIdx]
+			}
+			padFunc := f.pad(f.footerAlignment)
+			cells[i] = padFunc(content, symbols.SPACE, width)
+			if i < len(f.footerColors) && len(f.footerColors[i]) > 0 {
+				c := color.New(f.footerColors[i]...).SprintFunc()
+				cells[i] = c(cells[i])
+			}
+		}
+		prefix := utils.ConditionString(f.borders.Left, f.columnSeparator, "")
+		suffix := utils.ConditionString(f.borders.Right, f.columnSeparator, "")
+		fmt.Fprintf(w, "%s%s%s%s", prefix, strings.Join(cells, f.columnSeparator), suffix, f.newLine)
+	}
 }
 
 // FormatLine renders a table line with proper symbols
-func (f *Colorized) FormatLine(w io.Writer, colWidths map[int]int, isTop bool) {
+func (f *Colorized) FormatLine(w io.Writer, colWidths map[int]int, lineType string) {
 	var prefix, suffix, mid string
-	if isTop && f.borders.Top {
+	switch lineType {
+	case symbols.Top:
 		prefix = utils.ConditionString(f.borders.Left, f.symbols.TopLeft(), f.rowSeparator)
 		suffix = utils.ConditionString(f.borders.Right, f.symbols.TopRight(), "")
 		mid = f.symbols.TopMid()
-	} else if !isTop && f.borders.Bottom {
+	case symbols.Bottom:
 		prefix = utils.ConditionString(f.borders.Left, f.symbols.BottomLeft(), f.rowSeparator)
 		suffix = utils.ConditionString(f.borders.Right, f.symbols.BottomRight(), "")
 		mid = f.symbols.BottomMid()
-	} else {
+	case symbols.Middle:
 		prefix = utils.ConditionString(f.borders.Left, f.symbols.MidLeft(), f.rowSeparator)
 		suffix = utils.ConditionString(f.borders.Right, f.symbols.MidRight(), "")
 		mid = f.centerSeparator
@@ -256,37 +276,7 @@ func (f *Colorized) GetColumnWidths() []int {
 }
 
 func (f *Colorized) Reset() {
-	f.cache = colorCache{}
-}
-
-func (f *Colorized) format(s string, codes Colors) string {
-	if len(codes) == 0 {
-		return s
-	}
-	key := fmt.Sprintf("%s|%v", s, codes)
-	if cached, ok := f.cache.Get(key); ok {
-		return cached
-	}
-	seq := f.makeSequence(codes)
-	formatted := f.startFormat(seq) + s + f.stopFormat()
-	f.cache.Store(key, formatted)
-	return formatted
-}
-
-func (f *Colorized) makeSequence(codes []int) string {
-	codesInString := make([]string, len(codes))
-	for i, code := range codes {
-		codesInString[i] = fmt.Sprintf("%d", code)
-	}
-	return strings.Join(codesInString, ";")
-}
-
-func (f *Colorized) startFormat(seq string) string {
-	return fmt.Sprintf("\033[%sm", seq)
-}
-
-func (f *Colorized) stopFormat() string {
-	return fmt.Sprintf("\033[%dm", Normal)
+	// No cache to reset with fatih/color
 }
 
 func (f *Colorized) updateSymbols() {
@@ -309,18 +299,6 @@ func (f *Colorized) pad(align int) func(string, string, int) string {
 	}
 }
 
-// colorCache caches formatted strings for performance
-type colorCache struct {
-	sync.Map
-}
-
-func (c *colorCache) Get(key string) (string, bool) {
-	if v, ok := c.Load(key); ok {
-		return v.(string), true
-	}
-	return "", false
-}
-
-func (c *colorCache) Store(key, value string) {
-	c.Map.Store(key, value)
+func simpleSyms(center, row, column string) []string {
+	return []string{row, column, center, center, center, center, center, center, center, center, center}
 }
