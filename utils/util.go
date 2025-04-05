@@ -5,7 +5,7 @@
 // This module is a Table Writer  API for the Go Programming Language.
 // The protocols were written in pure Go and works on windows and unix systems
 
-package tablewriter
+package utils
 
 import (
 	"math"

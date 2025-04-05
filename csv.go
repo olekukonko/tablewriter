@@ -33,11 +33,12 @@ func NewCSVReader(writer io.Writer, csvReader *csv.Reader, hasHeader bool) (*Tab
 	t := NewWriter(writer)
 	if hasHeader {
 		// Read the first row
-		headers, err := csvReader.Read()
-		if err != nil {
-			return &Table{}, err
-		}
-		t.SetHeader(headers)
+		//headers, err := csvReader.Read()
+		//if err != nil {
+		//	return &Table{}, err
+		//}
+		//@todo fix this later
+		// t.SetHeader(headers)
 	}
 	for {
 		record, err := csvReader.Read()
