@@ -9,82 +9,210 @@ import (
 	"github.com/olekukonko/tablewriter/utils"
 )
 
-// DefaultConfig holds configuration specific to the Default theme
+const (
+	Fail    = -1 // Explicitly disabled
+	Success = 1  // Explicitly enabled
+)
+
+const (
+	On  State = Success
+	Off       = Fail
+)
+
+type State int
+
+func (o State) Enabled() bool  { return o == Success }
+func (o State) Disabled() bool { return o == Fail }
+func (o State) Toggle() State {
+	if o == Fail {
+		return Success
+	}
+	return Fail
+}
+
+// Cond allows additional conditions for enabling, avoiding long if statements
+func (o State) Cond(c func() bool) bool {
+	if o.Enabled() {
+		return c()
+	}
+	return false
+}
+
+// Or allows additional conditions for enabling, avoiding long if statements
+func (o State) Or(c State) State {
+	if o.Enabled() {
+		return o
+	}
+	return c
+}
+
+// Or allows additional conditions for enabling, avoiding long if statements
+func (o State) String() string {
+	if o.Enabled() {
+		return "on"
+	}
+	return "off"
+}
+
+type Settings struct {
+	HeaderLine          State // Horizontal line below header (e.g., ├────┤)
+	HeaderSeparator     State // Horizontal separator between header rows
+	LineColumnSeparator State // Vertical separators between columns (headers, rows, footers)
+	LineSeparator       State // Horizontal separators between rows
+	FooterLine          State // Line below footer (if borders off)
+	FooterSeparator     State // Vertical separators in footer row
+}
+
+// Border defines which borders to draw
+type Border struct {
+	Left   State
+	Right  State
+	Top    State
+	Bottom State
+}
+
 type DefaultConfig struct {
-	Borders    Border          // Defines which borders to draw (left, right, top, bottom)
-	HeaderLine bool            // Indicates whether to draw a line after the header
-	Symbols    symbols.Symbols // Symbols used for table borders and separators
+	Borders  Border
+	Symbols  symbols.Symbols
+	Settings Settings
 }
 
-// Default implements classic table formatting
 type Default struct {
-	config DefaultConfig // Configuration for the Default theme
+	config DefaultConfig
 }
 
-// --- Private Methods ---
+func (f *Default) FormatHeader(w io.Writer, headers []string, ctx Context) {
+	// fmt.Println("DEBUG: FormatHeader called with headers =", headers, "HeaderLine =", f.config.Settings.HeaderLine, "HeaderSeparator =", f.config.Settings.HeaderSeparator)
 
-// defaultConfig returns a default configuration for the Default theme
-func defaultConfig() DefaultConfig {
-	s := symbols.NewSymbols(symbols.StyleASCII)
-	return DefaultConfig{
-		Borders:    Border{Left: true, Right: true, Top: true, Bottom: true},
-		HeaderLine: true,
-		Symbols:    s,
+	var cells []string
+	for i, h := range headers {
+		width := ctx.Widths[i]
+		content := strings.TrimSpace(h)
+		padding := ctx.Padding
+		if customPad, ok := ctx.ColPadding[i]; ok {
+			padding = customPad
+		}
+		colAlign := ""
+		if i < len(ctx.ColAligns) && ctx.ColAligns[i] != "" {
+			colAlign = ctx.ColAligns[i]
+		}
+		cells = append(cells, f.formatCell(content, width, ctx.Align, colAlign, padding))
 	}
-}
+	// fmt.Println("DEBUG: Rendering header cells =", cells)
+	f.renderLine(w, cells, ctx)
 
-// formatCell formats a single cell with alignment and padding
-// Returns the formatted string with content aligned and padded as specified
-func (f *Default) formatCell(content string, width int, defaultAlign string, colAlign string, padding symbols.Padding) string {
-	// Determine alignment: column-specific overrides default
-	align := defaultAlign
-	if colAlign != "" {
-		align = colAlign
-	}
+	// For now, assume single header row; HeaderSeparator would apply between multiple header rows
+	// If multi-row headers are added later, this would loop over rows and use HeaderSeparator
 
-	// Trim content and calculate widths
-	content = strings.TrimSpace(content)
-	runeWidth := utils.RuneWidth(content)
-	padLeftWidth := utils.RuneWidth(padding.Left)
-	padRightWidth := utils.RuneWidth(padding.Right)
-	totalContentWidth := runeWidth + padLeftWidth + padRightWidth
-
-	// Ensure width accommodates content and padding
-	if totalContentWidth > width {
-		width = totalContentWidth
-	}
-
-	// Calculate remaining gap
-	gap := width - runeWidth - padLeftWidth - padRightWidth
-	if gap < 0 {
-		gap = 0
-	}
-
-	// Use padding characters for gaps, falling back to spaces if empty
-	leftPadChar := " "
-	if padding.Left != "" {
-		leftPadChar = padding.Left
-	}
-	rightPadChar := " "
-	if padding.Right != "" {
-		rightPadChar = padding.Right
-	}
-
-	// Apply alignment
-	switch align {
-	case AlignCenter:
-		leftGap := gap / 2
-		rightGap := gap - leftGap
-		return padding.Left + strings.Repeat(leftPadChar, leftGap) + content + strings.Repeat(rightPadChar, rightGap) + padding.Right
-	case AlignRight:
-		return padding.Left + strings.Repeat(leftPadChar, gap) + content + padding.Right
-	default: // Left/Default
-		return padding.Left + content + strings.Repeat(rightPadChar, gap) + padding.Right
+	if f.config.Settings.HeaderLine.Enabled() {
+		// fmt.Println("DEBUG: Rendering header line below")
+		f.FormatLine(w, Context{Widths: ctx.Widths, Level: Middle})
+	} else {
+		// fmt.Println("DEBUG: HeaderLine disabled, skipping line below")
 	}
 }
 
-// formatSection renders a section (row or footer) with multi-line support
-// Writes formatted cells to the writer, handling rows or footers based on isFooter flag
+func (f *Default) renderLine(w io.Writer, cells []string, ctx Context) {
+	// fmt.Println("DEBUG: renderLine called with cells =", cells, "Level =", ctx.Level)
+	if f.config.Symbols.Name() == symbols.NameMarkdown {
+		fmt.Fprintf(w, "|%s|%s", strings.Join(cells, "|"), symbols.NewLine)
+		return
+	}
+
+	prefix := f.config.Symbols.Column()
+	if f.config.Borders.Left.Disabled() {
+		prefix = ""
+	}
+	suffix := f.config.Symbols.Column()
+	if f.config.Borders.Right.Disabled() {
+		suffix = ""
+	}
+
+	var output string
+	if f.config.Settings.LineColumnSeparator.Enabled() {
+		separator := f.config.Symbols.Column()
+		// fmt.Println("DEBUG: Using separator =", separator)
+		output = fmt.Sprintf("%s%s%s%s", prefix, strings.Join(cells, separator), suffix, symbols.NewLine)
+	} else {
+		output = fmt.Sprintf("%s%s%s%s", prefix, strings.Join(cells, ""), suffix, symbols.NewLine)
+	}
+
+	// fmt.Println("DEBUG: renderLine output =", output)
+	fmt.Fprint(w, output)
+}
+
+func (f *Default) FormatLine(w io.Writer, ctx Context) {
+	// fmt.Println("DEBUG: FormatLine called with Level =", ctx.Level, "b(top) = ", f.config.Borders.Top)
+
+	if ctx.Level == Top && f.config.Borders.Top.Disabled() {
+		// fmt.Println("DEBUG: Skipping top border")
+		return
+	}
+	if ctx.Level == Bottom && f.config.Borders.Bottom.Disabled() {
+		// fmt.Println("DEBUG: Skipping bottom border")
+		return
+	}
+
+	var line strings.Builder
+	widths := utils.ConvertToSorted(ctx.Widths)
+	rowChar := f.config.Symbols.Row()
+
+	prefix := rowChar
+	if ctx.Level == Top && f.config.Borders.Left.Enabled() {
+		prefix = f.config.Symbols.TopLeft()
+	} else if ctx.Level == Middle && f.config.Borders.Left.Enabled() {
+		prefix = f.config.Symbols.MidLeft()
+	} else if ctx.Level == Bottom && f.config.Borders.Left.Enabled() {
+		prefix = f.config.Symbols.BottomLeft()
+	}
+
+	suffix := rowChar
+	if ctx.Level == Top && f.config.Borders.Right.Enabled() {
+		suffix = f.config.Symbols.TopRight()
+	} else if ctx.Level == Middle && f.config.Borders.Right.Enabled() {
+		suffix = f.config.Symbols.MidRight()
+	} else if ctx.Level == Bottom && f.config.Borders.Right.Enabled() {
+		suffix = f.config.Symbols.BottomRight()
+	}
+
+	totalWidth := 0
+	for _, w := range widths {
+		totalWidth += w
+	}
+
+	line.WriteString(prefix)
+	if f.config.Settings.LineColumnSeparator.Enabled() {
+		junction := " "
+		if ctx.Level == Top {
+			junction = f.config.Symbols.TopMid()
+		} else if ctx.Level == Middle {
+			junction = f.config.Symbols.Center()
+		} else if ctx.Level == Bottom {
+			junction = f.config.Symbols.BottomMid()
+		}
+		for i := 0; i < len(widths); i++ {
+			if i > 0 {
+				line.WriteString(junction)
+			}
+			line.WriteString(strings.Repeat(rowChar, widths[i]))
+		}
+	} else {
+		line.WriteString(strings.Repeat(rowChar, totalWidth))
+	}
+	line.WriteString(suffix)
+
+	// fmt.Println("DEBUG: FormatLine output =", line.String())
+	fmt.Fprintln(w, line.String())
+}
+
+func (f *Default) FormatRow(w io.Writer, row []string, ctx Context) {
+	f.formatSection(w, row, ctx, false)
+	if f.config.Settings.LineSeparator.Enabled() && !ctx.Last {
+		// fmt.Println("DEBUG: Rendering row  separator")
+		f.FormatLine(w, Context{Widths: ctx.Widths, Level: Middle})
+	}
+}
+
 func (f *Default) formatSection(w io.Writer, cells []string, ctx Context, isFooter bool) {
 	maxLines := 1
 	splitCells := make([][]string, len(cells))
@@ -105,13 +233,11 @@ func (f *Default) formatSection(w io.Writer, cells []string, ctx Context, isFoot
 				content = splitCells[i][lineIdx]
 			}
 
-			// Apply custom padding if specified
 			padding := ctx.Padding
 			if customPad, ok := ctx.ColPadding[i]; ok {
 				padding = customPad
 			}
 
-			// Apply column-specific alignment if specified
 			align := ctx.Align
 			if colAlign, ok := ctx.ColAligns[i]; ok {
 				align = colAlign
@@ -123,178 +249,131 @@ func (f *Default) formatSection(w io.Writer, cells []string, ctx Context, isFoot
 	}
 }
 
-// renderLine renders a single line of cells to the writer
-// Handles Markdown-specific rendering and bordered table formatting
-func (f *Default) renderLine(w io.Writer, cells []string, ctx Context) {
-	// Special case for Markdown: always use "|" as column separator
-	if f.config.Symbols.Name() == symbols.NameMarkdown {
-		fmt.Fprintf(w, "|%s|%s", strings.Join(cells, "|"), symbols.NewLine)
-		return
+func (f *Default) formatCell(content string, width int, defaultAlign string, colAlign string, padding symbols.Padding) string {
+	align := defaultAlign
+	if colAlign != "" {
+		align = colAlign
 	}
 
-	// Determine prefix and suffix based on border settings
-	prefix := f.config.Symbols.Column()
-	if !f.config.Borders.Left {
-		prefix = ""
+	content = strings.TrimSpace(content)
+	runeWidth := utils.RuneWidth(content)
+	padLeftWidth := utils.RuneWidth(padding.Left)
+	padRightWidth := utils.RuneWidth(padding.Right)
+	totalContentWidth := runeWidth + padLeftWidth + padRightWidth
+
+	if totalContentWidth > width {
+		width = totalContentWidth
 	}
-	suffix := f.config.Symbols.Column()
-	if !f.config.Borders.Right {
-		suffix = ""
+
+	gap := width - runeWidth - padLeftWidth - padRightWidth
+	if gap < 0 {
+		gap = 0
 	}
-	fmt.Fprintf(w, "%s%s%s%s", prefix, strings.Join(cells, f.config.Symbols.Column()), suffix, symbols.NewLine)
+
+	leftPadChar := " "
+	if padding.Left != "" {
+		leftPadChar = padding.Left
+	}
+	rightPadChar := " "
+	if padding.Right != "" {
+		rightPadChar = padding.Right
+	}
+
+	switch align {
+	case AlignCenter:
+		leftGap := gap / 2
+		rightGap := gap - leftGap
+		return padding.Left + strings.Repeat(leftPadChar, leftGap) + content + strings.Repeat(rightPadChar, rightGap) + padding.Right
+	case AlignRight:
+		return padding.Left + strings.Repeat(leftPadChar, gap) + content + padding.Right
+	default:
+		return padding.Left + content + strings.Repeat(rightPadChar, gap) + padding.Right
+	}
 }
 
-// --- Public Methods ---
-
-// FormatFooter renders the footer section of the table
-// Writes multi-line footer content with proper alignment and padding
 func (f *Default) FormatFooter(w io.Writer, footers []string, ctx Context) {
-	maxLines := 1
-	splitFooters := make([][]string, len(footers))
-	for i, footer := range footers {
-		lines := strings.Split(footer, "\n")
-		splitFooters[i] = lines
-		if len(lines) > maxLines {
-			maxLines = len(lines)
-		}
-	}
-
-	for lineIdx := 0; lineIdx < maxLines; lineIdx++ {
-		var cells []string
-		for i := range footers {
-			width := ctx.Widths[i]
-			content := ""
-			if lineIdx < len(splitFooters[i]) {
-				content = splitFooters[i][lineIdx]
-			}
-			padding := ctx.Padding
-			if customPad, ok := ctx.ColPadding[i]; ok {
-				padding = customPad
-			}
-			cells = append(cells, f.formatCell(content, width, ctx.Align, ctx.ColAligns[i], padding))
-		}
-		f.renderLine(w, cells, ctx)
-	}
+	f.formatSection(w, footers, ctx, true)
 }
 
-// FormatHeader renders the header section of the table
-// Writes multi-line headers with an optional separator line if configured
-func (f *Default) FormatHeader(w io.Writer, headers []string, ctx Context) {
-	maxLines := 1
-	splitHeaders := make([][]string, len(headers))
-	for i, h := range headers {
-		lines := strings.Split(h, "\n")
-		splitHeaders[i] = lines
-		if len(lines) > maxLines {
-			maxLines = len(lines)
-		}
-	}
-
-	for lineIdx := 0; lineIdx < maxLines; lineIdx++ {
-		var cells []string
-		for i := range headers {
-			width := ctx.Widths[i]
-			content := ""
-			if lineIdx < len(splitHeaders[i]) {
-				content = splitHeaders[i][lineIdx]
-			}
-			padding := ctx.Padding
-			if customPad, ok := ctx.ColPadding[i]; ok {
-				padding = customPad
-			}
-			cells = append(cells, f.formatCell(content, width, ctx.Align, ctx.ColAligns[i], padding))
-		}
-		f.renderLine(w, cells, ctx)
-	}
-	if f.config.HeaderLine {
-		f.FormatLine(w, Context{Widths: ctx.Widths, Level: Middle})
-	}
-}
-
-// FormatLine renders a horizontal separator line
-// Supports top, middle, and bottom lines with appropriate border symbols
-func (f *Default) FormatLine(w io.Writer, ctx Context) {
-	var line strings.Builder
-
-	// Left border or column symbol
-	if f.config.Borders.Left {
-		switch ctx.Level {
-		case Top:
-			line.WriteString(f.config.Symbols.TopLeft())
-		case Middle:
-			line.WriteString(f.config.Symbols.MidLeft())
-		case Bottom:
-			line.WriteString(f.config.Symbols.BottomLeft())
-		}
-	} else {
-		line.WriteString(f.config.Symbols.Column()) // "|" for Markdown
-	}
-
-	// Columns and separators
-	for i, width := range ctx.Widths {
-		if i > 0 {
-			switch ctx.Level {
-			case Top:
-				if f.config.Borders.Top {
-					line.WriteString(f.config.Symbols.TopMid())
-				} else {
-					line.WriteString(f.config.Symbols.Center())
-				}
-			case Middle:
-				line.WriteString(f.config.Symbols.Center())
-			case Bottom:
-				if f.config.Borders.Bottom {
-					line.WriteString(f.config.Symbols.BottomMid())
-				} else {
-					line.WriteString(f.config.Symbols.Center())
-				}
-			}
-		}
-		line.WriteString(strings.Repeat(f.config.Symbols.Row(), width))
-	}
-
-	// Right border or column symbol
-	if f.config.Borders.Right {
-		switch ctx.Level {
-		case Top:
-			line.WriteString(f.config.Symbols.TopRight())
-		case Middle:
-			line.WriteString(f.config.Symbols.MidRight())
-		case Bottom:
-			line.WriteString(f.config.Symbols.BottomRight())
-		}
-	} else {
-		line.WriteString(f.config.Symbols.Column()) // "|" for Markdown
-	}
-
-	fmt.Fprintln(w, line.String())
-}
-
-// FormatRow renders a row of the table
-// Delegates to formatSection for consistent row rendering
-func (f *Default) FormatRow(w io.Writer, row []string, ctx Context) {
-	f.formatSection(w, row, ctx, false)
-}
-
-// GetColumnWidths returns predefined column widths
-// Returns nil as Default does not predefine widths
 func (f *Default) GetColumnWidths() []int {
 	return nil
 }
 
-// NewDefault creates a new Default theme renderer
-// Accepts an optional configuration; uses default if none provided
+func defaultConfig() DefaultConfig {
+	return DefaultConfig{
+		Borders: Border{Left: On, Right: On, Top: On, Bottom: On},
+		Settings: Settings{
+			HeaderLine:          On,  // Header row and horizontal separator enabled
+			HeaderSeparator:     On,  // Enable horizontal row separators by default
+			LineColumnSeparator: On,  // Vertical separators across all sections
+			LineSeparator:       Off, // No horizontal row separators by default
+			FooterLine:          On,  // Footer line enabled
+			FooterSeparator:     On,  // Vertical separators in footer
+		},
+	}
+}
+
 func NewDefault(config ...DefaultConfig) *Default {
 	cfg := defaultConfig()
+
 	if len(config) > 0 {
-		cfg = config[0]
+		userCfg := config[0]
+
+		// Merge Borders - directly apply user settings if provided
+		if userCfg.Borders != (Border{}) {
+			if userCfg.Borders != (Border{}) {
+				if userCfg.Borders.Left != 0 {
+					cfg.Borders.Left = userCfg.Borders.Left
+				}
+				if userCfg.Borders.Right != 0 {
+					cfg.Borders.Right = userCfg.Borders.Right
+				}
+				if userCfg.Borders.Top != 0 {
+					cfg.Borders.Top = userCfg.Borders.Top
+				}
+				if userCfg.Borders.Bottom != 0 {
+					cfg.Borders.Bottom = userCfg.Borders.Bottom
+				}
+			}
+		}
+
+		// Merge Symbols
+		if userCfg.Symbols != nil {
+			cfg.Symbols = userCfg.Symbols
+		}
+
+		// Merge Settings
+		if userCfg.Settings != (Settings{}) {
+			if userCfg.Settings.HeaderLine != 0 {
+				cfg.Settings.HeaderLine = userCfg.Settings.HeaderLine
+			}
+			if userCfg.Settings.HeaderSeparator != 0 {
+				cfg.Settings.HeaderSeparator = userCfg.Settings.HeaderSeparator
+			}
+			if userCfg.Settings.LineColumnSeparator != 0 {
+				cfg.Settings.LineColumnSeparator = userCfg.Settings.LineColumnSeparator
+			}
+			if userCfg.Settings.LineSeparator != 0 {
+				cfg.Settings.LineSeparator = userCfg.Settings.LineSeparator
+			}
+			if userCfg.Settings.FooterLine != 0 {
+				cfg.Settings.FooterLine = userCfg.Settings.FooterLine
+			}
+			if userCfg.Settings.FooterSeparator != 0 {
+				cfg.Settings.FooterSeparator = userCfg.Settings.FooterSeparator
+			}
+		}
 	}
+
 	if cfg.Symbols == nil {
-		cfg.Symbols = symbols.NewSymbols(symbols.StyleASCII)
+		cfg.Symbols = symbols.NewSymbols(symbols.StyleLight)
 	}
+
 	return &Default{config: cfg}
 }
 
-// Reset resets the renderer state
-// No-op for Default as it maintains no mutable state
 func (f *Default) Reset() {}
+
+func (f *Default) Config() DefaultConfig {
+	return f.config
+}

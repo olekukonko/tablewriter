@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"math"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode"
@@ -169,7 +170,7 @@ func SplitCamelCase(src string) (entries []string) {
 			runes[i] = runes[i][:len(runes[i])-1]
 		}
 	}
-	// Convert rune slices to strings and collect non-empty entries.
+	// Slice rune slices to strings and collect non-empty entries.
 	for _, s := range runes {
 		if len(s) > 0 {
 			entries = append(entries, string(s))
@@ -215,3 +216,45 @@ func TruncateString(s string, maxWidth int) string {
 
 	return buf.String()
 }
+
+// ConvertToSorted converts any map[int]int to a sorted slice of widths
+func ConvertToSorted(m map[int]int) []int {
+	// Get and sort the keys
+	columns := make([]int, 0, len(m))
+	for col := range m {
+		columns = append(columns, col)
+	}
+	sort.Ints(columns)
+
+	// Create the sorted result
+	result := make([]int, 0, len(columns))
+	for _, col := range columns {
+		result = append(result, m[col])
+	}
+	return result
+}
+
+//// Example usage:
+//func main() {
+//	widths := make(Widths)
+//	widths.Set(0, 10)
+//	widths.Set(1, 20)
+//	widths.Set(3, 15) // Column 2 is missing
+//
+//	// Convert to slice
+//	slice := widths.Convert(4) // [10, 20, 0, 15]
+//	fmt.Println(slice)
+//
+//	// Get max width
+//	max := widths.Max() // 20
+//	fmt.Println(max)
+//
+//	// Merge with another
+//	other := make(Widths)
+//	other.Set(1, 25)
+//	other.Set(2, 5)
+//	widths.Merge(other) // Now contains {0:10, 1:25, 2:5, 3:15}
+//
+//	// Check equality
+//	fmt.Println(widths.Equal(other)) // false
+//}

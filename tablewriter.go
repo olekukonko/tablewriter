@@ -31,15 +31,15 @@ type CellConfig struct {
 
 // Config holds the shared configuration for table content preparation
 type Config struct {
-	Header  CellConfig
-	Row     CellConfig
-	Footer  CellConfig
-	Symbols symbols.Symbols
+	Header CellConfig
+	Row    CellConfig
+	Footer CellConfig
+	//Symbols symbols.Symbols
 }
 
-// DefaultConfig returns a default configuration
-func DefaultConfig() Config {
-	s := symbols.NewSymbols(symbols.StyleASCII)
+// defaultConfig returns a default configuration
+func defaultConfig() Config {
+	//s := symbols.NewSymbols(symbols.StyleRounded)
 	defaultPadding := symbols.Padding{Left: " ", Right: " ", Top: "", Bottom: ""}
 	return Config{
 		Header: CellConfig{
@@ -61,7 +61,6 @@ func DefaultConfig() Config {
 			Alignment: renderer.AlignRight,
 			Padding:   defaultPadding,
 		},
-		Symbols: s,
 	}
 }
 
@@ -93,8 +92,8 @@ func WithFooter(footers []string) Option {
 	return func(t *Table) { t.footers = footers }
 }
 
-// WithFormatter sets a custom renderer
-func WithFormatter(f renderer.Structure) Option {
+// WithRenderer sets a custom renderer
+func WithRenderer(f renderer.Structure) Option {
 	return func(t *Table) { t.renderer = f }
 }
 
@@ -108,6 +107,11 @@ func WithStringer[T any](s func(T) []string) Option {
 	return func(t *Table) { t.stringer = s }
 }
 
+// WithSymbols sets the table configuration
+//func WithSymbols(s symbols.Symbols) Option {
+//	return func(t *Table) { t.config.Symbols = s }
+//}
+
 // NewTable creates a new table writer with a default renderer
 func NewTable(w io.Writer, opts ...Option) *Table {
 	t := &Table{
@@ -115,11 +119,24 @@ func NewTable(w io.Writer, opts ...Option) *Table {
 		colWidths:  make(map[int]int),
 		rowHeights: make(map[int]int),
 		renderer:   renderer.NewDefault(),
-		config:     DefaultConfig(),
+		config:     defaultConfig(),
 		newLine:    symbols.NewLine,
 	}
 	for _, opt := range opts {
 		opt(t)
+	}
+	return t
+}
+
+// NewWriter creates a new table writer with a default renderer (*legacy purpose*)
+func NewWriter(w io.Writer) *Table {
+	t := &Table{
+		writer:     w,
+		colWidths:  make(map[int]int),
+		rowHeights: make(map[int]int),
+		renderer:   renderer.NewDefault(),
+		config:     defaultConfig(),
+		newLine:    symbols.NewLine,
 	}
 	return t
 }
@@ -144,9 +161,14 @@ func (t *Table) Append(row interface{}) error {
 }
 
 // AppendBulk adds multiple rows to the table at once
-func (t *Table) AppendBulk(rows []interface{}) error {
-	t.ensureInitialized()
-	for _, row := range rows {
+func (t *Table) AppendBulk(rows interface{}) error {
+	rv := reflect.ValueOf(rows)
+	if rv.Kind() != reflect.Slice {
+		return errors.Newf("AppendBulk expects a slice, got %T", rows)
+	}
+
+	for i := 0; i < rv.Len(); i++ {
+		row := rv.Index(i).Interface()
 		if err := t.Append(row); err != nil {
 			return err
 		}
@@ -218,10 +240,38 @@ func (t *Table) Render() error {
 		t.parseDimension(t.footers, renderer.Footer)
 	}
 
-	f := t.renderer
-	f.FormatLine(t.writer, renderer.Context{Widths: t.colWidths, Level: renderer.Top})
+	numCols := 0
+	if len(t.headers) > numCols {
+		numCols = len(t.headers)
+	}
+	for _, lines := range t.rows {
+		for _, line := range lines {
+			if len(line) > numCols {
+				numCols = len(line)
+			}
+		}
+	}
+	if len(t.footers) > numCols {
+		numCols = len(t.footers)
+	}
 
-	// Header
+	for i := 0; i < numCols; i++ {
+		if _, ok := t.colWidths[i]; !ok {
+			t.colWidths[i] = 0
+		}
+	}
+
+	f := t.renderer
+
+	topWidths := make(map[int]int)
+	for i := 0; i < numCols; i++ {
+		topWidths[i] = t.colWidths[i]
+	}
+	f.FormatLine(t.writer, renderer.Context{
+		Widths: topWidths,
+		Level:  renderer.Top,
+	})
+
 	if len(t.headers) > 0 {
 		colAligns := make(map[int]string)
 		colPadding := make(map[int]symbols.Padding)
@@ -238,7 +288,6 @@ func (t *Table) Render() error {
 		})
 	}
 
-	// Rows with optional cell merging
 	for i, lines := range t.rows {
 		for j, line := range lines {
 			colPadding := make(map[int]symbols.Padding)
@@ -251,17 +300,17 @@ func (t *Table) Render() error {
 					colAligns[colKey] = t.config.Row.Alignment
 				}
 			}
-			// Apply cell merging if enabled
 			if t.config.Row.AutoMerge && i > 0 && j == 0 {
 				prevLines := t.rows[i-1]
 				if len(prevLines) > 0 && len(prevLines[0]) == len(line) {
 					for colKey := range line {
 						if colKey == 0 && line[colKey] == prevLines[0][colKey] {
-							line[colKey] = "" // Merge by clearing duplicate value
+							line[colKey] = ""
 						}
 					}
 				}
 			}
+			lastRow := (i == len(t.rows)-1 && j == len(lines)-1 && len(t.footers) == 0)
 			f.FormatRow(t.writer, line, renderer.Context{
 				Widths:     t.colWidths,
 				Level:      renderer.Middle,
@@ -270,13 +319,16 @@ func (t *Table) Render() error {
 				ColPadding: colPadding,
 				ColAligns:  colAligns,
 				First:      i == 0 && j == 0,
+				Last:       lastRow, // Set Last correctly
 			})
 		}
 	}
 
-	// Footer
 	if len(t.footers) > 0 {
-		f.FormatLine(t.writer, renderer.Context{Widths: t.colWidths, Level: renderer.Middle})
+		f.FormatLine(t.writer, renderer.Context{
+			Widths: t.colWidths,
+			Level:  renderer.Middle,
+		})
 		colPadding := make(map[int]symbols.Padding)
 		colAligns := make(map[int]string)
 		for i := range t.footers {
@@ -294,9 +346,19 @@ func (t *Table) Render() error {
 			ColPadding: colPadding,
 			ColAligns:  colAligns,
 		})
-		f.FormatLine(t.writer, renderer.Context{Widths: t.colWidths, Level: renderer.Bottom})
+		f.FormatLine(t.writer, renderer.Context{
+			Widths: t.colWidths,
+			Level:  renderer.Bottom,
+		})
 	} else {
-		f.FormatLine(t.writer, renderer.Context{Widths: t.colWidths, Level: renderer.Bottom})
+		bottomWidths := make(map[int]int)
+		for i := 0; i < numCols; i++ {
+			bottomWidths[i] = t.colWidths[i]
+		}
+		f.FormatLine(t.writer, renderer.Context{
+			Widths: bottomWidths,
+			Level:  renderer.Bottom,
+		})
 	}
 	t.hasPrinted = true
 	return nil
@@ -313,9 +375,9 @@ func (t *Table) ensureInitialized() {
 	if t.renderer == nil {
 		t.renderer = renderer.NewDefault()
 	}
-	if t.config.Symbols == nil {
-		t.config.Symbols = symbols.NewSymbols(symbols.StyleASCII)
-	}
+	//if t.config.Symbols == nil {
+	//	t.config.Symbols = symbols.NewSymbols(symbols.StyleRounded)
+	//}
 }
 
 // toStringLines converts a row to a slice of string slices (multi-line support)

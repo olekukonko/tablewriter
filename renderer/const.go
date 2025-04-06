@@ -8,10 +8,12 @@ import (
 
 // Alignment constants
 const (
-	AlignDefault = "default"
-	AlignCenter  = "center"
-	AlignRight   = "right"
-	AlignLeft    = "left"
+	AlignCenter = "center"
+	AlignRight  = "right"
+	AlignLeft   = "left"
+
+	// AlignDefault make left default
+	AlignDefault = AlignLeft
 )
 
 type Position string
@@ -27,14 +29,6 @@ const (
 	Middle
 	Bottom
 )
-
-// Border defines which borders to draw
-type Border struct {
-	Left   bool
-	Right  bool
-	Top    bool
-	Bottom bool
-}
 
 // Context carries rendering information to the renderer
 type Context struct {

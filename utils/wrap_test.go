@@ -8,6 +8,8 @@
 package utils
 
 import (
+	"bytes"
+	"fmt"
 	"os"
 	"reflect"
 	"runtime"
@@ -18,6 +20,19 @@ import (
 )
 
 var text = "The quick brown fox jumps over the lazy dog."
+
+// checkEqual compares two values and fails the test if they are not equal
+func checkEqual(t *testing.T, got, want interface{}, msgs ...interface{}) {
+	t.Helper()
+	if !reflect.DeepEqual(got, want) {
+		var buf bytes.Buffer
+		buf.WriteString(fmt.Sprintf("got:\n[%v]\nwant:\n[%v]\n", got, want))
+		for _, v := range msgs {
+			buf.WriteString(fmt.Sprint(v))
+		}
+		t.Errorf(buf.String())
+	}
+}
 
 func TestWrap(t *testing.T) {
 	exp := []string{
@@ -53,27 +68,27 @@ func TestDisplayWidth(t *testing.T) {
 	if runewidth.IsEastAsian() {
 		want = 14
 	}
-	if n := DisplayWidth(input); n != want {
+	if n := RuneWidth(input); n != want {
 		t.Errorf("Wants: %d Got: %d", want, n)
 	}
 	input = "\033[43;30m" + input + "\033[00m"
-	checkEqual(t, DisplayWidth(input), want)
+	checkEqual(t, RuneWidth(input), want)
 
 	input = "\033]8;;idea://open/?file=/path/somefile.php&line=12\033\\some URL\033]8;;\033\\"
-	checkEqual(t, DisplayWidth(input), 8)
+	checkEqual(t, RuneWidth(input), 8)
 
 }
 
 // WrapString was extremely memory greedy, it performed insane number of
 // allocations for what it was doing. See BenchmarkWrapString for details.
 func TestWrapStringAllocation(t *testing.T) {
-	originalTextBytes, err := os.ReadFile("testdata/long-text.txt")
+	originalTextBytes, err := os.ReadFile("../testdata/long-text.txt")
 	if err != nil {
 		t.Fatal(err)
 	}
 	originalText := string(originalTextBytes)
 
-	wantWrappedBytes, err := os.ReadFile("testdata/long-text-wrapped.txt")
+	wantWrappedBytes, err := os.ReadFile("../testdata/long-text-wrapped.txt")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +125,7 @@ func TestWrapStringAllocation(t *testing.T) {
 // After optimization:
 // BenchmarkWrapString-16    	    1652	    658098 ns/op	    230223 B/op	    5176 allocs/op
 func BenchmarkWrapString(b *testing.B) {
-	d, err := os.ReadFile("testdata/long-text.txt")
+	d, err := os.ReadFile("../testdata/long-text.txt")
 	if err != nil {
 		b.Fatal(err)
 	}
