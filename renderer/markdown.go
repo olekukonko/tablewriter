@@ -54,7 +54,7 @@ func (m *Markdown) formatCell(content string, width int, align string, padding s
 	}
 }
 
-func (m *Markdown) FormatHeader(w io.Writer, headers []string, ctx Context) {
+func (m *Markdown) Header(w io.Writer, headers []string, ctx Formatting) {
 	fmt.Printf("DEBUG: headers = %v\n", headers) // Add this for debugging
 	// Format header cells with padding
 	cells := make([]string, len(headers))
@@ -93,7 +93,7 @@ func (m *Markdown) FormatHeader(w io.Writer, headers []string, ctx Context) {
 	fmt.Fprintf(w, "|%s|\n", strings.Join(separators, "|"))
 }
 
-func (m *Markdown) FormatRow(w io.Writer, row []string, ctx Context) {
+func (m *Markdown) Row(w io.Writer, row []string, ctx Formatting) {
 	cells := make([]string, len(row))
 	for i, cell := range row {
 		width := ctx.Widths[i]
@@ -110,7 +110,7 @@ func (m *Markdown) FormatRow(w io.Writer, row []string, ctx Context) {
 	fmt.Fprintf(w, "|%s|\n", strings.Join(cells, "|"))
 }
 
-func (m *Markdown) FormatFooter(w io.Writer, footers []string, ctx Context) {
+func (m *Markdown) Footer(w io.Writer, footers []string, ctx Formatting) {
 	cells := make([]string, len(footers))
 	for i, f := range footers {
 		width := ctx.Widths[i]
@@ -127,7 +127,7 @@ func (m *Markdown) FormatFooter(w io.Writer, footers []string, ctx Context) {
 	fmt.Fprintf(w, "|%s|\n", strings.Join(cells, "|"))
 }
 
-func (m *Markdown) FormatLine(w io.Writer, ctx Context) {
+func (m *Markdown) Line(w io.Writer, ctx Formatting) {
 	// Markdown tables don't need additional lines
 	return
 }

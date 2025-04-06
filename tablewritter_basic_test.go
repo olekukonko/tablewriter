@@ -85,13 +85,12 @@ func TestBasicTableDefault(t *testing.T) {
 	table.Render()
 
 	expected := `
-	┌─────────┬──────┬────────────┐
-	│  NAME   │ AGE  │    CITY    │
-	├─────────┼──────┼────────────┤
-	│ Alice   │ 25   │ New York   │
-	│ Bob     │ 30   │ Boston     │
-	└─────────┴──────┴────────────┘
-
+	┌───────┬─────┬──────────┐
+	│ NAME  │ AGE │   CITY   │
+	├───────┼─────┼──────────┤
+	│ Alice │ 25  │ New York │
+	│ Bob   │ 30  │ Boston   │
+	└───────┴─────┴──────────┘
 `
 	visualCheck(t, "BasicTableRendering", buf.String(), expected)
 }
@@ -109,12 +108,12 @@ func TestBasicTableASCII(t *testing.T) {
 	table.Render()
 
 	expected := `
-	+---------+------+------------+
-	|  NAME   | AGE  |    CITY    |
-	+---------+------+------------+
-	| Alice   | 25   | New York   |
-	| Bob     | 30   | Boston     |
-	+---------+------+------------+
+	+-------+-----+----------+
+	| NAME  | AGE |   CITY   |
+	+-------+-----+----------+
+	| Alice | 25  | New York |
+	| Bob   | 30  | Boston   |
+	+-------+-----+----------+
 `
 	visualCheck(t, "BasicTableASCII", buf.String(), expected)
 }
@@ -132,12 +131,12 @@ func TestBasicTableUnicodeRounded(t *testing.T) {
 	table.Render()
 
 	expected := `
-	╭─────────┬──────┬────────────╮
-	│  NAME   │ AGE  │    CITY    │
-	├─────────┼──────┼────────────┤
-	│ Alice   │ 25   │ New York   │
-	│ Bob     │ 30   │ Boston     │
-	╰─────────┴──────┴────────────╯
+	╭───────┬─────┬──────────╮
+	│ NAME  │ AGE │   CITY   │
+	├───────┼─────┼──────────┤
+	│ Alice │ 25  │ New York │
+	│ Bob   │ 30  │ Boston   │
+	╰───────┴─────┴──────────╯
 `
 	visualCheck(t, "BasicTableUnicodeRounded", buf.String(), expected)
 }
@@ -155,12 +154,12 @@ func TestBasicTableUnicodeDouble(t *testing.T) {
 	table.Render()
 
 	expected := `
-	╔═════════╦══════╦════════════╗
-	║  NAME   ║ AGE  ║    CITY    ║
-	╠═════════╬══════╬════════════╣
-	║ Alice   ║ 25   ║ New York   ║
-	║ Bob     ║ 30   ║ Boston     ║
-	╚═════════╩══════╩════════════╝
+	╔═══════╦═════╦══════════╗
+	║ NAME  ║ AGE ║   CITY   ║
+	╠═══════╬═════╬══════════╣
+	║ Alice ║ 25  ║ New York ║
+	║ Bob   ║ 30  ║ Boston   ║
+	╚═══════╩═════╩══════════╝
 `
 	visualCheck(t, "TableUnicodeDouble", buf.String(), expected)
 }
@@ -179,18 +178,16 @@ func TestUnicodeWithoutHeader(t *testing.T) {
 		})),
 	)
 	table.SetHeader([]string{"Name", "Age", "City"})
-	table.AppendBulk(data)
+	table.Bulk(data)
 
 	table.Render()
 
 	expected := `
-
-	│   NAME    │            AGE            │ CITY │
-	├───────────┼───────────────────────────┼──────┤
-	│ Regular   │ regular line              │ 1    │
-	│ Thick     │ particularly thick line   │ 2    │
-	│ Double    │ double line               │ 3    │
-
+	│  NAME   │           AGE           │   CITY   │
+	├─────────┼─────────────────────────┼──────────┤
+	│ Regular │ regular line            │ 1        │
+	│ Thick   │ particularly thick line │ 2        │
+	│ Double  │ double line             │ 3        │
 `
 	visualCheck(t, "UnicodeWithoutHeader", buf.String(), expected)
 }
@@ -207,14 +204,18 @@ func TestDisableSeparator(t *testing.T) {
 		table := NewTable(&buf,
 			WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
 				Settings: renderer.Settings{
-					HeaderLine:          renderer.On, // Header separator on
-					LineColumnSeparator: renderer.On, // Vertical separators on
-					LineSeparator:       renderer.On, // Horizontal separators on
+					Separators: renderer.Separators{
+						BetweenColumns: renderer.On,
+						BetweenRows:    renderer.On,
+					},
+					Lines: renderer.Lines{
+						ShowHeaderLine: renderer.On,
+					},
 				},
 			})),
 		)
 		table.SetHeader([]string{"Name", "Age", "City"})
-		table.AppendBulk(data)
+		table.Bulk(data)
 		table.Render()
 
 		expected := `
@@ -236,24 +237,28 @@ func TestDisableSeparator(t *testing.T) {
 		table := NewTable(&buf,
 			WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
 				Settings: renderer.Settings{
-					HeaderLine:          renderer.On,  // Header separator on
-					LineColumnSeparator: renderer.On,  // Vertical separators on
-					LineSeparator:       renderer.Off, // Horizontal separators off
+					Separators: renderer.Separators{
+						BetweenColumns: renderer.On,
+						BetweenRows:    renderer.Off,
+					},
+					Lines: renderer.Lines{
+						ShowHeaderLine: renderer.On,
+					},
 				},
 			})),
 		)
 		table.SetHeader([]string{"Name", "Age", "City"})
-		table.AppendBulk(data)
+		table.Bulk(data)
 		table.Render()
 
 		expected := `
-    ┌───────────┬───────────────────────────┬──────┐
-    │   NAME    │            AGE            │ CITY │
-    ├───────────┼───────────────────────────┼──────┤
-    │ Regular   │ regular line              │ 1    │
-    │ Thick     │ particularly thick line   │ 2    │
-    │ Double    │ double line               │ 3    │
-    └───────────┴───────────────────────────┴──────┘
+		┌─────────┬─────────────────────────┬──────────┐
+		│  NAME   │           AGE           │   CITY   │
+		├─────────┼─────────────────────────┼──────────┤
+		│ Regular │ regular line            │ 1        │
+		│ Thick   │ particularly thick line │ 2        │
+		│ Double  │ double line             │ 3        │
+		└─────────┴─────────────────────────┴──────────┘
     `
 		visualCheck(t, "HorizontalDisabled", buf.String(), expected)
 	})
@@ -263,14 +268,18 @@ func TestDisableSeparator(t *testing.T) {
 		table := NewTable(&buf,
 			WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
 				Settings: renderer.Settings{
-					HeaderLine:          renderer.On,  // Header separator on
-					LineColumnSeparator: renderer.On,  // Vertical separators on
-					LineSeparator:       renderer.Off, // Horizontal separators off
+					Separators: renderer.Separators{
+						BetweenColumns: renderer.On,
+						BetweenRows:    renderer.Off,
+					},
+					Lines: renderer.Lines{
+						ShowHeaderLine: renderer.On,
+					},
 				},
 			})),
 		)
 		table.SetHeader([]string{"Name", "Age", "City"})
-		table.AppendBulk(data)
+		table.Bulk(data)
 		table.Render()
 
 		expected := `
@@ -290,25 +299,353 @@ func TestDisableSeparator(t *testing.T) {
 		table := NewTable(&buf,
 			WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
 				Settings: renderer.Settings{
-					HeaderLine:          renderer.On,  // Header separator on
-					LineColumnSeparator: renderer.Off, // Vertical separators off
-					LineSeparator:       renderer.Off, // Horizontal separators off
+					Separators: renderer.Separators{
+						BetweenColumns: renderer.Off,
+						BetweenRows:    renderer.Off,
+					},
+					Lines: renderer.Lines{
+						ShowHeaderLine: renderer.On,
+					},
 				},
 			})),
 		)
 		table.SetHeader([]string{"Name", "Age", "City"})
-		table.AppendBulk(data)
+		table.Bulk(data)
 		table.Render()
 
 		expected := `
         ┌────────────────────────────────────────────┐
-        │   NAME                AGE             CITY │
+        │  NAME              AGE              CITY   │
         ├────────────────────────────────────────────┤
-        │ Regular    regular line               1    │
-        │ Thick      particularly thick line    2    │
-        │ Double     double line                3    │
+        │ Regular  regular line             1        │
+        │ Thick    particularly thick line  2        │
+        │ Double   double line              3        │
         └────────────────────────────────────────────┘
     `
 		visualCheck(t, "VerticalDisabled", buf.String(), expected)
 	})
+}
+
+func TestLongHeaders(t *testing.T) {
+	var buf bytes.Buffer
+
+	c := Config{
+		MaxWidth: 30,
+	}
+
+	/// tuncase show me on by default and obet max width
+	t.Run("long-headers", func(t *testing.T) {
+		table := NewTable(&buf, WithConfig(c))
+		table.SetHeader([]string{"Name", "Age", "This is a very long header, let see if this will be properly wrapped"})
+		table.Append([]string{"Alice", "25", "New York"})
+		table.Append([]string{"Bob", "30", "Boston"})
+		table.Render()
+
+		expected := `
+       ┌───────┬─────┬────────────────────────────────┐
+       │ Name  │ Age │ This is a very long header, …  │
+       ├───────┼─────┼────────────────────────────────┤
+       │ Alice │ 25  │ New York                       │
+       │ Bob   │ 30  │ Boston                         │
+       └───────┴─────┴────────────────────────────────┘
+`
+		visualCheck(t, "BasicTableRendering", buf.String(), expected)
+
+	})
+
+	t.Run("long-headers", func(t *testing.T) {
+
+		// disable truncation in header
+		c.Header.Formatting.Truncate = false
+
+		table := NewTable(&buf, WithConfig(c))
+		table.SetHeader([]string{"Name", "Age", "This is a very long header, let see if this will be properly wrapped"})
+		table.Append([]string{"Alice", "25", "New York"})
+		table.Append([]string{"Bob", "30", "Boston"})
+		table.Render()
+		expected := `
+		┌───────┬─────┬────────────────────────────────┐
+		│ Name  │ Age │ This is a very long header,    │
+		│       │ 	  │ let see if this will be 	   │
+		│       │ 	  │ properly wrapped	           │
+		├───────┼─────┼────────────────────────────────┤
+		│ Alice │ 25  │ New York                       │
+		│ Bob   │ 30  │ Boston                         │
+		└───────┴─────┴────────────────────────────────┘
+`
+		visualCheck(t, "BasicTableRendering", buf.String(), expected)
+
+	})
+
+}
+
+func TestLongValues(t *testing.T) {
+	data := [][]string{
+		{"1", "Learn East has computers with adapted keyboards with enlarged print etc", "Some Data", "Another Data"},
+		{"2", "Instead of lining up the letters all", "the way across, he splits the keyboard in two", "Like most ergonomic keyboards"},
+		{"3", "Nice", "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's \n" +
+			"standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen bok", "Like most ergonomic keyboards"},
+	}
+
+	c := Config{
+		Header: CellConfig{
+			Formatting: CellFormatting{
+				MaxWidth:   30,
+				AutoWrap:   true,
+				Alignment:  renderer.AlignCenter,
+				AutoFormat: true,
+			},
+		},
+		Row: CellConfig{
+			Formatting: CellFormatting{
+				MaxWidth:  30,
+				AutoWrap:  true,
+				Alignment: renderer.AlignLeft,
+			},
+		},
+		Footer: CellConfig{
+			Formatting: CellFormatting{
+				MaxWidth:  30,
+				AutoWrap:  true,
+				Alignment: renderer.AlignRight,
+			},
+			ColumnAligns: []string{"", "", "", renderer.AlignLeft},
+		},
+	}
+
+	var buf bytes.Buffer
+	table := NewTable(&buf, WithConfig(c))
+	table.SetHeader([]string{"No", "Comments", "Another", ""})
+	table.SetFooter([]string{"", "", "---------->", "<---------"})
+	table.Bulk(data)
+
+	table.Render()
+
+	expected := `
+
+	┌─────┬─────────────────────────────┬────────────────────────────────┬───────────────────────────────┐
+	│ NO  │          COMMENTS           │            ANOTHER             │                               │
+	├─────┼─────────────────────────────┼────────────────────────────────┼───────────────────────────────┤
+	│1    │Learn East has computers     │Some Data                       │Another Data                   │
+	│     │with adapted keyboards with  │                                │                               │
+	│     │enlarged print etc           │                                │                               │
+	│2    │Instead of lining up the     │the way across, he splits the   │Like most ergonomic keyboards  │
+	│     │letters all                  │keyboard in two                 │                               │
+	│3    │Nice                         │Lorem Ipsum is simply dummy     │Like most ergonomic keyboards  │
+	│     │                             │text of the printing and        │                               │
+	│     │                             │typesetting industry. Lorem     │                               │
+	│     │                             │Ipsum has been the industry's   │                               │
+	│     │                             │standard dummy text ever since  │                               │
+	│     │                             │the 1500s, when an unknown      │                               │
+	│     │                             │printer took a galley of type   │                               │
+	│     │                             │and scrambled it to make a      │                               │
+	│     │                             │type specimen bok               │                               │
+	├─────┼─────────────────────────────┼────────────────────────────────┼───────────────────────────────┤
+	│     │                             │                     ---------->│<---------                     │
+	└─────┴─────────────────────────────┴────────────────────────────────┴───────────────────────────────┘
+
+`
+	visualCheck(t, "UnicodeWithoutHeader", buf.String(), expected)
+}
+
+func TestTableWithCustomPadding(t *testing.T) {
+	data := [][]string{
+		{"Regular", "regular line", "1"},
+		{"Thick", "particularly thick line", "2"},
+		{"Double", "double line", "3"},
+	}
+
+	c := Config{
+		Header: CellConfig{
+			Formatting: CellFormatting{
+				Alignment:  renderer.AlignCenter,
+				AutoWrap:   true,
+				AutoFormat: true,
+				AutoMerge:  false,
+			},
+			Padding: CellPadding{
+				Global: symbols.Padding{Left: "", Right: "", Top: "^", Bottom: "^"},
+			},
+		},
+		Row: CellConfig{
+			Formatting: CellFormatting{
+				Alignment:  renderer.AlignCenter,
+				AutoWrap:   true,
+				AutoFormat: true,
+				AutoMerge:  false,
+			},
+			Padding: CellPadding{
+				Global: symbols.Padding{Left: "L", Right: "R", Top: "T", Bottom: "B"},
+			},
+		},
+		Footer: CellConfig{
+			Formatting: CellFormatting{
+				Alignment:  renderer.AlignCenter,
+				AutoWrap:   true,
+				AutoFormat: true,
+				AutoMerge:  false,
+			},
+			Padding: CellPadding{
+				Global: symbols.Padding{Left: "*", Right: "*", Top: "", Bottom: ""},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	table := NewTable(&buf, WithConfig(c))
+	table.SetHeader([]string{"Name", "Age", "City"})
+	table.Bulk(data)
+
+	table.Render()
+
+	expected := `
+        ┌────────────┬────────────────────────────┬──────┐
+        │^^^^^^^^^^^^│^^^^^^^^^^^^^^^^^^^^^^^^^^^^│^^^^^^│
+        │    NAME    │            AGE             │ CITY │
+        │^^^^^^^^^^^^│^^^^^^^^^^^^^^^^^^^^^^^^^^^^│^^^^^^│
+        ├────────────┼────────────────────────────┼──────┤
+        │TTTTTT│TTTTTTTTTTTT│TTTTTTTTTTTTTTTTTTTTTTTTTTTT│
+        │LLRegularRRR│LLLLLLLLregular lineRRRRRRRR│LL1RRR│
+        │BBBBBBBBBBBB│BBBBBBBBBBBBBBBBBBBBBBBBBBBB│BBBBBB│
+        │TTTTTTTTTTTT│TTTTTTTTTTTTTTTTTTTTTTTTTTTT│TTTTTT│
+        │LLLThickRRRR│LLparticularly thick lineRRR│LL2RRR│
+        │BBBBBBBBBBBB│BBBBBBBBBBBBBBBBBBBBBBBBBBBB│BBBBBB│
+        │TTTTTT│TTTTTTTTTTTT│TTTTTTTTTTTTTTTTTTTTTTTTTTTT│
+        │LLLDoubleRRR│LLLLLLLLdouble lineRRRRRRRRR│LL3RRR│
+        │BBBBBBBBBBBB│BBBBBBBBBBBBBBBBBBBBBBBBBBBB│BBBBBB│
+        └────────────┴────────────────────────────┴──────┘
+`
+	visualCheck(t, "UnicodeWithoutHeader", buf.String(), expected)
+}
+
+func TestFilterMasking(t *testing.T) {
+	tests := []struct {
+		name     string
+		filter   Filter
+		data     [][]string
+		expected string
+	}{
+		{
+			name:   "MaskEmail",
+			filter: MaskEmail,
+			data: [][]string{
+				{"Alice", "alice@example.com", "25"},
+				{"Bob", "bob.test@domain.org", "30"},
+			},
+			expected: `
+┌───────┬────────────────────┬─────┐
+│ NAME  │        EMAIL       │ AGE │
+├───────┼────────────────────┼─────┤
+│ Alice │ a****@example.com  │ 25  │
+│ Bob   │ b*******@domain.org│ 30  │
+└───────┴────────────────────┴─────┘
+`,
+		},
+		{
+			name:   "MaskPassword",
+			filter: MaskPassword,
+			data: [][]string{
+				{"Alice", "secretpassword", "25"},
+				{"Bob", "pass1234", "30"},
+			},
+			expected: `
+┌───────┬────────────────┬─────┐
+│ NAME  │     PASSWORD   │ AGE │
+├───────┼────────────────┼─────┤
+│ Alice │ ************** │ 25  │
+│ Bob   │ ********       │ 30  │
+└───────┴────────────────┴─────┘
+`,
+		},
+		{
+			name:   "MaskCard",
+			filter: MaskCard,
+			data: [][]string{
+				{"Alice", "4111-1111-1111-1111", "25"},
+				{"Bob", "5105105105105100", "30"},
+			},
+			expected: `
+┌───────┬──────────────────┬─────┐
+│ NAME  │   CREDIT CARD    │ AGE │
+├───────┼──────────────────┼─────┤
+│ Alice │ ****-****-****-1111│ 25│
+│ Bob   │ ************5100 │ 30  │
+└───────┴──────────────────┴─────┘
+`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			table := NewTable(&buf, WithConfig(Config{
+				Header: CellConfig{
+					Formatting: CellFormatting{Alignment: renderer.AlignCenter, AutoFormat: true},
+					Padding:    CellPadding{Global: symbols.Padding{Left: " ", Right: " "}},
+				},
+				Row: CellConfig{
+					Formatting: CellFormatting{Alignment: renderer.AlignLeft},
+					Padding:    CellPadding{Global: symbols.Padding{Left: " ", Right: " "}},
+					Filter:     tt.filter,
+				},
+			}))
+			header := []string{"Name", tt.name, "Age"}
+			if tt.name == "MaskEmail" {
+				header[1] = "Email"
+			} else if tt.name == "MaskPassword" {
+				header[1] = "Password"
+			} else if tt.name == "MaskCard" {
+				header[1] = "Credit Card"
+			}
+			table.SetHeader(header)
+			table.Bulk(tt.data)
+			table.Render()
+			visualCheck(t, tt.name, buf.String(), tt.expected)
+		})
+	}
+}
+
+// Filter Presets
+func MaskEmail(cells []string) []string {
+	for i, cell := range cells {
+		if strings.Contains(cell, "@") {
+			parts := strings.Split(cell, "@")
+			if len(parts) == 2 {
+				masked := parts[0][:1] + strings.Repeat("*", len(parts[0])-1) + "@" + parts[1]
+				cells[i] = masked
+			}
+		}
+	}
+	return cells
+}
+
+func MaskPassword(cells []string) []string {
+	for i, cell := range cells {
+		if len(cell) > 0 && (strings.Contains(strings.ToLower(cell), "pass") || len(cell) >= 8) {
+			cells[i] = strings.Repeat("*", len(cell))
+		}
+	}
+	return cells
+}
+
+func MaskCard(cells []string) []string {
+	for i, cell := range cells {
+		// Simple check for card-like numbers (16 digits or with dashes)
+		if len(cell) >= 12 && (strings.Contains(cell, "-") || len(strings.ReplaceAll(cell, " ", "")) >= 12) {
+			parts := strings.FieldsFunc(cell, func(r rune) bool { return r == '-' || r == ' ' })
+			masked := ""
+			for j, part := range parts {
+				if j < len(parts)-1 {
+					masked += strings.Repeat("*", len(part))
+				} else {
+					masked += part // Keep last 4 digits visible
+				}
+				if j < len(parts)-1 {
+					masked += "-"
+				}
+			}
+			cells[i] = masked
+		}
+	}
+	return cells
 }

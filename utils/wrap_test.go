@@ -162,3 +162,9 @@ func TestSplitWords(t *testing.T) {
 		})
 	}
 }
+
+func TestWrapString(t *testing.T) {
+	want := []string{"ああああああああああああああああああああああああ", "あああああああ"}
+	got, _ := WrapString("ああああああああああああああああああああああああ あああああああ", 55)
+	checkEqual(t, got, want)
+}

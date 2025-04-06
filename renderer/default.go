@@ -29,24 +29,18 @@ func (o State) Toggle() State {
 	}
 	return Fail
 }
-
-// Cond allows additional conditions for enabling, avoiding long if statements
 func (o State) Cond(c func() bool) bool {
 	if o.Enabled() {
 		return c()
 	}
 	return false
 }
-
-// Or allows additional conditions for enabling, avoiding long if statements
 func (o State) Or(c State) State {
 	if o.Enabled() {
 		return o
 	}
 	return c
 }
-
-// Or allows additional conditions for enabling, avoiding long if statements
 func (o State) String() string {
 	if o.Enabled() {
 		return "on"
@@ -54,16 +48,73 @@ func (o State) String() string {
 	return "off"
 }
 
-type Settings struct {
-	HeaderLine          State // Horizontal line below header (e.g., ├────┤)
-	HeaderSeparator     State // Horizontal separator between header rows
-	LineColumnSeparator State // Vertical separators between columns (headers, rows, footers)
-	LineSeparator       State // Horizontal separators between rows
-	FooterLine          State // Line below footer (if borders off)
-	FooterSeparator     State // Vertical separators in footer row
+const (
+	AlignCenter  = "center"
+	AlignRight   = "right"
+	AlignLeft    = "left"
+	AlignDefault = AlignLeft
+)
+
+type Position string
+
+const (
+	Header Position = "header"
+	Row             = "row"
+	Footer          = "footer"
+)
+
+type Level int
+
+const (
+	Top = iota
+	Middle
+	Bottom
+)
+
+type Formatting struct {
+	Position     Position
+	Level        Level
+	IsFirst      bool
+	IsLast       bool
+	MaxWidth     int
+	Widths       map[int]int
+	ColMaxWidths map[int]int
+	Align        string
+	ColAligns    map[int]string
+	Padding      symbols.Padding
+	ColPadding   map[int]symbols.Padding
+	AutoWrap     bool
+	HasFooter    bool
 }
 
-// Border defines which borders to draw
+type Renderer interface {
+	Header(w io.Writer, headers []string, ctx Formatting)
+	Row(w io.Writer, row []string, ctx Formatting)
+	Footer(w io.Writer, footers []string, ctx Formatting)
+	Line(w io.Writer, ctx Formatting)
+}
+
+type Separators struct {
+	ShowHeader     State
+	ShowFooter     State
+	BetweenRows    State
+	BetweenColumns State
+}
+
+type Lines struct {
+	ShowTop        State
+	ShowBottom     State
+	ShowHeaderLine State
+	ShowFooterLine State
+}
+
+type Settings struct {
+	Separators     Separators
+	Lines          Lines
+	TrimWhitespace State
+	CompactMode    State
+}
+
 type Border struct {
 	Left   State
 	Right  State
@@ -75,20 +126,33 @@ type DefaultConfig struct {
 	Borders  Border
 	Symbols  symbols.Symbols
 	Settings Settings
+	debug    bool
 }
 
 type Default struct {
 	config DefaultConfig
 }
 
-func (f *Default) FormatHeader(w io.Writer, headers []string, ctx Context) {
-	// fmt.Println("DEBUG: FormatHeader called with headers =", headers, "HeaderLine =", f.config.Settings.HeaderLine, "HeaderSeparator =", f.config.Settings.HeaderSeparator)
+func (f *Default) Header(w io.Writer, headers []string, ctx Formatting) {
+	f.print("DEBUG: Entering Header, HasFooter:", ctx.HasFooter)
+	if f.config.Borders.Top.Enabled() {
+		f.Line(w, Formatting{Widths: ctx.Widths, Level: Top})
+	}
+
+	sortedWidth := utils.ConvertToSorted(ctx.Widths)
+	if ctx.Padding.Top != "" {
+		var topCells []string
+		for _, width := range sortedWidth {
+			topCells = append(topCells, strings.Repeat(ctx.Padding.Top, width))
+		}
+		f.renderLine(w, topCells, ctx)
+	}
 
 	var cells []string
 	for i, h := range headers {
 		width := ctx.Widths[i]
 		content := strings.TrimSpace(h)
-		padding := ctx.Padding
+		padding := symbols.Padding{Left: ctx.Padding.Left, Right: ctx.Padding.Right}
 		if customPad, ok := ctx.ColPadding[i]; ok {
 			padding = customPad
 		}
@@ -96,24 +160,26 @@ func (f *Default) FormatHeader(w io.Writer, headers []string, ctx Context) {
 		if i < len(ctx.ColAligns) && ctx.ColAligns[i] != "" {
 			colAlign = ctx.ColAligns[i]
 		}
-		cells = append(cells, f.formatCell(content, width, ctx.Align, colAlign, padding))
+		cell := f.formatCell(content, width, ctx.Align, colAlign, padding, ctx, i)
+		cells = append(cells, cell)
+		f.print("DEBUG: Header cell", i, "width:", width, "content:", content, "rendered:", cell)
 	}
-	// fmt.Println("DEBUG: Rendering header cells =", cells)
 	f.renderLine(w, cells, ctx)
 
-	// For now, assume single header row; HeaderSeparator would apply between multiple header rows
-	// If multi-row headers are added later, this would loop over rows and use HeaderSeparator
+	if ctx.Padding.Bottom != "" {
+		var bottomCells []string
+		for _, width := range sortedWidth {
+			bottomCells = append(bottomCells, strings.Repeat(ctx.Padding.Bottom, width))
+		}
+		f.renderLine(w, bottomCells, ctx)
+	}
 
-	if f.config.Settings.HeaderLine.Enabled() {
-		// fmt.Println("DEBUG: Rendering header line below")
-		f.FormatLine(w, Context{Widths: ctx.Widths, Level: Middle})
-	} else {
-		// fmt.Println("DEBUG: HeaderLine disabled, skipping line below")
+	if f.config.Settings.Lines.ShowHeaderLine.Enabled() {
+		f.Line(w, Formatting{Widths: ctx.Widths, Level: Middle})
 	}
 }
 
-func (f *Default) renderLine(w io.Writer, cells []string, ctx Context) {
-	// fmt.Println("DEBUG: renderLine called with cells =", cells, "Level =", ctx.Level)
+func (f *Default) renderLine(w io.Writer, cells []string, ctx Formatting) {
 	if f.config.Symbols.Name() == symbols.NameMarkdown {
 		fmt.Fprintf(w, "|%s|%s", strings.Join(cells, "|"), symbols.NewLine)
 		return
@@ -129,27 +195,22 @@ func (f *Default) renderLine(w io.Writer, cells []string, ctx Context) {
 	}
 
 	var output string
-	if f.config.Settings.LineColumnSeparator.Enabled() {
+	if f.config.Settings.Separators.BetweenColumns.Enabled() {
 		separator := f.config.Symbols.Column()
-		// fmt.Println("DEBUG: Using separator =", separator)
 		output = fmt.Sprintf("%s%s%s%s", prefix, strings.Join(cells, separator), suffix, symbols.NewLine)
 	} else {
 		output = fmt.Sprintf("%s%s%s%s", prefix, strings.Join(cells, ""), suffix, symbols.NewLine)
 	}
-
-	// fmt.Println("DEBUG: renderLine output =", output)
+	f.print("DEBUG: renderLine output:", output)
 	fmt.Fprint(w, output)
 }
 
-func (f *Default) FormatLine(w io.Writer, ctx Context) {
-	// fmt.Println("DEBUG: FormatLine called with Level =", ctx.Level, "b(top) = ", f.config.Borders.Top)
-
+func (f *Default) Line(w io.Writer, ctx Formatting) {
+	f.print("DEBUG: Line called with Level:", ctx.Level, "Borders:", f.config.Borders)
 	if ctx.Level == Top && f.config.Borders.Top.Disabled() {
-		// fmt.Println("DEBUG: Skipping top border")
 		return
 	}
 	if ctx.Level == Bottom && f.config.Borders.Bottom.Disabled() {
-		// fmt.Println("DEBUG: Skipping bottom border")
 		return
 	}
 
@@ -181,7 +242,7 @@ func (f *Default) FormatLine(w io.Writer, ctx Context) {
 	}
 
 	line.WriteString(prefix)
-	if f.config.Settings.LineColumnSeparator.Enabled() {
+	if f.config.Settings.Separators.BetweenColumns.Enabled() {
 		junction := " "
 		if ctx.Level == Top {
 			junction = f.config.Symbols.TopMid()
@@ -201,19 +262,40 @@ func (f *Default) FormatLine(w io.Writer, ctx Context) {
 	}
 	line.WriteString(suffix)
 
-	// fmt.Println("DEBUG: FormatLine output =", line.String())
+	f.print("DEBUG: Line level:", ctx.Level, "output:", line.String())
 	fmt.Fprintln(w, line.String())
 }
 
-func (f *Default) FormatRow(w io.Writer, row []string, ctx Context) {
+func (f *Default) Row(w io.Writer, row []string, ctx Formatting) {
+	f.print("DEBUG: Entering Row, IsLast:", ctx.IsLast, "HasFooter:", ctx.HasFooter)
+	sortedWidth := utils.ConvertToSorted(ctx.Widths)
+	if ctx.Padding.Top != "" {
+		var topCells []string
+		for _, width := range sortedWidth {
+			topCells = append(topCells, strings.Repeat(ctx.Padding.Top, width))
+		}
+		f.renderLine(w, topCells, ctx)
+	}
+
 	f.formatSection(w, row, ctx, false)
-	if f.config.Settings.LineSeparator.Enabled() && !ctx.Last {
-		// fmt.Println("DEBUG: Rendering row  separator")
-		f.FormatLine(w, Context{Widths: ctx.Widths, Level: Middle})
+
+	if ctx.Padding.Bottom != "" {
+		var bottomCells []string
+		for _, width := range sortedWidth {
+			bottomCells = append(bottomCells, strings.Repeat(ctx.Padding.Bottom, width))
+		}
+		f.renderLine(w, bottomCells, ctx)
+	}
+
+	if ctx.IsLast && !ctx.HasFooter && f.config.Borders.Bottom.Enabled() {
+		f.print("DEBUG: Rendering bottom border from Row")
+		f.Line(w, Formatting{Widths: ctx.Widths, Level: Bottom})
+	} else if f.config.Settings.Separators.BetweenRows.Enabled() && !ctx.IsLast {
+		f.Line(w, Formatting{Widths: ctx.Widths, Level: Middle})
 	}
 }
 
-func (f *Default) formatSection(w io.Writer, cells []string, ctx Context, isFooter bool) {
+func (f *Default) formatSection(w io.Writer, cells []string, ctx Formatting, isFooter bool) {
 	maxLines := 1
 	splitCells := make([][]string, len(cells))
 	for i, cell := range cells {
@@ -239,17 +321,19 @@ func (f *Default) formatSection(w io.Writer, cells []string, ctx Context, isFoot
 			}
 
 			align := ctx.Align
-			if colAlign, ok := ctx.ColAligns[i]; ok {
+			if colAlign, ok := ctx.ColAligns[i]; ok && colAlign != "" {
 				align = colAlign
 			}
 
-			renderedCells = append(renderedCells, f.formatCell(content, width, align, "", padding))
+			cell := f.formatCell(content, width, align, "", padding, ctx, i)
+			renderedCells = append(renderedCells, cell)
+			f.print("DEBUG: formatSection cell", i, "line", lineIdx, "width:", width, "content:", content, "rendered:", cell)
 		}
 		f.renderLine(w, renderedCells, ctx)
 	}
 }
 
-func (f *Default) formatCell(content string, width int, defaultAlign string, colAlign string, padding symbols.Padding) string {
+func (f *Default) formatCell(content string, width int, defaultAlign string, colAlign string, padding symbols.Padding, ctx Formatting, colIndex int) string {
 	align := defaultAlign
 	if colAlign != "" {
 		align = colAlign
@@ -257,123 +341,191 @@ func (f *Default) formatCell(content string, width int, defaultAlign string, col
 
 	content = strings.TrimSpace(content)
 	runeWidth := utils.RuneWidth(content)
+
+	// Use only explicitly defined padding, default to empty if not set
 	padLeftWidth := utils.RuneWidth(padding.Left)
 	padRightWidth := utils.RuneWidth(padding.Right)
 	totalContentWidth := runeWidth + padLeftWidth + padRightWidth
 
-	if totalContentWidth > width {
+	// Apply max width constraints
+	effectiveMaxWidth := ctx.MaxWidth
+	if colMaxWidth, ok := ctx.ColMaxWidths[colIndex]; ok && colMaxWidth > 0 {
+		effectiveMaxWidth = colMaxWidth
+	}
+	if effectiveMaxWidth > 0 && totalContentWidth > effectiveMaxWidth {
+		usableWidth := effectiveMaxWidth - padLeftWidth - padRightWidth
+		if usableWidth > 0 {
+			if ctx.AutoWrap {
+				lines, wrappedWidth := utils.WrapString(content, usableWidth)
+				f.print("DEBUG: formatCell col", colIndex, "content:", content, "wrapped lines:", lines, "wrapped width:", wrappedWidth)
+				content = strings.Join(lines, "\n")
+				runeWidth = utils.RuneWidth(lines[0])
+				totalContentWidth = runeWidth + padLeftWidth + padRightWidth
+			} else {
+				content = utils.TruncateString(content, usableWidth) + "…"
+				runeWidth = utils.RuneWidth(content)
+				totalContentWidth = runeWidth + padLeftWidth + padRightWidth
+			}
+		}
+	}
+
+	// Ensure width matches content + explicit padding
+	if width < totalContentWidth {
 		width = totalContentWidth
 	}
 
-	gap := width - runeWidth - padLeftWidth - padRightWidth
-	if gap < 0 {
-		gap = 0
+	// Use padding characters, no extra spaces unless in padding
+	leftPadChar := padding.Left
+	if leftPadChar == "" {
+		leftPadChar = ""
+	}
+	rightPadChar := padding.Right
+	if rightPadChar == "" {
+		rightPadChar = ""
 	}
 
-	leftPadChar := " "
-	if padding.Left != "" {
-		leftPadChar = padding.Left
-	}
-	rightPadChar := " "
-	if padding.Right != "" {
-		rightPadChar = padding.Right
-	}
-
+	// Build result with only explicit padding
+	var result string
 	switch align {
 	case AlignCenter:
-		leftGap := gap / 2
-		rightGap := gap - leftGap
-		return padding.Left + strings.Repeat(leftPadChar, leftGap) + content + strings.Repeat(rightPadChar, rightGap) + padding.Right
+		extraSpace := width - runeWidth - padLeftWidth - padRightWidth
+		leftExtra := extraSpace / 2
+		rightExtra := extraSpace - leftExtra
+		result = leftPadChar + content + rightPadChar + strings.Repeat(" ", rightExtra)
 	case AlignRight:
-		return padding.Left + strings.Repeat(leftPadChar, gap) + content + padding.Right
-	default:
-		return padding.Left + content + strings.Repeat(rightPadChar, gap) + padding.Right
+		extraSpace := width - runeWidth - padLeftWidth - padRightWidth
+		result = leftPadChar + strings.Repeat(" ", extraSpace) + content + rightPadChar
+	default: // AlignLeft
+		extraSpace := width - runeWidth - padLeftWidth - padRightWidth
+		result = leftPadChar + content + rightPadChar + strings.Repeat(" ", extraSpace)
 	}
+
+	f.print("DEBUG: formatCell col", colIndex, "width:", width, "content:", content, "align:", align, "result:", result)
+	return result
 }
 
-func (f *Default) FormatFooter(w io.Writer, footers []string, ctx Context) {
+func (f *Default) Footer(w io.Writer, footers []string, ctx Formatting) {
+	f.print("DEBUG: Entering Footer, HasFooter:", ctx.HasFooter)
+	sortedWidth := utils.ConvertToSorted(ctx.Widths)
+	if ctx.Padding.Top != "" {
+		var topCells []string
+		for _, width := range sortedWidth {
+			topCells = append(topCells, strings.Repeat(ctx.Padding.Top, width))
+		}
+		f.renderLine(w, topCells, ctx)
+	}
+
+	if f.config.Settings.Lines.ShowFooterLine.Enabled() {
+		f.Line(w, Formatting{Widths: ctx.Widths, Level: Middle})
+	}
+
 	f.formatSection(w, footers, ctx, true)
-}
 
-func (f *Default) GetColumnWidths() []int {
-	return nil
+	if ctx.Padding.Bottom != "" {
+		var bottomCells []string
+		for _, width := range sortedWidth {
+			bottomCells = append(bottomCells, strings.Repeat(ctx.Padding.Bottom, width))
+		}
+		f.renderLine(w, bottomCells, ctx)
+	}
+
+	if ctx.HasFooter && f.config.Borders.Bottom.Enabled() {
+		f.print("DEBUG: Rendering bottom border from Footer")
+		f.Line(w, Formatting{Widths: ctx.Widths, Level: Bottom})
+	}
 }
 
 func defaultConfig() DefaultConfig {
 	return DefaultConfig{
-		Borders: Border{Left: On, Right: On, Top: On, Bottom: On},
-		Settings: Settings{
-			HeaderLine:          On,  // Header row and horizontal separator enabled
-			HeaderSeparator:     On,  // Enable horizontal row separators by default
-			LineColumnSeparator: On,  // Vertical separators across all sections
-			LineSeparator:       Off, // No horizontal row separators by default
-			FooterLine:          On,  // Footer line enabled
-			FooterSeparator:     On,  // Vertical separators in footer
+		Borders: Border{
+			Left:   On,
+			Right:  On,
+			Top:    On,
+			Bottom: On,
 		},
+		Settings: Settings{
+			Separators: Separators{
+				ShowHeader:     On,
+				ShowFooter:     On,
+				BetweenRows:    Off,
+				BetweenColumns: On,
+			},
+			Lines: Lines{
+				ShowTop:        On,
+				ShowBottom:     On,
+				ShowHeaderLine: On,
+				ShowFooterLine: On,
+			},
+			TrimWhitespace: On,
+			CompactMode:    Off,
+		},
+		Symbols: symbols.NewSymbols(symbols.StyleLight),
 	}
 }
 
-func NewDefault(config ...DefaultConfig) *Default {
+func NewDefault(configs ...DefaultConfig) *Default {
 	cfg := defaultConfig()
+	cfg.debug = true // Enable debug for visibility
 
-	if len(config) > 0 {
-		userCfg := config[0]
-
-		// Merge Borders - directly apply user settings if provided
-		if userCfg.Borders != (Border{}) {
-			if userCfg.Borders != (Border{}) {
-				if userCfg.Borders.Left != 0 {
-					cfg.Borders.Left = userCfg.Borders.Left
-				}
-				if userCfg.Borders.Right != 0 {
-					cfg.Borders.Right = userCfg.Borders.Right
-				}
-				if userCfg.Borders.Top != 0 {
-					cfg.Borders.Top = userCfg.Borders.Top
-				}
-				if userCfg.Borders.Bottom != 0 {
-					cfg.Borders.Bottom = userCfg.Borders.Bottom
-				}
-			}
-		}
-
-		// Merge Symbols
+	if len(configs) > 0 {
+		userCfg := configs[0]
+		fmt.Println("DEBUG: Renderer config - Borders:", userCfg.Borders)
+		// Fully override Borders
+		cfg.Borders = userCfg.Borders
+		// Override Symbols if provided
 		if userCfg.Symbols != nil {
 			cfg.Symbols = userCfg.Symbols
 		}
-
 		// Merge Settings
-		if userCfg.Settings != (Settings{}) {
-			if userCfg.Settings.HeaderLine != 0 {
-				cfg.Settings.HeaderLine = userCfg.Settings.HeaderLine
-			}
-			if userCfg.Settings.HeaderSeparator != 0 {
-				cfg.Settings.HeaderSeparator = userCfg.Settings.HeaderSeparator
-			}
-			if userCfg.Settings.LineColumnSeparator != 0 {
-				cfg.Settings.LineColumnSeparator = userCfg.Settings.LineColumnSeparator
-			}
-			if userCfg.Settings.LineSeparator != 0 {
-				cfg.Settings.LineSeparator = userCfg.Settings.LineSeparator
-			}
-			if userCfg.Settings.FooterLine != 0 {
-				cfg.Settings.FooterLine = userCfg.Settings.FooterLine
-			}
-			if userCfg.Settings.FooterSeparator != 0 {
-				cfg.Settings.FooterSeparator = userCfg.Settings.FooterSeparator
-			}
-		}
-	}
-
-	if cfg.Symbols == nil {
-		cfg.Symbols = symbols.NewSymbols(symbols.StyleLight)
+		cfg.Settings = mergeSettings(cfg.Settings, userCfg.Settings)
 	}
 
 	return &Default{config: cfg}
 }
 
-func (f *Default) Reset() {}
+func mergeSettings(defaults, overrides Settings) Settings {
+	if overrides.Separators.ShowHeader != 0 {
+		defaults.Separators.ShowHeader = overrides.Separators.ShowHeader
+	}
+	if overrides.Separators.ShowFooter != 0 {
+		defaults.Separators.ShowFooter = overrides.Separators.ShowFooter
+	}
+	if overrides.Separators.BetweenRows != 0 {
+		defaults.Separators.BetweenRows = overrides.Separators.BetweenRows
+	}
+	if overrides.Separators.BetweenColumns != 0 {
+		defaults.Separators.BetweenColumns = overrides.Separators.BetweenColumns
+	}
+
+	if overrides.Lines.ShowTop != 0 {
+		defaults.Lines.ShowTop = overrides.Lines.ShowTop
+	}
+	if overrides.Lines.ShowBottom != 0 {
+		defaults.Lines.ShowBottom = overrides.Lines.ShowBottom
+	}
+	if overrides.Lines.ShowHeaderLine != 0 {
+		defaults.Lines.ShowHeaderLine = overrides.Lines.ShowHeaderLine
+	}
+	if overrides.Lines.ShowFooterLine != 0 {
+		defaults.Lines.ShowFooterLine = overrides.Lines.ShowFooterLine
+	}
+
+	if overrides.TrimWhitespace != 0 {
+		defaults.TrimWhitespace = overrides.TrimWhitespace
+	}
+	if overrides.CompactMode != 0 {
+		defaults.CompactMode = overrides.CompactMode
+	}
+
+	return defaults
+}
 
 func (f *Default) Config() DefaultConfig {
 	return f.config
+}
+
+func (f *Default) print(a ...interface{}) {
+	if f.config.debug {
+		fmt.Println(a...)
+	}
 }
