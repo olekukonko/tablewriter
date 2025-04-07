@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	Fail    = -1 // Explicitly disabled
-	Success = 1  // Explicitly enabled
+	Fail    = -1
+	Success = 1
 )
 
 const (
@@ -83,15 +83,13 @@ type Formatting struct {
 	ColAligns    map[int]string
 	Padding      symbols.Padding
 	ColPadding   map[int]symbols.Padding
-	AutoWrap     bool
 	HasFooter    bool
-	Truncate     bool
 }
 
 type Renderer interface {
-	Header(w io.Writer, headers []string, ctx Formatting)
-	Row(w io.Writer, row []string, ctx Formatting)
-	Footer(w io.Writer, footers []string, ctx Formatting)
+	Header(w io.Writer, headers [][]string, ctx Formatting)
+	Row(w io.Writer, rows []string, ctx Formatting)
+	Footer(w io.Writer, footers [][]string, ctx Formatting)
 	Line(w io.Writer, ctx Formatting)
 }
 
@@ -134,57 +132,62 @@ type Default struct {
 	config DefaultConfig
 }
 
-func (f *Default) Header(w io.Writer, headers []string, ctx Formatting) {
+func (f *Default) Header(w io.Writer, headers [][]string, ctx Formatting) {
 	if f.config.Borders.Top.Enabled() {
 		f.Line(w, Formatting{Widths: ctx.Widths, Level: Top, Position: Header})
 	}
 
 	if ctx.Padding.Top != "" {
 		var topCells []string
-		for i := range headers {
-			width := ctx.Widths[i]
-			topCells = append(topCells, strings.Repeat(ctx.Padding.Top, width))
+		for i := range ctx.Widths {
+			topCells = append(topCells, strings.Repeat(ctx.Padding.Top, ctx.Widths[i]))
 		}
 		f.renderLine(w, topCells, ctx)
 	}
 
-	var cells []string
-	for i, h := range headers {
-		width := ctx.Widths[i]
-		align := ctx.Align
-		if i < len(ctx.ColAligns) && ctx.ColAligns[i] != "" {
-			align = ctx.ColAligns[i]
+	maxLines := 0
+	for _, lines := range headers {
+		if len(lines) > maxLines {
+			maxLines = len(lines)
 		}
-		padding := ctx.Padding
-		if customPad, ok := ctx.ColPadding[i]; ok {
-			padding = customPad
-		}
-
-		cell := f.formatCell(strings.TrimSpace(h), width, align, "", padding, ctx, i)
-		cells = append(cells, cell)
 	}
-	f.renderLine(w, cells, ctx)
+	fmt.Printf("DEBUG: Header maxLines=%d\n", maxLines)
+	for lineIdx := 0; lineIdx < maxLines; lineIdx++ {
+		var cells []string
+		for i := 0; i < len(ctx.Widths); i++ {
+			content := ""
+			if i < len(headers) && lineIdx < len(headers[i]) {
+				content = headers[i][lineIdx]
+			}
+			padding := ctx.Padding
+			if customPad, ok := ctx.ColPadding[i]; ok {
+				padding = customPad
+			}
+			align := AlignCenter
+			if colAlign, ok := ctx.ColAligns[i]; ok && colAlign != "" {
+				align = colAlign
+			}
+			cell := f.formatCell(content, ctx.Widths[i], padding, align)
+			cells = append(cells, cell)
+			fmt.Printf("DEBUG: Header cell[%d][%d]: content='%s', width=%d, align=%s, result='%s'\n", i, lineIdx, content, ctx.Widths[i], align, cell)
+		}
+		f.renderLine(w, cells, ctx)
+	}
 
 	if ctx.Padding.Bottom != "" {
 		var bottomCells []string
-		for i := range headers {
-			width := ctx.Widths[i]
-			bottomCells = append(bottomCells, strings.Repeat(ctx.Padding.Bottom, width))
+		for i := range ctx.Widths {
+			bottomCells = append(bottomCells, strings.Repeat(ctx.Padding.Bottom, ctx.Widths[i]))
 		}
 		f.renderLine(w, bottomCells, ctx)
 	}
 
-	if f.config.Settings.Lines.ShowHeaderLine.Enabled() {
+	if f.config.Settings.Lines.ShowHeaderLine.Enabled() && len(headers) > 0 {
 		f.Line(w, Formatting{Widths: ctx.Widths, Level: Middle, Position: Header})
 	}
 }
 
 func (f *Default) renderLine(w io.Writer, cells []string, ctx Formatting) {
-	if f.config.Symbols.Name() == symbols.NameMarkdown {
-		fmt.Fprintf(w, "|%s|%s", strings.Join(cells, "|"), symbols.NewLine)
-		return
-	}
-
 	prefix := f.config.Symbols.Column()
 	if f.config.Borders.Left.Disabled() {
 		prefix = ""
@@ -206,26 +209,20 @@ func (f *Default) renderLine(w io.Writer, cells []string, ctx Formatting) {
 }
 
 func (f *Default) Line(w io.Writer, ctx Formatting) {
-	f.print("DEBUG: Line called with Level:", ctx.Level, "Position:", ctx.Position, "Borders:", f.config.Borders)
 	if ctx.Level == Top && f.config.Borders.Top.Disabled() {
-		f.print("DEBUG: Skipping top border")
 		return
 	}
 	if ctx.Level == Bottom && f.config.Borders.Bottom.Disabled() {
-		f.print("DEBUG: Skipping bottom border")
 		return
 	}
 	if ctx.Level == Middle {
 		if ctx.Position == Header && f.config.Settings.Lines.ShowHeaderLine.Disabled() {
-			f.print("DEBUG: Skipping header separator")
 			return
 		}
 		if ctx.Position == Row && f.config.Settings.Separators.BetweenRows.Disabled() {
-			f.print("DEBUG: Skipping row separator")
 			return
 		}
 		if ctx.Position == Footer && f.config.Settings.Lines.ShowFooterLine.Disabled() {
-			f.print("DEBUG: Skipping footer separator")
 			return
 		}
 	}
@@ -252,92 +249,110 @@ func (f *Default) Line(w io.Writer, ctx Formatting) {
 		suffix = f.config.Symbols.BottomRight()
 	}
 
-	totalWidth := 0
-	for _, w := range widths {
-		totalWidth += w
-	}
-
 	line.WriteString(prefix)
 	if f.config.Settings.Separators.BetweenColumns.Enabled() {
-		junction := " "
-		if ctx.Level == Top {
-			junction = f.config.Symbols.TopMid()
-		} else if ctx.Level == Middle {
+		junction := f.config.Symbols.TopMid()
+		if ctx.Level == Middle {
 			junction = f.config.Symbols.Center()
 		} else if ctx.Level == Bottom {
 			junction = f.config.Symbols.BottomMid()
 		}
-		for i := 0; i < len(widths); i++ {
+		for i, width := range widths {
 			if i > 0 {
 				line.WriteString(junction)
 			}
-			line.WriteString(strings.Repeat(rowChar, widths[i]))
+			line.WriteString(strings.Repeat(rowChar, width))
 		}
 	} else {
+		totalWidth := 0
+		for _, w := range widths {
+			totalWidth += w
+		}
 		line.WriteString(strings.Repeat(rowChar, totalWidth))
 	}
 	line.WriteString(suffix)
 
-	f.print("DEBUG: Line level:", ctx.Level, "position:", ctx.Position, "output:", line.String())
+	f.print("DEBUG: Line output:", line.String())
 	fmt.Fprintln(w, line.String())
 }
 
 func (f *Default) Row(w io.Writer, row []string, ctx Formatting) {
-	f.print("DEBUG: Entering Row, IsLast:", ctx.IsLast, "HasFooter:", ctx.HasFooter)
-	sortedWidth := utils.ConvertToSorted(ctx.Widths)
 	if ctx.Padding.Top != "" {
 		var topCells []string
-		for _, width := range sortedWidth {
-			topCells = append(topCells, strings.Repeat(ctx.Padding.Top, width))
+		for i := range ctx.Widths {
+			topCells = append(topCells, strings.Repeat(ctx.Padding.Top, ctx.Widths[i]))
 		}
 		f.renderLine(w, topCells, ctx)
 	}
 
-	f.formatSection(w, row, ctx, false)
+	f.formatSection(w, row, ctx)
 
 	if ctx.Padding.Bottom != "" {
 		var bottomCells []string
-		for _, width := range sortedWidth {
-			bottomCells = append(bottomCells, strings.Repeat(ctx.Padding.Bottom, width))
+		for i := range ctx.Widths {
+			bottomCells = append(bottomCells, strings.Repeat(ctx.Padding.Bottom, ctx.Widths[i]))
 		}
 		f.renderLine(w, bottomCells, ctx)
 	}
 
 	if ctx.IsLast && !ctx.HasFooter && f.config.Borders.Bottom.Enabled() {
-		f.print("DEBUG: Rendering bottom border from Row")
 		f.Line(w, Formatting{Widths: ctx.Widths, Level: Bottom, Position: Row})
 	} else if f.config.Settings.Separators.BetweenRows.Enabled() && !ctx.IsLast {
 		f.Line(w, Formatting{Widths: ctx.Widths, Level: Middle, Position: Row})
 	}
 }
 
-func (f *Default) Footer(w io.Writer, footers []string, ctx Formatting) {
-	f.print("DEBUG: Entering Footer, HasFooter:", ctx.HasFooter)
-	sortedWidth := utils.ConvertToSorted(ctx.Widths)
+func (f *Default) Footer(w io.Writer, footers [][]string, ctx Formatting) {
 	if ctx.Padding.Top != "" {
 		var topCells []string
-		for _, width := range sortedWidth {
-			topCells = append(topCells, strings.Repeat(ctx.Padding.Top, width))
+		for i := range ctx.Widths {
+			topCells = append(topCells, strings.Repeat(ctx.Padding.Top, ctx.Widths[i]))
 		}
 		f.renderLine(w, topCells, ctx)
 	}
 
-	if f.config.Settings.Lines.ShowFooterLine.Enabled() {
+	if f.config.Settings.Lines.ShowFooterLine.Enabled() && len(footers) > 0 {
 		f.Line(w, Formatting{Widths: ctx.Widths, Level: Middle, Position: Footer})
 	}
 
-	f.formatSection(w, footers, ctx, true)
+	maxLines := 0
+	for _, lines := range footers {
+		if len(lines) > maxLines {
+			maxLines = len(lines)
+		}
+	}
+	fmt.Printf("DEBUG: Footer maxLines=%d\n", maxLines)
+	for lineIdx := 0; lineIdx < maxLines; lineIdx++ {
+		var cells []string
+		for i := 0; i < len(ctx.Widths); i++ {
+			content := ""
+			if i < len(footers) && lineIdx < len(footers[i]) {
+				content = footers[i][lineIdx]
+			}
+			padding := ctx.Padding
+			if customPad, ok := ctx.ColPadding[i]; ok {
+				padding = customPad
+			}
+			align := AlignRight
+			if colAlign, ok := ctx.ColAligns[i]; ok && colAlign != "" {
+				align = colAlign
+			}
+			cell := f.formatCell(content, ctx.Widths[i], padding, align)
+			cells = append(cells, cell)
+			fmt.Printf("DEBUG: Footer cell[%d][%d]: content='%s', width=%d, align=%s, result='%s'\n", i, lineIdx, content, ctx.Widths[i], align, cell)
+		}
+		f.renderLine(w, cells, ctx)
+	}
 
 	if ctx.Padding.Bottom != "" {
 		var bottomCells []string
-		for _, width := range sortedWidth {
-			bottomCells = append(bottomCells, strings.Repeat(ctx.Padding.Bottom, width))
+		for i := range ctx.Widths {
+			bottomCells = append(bottomCells, strings.Repeat(ctx.Padding.Bottom, ctx.Widths[i]))
 		}
 		f.renderLine(w, bottomCells, ctx)
 	}
 
 	if ctx.HasFooter && f.config.Borders.Bottom.Enabled() {
-		f.print("DEBUG: Rendering bottom border from Footer")
 		f.Line(w, Formatting{Widths: ctx.Widths, Level: Bottom, Position: Footer})
 	}
 }
@@ -370,161 +385,88 @@ func defaultConfig() DefaultConfig {
 	}
 }
 
-func (f *Default) formatCell(content string, width int, defaultAlign string, colAlign string, padding symbols.Padding, ctx Formatting, colIndex int) string {
-	align := defaultAlign
-	if colAlign != "" {
-		align = colAlign
-	}
-
+func (f *Default) formatCell(content string, width int, padding symbols.Padding, align string) string {
 	content = strings.TrimSpace(content)
 	runeWidth := utils.RuneWidth(content)
+	padLeftWidth := utils.RuneWidth(padding.Left)
+	padRightWidth := utils.RuneWidth(padding.Right)
+	totalPadding := padLeftWidth + padRightWidth
 
-	padLeft := padding.Left
-	padRight := padding.Right
-	padLeftWidth := utils.RuneWidth(padLeft)
-	padRightWidth := utils.RuneWidth(padRight)
-
-	contentWidth := width - padLeftWidth - padRightWidth
-	if contentWidth < 0 {
-		contentWidth = 0
-	}
-
-	// Handle custom padding
-	if customPad, ok := ctx.ColPadding[colIndex]; ok && (customPad.Left != "" || customPad.Right != "") {
-		padLeft = customPad.Left
-		padRight = customPad.Right
-		padLeftWidth = utils.RuneWidth(padLeft)
-		padRightWidth = utils.RuneWidth(padRight)
-		contentWidth = width - padLeftWidth - padRightWidth
-		if contentWidth < 0 {
-			contentWidth = 0
-		}
-		if runeWidth > contentWidth {
-			if ctx.AutoWrap && !ctx.Truncate {
-				lines, _ := utils.WrapString(content, contentWidth)
-				content = lines[0]
-			} else {
-				content = utils.TruncateString(content, contentWidth)
-			}
-			runeWidth = utils.RuneWidth(content)
-		}
-		extraSpaces := contentWidth - runeWidth
-		leftSpaces := 0
-		rightSpaces := 0
-		switch align {
-		case AlignCenter:
-			leftSpaces = extraSpaces / 2
-			rightSpaces = extraSpaces - leftSpaces
-		case AlignRight:
-			leftSpaces = extraSpaces
-		case AlignLeft:
-			rightSpaces = extraSpaces
-		}
-		var builder strings.Builder
-		builder.WriteString(padLeft)
-		builder.WriteString(strings.Repeat(padLeft, leftSpaces))
-		builder.WriteString(content)
-		builder.WriteString(strings.Repeat(padRight, rightSpaces))
-		builder.WriteString(padRight)
-		result := builder.String()
-		f.print("DEBUG: formatCell - content:", content, "width:", width, "padLeft:", padLeft, "padRight:", padRight, "result:", result)
-		return result
-	}
-
-	// Standard padding case
-	if runeWidth > contentWidth {
-		if ctx.AutoWrap && !ctx.Truncate {
-			lines, _ := utils.WrapString(content, contentWidth)
-			content = lines[0]
-		} else {
-			content = utils.TruncateString(content, contentWidth)
-		}
+	if runeWidth > width-totalPadding && width > 0 {
+		content = utils.TruncateString(content, width-totalPadding)
 		runeWidth = utils.RuneWidth(content)
 	}
 
-	extraSpaces := contentWidth - runeWidth
-	leftSpaces := 0
-	rightSpaces := 0
-	switch align {
-	case AlignCenter:
-		leftSpaces = extraSpaces / 2
-		rightSpaces = extraSpaces - leftSpaces
-	case AlignRight:
-		leftSpaces = extraSpaces
-	case AlignLeft:
-		rightSpaces = extraSpaces
-	}
-
 	var builder strings.Builder
-	builder.WriteString(padLeft)
-	builder.WriteString(strings.Repeat(" ", leftSpaces))
-	builder.WriteString(content)
-	builder.WriteString(strings.Repeat(" ", rightSpaces))
-	builder.WriteString(padRight)
-
-	f.print("DEBUG: formatCell - content:", content, "width:", width, "padLeft:", padLeft, "padRight:", padRight, "result:", builder.String())
-	return builder.String()
+	switch align {
+	case AlignLeft:
+		builder.WriteString(padding.Left)
+		builder.WriteString(content)
+		remaining := width - runeWidth - padLeftWidth - padRightWidth
+		if remaining > 0 {
+			builder.WriteString(strings.Repeat(padding.Right, remaining))
+		}
+		builder.WriteString(padding.Right)
+	case AlignRight:
+		remaining := width - runeWidth - padLeftWidth - padRightWidth
+		if remaining > 0 {
+			builder.WriteString(strings.Repeat(padding.Left, remaining))
+		}
+		builder.WriteString(padding.Left)
+		builder.WriteString(content)
+		builder.WriteString(padding.Right)
+	case AlignCenter:
+		remaining := width - runeWidth - padLeftWidth - padRightWidth
+		leftPad := remaining / 2
+		rightPad := remaining - leftPad
+		if leftPad > 0 {
+			builder.WriteString(strings.Repeat(padding.Left, leftPad))
+		}
+		builder.WriteString(padding.Left)
+		builder.WriteString(content)
+		if rightPad > 0 {
+			builder.WriteString(strings.Repeat(padding.Right, rightPad))
+		}
+		builder.WriteString(padding.Right)
+	default:
+		builder.WriteString(padding.Left)
+		builder.WriteString(content)
+		remaining := width - runeWidth - padLeftWidth - padRightWidth
+		if remaining > 0 {
+			builder.WriteString(strings.Repeat(padding.Right, remaining))
+		}
+		builder.WriteString(padding.Right)
+	}
+	result := builder.String()
+	fmt.Printf("DEBUG: formatCell - content='%s', width=%d, align=%s, runeWidth=%d, totalPadding=%d, result='%s'\n", content, width, align, runeWidth, totalPadding, result)
+	return result
 }
 
-func (f *Default) formatSection(w io.Writer, cells []string, ctx Formatting, isFooter bool) {
-	maxLines := 1
-	splitCells := make([][]string, len(cells))
-	for i, cell := range cells {
-		var lines []string
-		padLeftWidth := utils.RuneWidth(ctx.Padding.Left)
-		padRightWidth := utils.RuneWidth(ctx.Padding.Right)
+func (f *Default) formatSection(w io.Writer, cells []string, ctx Formatting) {
+	var renderedCells []string
+	for i := 0; i < len(ctx.Widths); i++ {
+		content := ""
+		if i < len(cells) {
+			content = cells[i]
+		}
+		padding := ctx.Padding
 		if customPad, ok := ctx.ColPadding[i]; ok {
-			padLeftWidth = utils.RuneWidth(customPad.Left)
-			padRightWidth = utils.RuneWidth(customPad.Right)
+			padding = customPad
 		}
-		contentWidth := ctx.Widths[i] - padLeftWidth - padRightWidth
-		if contentWidth < 0 {
-			contentWidth = 0
+		// Use AlignLeft for rows as per defaultConfig
+		align := AlignLeft
+		if colAlign, ok := ctx.ColAligns[i]; ok && colAlign != "" {
+			align = colAlign
 		}
-		if ctx.AutoWrap && !ctx.Truncate && contentWidth > 0 {
-			lines, _ = utils.WrapString(cell, contentWidth)
-		} else {
-			lines = strings.Split(cell, "\n")
-			if len(lines) == 1 && utils.RuneWidth(lines[0]) > contentWidth {
-				lines[0] = utils.TruncateString(lines[0], contentWidth)
-			}
-		}
-		splitCells[i] = lines
-		if len(lines) > maxLines {
-			maxLines = len(lines)
-		}
+		cell := f.formatCell(content, ctx.Widths[i], padding, align)
+		renderedCells = append(renderedCells, cell)
 	}
-
-	for lineIdx := 0; lineIdx < maxLines; lineIdx++ {
-		var renderedCells []string
-		for i := range cells {
-			width := ctx.Widths[i]
-			content := ""
-			if lineIdx < len(splitCells[i]) {
-				content = splitCells[i][lineIdx]
-			}
-
-			padding := ctx.Padding
-			if customPad, ok := ctx.ColPadding[i]; ok {
-				padding = customPad
-			}
-
-			align := ctx.Align
-			if colAlign, ok := ctx.ColAligns[i]; ok && colAlign != "" {
-				align = colAlign
-			}
-
-			cell := f.formatCell(content, width, align, "", padding, ctx, i)
-			renderedCells = append(renderedCells, cell)
-			f.print("DEBUG: formatSection cell", i, "line", lineIdx, "width:", width, "content:", content, "rendered:", cell)
-		}
-		f.renderLine(w, renderedCells, ctx)
-	}
+	f.renderLine(w, renderedCells, ctx)
 }
 
 func NewDefault(configs ...DefaultConfig) *Default {
 	cfg := defaultConfig()
-	cfg.debug = true
+	cfg.debug = false
 
 	if len(configs) > 0 {
 		userCfg := configs[0]
@@ -564,7 +506,6 @@ func mergeSettings(defaults, overrides Settings) Settings {
 	if overrides.Separators.BetweenColumns != 0 {
 		defaults.Separators.BetweenColumns = overrides.Separators.BetweenColumns
 	}
-
 	if overrides.Lines.ShowTop != 0 {
 		defaults.Lines.ShowTop = overrides.Lines.ShowTop
 	}
@@ -577,14 +518,12 @@ func mergeSettings(defaults, overrides Settings) Settings {
 	if overrides.Lines.ShowFooterLine != 0 {
 		defaults.Lines.ShowFooterLine = overrides.Lines.ShowFooterLine
 	}
-
 	if overrides.TrimWhitespace != 0 {
 		defaults.TrimWhitespace = overrides.TrimWhitespace
 	}
 	if overrides.CompactMode != 0 {
 		defaults.CompactMode = overrides.CompactMode
 	}
-
 	return defaults
 }
 

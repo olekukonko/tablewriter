@@ -333,8 +333,8 @@ func TestLongHeaders(t *testing.T) {
 		MaxWidth: 30,
 	}
 
-	/// tuncase show me on by default and obet max width
 	t.Run("long-headers", func(t *testing.T) {
+		buf.Reset()
 		table := NewTable(&buf, WithConfig(c))
 		table.SetHeader([]string{"Name", "Age", "This is a very long header, let see if this will be properly wrapped"})
 		table.Append([]string{"Alice", "25", "New York"})
@@ -342,41 +342,36 @@ func TestLongHeaders(t *testing.T) {
 		table.Render()
 
 		expected := `
-       ┌───────┬─────┬────────────────────────────────┐
-       │ Name  │ Age │ This is a very long header, …  │
-       ├───────┼─────┼────────────────────────────────┤
-       │ Alice │ 25  │ New York                       │
-       │ Bob   │ 30  │ Boston                         │
-       └───────┴─────┴────────────────────────────────┘
+		┌───────┬─────┬──────────────────────────────┐
+		│ Name  │ Age │ This is a very long header,… │
+		├───────┼─────┼──────────────────────────────┤
+		│ Alice │ 25  │ New York                     │
+		│ Bob   │ 30  │ Boston                       │
+		└───────┴─────┴──────────────────────────────┘
 `
 		visualCheck(t, "BasicTableRendering", buf.String(), expected)
-
 	})
 
-	t.Run("long-headers", func(t *testing.T) {
-
-		// disable truncation in header
+	t.Run("long-headers-no-truncate", func(t *testing.T) {
+		buf.Reset()
 		c.Header.Formatting.Truncate = false
-
 		table := NewTable(&buf, WithConfig(c))
 		table.SetHeader([]string{"Name", "Age", "This is a very long header, let see if this will be properly wrapped"})
 		table.Append([]string{"Alice", "25", "New York"})
 		table.Append([]string{"Bob", "30", "Boston"})
 		table.Render()
 		expected := `
-		┌───────┬─────┬────────────────────────────────┐
-		│ Name  │ Age │ This is a very long header,    │
-		│       │ 	  │ let see if this will be 	   │
-		│       │ 	  │ properly wrapped	           │
-		├───────┼─────┼────────────────────────────────┤
-		│ Alice │ 25  │ New York                       │
-		│ Bob   │ 30  │ Boston                         │
-		└───────┴─────┴────────────────────────────────┘
+		┌───────┬─────┬──────────────────────────────┐
+		│ Name  │ Age │ This is a very long header,  │
+		│       │     │ let see if this will be      │
+		│       │     │ properly wrapped             │
+		├───────┼─────┼──────────────────────────────┤
+		│ Alice │ 25  │ New York                     │
+		│ Bob   │ 30  │ Boston                       │
+		└───────┴─────┴──────────────────────────────┘
 `
 		visualCheck(t, "BasicTableRendering", buf.String(), expected)
-
 	})
-
 }
 
 func TestLongValues(t *testing.T) {

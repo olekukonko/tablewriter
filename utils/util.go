@@ -183,7 +183,7 @@ func SplitCamelCase(src string) (entries []string) {
 }
 
 // TruncateString truncates a string to fit within maxWidth while preserving ANSI codes
-func TruncateString(s string, maxWidth int) string {
+func TruncateString(s string, maxWidth int, suffix ...string) string {
 	if maxWidth <= 0 {
 		return ""
 	}
@@ -217,6 +217,7 @@ func TruncateString(s string, maxWidth int) string {
 		}
 	}
 
+	buf.WriteString(strings.Join(suffix, " "))
 	return buf.String()
 }
 
