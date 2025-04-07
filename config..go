@@ -1,6 +1,8 @@
 package tablewriter
 
-import "github.com/olekukonko/tablewriter/symbols"
+import (
+	"github.com/olekukonko/tablewriter/tw"
+)
 
 // ConfigBuilder provides a fluent interface for building Config
 type ConfigBuilder struct {
@@ -60,7 +62,7 @@ type HeaderFormattingBuilder struct {
 	section string
 }
 
-func (hf *HeaderFormattingBuilder) WithAlignment(align string) *HeaderFormattingBuilder {
+func (hf *HeaderFormattingBuilder) WithAlignment(align tw.Align) *HeaderFormattingBuilder {
 	hf.config.Alignment = align
 	return hf
 }
@@ -75,8 +77,8 @@ func (hf *HeaderFormattingBuilder) WithAutoFormat(autoFormat bool) *HeaderFormat
 	return hf
 }
 
-func (hf *HeaderFormattingBuilder) WithAutoMerge(autoMerge bool) *HeaderFormattingBuilder {
-	hf.config.AutoMerge = autoMerge
+func (hf *HeaderFormattingBuilder) WithMergeMode(mergeMode int) *HeaderFormattingBuilder {
+	hf.config.MergeMode = mergeMode
 	return hf
 }
 
@@ -103,17 +105,17 @@ type HeaderPaddingBuilder struct {
 	section string
 }
 
-func (hp *HeaderPaddingBuilder) WithGlobal(padding symbols.Padding) *HeaderPaddingBuilder {
+func (hp *HeaderPaddingBuilder) WithGlobal(padding tw.Padding) *HeaderPaddingBuilder {
 	hp.config.Global = padding
 	return hp
 }
 
-func (hp *HeaderPaddingBuilder) WithPerColumn(padding []symbols.Padding) *HeaderPaddingBuilder {
+func (hp *HeaderPaddingBuilder) WithPerColumn(padding []tw.Padding) *HeaderPaddingBuilder {
 	hp.config.PerColumn = padding
 	return hp
 }
 
-func (hp *HeaderPaddingBuilder) AddColumnPadding(padding symbols.Padding) *HeaderPaddingBuilder {
+func (hp *HeaderPaddingBuilder) AddColumnPadding(padding tw.Padding) *HeaderPaddingBuilder {
 	hp.config.PerColumn = append(hp.config.PerColumn, padding)
 	return hp
 }
@@ -194,10 +196,10 @@ func (c *ColumnConfigBuilder) WithMaxWidth(width int) *ColumnConfigBuilder {
 	return c
 }
 
-func (c *ColumnConfigBuilder) WithAlignment(align string) *ColumnConfigBuilder {
+func (c *ColumnConfigBuilder) WithAlignment(align tw.Align) *ColumnConfigBuilder {
 	// Ensure slice is large enough
 	if len(c.parent.config.Header.ColumnAligns) <= c.col {
-		newAligns := make([]string, c.col+1)
+		newAligns := make([]tw.Align, c.col+1)
 		copy(newAligns, c.parent.config.Header.ColumnAligns)
 		c.parent.config.Header.ColumnAligns = newAligns
 	}

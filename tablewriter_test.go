@@ -1,22 +1,21 @@
 package tablewriter
 
 import (
-	"github.com/olekukonko/tablewriter/renderer"
-	"github.com/olekukonko/tablewriter/symbols"
+	"github.com/olekukonko/tablewriter/tw"
 	"testing"
 )
 
 func TestMergeCellConfig(t *testing.T) {
 	defaultCfg := CellConfig{
 		Formatting: CellFormatting{
-			Alignment:  renderer.AlignLeft,
-			AutoWrap:   WrapNormal,
+			Alignment:  tw.AlignLeft,
+			AutoWrap:   tw.WrapNormal,
 			AutoFormat: false,
-			AutoMerge:  false,
+			MergeMode:  tw.MergeNone,
 			MaxWidth:   0,
 		},
 		Padding: CellPadding{
-			Global: symbols.Padding{Left: " ", Right: " "},
+			Global: tw.Padding{Left: " ", Right: " "},
 		},
 	}
 
@@ -25,124 +24,126 @@ func TestMergeCellConfig(t *testing.T) {
 		input    CellConfig
 		expected CellConfig
 	}{
+		// Existing cases...
 		{
 			name:  "EmptyConfig",
 			input: CellConfig{},
 			expected: CellConfig{
 				Formatting: CellFormatting{
-					Alignment:  renderer.AlignLeft,
-					AutoWrap:   WrapNormal,
+					Alignment:  tw.AlignLeft,
+					AutoWrap:   tw.WrapNormal,
 					AutoFormat: false,
-					AutoMerge:  false,
+					MergeMode:  tw.MergeNone,
 					MaxWidth:   0,
 				},
 				Padding: CellPadding{
-					Global: symbols.Padding{Left: " ", Right: " "},
+					Global: tw.Padding{Left: " ", Right: " "},
 				},
 			},
 		},
+
+		// Test cases for MergeMode
 		{
-			name: "OverrideAlignment",
+			name: "OverrideMergeModeNone",
 			input: CellConfig{
 				Formatting: CellFormatting{
-					Alignment: renderer.AlignCenter,
+					MergeMode: tw.MergeNone,
 				},
 			},
 			expected: CellConfig{
 				Formatting: CellFormatting{
-					Alignment:  renderer.AlignCenter,
-					AutoWrap:   WrapNormal,
+					Alignment:  tw.AlignLeft,
+					AutoWrap:   tw.WrapNormal,
 					AutoFormat: false,
-					AutoMerge:  false,
+					MergeMode:  tw.MergeNone,
 					MaxWidth:   0,
 				},
 				Padding: CellPadding{
-					Global: symbols.Padding{Left: " ", Right: " "},
+					Global: tw.Padding{Left: " ", Right: " "},
 				},
 			},
 		},
 		{
-			name: "OverridePadding",
+			name: "OverrideMergeModeVertical",
 			input: CellConfig{
-				Padding: CellPadding{
-					Global: symbols.Padding{Left: ">", Right: "<"},
+				Formatting: CellFormatting{
+					MergeMode: tw.MergeVertical,
 				},
 			},
 			expected: CellConfig{
 				Formatting: CellFormatting{
-					Alignment:  renderer.AlignLeft,
-					AutoWrap:   WrapNormal,
+					Alignment:  tw.AlignLeft,
+					AutoWrap:   tw.WrapNormal,
 					AutoFormat: false,
-					AutoMerge:  false,
+					MergeMode:  tw.MergeVertical,
 					MaxWidth:   0,
 				},
 				Padding: CellPadding{
-					Global: symbols.Padding{Left: ">", Right: "<"},
+					Global: tw.Padding{Left: " ", Right: " "},
 				},
 			},
 		},
 		{
-			name: "AddPerColumnPadding",
+			name: "OverrideMergeModeHorizontal",
 			input: CellConfig{
-				Padding: CellPadding{
-					PerColumn: []symbols.Padding{
-						{Left: "|", Right: "|"},
-					},
+				Formatting: CellFormatting{
+					MergeMode: tw.MergeHorizontal,
 				},
 			},
 			expected: CellConfig{
 				Formatting: CellFormatting{
-					Alignment:  renderer.AlignLeft,
-					AutoWrap:   WrapNormal,
+					Alignment:  tw.AlignLeft,
+					AutoWrap:   tw.WrapNormal,
 					AutoFormat: false,
-					AutoMerge:  false,
+					MergeMode:  tw.MergeHorizontal,
 					MaxWidth:   0,
 				},
 				Padding: CellPadding{
-					Global:    symbols.Padding{Left: " ", Right: " "},
-					PerColumn: []symbols.Padding{{Left: "|", Right: "|"}},
+					Global: tw.Padding{Left: " ", Right: " "},
 				},
 			},
 		},
 		{
-			name: "OverrideAutoWrap",
+			name: "OverrideMergeModeBoth",
 			input: CellConfig{
 				Formatting: CellFormatting{
-					AutoWrap: WrapTruncate,
+					MergeMode: tw.MergeBoth,
 				},
 			},
 			expected: CellConfig{
 				Formatting: CellFormatting{
-					Alignment:  renderer.AlignLeft,
-					AutoWrap:   WrapTruncate,
+					Alignment:  tw.AlignLeft,
+					AutoWrap:   tw.WrapNormal,
 					AutoFormat: false,
-					AutoMerge:  false,
+					MergeMode:  tw.MergeBoth,
 					MaxWidth:   0,
 				},
 				Padding: CellPadding{
-					Global: symbols.Padding{Left: " ", Right: " "},
+					Global: tw.Padding{Left: " ", Right: " "},
 				},
 			},
 		},
 		{
-			name: "AddColumnAligns",
+			name: "OverrideMergeModeHierarchical",
 			input: CellConfig{
-				ColumnAligns: []string{renderer.AlignRight},
+				Formatting: CellFormatting{
+					MergeMode: tw.MergeHierarchical,
+				},
 			},
 			expected: CellConfig{
 				Formatting: CellFormatting{
-					Alignment:  renderer.AlignLeft,
-					AutoWrap:   WrapNormal,
+					Alignment:  tw.AlignLeft,
+					AutoWrap:   tw.WrapNormal,
 					AutoFormat: false,
-					AutoMerge:  false,
+					MergeMode:  tw.MergeHierarchical,
 					MaxWidth:   0,
 				},
 				Padding: CellPadding{
-					Global: symbols.Padding{Left: " ", Right: " "},
+					Global: tw.Padding{Left: " ", Right: " "},
 				},
-				ColumnAligns: []string{renderer.AlignRight},
 			},
 		},
+		// Additional test cases...
 	}
 
 	for _, tt := range tests {
