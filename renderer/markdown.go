@@ -2,11 +2,10 @@ package renderer
 
 import (
 	"fmt"
-	"github.com/olekukonko/tablewriter/utils"
+	"github.com/olekukonko/tablewriter/tw"
+	"github.com/olekukonko/tablewriter/twfn"
 	"io"
 	"strings"
-
-	"github.com/olekukonko/tablewriter/symbols"
 )
 
 // Markdown implements a simple Markdown table formatter
@@ -17,11 +16,11 @@ func NewMarkdown() *Markdown {
 	return &Markdown{}
 }
 
-func (m *Markdown) formatCell(content string, width int, align string, padding symbols.Padding) string {
+func (m *Markdown) formatCell(content string, width int, align tw.Align, padding tw.Padding) string {
 	content = strings.TrimSpace(content)
-	runeWidth := utils.RuneWidth(content)
-	padLeftWidth := utils.RuneWidth(padding.Left)
-	padRightWidth := utils.RuneWidth(padding.Right)
+	runeWidth := twfn.DisplayWidth(content)
+	padLeftWidth := twfn.DisplayWidth(padding.Left)
+	padRightWidth := twfn.DisplayWidth(padding.Right)
 	totalContentWidth := runeWidth + padLeftWidth + padRightWidth
 
 	if totalContentWidth > width {
@@ -43,11 +42,11 @@ func (m *Markdown) formatCell(content string, width int, align string, padding s
 	}
 
 	switch align {
-	case AlignCenter:
+	case tw.AlignCenter:
 		leftGap := gap / 2
 		rightGap := gap - leftGap
 		return padding.Left + strings.Repeat(leftPadChar, leftGap) + content + strings.Repeat(rightPadChar, rightGap) + padding.Right
-	case AlignRight:
+	case tw.AlignRight:
 		return padding.Left + strings.Repeat(leftPadChar, gap) + content + padding.Right
 	default: // Left or default
 		return padding.Left + content + strings.Repeat(rightPadChar, gap) + padding.Right
@@ -82,9 +81,9 @@ func (m *Markdown) Header(w io.Writer, headers []string, ctx Formatting) {
 		}
 
 		switch align {
-		case AlignCenter:
+		case tw.AlignCenter:
 			separators[i] = ":" + strings.Repeat("-", width-2) + ":"
-		case AlignRight:
+		case tw.AlignRight:
 			separators[i] = strings.Repeat("-", width-1) + ":"
 		default: // Left or default
 			separators[i] = ":" + strings.Repeat("-", width-1)
@@ -128,7 +127,7 @@ func (m *Markdown) Footer(w io.Writer, footers []string, ctx Formatting) {
 }
 
 func (m *Markdown) Line(w io.Writer, ctx Formatting) {
-	// Markdown tables don't need additional lines
+	// SymbolMarkdown tables don't need additional lines
 	return
 }
 

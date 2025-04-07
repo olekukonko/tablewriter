@@ -2,15 +2,14 @@ package renderer
 
 import (
 	"fmt"
+	"github.com/olekukonko/tablewriter/tw"
+	"github.com/olekukonko/tablewriter/twfn"
 	"io"
 	"strings"
-
-	"github.com/olekukonko/tablewriter/symbols"
-	"github.com/olekukonko/tablewriter/utils"
 )
 
 type InvoiceConfig struct {
-	Symbols symbols.Symbols
+	Symbols tw.Symbols
 }
 
 type Invoice struct {
@@ -19,7 +18,7 @@ type Invoice struct {
 
 func NewInvoice(config ...InvoiceConfig) *Invoice {
 	cfg := InvoiceConfig{
-		Symbols: symbols.NewSymbols(symbols.StyleASCII),
+		Symbols: tw.NewSymbols(tw.StyleASCII),
 	}
 	if len(config) > 0 && config[0].Symbols != nil {
 		cfg.Symbols = config[0].Symbols
@@ -32,8 +31,8 @@ func (i *Invoice) formatCell(content string, width int) string {
 	if content == "" {
 		return strings.Repeat(" ", width)
 	}
-	if utils.RuneWidth(content) > width {
-		width = utils.RuneWidth(content)
+	if twfn.DisplayWidth(content) > width {
+		width = twfn.DisplayWidth(content)
 	}
 	return fmt.Sprintf("%-*s", width, content)
 }
@@ -43,7 +42,7 @@ func (i *Invoice) Header(w io.Writer, headers []string, ctx Formatting) {
 	for j, h := range headers {
 		cells[j] = i.formatCell(h, ctx.Widths[j])
 	}
-	fmt.Fprintf(w, "    %s %s", strings.Join(cells, " "+i.config.Symbols.Column()+" "), symbols.NewLine)
+	fmt.Fprintf(w, "    %s %s", strings.Join(cells, " "+i.config.Symbols.Column()+" "), tw.NewLine)
 	i.Line(w, ctx)
 }
 
@@ -67,7 +66,7 @@ func (i *Invoice) Row(w io.Writer, row []string, ctx Formatting) {
 			}
 			cells[j] = i.formatCell(content, ctx.Widths[j])
 		}
-		fmt.Fprintf(w, "    %s %s", strings.Join(cells, " "+i.config.Symbols.Column()+" "), symbols.NewLine)
+		fmt.Fprintf(w, "    %s %s", strings.Join(cells, " "+i.config.Symbols.Column()+" "), tw.NewLine)
 	}
 }
 
@@ -87,7 +86,7 @@ func (i *Invoice) Footer(w io.Writer, footers []string, ctx Formatting) {
 
 	if hasContent {
 		i.Line(w, ctx)
-		fmt.Fprintf(w, "    %s %s", strings.Join(cells, " "+i.config.Symbols.Column()+" "), symbols.NewLine)
+		fmt.Fprintf(w, "    %s %s", strings.Join(cells, " "+i.config.Symbols.Column()+" "), tw.NewLine)
 	}
 }
 
@@ -96,7 +95,7 @@ func (i *Invoice) Line(w io.Writer, ctx Formatting) {
 	for j := range ctx.Widths {
 		separators[j] = strings.Repeat(i.config.Symbols.Row(), ctx.Widths[j])
 	}
-	fmt.Fprintf(w, "    %s%s", strings.Join(separators, i.config.Symbols.Center()), symbols.NewLine)
+	fmt.Fprintf(w, "    %s%s", strings.Join(separators, i.config.Symbols.Center()), tw.NewLine)
 }
 
 func (i *Invoice) GetColumnWidths() []int { return nil }

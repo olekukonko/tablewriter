@@ -1,9 +1,19 @@
-package utils
+package tw
 
 import (
 	"iter"
 	"slices"
 )
+
+type MapBool map[int]bool
+
+func (m MapBool) Get(key int) bool {
+	if m == nil {
+		return false
+	}
+	val, ok := m[key]
+	return ok && val
+}
 
 // Map is a generic key-value store with various utility methods
 type Map[K comparable, V any] struct {

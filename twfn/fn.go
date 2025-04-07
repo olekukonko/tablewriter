@@ -1,4 +1,4 @@
-package utils
+package twfn
 
 import (
 	"bytes"
@@ -14,11 +14,11 @@ import (
 )
 
 // ansi is a compiled regular expression used to filter out ANSI escape sequences.
-var ansi = generateEscapeFilterRegex()
+var ansi = CompileANSIFilter()
 
-// generateEscapeFilterRegex generates a regular expression to filter out ANSI escape sequences.
+// CompileANSIFilter generates a regular expression to filter out ANSI escape sequences.
 // It returns a compiled regexp that matches both control sequences and operating system commands.
-func generateEscapeFilterRegex() *regexp.Regexp {
+func CompileANSIFilter() *regexp.Regexp {
 	var regESC = "\x1b" // ASCII escape
 	var regBEL = "\x07" // ASCII bell
 
@@ -36,9 +36,9 @@ func generateEscapeFilterRegex() *regexp.Regexp {
 	return regexp.MustCompile("(" + regCSI + "|" + regOSC + ")")
 }
 
-// RuneWidth returns the display width of a string by first removing any ANSI escape sequences.
+// DisplayWidth returns the display width of a string by first removing any ANSI escape sequences.
 // This is useful for calculating the true length of strings when formatting table outputs.
-func RuneWidth(str string) int {
+func DisplayWidth(str string) int {
 	return runewidth.StringWidth(ansi.ReplaceAllLiteralString(str, ""))
 }
 
@@ -77,10 +77,10 @@ func Title(name string) string {
 	return strings.ToUpper(name)
 }
 
-// Pad centers the string 's' within a field of a given 'width' by padding it with the provided 'pad' string.
+// PadCenter centers the string 's' within a field of a given 'width' by padding it with the provided 'pad' string.
 // If the string is shorter than 'width', the remaining space is split evenly (with left side receiving the extra space if needed).
-func Pad(s, pad string, width int) string {
-	gap := width - RuneWidth(s)
+func PadCenter(s, pad string, width int) string {
+	gap := width - DisplayWidth(s)
 	if gap > 0 {
 		gapLeft := int(math.Ceil(float64(gap) / 2))
 		gapRight := gap - gapLeft
@@ -92,7 +92,7 @@ func Pad(s, pad string, width int) string {
 // PadRight pads the string 's' on the right with the 'pad' string until it reaches the specified 'width'.
 // This effectively left-aligns the string.
 func PadRight(s, pad string, width int) string {
-	gap := width - RuneWidth(s)
+	gap := width - DisplayWidth(s)
 	if gap > 0 {
 		return s + strings.Repeat(pad, gap)
 	}
@@ -102,7 +102,7 @@ func PadRight(s, pad string, width int) string {
 // PadLeft pads the string 's' on the left with the 'pad' string until it reaches the specified 'width'.
 // This effectively right-aligns the string.
 func PadLeft(s, pad string, width int) string {
-	gap := width - RuneWidth(s)
+	gap := width - DisplayWidth(s)
 	if gap > 0 {
 		return strings.Repeat(pad, gap) + s
 	}
@@ -237,28 +237,3 @@ func ConvertToSorted(m map[int]int) []int {
 	}
 	return result
 }
-
-//// Example usage:
-//func main() {
-//	widths := make(Widths)
-//	widths.Set(0, 10)
-//	widths.Set(1, 20)
-//	widths.Set(3, 15) // Column 2 is missing
-//
-//	// Convert to slice
-//	slice := widths.Convert(4) // [10, 20, 0, 15]
-//	fmt.Println(slice)
-//
-//	// Get max width
-//	max := widths.Max() // 20
-//	fmt.Println(max)
-//
-//	// Merge with another
-//	other := make(Widths)
-//	other.Set(1, 25)
-//	other.Set(2, 5)
-//	widths.Merge(other) // Now contains {0:10, 1:25, 2:5, 3:15}
-//
-//	// Check equality
-//	fmt.Println(widths.Equal(other)) // false
-//}

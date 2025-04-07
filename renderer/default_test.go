@@ -1,7 +1,7 @@
 package renderer
 
 import (
-	"github.com/olekukonko/tablewriter/symbols"
+	"github.com/olekukonko/tablewriter/tw"
 	"testing"
 )
 
@@ -15,78 +15,78 @@ func TestDefaultConfigMerging(t *testing.T) {
 			name:   "EmptyConfig",
 			config: DefaultConfig{},
 			expected: DefaultConfig{
-				Borders: Border{Left: On, Right: On, Top: On, Bottom: On},
+				Borders: Border{Left: tw.On, Right: tw.On, Top: tw.On, Bottom: tw.On},
 				Settings: Settings{
 					Separators: Separators{
-						ShowHeader:     On,
-						ShowFooter:     On,
-						BetweenRows:    Off,
-						BetweenColumns: On,
+						ShowHeader:     tw.On,
+						ShowFooter:     tw.On,
+						BetweenRows:    tw.Off,
+						BetweenColumns: tw.On,
 					},
 					Lines: Lines{
-						ShowTop:        On,
-						ShowBottom:     On,
-						ShowHeaderLine: On,
-						ShowFooterLine: On,
+						ShowTop:        tw.On,
+						ShowBottom:     tw.On,
+						ShowHeaderLine: tw.On,
+						ShowFooterLine: tw.On,
 					},
-					TrimWhitespace: On,
-					CompactMode:    Off,
+					TrimWhitespace: tw.On,
+					CompactMode:    tw.Off,
 				},
-				Symbols: symbols.NewSymbols(symbols.StyleLight),
+				Symbols: tw.NewSymbols(tw.StyleLight),
 			},
 		},
 		{
 			name: "PartialBorders",
 			config: DefaultConfig{
-				Borders: Border{Top: Off},
+				Borders: Border{Top: tw.Off},
 			},
 			expected: DefaultConfig{
-				Borders: Border{Left: On, Right: On, Top: Off, Bottom: On},
+				Borders: Border{Left: tw.On, Right: tw.On, Top: tw.Off, Bottom: tw.On},
 				Settings: Settings{
 					Separators: Separators{
-						ShowHeader:     On,
-						ShowFooter:     On,
-						BetweenRows:    Off,
-						BetweenColumns: On,
+						ShowHeader:     tw.On,
+						ShowFooter:     tw.On,
+						BetweenRows:    tw.Off,
+						BetweenColumns: tw.On,
 					},
 					Lines: Lines{
-						ShowTop:        On,
-						ShowBottom:     On,
-						ShowHeaderLine: On,
-						ShowFooterLine: On,
+						ShowTop:        tw.On,
+						ShowBottom:     tw.On,
+						ShowHeaderLine: tw.On,
+						ShowFooterLine: tw.On,
 					},
-					TrimWhitespace: On,
-					CompactMode:    Off,
+					TrimWhitespace: tw.On,
+					CompactMode:    tw.Off,
 				},
-				Symbols: symbols.NewSymbols(symbols.StyleLight),
+				Symbols: tw.NewSymbols(tw.StyleLight),
 			},
 		},
 		{
 			name: "PartialSettingsLines",
 			config: DefaultConfig{
 				Settings: Settings{
-					Lines: Lines{ShowFooterLine: Off},
+					Lines: Lines{ShowFooterLine: tw.Off},
 				},
 			},
 			expected: DefaultConfig{
-				Borders: Border{Left: On, Right: On, Top: On, Bottom: On},
+				Borders: Border{Left: tw.On, Right: tw.On, Top: tw.On, Bottom: tw.On},
 				Settings: Settings{
 					Separators: Separators{
-						ShowHeader:     On,
-						ShowFooter:     On,
-						BetweenRows:    Off,
-						BetweenColumns: On,
+						ShowHeader:     tw.On,
+						ShowFooter:     tw.On,
+						BetweenRows:    tw.Off,
+						BetweenColumns: tw.On,
 					},
 					Lines: Lines{
-						ShowTop:        On,
-						ShowBottom:     On,
-						ShowHeaderLine: On,
-						ShowFooterLine: Off,
+						ShowTop:        tw.On,
+						ShowBottom:     tw.On,
+						ShowHeaderLine: tw.On,
+						ShowFooterLine: tw.Off,
 					},
-					TrimWhitespace: On,
-					CompactMode:    Off,
+					TrimWhitespace: tw.On,
+					CompactMode:    tw.Off,
 				},
-				Symbols: symbols.NewSymbols(symbols.StyleLight),
+				Symbols: tw.NewSymbols(tw.StyleLight),
 			},
 		},
 	}

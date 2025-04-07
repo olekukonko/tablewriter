@@ -1,84 +1,17 @@
-package tablewriter
+package tests
 
 import (
 	"bytes"
-	"encoding/json"
-	"fmt"
+	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/renderer"
-	"github.com/olekukonko/tablewriter/symbols"
-	"strings"
+	"github.com/olekukonko/tablewriter/tw"
 	"testing"
 )
-
-// visualCheck compares rendered output against exact expected lines
-func visualCheck(t *testing.T, name string, output string, expected string) {
-	t.Helper()
-
-	// Normalize line endings and split into lines
-	normalize := func(s string) []string {
-		s = strings.ReplaceAll(s, "\r\n", "\n")
-		return strings.Split(s, "\n")
-	}
-
-	expectedLines := normalize(expected)
-	outputLines := normalize(output)
-
-	// Trim empty lines from start and end
-	trimEmpty := func(lines []string) []string {
-		start, end := 0, len(lines)
-		for start < end && strings.TrimSpace(lines[start]) == "" {
-			start++
-		}
-		for end > start && strings.TrimSpace(lines[end-1]) == "" {
-			end--
-		}
-		return lines[start:end]
-	}
-
-	expectedLines = trimEmpty(expectedLines)
-	outputLines = trimEmpty(outputLines)
-
-	// Compare line counts
-	if len(outputLines) != len(expectedLines) {
-		t.Errorf("%s: line count mismatch - expected %d, got %d", name, len(expectedLines), len(outputLines))
-		t.Errorf("Expected:\n%s\n", strings.Join(expectedLines, "\n"))
-		t.Errorf("Got:\n%s\n", strings.Join(outputLines, "\n"))
-		return
-	}
-
-	// Compare each line
-	type mismatch struct {
-		Line     int    `json:"line"`
-		Expected string `json:"expected"`
-		Got      string `json:"got"`
-	}
-	var mismatches []mismatch
-
-	for i := 0; i < len(expectedLines) && i < len(outputLines); i++ {
-		exp := strings.TrimSpace(expectedLines[i])
-		got := strings.TrimSpace(outputLines[i])
-		if exp != got {
-			mismatches = append(mismatches, mismatch{
-				Line:     i + 1,
-				Expected: fmt.Sprintf("%s (%d)", exp, len(exp)),
-				Got:      fmt.Sprintf("%s (%d)", got, len(got)),
-			})
-		}
-	}
-
-	// Report mismatches
-	if len(mismatches) > 0 {
-		diff, _ := json.MarshalIndent(mismatches, "", "  ")
-		t.Errorf("%s: %d mismatches found:\n%s", name, len(mismatches), diff)
-		t.Errorf("Full expected output:\n%s", expected)
-		t.Errorf("Full actual output:\n%s", output)
-	}
-}
 
 func TestBasicTableDefault(t *testing.T) {
 	var buf bytes.Buffer
 
-	table := NewTable(&buf)
+	table := tablewriter.NewTable(&buf)
 	table.SetHeader([]string{"Name", "Age", "City"})
 	table.Append([]string{"Alice", "25", "New York"})
 	table.Append([]string{"Bob", "30", "Boston"})
@@ -97,9 +30,9 @@ func TestBasicTableDefault(t *testing.T) {
 
 func TestBasicTableASCII(t *testing.T) {
 	var buf bytes.Buffer
-	table := NewTable(&buf,
-		WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
-			Symbols: symbols.NewSymbols(symbols.StyleASCII),
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+			Symbols: tw.NewSymbols(tw.StyleASCII),
 		})),
 	)
 	table.SetHeader([]string{"Name", "Age", "City"})
@@ -120,9 +53,9 @@ func TestBasicTableASCII(t *testing.T) {
 
 func TestBasicTableUnicodeRounded(t *testing.T) {
 	var buf bytes.Buffer
-	table := NewTable(&buf,
-		WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
-			Symbols: symbols.NewSymbols(symbols.StyleRounded),
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+			Symbols: tw.NewSymbols(tw.StyleRounded),
 		})),
 	)
 	table.SetHeader([]string{"Name", "Age", "City"})
@@ -143,9 +76,9 @@ func TestBasicTableUnicodeRounded(t *testing.T) {
 
 func TestBasicTableUnicodeDouble(t *testing.T) {
 	var buf bytes.Buffer
-	table := NewTable(&buf,
-		WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
-			Symbols: symbols.NewSymbols(symbols.StyleDouble),
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+			Symbols: tw.NewSymbols(tw.StyleDouble),
 		})),
 	)
 	table.SetHeader([]string{"Name", "Age", "City"})
@@ -172,9 +105,9 @@ func TestUnicodeWithoutHeader(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	table := NewTable(&buf,
-		WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
-			Borders: renderer.Border{Left: renderer.On, Right: renderer.On, Top: renderer.Off, Bottom: renderer.Off},
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+			Borders: renderer.Border{Left: tw.On, Right: tw.On, Top: tw.Off, Bottom: tw.Off},
 		})),
 	)
 	table.SetHeader([]string{"Name", "Age", "City"})
@@ -192,7 +125,7 @@ func TestUnicodeWithoutHeader(t *testing.T) {
 	visualCheck(t, "UnicodeWithoutHeader", buf.String(), expected)
 }
 
-func TestDisableSeparator(t *testing.T) {
+func TestSeparator(t *testing.T) {
 	data := [][]string{
 		{"Regular", "regular line", "1"},
 		{"Thick", "particularly thick line", "2"},
@@ -201,15 +134,15 @@ func TestDisableSeparator(t *testing.T) {
 
 	t.Run("horizontal - enabled", func(t *testing.T) {
 		var buf bytes.Buffer
-		table := NewTable(&buf,
-			WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+		table := tablewriter.NewTable(&buf,
+			tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
 				Settings: renderer.Settings{
 					Separators: renderer.Separators{
-						BetweenColumns: renderer.On,
-						BetweenRows:    renderer.On,
+						BetweenColumns: tw.On,
+						BetweenRows:    tw.On,
 					},
 					Lines: renderer.Lines{
-						ShowHeaderLine: renderer.On,
+						ShowHeaderLine: tw.On,
 					},
 				},
 			})),
@@ -234,15 +167,15 @@ func TestDisableSeparator(t *testing.T) {
 
 	t.Run("horizontal - disabled", func(t *testing.T) {
 		var buf bytes.Buffer
-		table := NewTable(&buf,
-			WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+		table := tablewriter.NewTable(&buf,
+			tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
 				Settings: renderer.Settings{
 					Separators: renderer.Separators{
-						BetweenColumns: renderer.On,
-						BetweenRows:    renderer.Off,
+						BetweenColumns: tw.On,
+						BetweenRows:    tw.Off,
 					},
 					Lines: renderer.Lines{
-						ShowHeaderLine: renderer.On,
+						ShowHeaderLine: tw.On,
 					},
 				},
 			})),
@@ -260,20 +193,20 @@ func TestDisableSeparator(t *testing.T) {
 		│ Double  │ double line             │ 3    │
 		└─────────┴─────────────────────────┴──────┘
     `
-		visualCheck(t, "HorizontalDisabled", buf.String(), expected)
+		visualCheck(t, "Separator", buf.String(), expected)
 	})
 
 	t.Run("vertical - enabled", func(t *testing.T) {
 		var buf bytes.Buffer
-		table := NewTable(&buf,
-			WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+		table := tablewriter.NewTable(&buf,
+			tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
 				Settings: renderer.Settings{
 					Separators: renderer.Separators{
-						BetweenColumns: renderer.On,
-						BetweenRows:    renderer.Off,
+						BetweenColumns: tw.On,
+						BetweenRows:    tw.Off,
 					},
 					Lines: renderer.Lines{
-						ShowHeaderLine: renderer.On,
+						ShowHeaderLine: tw.On,
 					},
 				},
 			})),
@@ -296,15 +229,15 @@ func TestDisableSeparator(t *testing.T) {
 
 	t.Run("vertical - disabled", func(t *testing.T) {
 		var buf bytes.Buffer
-		table := NewTable(&buf,
-			WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+		table := tablewriter.NewTable(&buf,
+			tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
 				Settings: renderer.Settings{
 					Separators: renderer.Separators{
-						BetweenColumns: renderer.Off,
-						BetweenRows:    renderer.Off,
+						BetweenColumns: tw.Off,
+						BetweenRows:    tw.Off,
 					},
 					Lines: renderer.Lines{
-						ShowHeaderLine: renderer.On,
+						ShowHeaderLine: tw.On,
 					},
 				},
 			})),
@@ -330,26 +263,26 @@ func TestLongHeaders(t *testing.T) {
 	var buf bytes.Buffer
 
 	t.Run("long-headers", func(t *testing.T) {
-		c := Config{
+		c := tablewriter.Config{
 			MaxWidth: 30,
-			Header: CellConfig{Formatting: CellFormatting{
-				AutoWrap: WrapTruncate,
+			Header: tablewriter.CellConfig{Formatting: tablewriter.CellFormatting{
+				AutoWrap: tw.WrapTruncate,
 			}},
 		}
 		buf.Reset()
-		table := NewTable(&buf, WithConfig(c))
+		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c))
 		table.SetHeader([]string{"Name", "Age", "This is a very long header, let see if this will be properly wrapped"})
 		table.Append([]string{"Alice", "25", "New York"})
 		table.Append([]string{"Bob", "30", "Boston"})
 		table.Render()
 
 		expected := `
-		┌───────┬─────┬──────────────────────────────┐
-		│ Name  │ Age │ This is a very long header,… │
-		├───────┼─────┼──────────────────────────────┤
-		│ Alice │ 25  │ New York                     │
-		│ Bob   │ 30  │ Boston                       │
-		└───────┴─────┴──────────────────────────────┘
+        ┌───────┬─────┬──────────────────────────────┐
+        │ NAME  │ AGE │ THIS IS A VERY LONG HEADER … │
+        ├───────┼─────┼──────────────────────────────┤
+        │ Alice │ 25  │ New York                     │
+        │ Bob   │ 30  │ Boston                       │
+        └───────┴─────┴──────────────────────────────┘
 `
 		visualCheck(t, "BasicTableRendering", buf.String(), expected)
 	})
@@ -357,29 +290,29 @@ func TestLongHeaders(t *testing.T) {
 	t.Run("long-headers-no-truncate", func(t *testing.T) {
 		buf.Reset()
 
-		c := Config{
+		c := tablewriter.Config{
 			MaxWidth: 30,
-			Header: CellConfig{Formatting: CellFormatting{
-				AutoWrap: WrapNormal,
+			Header: tablewriter.CellConfig{Formatting: tablewriter.CellFormatting{
+				AutoWrap: tw.WrapNormal,
 			}},
 		}
 
-		table := NewTable(&buf, WithConfig(c))
+		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c))
 		table.SetHeader([]string{"Name", "Age", "This is a very long header, let see if this will be properly wrapped"})
 		table.Append([]string{"Alice", "25", "New York"})
 		table.Append([]string{"Bob", "30", "Boston"})
 		table.Render()
 		expected := `
-        ┌───────┬─────┬─────────────────────────────┐
-        │ Name  │ Age │ This is a very long header, │
-        │       │     │   let see if this will be   │
-        │       │     │      properly wrapped       │
-        ├───────┼─────┼─────────────────────────────┤
-        │ Alice │ 25  │ New York                    │
-        │ Bob   │ 30  │ Boston                      │
-        └───────┴─────┴─────────────────────────────┘
+        ┌───────┬─────┬────────────────────────────┐
+        │ NAME  │ AGE │ THIS IS A VERY LONG HEADER │
+        │       │     │ , LET SEE IF THIS WILL BE  │
+        │       │     │      PROPERLY WRAPPED      │
+        ├───────┼─────┼────────────────────────────┤
+        │ Alice │ 25  │ New York                   │
+        │ Bob   │ 30  │ Boston                     │
+        └───────┴─────┴────────────────────────────┘
 `
-		visualCheck(t, "BasicTableRendering", buf.String(), expected)
+		visualCheck(t, "LongHeaders", buf.String(), expected)
 	})
 }
 
@@ -391,32 +324,32 @@ func TestLongValues(t *testing.T) {
 			"standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen bok", "Like most ergonomic keyboards"},
 	}
 
-	c := Config{
-		Header: CellConfig{
-			Formatting: CellFormatting{
+	c := tablewriter.Config{
+		Header: tablewriter.CellConfig{
+			Formatting: tablewriter.CellFormatting{
 				MaxWidth:   30,
-				Alignment:  renderer.AlignCenter,
+				Alignment:  tw.AlignCenter,
 				AutoFormat: true,
 			},
 		},
-		Row: CellConfig{
-			Formatting: CellFormatting{
+		Row: tablewriter.CellConfig{
+			Formatting: tablewriter.CellFormatting{
 				MaxWidth:  30,
-				AutoWrap:  WrapNormal,
-				Alignment: renderer.AlignLeft,
+				AutoWrap:  tw.WrapNormal,
+				Alignment: tw.AlignLeft,
 			},
 		},
-		Footer: CellConfig{
-			Formatting: CellFormatting{
+		Footer: tablewriter.CellConfig{
+			Formatting: tablewriter.CellFormatting{
 				MaxWidth:  30,
-				Alignment: renderer.AlignRight,
+				Alignment: tw.AlignRight,
 			},
-			ColumnAligns: []string{"", "", "", renderer.AlignLeft},
+			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.Skip, tw.AlignLeft},
 		},
 	}
 
 	var buf bytes.Buffer
-	table := NewTable(&buf, WithConfig(c))
+	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c))
 	table.SetHeader([]string{"No", "Comments", "Another", ""})
 	table.SetFooter([]string{"", "", "---------->", "<---------"})
 	table.Bulk(data)
@@ -449,7 +382,7 @@ func TestLongValues(t *testing.T) {
 	└────┴─────────────────────────────┴──────────────────────────────┴─────────────────────┘
 
 `
-	visualCheck(t, "UnicodeWithoutHeader", buf.String(), expected)
+	visualCheck(t, "LongValues", buf.String(), expected)
 }
 
 func TestWrapping(t *testing.T) {
@@ -459,30 +392,30 @@ func TestWrapping(t *testing.T) {
 		{"3", "https://github.com/olekukonko/tablewriter", "terminal\ntable"},
 	}
 
-	c := Config{
-		Header: CellConfig{
-			Formatting: CellFormatting{
-				Alignment:  renderer.AlignCenter,
+	c := tablewriter.Config{
+		Header: tablewriter.CellConfig{
+			Formatting: tablewriter.CellFormatting{
+				Alignment:  tw.AlignCenter,
 				AutoFormat: true,
 			},
 		},
-		Row: CellConfig{
-			Formatting: CellFormatting{
+		Row: tablewriter.CellConfig{
+			Formatting: tablewriter.CellFormatting{
 				MaxWidth:  30,
-				AutoWrap:  WrapBreak,
-				Alignment: renderer.AlignLeft,
+				AutoWrap:  tw.WrapBreak,
+				Alignment: tw.AlignLeft,
 			},
 		},
-		Footer: CellConfig{
-			Formatting: CellFormatting{
+		Footer: tablewriter.CellConfig{
+			Formatting: tablewriter.CellFormatting{
 				MaxWidth:  30,
-				Alignment: renderer.AlignRight,
+				Alignment: tw.AlignRight,
 			},
 		},
 	}
 
 	var buf bytes.Buffer
-	table := NewTable(&buf, WithConfig(c))
+	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c))
 	table.SetHeader([]string{"No", "Package", "Comments"})
 	table.Bulk(data)
 	table.Render()
@@ -499,7 +432,7 @@ func TestWrapping(t *testing.T) {
         │    │ o/tablewriter                 │ table             │
         └────┴───────────────────────────────┴───────────────────┘
 `
-	visualCheck(t, "UnicodeWithoutHeader", buf.String(), expected)
+	visualCheck(t, "Wrapping", buf.String(), expected)
 }
 
 func TestTableWithCustomPadding(t *testing.T) {
@@ -509,38 +442,37 @@ func TestTableWithCustomPadding(t *testing.T) {
 		{"Double", "double line", "3"},
 	}
 
-	c := Config{
-		Header: CellConfig{
-			Formatting: CellFormatting{
-				Alignment:  renderer.AlignCenter,
+	c := tablewriter.Config{
+		Header: tablewriter.CellConfig{
+			Formatting: tablewriter.CellFormatting{
+				Alignment:  tw.AlignCenter,
 				AutoFormat: true,
 			},
-			Padding: CellPadding{
-				Global: symbols.Padding{Left: " ", Right: " ", Top: "^", Bottom: "^"},
+			Padding: tablewriter.CellPadding{
+				Global: tw.Padding{Left: " ", Right: " ", Top: "^", Bottom: "^"},
 			},
 		},
-		Row: CellConfig{
-			Formatting: CellFormatting{
-				Alignment: renderer.AlignCenter,
+		Row: tablewriter.CellConfig{
+			Formatting: tablewriter.CellFormatting{
+				Alignment: tw.AlignCenter,
 			},
-			Padding: CellPadding{
-				Global: symbols.Padding{Left: "L", Right: "R", Top: "T", Bottom: "B"},
+			Padding: tablewriter.CellPadding{
+				Global: tw.Padding{Left: "L", Right: "R", Top: "T", Bottom: "B"},
 			},
 		},
-		Footer: CellConfig{
-			Formatting: CellFormatting{
-				Alignment:  renderer.AlignCenter,
+		Footer: tablewriter.CellConfig{
+			Formatting: tablewriter.CellFormatting{
+				Alignment:  tw.AlignCenter,
 				AutoFormat: true,
-				AutoMerge:  false,
 			},
-			Padding: CellPadding{
-				Global: symbols.Padding{Left: "*", Right: "*", Top: "", Bottom: ""},
+			Padding: tablewriter.CellPadding{
+				Global: tw.Padding{Left: "*", Right: "*", Top: "", Bottom: ""},
 			},
 		},
 	}
 
 	var buf bytes.Buffer
-	table := NewTable(&buf, WithConfig(c))
+	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c))
 	table.SetHeader([]string{"Name", "Age", "City"})
 	table.Bulk(data)
 	table.Render()
@@ -562,137 +494,5 @@ func TestTableWithCustomPadding(t *testing.T) {
         │LBBBBBBBR│LBBBBBBBBBBBBBBBBBBBBBBBR│LBBBBR│
         └─────────┴─────────────────────────┴──────┘
 `
-	visualCheck(t, "UnicodeWithoutHeader", buf.String(), expected)
-}
-
-func TestFilterMasking(t *testing.T) {
-	tests := []struct {
-		name     string
-		filter   Filter
-		data     [][]string
-		expected string
-	}{
-		{
-			name:   "MaskEmail",
-			filter: MaskEmail,
-			data: [][]string{
-				{"Alice", "alice@example.com", "25"},
-				{"Bob", "bob.test@domain.org", "30"},
-			},
-			expected: `
-        ┌───────┬─────────────────────┬─────┐
-        │ NAME  │        EMAIL        │ AGE │
-        ├───────┼─────────────────────┼─────┤
-        │ Alice │ a****@example.com   │ 25  │
-        │ Bob   │ b*******@domain.org │ 30  │
-        └───────┴─────────────────────┴─────┘
-`,
-		},
-		{
-			name:   "MaskPassword",
-			filter: MaskPassword,
-			data: [][]string{
-				{"Alice", "secretpassword", "25"},
-				{"Bob", "pass1234", "30"},
-			},
-			expected: `
-        ┌───────┬────────────────┬─────┐
-        │ NAME  │    PASSWORD    │ AGE │
-        ├───────┼────────────────┼─────┤
-        │ Alice │ ************** │ 25  │
-        │ Bob   │ ********       │ 30  │
-        └───────┴────────────────┴─────┘
-`,
-		},
-		{
-			name:   "MaskCard",
-			filter: MaskCard,
-			data: [][]string{
-				{"Alice", "4111-1111-1111-1111", "25"},
-				{"Bob", "5105105105105100", "30"},
-			},
-			expected: `
-        ┌───────┬─────────────────────┬─────┐
-        │ NAME  │     CREDIT CARD     │ AGE │
-        ├───────┼─────────────────────┼─────┤
-        │ Alice │ ****-****-****-1111 │ 25  │
-        │ Bob   │ 5105105105105100    │ 30  │
-        └───────┴─────────────────────┴─────┘
-`,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			table := NewTable(&buf, WithConfig(Config{
-				Header: CellConfig{
-					Formatting: CellFormatting{Alignment: renderer.AlignCenter, AutoFormat: true},
-					Padding:    CellPadding{Global: symbols.Padding{Left: " ", Right: " "}},
-				},
-				Row: CellConfig{
-					Formatting: CellFormatting{Alignment: renderer.AlignLeft},
-					Padding:    CellPadding{Global: symbols.Padding{Left: " ", Right: " "}},
-					Filter:     tt.filter,
-				},
-			}))
-			header := []string{"Name", tt.name, "Age"}
-			if tt.name == "MaskEmail" {
-				header[1] = "Email"
-			} else if tt.name == "MaskPassword" {
-				header[1] = "Password"
-			} else if tt.name == "MaskCard" {
-				header[1] = "Credit Card"
-			}
-			table.SetHeader(header)
-			table.Bulk(tt.data)
-			table.Render()
-			visualCheck(t, tt.name, buf.String(), tt.expected)
-		})
-	}
-}
-
-// Filter Presets
-func MaskEmail(cells []string) []string {
-	for i, cell := range cells {
-		if strings.Contains(cell, "@") {
-			parts := strings.Split(cell, "@")
-			if len(parts) == 2 {
-				masked := parts[0][:1] + strings.Repeat("*", len(parts[0])-1) + "@" + parts[1]
-				cells[i] = masked
-			}
-		}
-	}
-	return cells
-}
-
-func MaskPassword(cells []string) []string {
-	for i, cell := range cells {
-		if len(cell) > 0 && (strings.Contains(strings.ToLower(cell), "pass") || len(cell) >= 8) {
-			cells[i] = strings.Repeat("*", len(cell))
-		}
-	}
-	return cells
-}
-
-func MaskCard(cells []string) []string {
-	for i, cell := range cells {
-		// Simple check for card-like numbers (16 digits or with dashes)
-		if len(cell) >= 12 && (strings.Contains(cell, "-") || len(strings.ReplaceAll(cell, " ", "")) >= 12) {
-			parts := strings.FieldsFunc(cell, func(r rune) bool { return r == '-' || r == ' ' })
-			masked := ""
-			for j, part := range parts {
-				if j < len(parts)-1 {
-					masked += strings.Repeat("*", len(part))
-				} else {
-					masked += part // Keep last 4 digits visible
-				}
-				if j < len(parts)-1 {
-					masked += "-"
-				}
-			}
-			cells[i] = masked
-		}
-	}
-	return cells
+	visualCheck(t, "TableWithCustomPadding", buf.String(), expected)
 }
