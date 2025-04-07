@@ -26,6 +26,14 @@ const (
 )
 
 const (
+	MergeNone = iota
+	MergeVertical
+	MergeHorizontal
+	MergeBoth
+	MergeHierarchical
+)
+
+const (
 	CharEllipsis = "…"
 	CharBreak    = "↩"
 )
@@ -36,6 +44,7 @@ type CellFormatting struct {
 	AutoFormat bool
 	AutoMerge  bool
 	MaxWidth   int
+	MergeMode  int
 }
 
 type CellPadding struct {
