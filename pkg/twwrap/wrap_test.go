@@ -5,11 +5,12 @@
 // This module is a Table Writer  API for the Go Programming Language.
 // The protocols were written in pure Go and works on windows and unix systems
 
-package utils
+package twwrap
 
 import (
 	"bytes"
 	"fmt"
+	"github.com/olekukonko/tablewriter/utils"
 	"os"
 	"reflect"
 	"runtime"
@@ -68,14 +69,14 @@ func TestDisplayWidth(t *testing.T) {
 	if runewidth.IsEastAsian() {
 		want = 14
 	}
-	if n := RuneWidth(input); n != want {
+	if n := utils.RuneWidth(input); n != want {
 		t.Errorf("Wants: %d Got: %d", want, n)
 	}
 	input = "\033[43;30m" + input + "\033[00m"
-	checkEqual(t, RuneWidth(input), want)
+	checkEqual(t, utils.RuneWidth(input), want)
 
 	input = "\033]8;;idea://open/?file=/path/somefile.php&line=12\033\\some URL\033]8;;\033\\"
-	checkEqual(t, RuneWidth(input), 8)
+	checkEqual(t, utils.RuneWidth(input), 8)
 
 }
 
