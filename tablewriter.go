@@ -199,10 +199,19 @@ func (t *Table) SetHeader(headers []string) {
 		if colMaxWidth, ok := t.config.Header.ColMaxWidths[i]; ok && colMaxWidth > 0 {
 			effectiveMaxWidth = colMaxWidth
 		}
+		if effectiveMaxWidth == 0 {
+			effectiveMaxWidth = 30 // Default for wrapping
+		}
 		if t.config.Header.Formatting.AutoWrap && effectiveMaxWidth > 0 {
-			lines, wrappedWidth := utils.WrapString(h, effectiveMaxWidth-utils.RuneWidth(t.config.Header.Padding.Global.Left)-utils.RuneWidth(t.config.Header.Padding.Global.Right))
+			padLeftWidth := utils.RuneWidth(t.config.Header.Padding.Global.Left)
+			padRightWidth := utils.RuneWidth(t.config.Header.Padding.Global.Right)
+			lines, wrappedWidth := utils.WrapString(h, effectiveMaxWidth-padLeftWidth-padRightWidth)
 			fmt.Println("DEBUG: SetHeader col", i, "content:", h, "wrapped lines:", lines, "wrapped width:", wrappedWidth)
-			h = strings.Join(lines, t.newLine)
+			if t.config.Header.Formatting.Truncate {
+				h = lines[0]
+			} else {
+				h = strings.Join(lines, "\n")
+			}
 		}
 		formatted[i] = h
 	}
@@ -284,7 +293,6 @@ func (t *Table) Render() error {
 		numCols = len(t.footers)
 	}
 
-	// Use raw content widths from parseDimension, no extra padding
 	for i := 0; i < numCols; i++ {
 		hWidth := t.headerWidths[i]
 		rWidth := t.rowWidths[i]
@@ -421,12 +429,9 @@ func (t *Table) toStringLines(row interface{}) ([][]string, error) {
 			} else {
 				lines = strings.Split(cell, "\n")
 			}
-			paddedLines := make([]string, len(lines))
-			for j, line := range lines {
-				paddedLines[j] = t.config.Row.Padding.Global.Left + line + t.config.Row.Padding.Global.Right
-			}
-			result[i] = paddedLines
-			fmt.Println("DEBUG: toStringLines cell", i, "lines:", paddedLines)
+			// Remove padding here; let formatCell handle it
+			result[i] = lines
+			fmt.Println("DEBUG: toStringLines cell", i, "lines:", lines)
 		}
 		normalized := t.normalizeLines(result)
 		fmt.Println("DEBUG: toStringLines normalized:", normalized)
@@ -462,7 +467,7 @@ func (t *Table) normalizeLines(lines [][]string) [][]string {
 			if i < len(col) {
 				result[i][j] = col[i]
 			} else {
-				result[i][j] = t.config.Row.Padding.Global.Left + t.config.Row.Padding.Global.Right
+				result[i][j] = ""
 			}
 		}
 	}
@@ -484,9 +489,9 @@ func (t *Table) splitLines(row []string) [][]string {
 		result[i] = make([]string, len(row))
 		for j, lines := range splitRows {
 			if i < len(lines) {
-				result[i][j] = t.config.Row.Padding.Global.Left + lines[i] + t.config.Row.Padding.Global.Right
+				result[i][j] = lines[i]
 			} else {
-				result[i][j] = t.config.Row.Padding.Global.Left + t.config.Row.Padding.Global.Right
+				result[i][j] = ""
 			}
 		}
 	}
@@ -495,29 +500,37 @@ func (t *Table) splitLines(row []string) [][]string {
 
 func (t *Table) parseDimension(row []string, position renderer.Position) int {
 	var targetWidths map[int]int
+	var padding symbols.Padding
 	switch position {
 	case renderer.Header:
 		targetWidths = t.headerWidths
+		padding = t.config.Header.Padding.Global
 	case renderer.Footer:
 		targetWidths = t.footerWidths
+		padding = t.config.Footer.Padding.Global
 	default:
 		targetWidths = t.rowWidths
+		padding = t.config.Row.Padding.Global
 	}
 
 	maxWidth := 0
 	for i, cell := range row {
 		lines := strings.Split(cell, "\n")
+		cellWidth := 0
 		for _, line := range lines {
-			contentWidth := utils.RuneWidth(line)
-			totalWidth := contentWidth
-			if totalWidth > maxWidth {
-				maxWidth = totalWidth
-			}
-			if current, exists := targetWidths[i]; !exists || totalWidth > current {
-				targetWidths[i] = totalWidth
+			lineWidth := utils.RuneWidth(line)
+			if lineWidth > cellWidth {
+				cellWidth = lineWidth
 			}
 		}
+
+		totalWidth := cellWidth + utils.RuneWidth(padding.Left) + utils.RuneWidth(padding.Right)
+		if totalWidth > maxWidth {
+			maxWidth = totalWidth
+		}
+		if current, exists := targetWidths[i]; !exists || totalWidth > current {
+			targetWidths[i] = totalWidth
+		}
 	}
-	fmt.Println("DEBUG: parseDimension for", position, "widths:", targetWidths)
 	return maxWidth
 }

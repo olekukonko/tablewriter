@@ -183,11 +183,11 @@ func TestUnicodeWithoutHeader(t *testing.T) {
 	table.Render()
 
 	expected := `
-	│  NAME   │           AGE           │   CITY   │
-	├─────────┼─────────────────────────┼──────────┤
-	│ Regular │ regular line            │ 1        │
-	│ Thick   │ particularly thick line │ 2        │
-	│ Double  │ double line             │ 3        │
+	│  NAME   │           AGE           │ CITY │
+	├─────────┼─────────────────────────┼──────┤
+	│ Regular │ regular line            │ 1    │
+	│ Thick   │ particularly thick line │ 2    │
+	│ Double  │ double line             │ 3    │
 `
 	visualCheck(t, "UnicodeWithoutHeader", buf.String(), expected)
 }
@@ -219,15 +219,15 @@ func TestDisableSeparator(t *testing.T) {
 		table.Render()
 
 		expected := `
-    ┌───────────┬───────────────────────────┬──────┐
-    │   NAME    │            AGE            │ CITY │
-    ├───────────┼───────────────────────────┼──────┤
-    │ Regular   │ regular line              │ 1    │
-    ├───────────┼───────────────────────────┼──────┤
-    │ Thick     │ particularly thick line   │ 2    │
-    ├───────────┼───────────────────────────┼──────┤
-    │ Double    │ double line               │ 3    │
-    └───────────┴───────────────────────────┴──────┘
+        ┌─────────┬─────────────────────────┬──────┐
+        │  NAME   │           AGE           │ CITY │
+        ├─────────┼─────────────────────────┼──────┤
+        │ Regular │ regular line            │ 1    │
+        ├─────────┼─────────────────────────┼──────┤
+        │ Thick   │ particularly thick line │ 2    │
+        ├─────────┼─────────────────────────┼──────┤
+        │ Double  │ double line             │ 3    │
+        └─────────┴─────────────────────────┴──────┘
     `
 		visualCheck(t, "HorizontalEnabled", buf.String(), expected)
 	})
@@ -252,13 +252,13 @@ func TestDisableSeparator(t *testing.T) {
 		table.Render()
 
 		expected := `
-		┌─────────┬─────────────────────────┬──────────┐
-		│  NAME   │           AGE           │   CITY   │
-		├─────────┼─────────────────────────┼──────────┤
-		│ Regular │ regular line            │ 1        │
-		│ Thick   │ particularly thick line │ 2        │
-		│ Double  │ double line             │ 3        │
-		└─────────┴─────────────────────────┴──────────┘
+		┌─────────┬─────────────────────────┬──────┐
+		│  NAME   │           AGE           │ CITY │
+		├─────────┼─────────────────────────┼──────┤
+		│ Regular │ regular line            │ 1    │
+		│ Thick   │ particularly thick line │ 2    │
+		│ Double  │ double line             │ 3    │
+		└─────────┴─────────────────────────┴──────┘
     `
 		visualCheck(t, "HorizontalDisabled", buf.String(), expected)
 	})
@@ -283,13 +283,13 @@ func TestDisableSeparator(t *testing.T) {
 		table.Render()
 
 		expected := `
-    ┌───────────┬───────────────────────────┬──────┐
-    │   NAME    │            AGE            │ CITY │
-    ├───────────┼───────────────────────────┼──────┤
-    │ Regular   │ regular line              │ 1    │
-    │ Thick     │ particularly thick line   │ 2    │
-    │ Double    │ double line               │ 3    │
-    └───────────┴───────────────────────────┴──────┘
+        ┌─────────┬─────────────────────────┬──────┐
+        │  NAME   │           AGE           │ CITY │
+        ├─────────┼─────────────────────────┼──────┤
+        │ Regular │ regular line            │ 1    │
+        │ Thick   │ particularly thick line │ 2    │
+        │ Double  │ double line             │ 3    │
+        └─────────┴─────────────────────────┴──────┘
     `
 		visualCheck(t, "VerticalEnabled", buf.String(), expected)
 	})
@@ -314,13 +314,13 @@ func TestDisableSeparator(t *testing.T) {
 		table.Render()
 
 		expected := `
-        ┌────────────────────────────────────────────┐
-        │  NAME              AGE              CITY   │
-        ├────────────────────────────────────────────┤
-        │ Regular  regular line             1        │
-        │ Thick    particularly thick line  2        │
-        │ Double   double line              3        │
-        └────────────────────────────────────────────┘
+        ┌────────────────────────────────────────┐
+        │  NAME              AGE            CITY │
+        ├────────────────────────────────────────┤
+        │ Regular  regular line             1    │
+        │ Thick    particularly thick line  2    │
+        │ Double   double line              3    │
+        └────────────────────────────────────────┘
     `
 		visualCheck(t, "VerticalDisabled", buf.String(), expected)
 	})
@@ -423,26 +423,26 @@ func TestLongValues(t *testing.T) {
 
 	expected := `
 
-	┌─────┬─────────────────────────────┬────────────────────────────────┬───────────────────────────────┐
-	│ NO  │          COMMENTS           │            ANOTHER             │                               │
-	├─────┼─────────────────────────────┼────────────────────────────────┼───────────────────────────────┤
-	│1    │Learn East has computers     │Some Data                       │Another Data                   │
-	│     │with adapted keyboards with  │                                │                               │
-	│     │enlarged print etc           │                                │                               │
-	│2    │Instead of lining up the     │the way across, he splits the   │Like most ergonomic keyboards  │
-	│     │letters all                  │keyboard in two                 │                               │
-	│3    │Nice                         │Lorem Ipsum is simply dummy     │Like most ergonomic keyboards  │
-	│     │                             │text of the printing and        │                               │
-	│     │                             │typesetting industry. Lorem     │                               │
-	│     │                             │Ipsum has been the industry's   │                               │
-	│     │                             │standard dummy text ever since  │                               │
-	│     │                             │the 1500s, when an unknown      │                               │
-	│     │                             │printer took a galley of type   │                               │
-	│     │                             │and scrambled it to make a      │                               │
-	│     │                             │type specimen bok               │                               │
-	├─────┼─────────────────────────────┼────────────────────────────────┼───────────────────────────────┤
-	│     │                             │                     ---------->│<---------                     │
-	└─────┴─────────────────────────────┴────────────────────────────────┴───────────────────────────────┘
+	┌──┬───────────────────────────┬──────────────────────────────┬─────────────────────────────┐
+	│NO│         COMMENTS          │           ANOTHER            │                             │
+	├──┼───────────────────────────┼──────────────────────────────┼─────────────────────────────┤
+	│1 │Learn East has computers   │Some Data                     │Another Data                 │
+	│  │with adapted keyboards with│                              │                             │
+	│  │enlarged print etc         │                              │                             │
+	│2 │Instead of lining up the   │the way across, he splits the │Like most ergonomic keyboards│
+	│  │letters all                │keyboard in two               │                             │
+	│3 │Nice                       │Lorem Ipsum is simply dummy   │Like most ergonomic keyboards│
+	│  │                           │text of the printing and      │                             │
+	│  │                           │typesetting industry. Lorem   │                             │
+	│  │                           │Ipsum has been the industry's │                             │
+	│  │                           │standard dummy text ever since│                             │
+	│  │                           │the 1500s, when an unknown    │                             │
+	│  │                           │printer took a galley of type │                             │
+	│  │                           │and scrambled it to make a    │                             │
+	│  │                           │type specimen bok             │                             │
+	├──┼───────────────────────────┼──────────────────────────────┼─────────────────────────────┤
+	│  │                           │                   ---------->│<---------                   │
+	└──┴───────────────────────────┴──────────────────────────────┴─────────────────────────────┘
 
 `
 	visualCheck(t, "UnicodeWithoutHeader", buf.String(), expected)
@@ -499,21 +499,21 @@ func TestTableWithCustomPadding(t *testing.T) {
 	table.Render()
 
 	expected := `
-        ┌────────────┬────────────────────────────┬──────┐
-        │^^^^^^^^^^^^│^^^^^^^^^^^^^^^^^^^^^^^^^^^^│^^^^^^│
-        │    NAME    │            AGE             │ CITY │
-        │^^^^^^^^^^^^│^^^^^^^^^^^^^^^^^^^^^^^^^^^^│^^^^^^│
-        ├────────────┼────────────────────────────┼──────┤
-        │TTTTTT│TTTTTTTTTTTT│TTTTTTTTTTTTTTTTTTTTTTTTTTTT│
-        │LLRegularRRR│LLLLLLLLregular lineRRRRRRRR│LL1RRR│
-        │BBBBBBBBBBBB│BBBBBBBBBBBBBBBBBBBBBBBBBBBB│BBBBBB│
-        │TTTTTTTTTTTT│TTTTTTTTTTTTTTTTTTTTTTTTTTTT│TTTTTT│
-        │LLLThickRRRR│LLparticularly thick lineRRR│LL2RRR│
-        │BBBBBBBBBBBB│BBBBBBBBBBBBBBBBBBBBBBBBBBBB│BBBBBB│
-        │TTTTTT│TTTTTTTTTTTT│TTTTTTTTTTTTTTTTTTTTTTTTTTTT│
-        │LLLDoubleRRR│LLLLLLLLdouble lineRRRRRRRRR│LL3RRR│
-        │BBBBBBBBBBBB│BBBBBBBBBBBBBBBBBBBBBBBBBBBB│BBBBBB│
-        └────────────┴────────────────────────────┴──────┘
+	┌─────────┬─────────────────────────┬────┐
+	│^^^^^^^^^│^^^^^^^^^^^^^^^^^^^^^^^^^│^^^^│
+	│  NAME   │           AGE           │CITY│
+	│^^^^^^^^^│^^^^^^^^^^^^^^^^^^^^^^^^^│^^^^│
+	├─────────┼─────────────────────────┼────┤
+	│TTTTTTTTT│TTTTTTTTTTTTTTTTTTTTTTTTT│TTTT│
+	│LRegularR│LLLLLLregular lineRRRRRRR│L1RR│
+	│BBBBBBBBB│BBBBBBBBBBBBBBBBBBBBBBBBB│BBBB│
+	│TTTTTTTTT│TTTTTTTTTTTTTTTTTTTTTTTTT│TTTT│
+	│LLThickRR│Lparticularly thick lineR│L2RR│
+	│BBBBBBBBB│BBBBBBBBBBBBBBBBBBBBBBBBB│BBBB│
+	│TTTTTTTTT│TTTTTTTTTTTTTTTTTTTTTTTTT│TTTT│
+	│LDoubleRR│LLLLLLLdouble lineRRRRRRR│L3RR│
+	│BBBBBBBBB│BBBBBBBBBBBBBBBBBBBBBBBBB│BBBB│
+	└─────────┴─────────────────────────┴────┘
 `
 	visualCheck(t, "UnicodeWithoutHeader", buf.String(), expected)
 }
@@ -533,12 +533,12 @@ func TestFilterMasking(t *testing.T) {
 				{"Bob", "bob.test@domain.org", "30"},
 			},
 			expected: `
-┌───────┬────────────────────┬─────┐
-│ NAME  │        EMAIL       │ AGE │
-├───────┼────────────────────┼─────┤
-│ Alice │ a****@example.com  │ 25  │
-│ Bob   │ b*******@domain.org│ 30  │
-└───────┴────────────────────┴─────┘
+        ┌───────┬─────────────────────┬─────┐
+        │ NAME  │        EMAIL        │ AGE │
+        ├───────┼─────────────────────┼─────┤
+        │ Alice │ a****@example.com   │ 25  │
+        │ Bob   │ b*******@domain.org │ 30  │
+        └───────┴─────────────────────┴─────┘
 `,
 		},
 		{
@@ -549,12 +549,12 @@ func TestFilterMasking(t *testing.T) {
 				{"Bob", "pass1234", "30"},
 			},
 			expected: `
-┌───────┬────────────────┬─────┐
-│ NAME  │     PASSWORD   │ AGE │
-├───────┼────────────────┼─────┤
-│ Alice │ ************** │ 25  │
-│ Bob   │ ********       │ 30  │
-└───────┴────────────────┴─────┘
+        ┌───────┬────────────────┬─────┐
+        │ NAME  │    PASSWORD    │ AGE │
+        ├───────┼────────────────┼─────┤
+        │ Alice │ ************** │ 25  │
+        │ Bob   │ ********       │ 30  │
+        └───────┴────────────────┴─────┘
 `,
 		},
 		{
@@ -565,12 +565,12 @@ func TestFilterMasking(t *testing.T) {
 				{"Bob", "5105105105105100", "30"},
 			},
 			expected: `
-┌───────┬──────────────────┬─────┐
-│ NAME  │   CREDIT CARD    │ AGE │
-├───────┼──────────────────┼─────┤
-│ Alice │ ****-****-****-1111│ 25│
-│ Bob   │ ************5100 │ 30  │
-└───────┴──────────────────┴─────┘
+        ┌───────┬─────────────────────┬─────┐
+        │ NAME  │     CREDIT CARD     │ AGE │
+        ├───────┼─────────────────────┼─────┤
+        │ Alice │ ****-****-****-1111 │ 25  │
+        │ Bob   │ 5105105105105100    │ 30  │
+        └───────┴─────────────────────┴─────┘
 `,
 		},
 	}

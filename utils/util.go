@@ -173,6 +173,9 @@ func SplitCamelCase(src string) (entries []string) {
 	// Slice rune slices to strings and collect non-empty entries.
 	for _, s := range runes {
 		if len(s) > 0 {
+			if strings.TrimSpace(string(s)) == "" {
+				continue
+			}
 			entries = append(entries, string(s))
 		}
 	}

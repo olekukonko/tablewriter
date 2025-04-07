@@ -96,7 +96,7 @@ func (i *Invoice) Line(w io.Writer, ctx Formatting) {
 	for j := range ctx.Widths {
 		separators[j] = strings.Repeat(i.config.Symbols.Row(), ctx.Widths[j])
 	}
-	fmt.Fprintf(w, "    %s%s%s", strings.Join(separators, i.config.Symbols.Center()), symbols.NewLine)
+	fmt.Fprintf(w, "    %s%s", strings.Join(separators, i.config.Symbols.Center()), symbols.NewLine)
 }
 
 func (i *Invoice) GetColumnWidths() []int { return nil }
