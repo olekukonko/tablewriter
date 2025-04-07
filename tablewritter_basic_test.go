@@ -329,11 +329,13 @@ func TestDisableSeparator(t *testing.T) {
 func TestLongHeaders(t *testing.T) {
 	var buf bytes.Buffer
 
-	c := Config{
-		MaxWidth: 30,
-	}
-
 	t.Run("long-headers", func(t *testing.T) {
+		c := Config{
+			MaxWidth: 30,
+			Header: CellConfig{Formatting: CellFormatting{
+				AutoWrap: WrapTruncate,
+			}},
+		}
 		buf.Reset()
 		table := NewTable(&buf, WithConfig(c))
 		table.SetHeader([]string{"Name", "Age", "This is a very long header, let see if this will be properly wrapped"})
@@ -354,21 +356,28 @@ func TestLongHeaders(t *testing.T) {
 
 	t.Run("long-headers-no-truncate", func(t *testing.T) {
 		buf.Reset()
-		c.Header.Formatting.Truncate = false
+
+		c := Config{
+			MaxWidth: 30,
+			Header: CellConfig{Formatting: CellFormatting{
+				AutoWrap: WrapNormal,
+			}},
+		}
+
 		table := NewTable(&buf, WithConfig(c))
 		table.SetHeader([]string{"Name", "Age", "This is a very long header, let see if this will be properly wrapped"})
 		table.Append([]string{"Alice", "25", "New York"})
 		table.Append([]string{"Bob", "30", "Boston"})
 		table.Render()
 		expected := `
-		┌───────┬─────┬──────────────────────────────┐
-		│ Name  │ Age │ This is a very long header,  │
-		│       │     │ let see if this will be      │
-		│       │     │ properly wrapped             │
-		├───────┼─────┼──────────────────────────────┤
-		│ Alice │ 25  │ New York                     │
-		│ Bob   │ 30  │ Boston                       │
-		└───────┴─────┴──────────────────────────────┘
+        ┌───────┬─────┬─────────────────────────────┐
+        │ Name  │ Age │ This is a very long header, │
+        │       │     │   let see if this will be   │
+        │       │     │      properly wrapped       │
+        ├───────┼─────┼─────────────────────────────┤
+        │ Alice │ 25  │ New York                    │
+        │ Bob   │ 30  │ Boston                      │
+        └───────┴─────┴─────────────────────────────┘
 `
 		visualCheck(t, "BasicTableRendering", buf.String(), expected)
 	})
@@ -386,7 +395,6 @@ func TestLongValues(t *testing.T) {
 		Header: CellConfig{
 			Formatting: CellFormatting{
 				MaxWidth:   30,
-				AutoWrap:   true,
 				Alignment:  renderer.AlignCenter,
 				AutoFormat: true,
 			},
@@ -394,14 +402,13 @@ func TestLongValues(t *testing.T) {
 		Row: CellConfig{
 			Formatting: CellFormatting{
 				MaxWidth:  30,
-				AutoWrap:  true,
+				AutoWrap:  WrapNormal,
 				Alignment: renderer.AlignLeft,
 			},
 		},
 		Footer: CellConfig{
 			Formatting: CellFormatting{
 				MaxWidth:  30,
-				AutoWrap:  true,
 				Alignment: renderer.AlignRight,
 			},
 			ColumnAligns: []string{"", "", "", renderer.AlignLeft},
@@ -418,27 +425,79 @@ func TestLongValues(t *testing.T) {
 
 	expected := `
 
-	┌──┬───────────────────────────┬──────────────────────────────┬─────────────────────────────┐
-	│NO│         COMMENTS          │           ANOTHER            │                             │
-	├──┼───────────────────────────┼──────────────────────────────┼─────────────────────────────┤
-	│1 │Learn East has computers   │Some Data                     │Another Data                 │
-	│  │with adapted keyboards with│                              │                             │
-	│  │enlarged print etc         │                              │                             │
-	│2 │Instead of lining up the   │the way across, he splits the │Like most ergonomic keyboards│
-	│  │letters all                │keyboard in two               │                             │
-	│3 │Nice                       │Lorem Ipsum is simply dummy   │Like most ergonomic keyboards│
-	│  │                           │text of the printing and      │                             │
-	│  │                           │typesetting industry. Lorem   │                             │
-	│  │                           │Ipsum has been the industry's │                             │
-	│  │                           │standard dummy text ever since│                             │
-	│  │                           │the 1500s, when an unknown    │                             │
-	│  │                           │printer took a galley of type │                             │
-	│  │                           │and scrambled it to make a    │                             │
-	│  │                           │type specimen bok             │                             │
-	├──┼───────────────────────────┼──────────────────────────────┼─────────────────────────────┤
-	│  │                           │                   ---------->│<---------                   │
-	└──┴───────────────────────────┴──────────────────────────────┴─────────────────────────────┘
+	┌────┬─────────────────────────────┬──────────────────────────────┬─────────────────────┐
+	│ NO │          COMMENTS           │           ANOTHER            │                     │
+	├────┼─────────────────────────────┼──────────────────────────────┼─────────────────────┤
+	│ 1  │ Learn East has computers    │ Some Data                    │ Another Data        │
+	│    │ with adapted keyboards with │                              │                     │
+	│    │ enlarged print etc          │                              │                     │
+	│ 2  │ Instead of lining up the    │ the way across, he splits    │ Like most ergonomic │
+	│    │ letters all                 │ the keyboard in two          │ keyboards           │
+	│ 3  │ Nice                        │ Lorem Ipsum is simply        │ Like most ergonomic │
+	│    │                             │ dummy text of the printing   │ keyboards           │
+	│    │                             │ and typesetting industry.    │                     │
+	│    │                             │ Lorem Ipsum has been the     │                     │
+	│    │                             │ industry's                   │                     │
+	│    │                             │ standard dummy text ever     │                     │
+	│    │                             │ since the 1500s, when an     │                     │
+	│    │                             │ unknown printer took a       │                     │
+	│    │                             │ galley of type and scrambled │                     │
+	│    │                             │ it to make a type specimen   │                     │
+	│    │                             │ bok                          │                     │
+	├────┼─────────────────────────────┼──────────────────────────────┼─────────────────────┤
+	│    │                             │                  ----------> │ <---------          │
+	└────┴─────────────────────────────┴──────────────────────────────┴─────────────────────┘
 
+`
+	visualCheck(t, "UnicodeWithoutHeader", buf.String(), expected)
+}
+
+func TestWrapping(t *testing.T) {
+	data := [][]string{
+		{"1", "https://github.com/olekukonko/ruta", "routing websocket"},
+		{"2", "https://github.com/olekukonko/error", "better error"},
+		{"3", "https://github.com/olekukonko/tablewriter", "terminal\ntable"},
+	}
+
+	c := Config{
+		Header: CellConfig{
+			Formatting: CellFormatting{
+				Alignment:  renderer.AlignCenter,
+				AutoFormat: true,
+			},
+		},
+		Row: CellConfig{
+			Formatting: CellFormatting{
+				MaxWidth:  30,
+				AutoWrap:  WrapBreak,
+				Alignment: renderer.AlignLeft,
+			},
+		},
+		Footer: CellConfig{
+			Formatting: CellFormatting{
+				MaxWidth:  30,
+				Alignment: renderer.AlignRight,
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	table := NewTable(&buf, WithConfig(c))
+	table.SetHeader([]string{"No", "Package", "Comments"})
+	table.Bulk(data)
+	table.Render()
+
+	expected := `
+        ┌────┬───────────────────────────────┬───────────────────┐
+        │ NO │            PACKAGE            │     COMMENTS      │
+        ├────┼───────────────────────────────┼───────────────────┤
+        │ 1  │ https://github.com/olekukonk↩ │ routing websocket │
+        │    │ o/ruta                        │                   │
+        │ 2  │ https://github.com/olekukonk↩ │ better error      │
+        │    │ o/error                       │                   │
+        │ 3  │ https://github.com/olekukonk↩ │ terminal          │
+        │    │ o/tablewriter                 │ table             │
+        └────┴───────────────────────────────┴───────────────────┘
 `
 	visualCheck(t, "UnicodeWithoutHeader", buf.String(), expected)
 }
@@ -454,20 +513,15 @@ func TestTableWithCustomPadding(t *testing.T) {
 		Header: CellConfig{
 			Formatting: CellFormatting{
 				Alignment:  renderer.AlignCenter,
-				AutoWrap:   true,
 				AutoFormat: true,
-				AutoMerge:  false,
 			},
 			Padding: CellPadding{
-				Global: symbols.Padding{Left: "", Right: "", Top: "^", Bottom: "^"},
+				Global: symbols.Padding{Left: " ", Right: " ", Top: "^", Bottom: "^"},
 			},
 		},
 		Row: CellConfig{
 			Formatting: CellFormatting{
-				Alignment:  renderer.AlignCenter,
-				AutoWrap:   true,
-				AutoFormat: true,
-				AutoMerge:  false,
+				Alignment: renderer.AlignCenter,
 			},
 			Padding: CellPadding{
 				Global: symbols.Padding{Left: "L", Right: "R", Top: "T", Bottom: "B"},
@@ -476,7 +530,6 @@ func TestTableWithCustomPadding(t *testing.T) {
 		Footer: CellConfig{
 			Formatting: CellFormatting{
 				Alignment:  renderer.AlignCenter,
-				AutoWrap:   true,
 				AutoFormat: true,
 				AutoMerge:  false,
 			},
@@ -490,25 +543,24 @@ func TestTableWithCustomPadding(t *testing.T) {
 	table := NewTable(&buf, WithConfig(c))
 	table.SetHeader([]string{"Name", "Age", "City"})
 	table.Bulk(data)
-
 	table.Render()
 
 	expected := `
-	┌─────────┬─────────────────────────┬────┐
-	│^^^^^^^^^│^^^^^^^^^^^^^^^^^^^^^^^^^│^^^^│
-	│  NAME   │           AGE           │CITY│
-	│^^^^^^^^^│^^^^^^^^^^^^^^^^^^^^^^^^^│^^^^│
-	├─────────┼─────────────────────────┼────┤
-	│TTTTTTTTT│TTTTTTTTTTTTTTTTTTTTTTTTT│TTTT│
-	│LRegularR│LLLLLLregular lineRRRRRRR│L1RR│
-	│BBBBBBBBB│BBBBBBBBBBBBBBBBBBBBBBBBB│BBBB│
-	│TTTTTTTTT│TTTTTTTTTTTTTTTTTTTTTTTTT│TTTT│
-	│LLThickRR│Lparticularly thick lineR│L2RR│
-	│BBBBBBBBB│BBBBBBBBBBBBBBBBBBBBBBBBB│BBBB│
-	│TTTTTTTTT│TTTTTTTTTTTTTTTTTTTTTTTTT│TTTT│
-	│LDoubleRR│LLLLLLLdouble lineRRRRRRR│L3RR│
-	│BBBBBBBBB│BBBBBBBBBBBBBBBBBBBBBBBBB│BBBB│
-	└─────────┴─────────────────────────┴────┘
+        ┌─────────┬─────────────────────────┬──────┐
+        │ ^^^^^^^ │ ^^^^^^^^^^^^^^^^^^^^^^^ │ ^^^^ │
+        │  NAME   │           AGE           │ CITY │
+        │ ^^^^^^^ │ ^^^^^^^^^^^^^^^^^^^^^^^ │ ^^^^ │
+        ├─────────┼─────────────────────────┼──────┤
+        │LTTTTTTTR│LTTTTTTTTTTTTTTTTTTTTTTTR│LTTTTR│
+        │LRegularR│LLLLLLregular lineRRRRRRR│LL1RRR│
+        │LBBBBBBBR│LBBBBBBBBBBBBBBBBBBBBBBBR│LBBBBR│
+        │LTTTTTTTR│LTTTTTTTTTTTTTTTTTTTTTTTR│LTTTTR│
+        │LLThickRR│Lparticularly thick lineR│LL2RRR│
+        │LBBBBBBBR│LBBBBBBBBBBBBBBBBBBBBBBBR│LBBBBR│
+        │LTTTTTTTR│LTTTTTTTTTTTTTTTTTTTTTTTR│LTTTTR│
+        │LDoubleRR│LLLLLLLdouble lineRRRRRRR│LL3RRR│
+        │LBBBBBBBR│LBBBBBBBBBBBBBBBBBBBBBBBR│LBBBBR│
+        └─────────┴─────────────────────────┴──────┘
 `
 	visualCheck(t, "UnicodeWithoutHeader", buf.String(), expected)
 }

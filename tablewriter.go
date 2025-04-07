@@ -1,7 +1,7 @@
+// tablewriter/tablewriter.go
 package tablewriter
 
 import (
-	"fmt"
 	"io"
 	"reflect"
 	"strings"
@@ -18,12 +18,23 @@ type Iterator[T any] interface {
 
 type Filter func([]string) []string
 
+const (
+	WrapNone     = iota // No wrapping
+	WrapNormal          // Normal wrapping around word boundaries
+	WrapTruncate        // Truncate content with ellipsis
+	WrapBreak           // Break at character boundaries
+)
+
+const (
+	CharEllipsis = "…"
+	CharBreak    = "↩"
+)
+
 type CellFormatting struct {
 	Alignment  string
-	AutoWrap   bool
+	AutoWrap   int
 	AutoFormat bool
 	AutoMerge  bool
-	Truncate   bool
 	MaxWidth   int
 }
 
@@ -60,10 +71,9 @@ func defaultConfig() Config {
 		Header: CellConfig{
 			Formatting: CellFormatting{
 				MaxWidth:   0,
-				AutoWrap:   true,
+				AutoWrap:   WrapTruncate,
 				Alignment:  renderer.AlignCenter,
 				AutoFormat: true,
-				Truncate:   true,
 			},
 			Padding: CellPadding{
 				Global: defaultPadding,
@@ -71,10 +81,10 @@ func defaultConfig() Config {
 		},
 		Row: CellConfig{
 			Formatting: CellFormatting{
-				MaxWidth:  0,
-				AutoWrap:  true,
-				Alignment: renderer.AlignLeft,
-				Truncate:  false,
+				MaxWidth:   0,
+				AutoWrap:   WrapNormal,
+				Alignment:  renderer.AlignLeft,
+				AutoFormat: false,
 			},
 			Padding: CellPadding{
 				Global: defaultPadding,
@@ -82,10 +92,10 @@ func defaultConfig() Config {
 		},
 		Footer: CellConfig{
 			Formatting: CellFormatting{
-				MaxWidth:  0,
-				AutoWrap:  true,
-				Alignment: renderer.AlignRight,
-				Truncate:  false,
+				MaxWidth:   0,
+				AutoWrap:   WrapNormal,
+				Alignment:  renderer.AlignRight,
+				AutoFormat: false,
 			},
 			Padding: CellPadding{
 				Global: defaultPadding,
@@ -102,7 +112,6 @@ type Table struct {
 	headerWidths map[int]int
 	rowWidths    map[int]int
 	footerWidths map[int]int
-	rowHeights   map[int]int
 	renderer     renderer.Renderer
 	config       Config
 	stringer     any
@@ -125,7 +134,9 @@ func WithRenderer(f renderer.Renderer) Option {
 }
 
 func WithConfig(cfg Config) Option {
-	return func(t *Table) { t.config = cfg }
+	return func(t *Table) {
+		t.config = mergeConfig(defaultConfig(), cfg)
+	}
 }
 
 func WithStringer[T any](s func(T) []string) Option {
@@ -138,7 +149,6 @@ func NewTable(w io.Writer, opts ...Option) *Table {
 		headerWidths: make(map[int]int),
 		rowWidths:    make(map[int]int),
 		footerWidths: make(map[int]int),
-		rowHeights:   make(map[int]int),
 		renderer:     renderer.NewDefault(),
 		config:       defaultConfig(),
 		newLine:      symbols.NewLine,
@@ -159,15 +169,7 @@ func (t *Table) Append(row interface{}) error {
 	if err != nil {
 		return err
 	}
-	if t.config.Row.Filter != nil {
-		for i := range lines {
-			lines[i] = t.config.Row.Filter(lines[i])
-		}
-	}
 	t.rows = append(t.rows, lines)
-	for _, line := range lines {
-		t.parseDimension(line, renderer.Row, t.config.Row.Padding)
-	}
 	return nil
 }
 
@@ -187,251 +189,101 @@ func (t *Table) Bulk(rows interface{}) error {
 
 func (t *Table) SetHeader(headers []string) {
 	t.ensureInitialized()
-	formatted := make([][]string, len(headers))
-	for i, h := range headers {
-		if t.config.Header.Formatting.AutoFormat {
-			h = utils.Title(strings.Join(utils.SplitCamelCase(h), " "))
-		}
-
-		effectiveMaxWidth := t.config.MaxWidth
-		if t.config.Header.Formatting.MaxWidth > 0 {
-			effectiveMaxWidth = t.config.Header.Formatting.MaxWidth
-		}
-		if colMaxWidth, ok := t.config.Header.ColMaxWidths[i]; ok && colMaxWidth > 0 {
-			effectiveMaxWidth = colMaxWidth
-		}
-
-		contentWidth := effectiveMaxWidth - utils.RuneWidth(t.config.Header.Padding.Global.Left) - utils.RuneWidth(t.config.Header.Padding.Global.Right)
-		if contentWidth < 1 {
-			contentWidth = 1
-		}
-
-		var lines []string
-		if t.config.Header.Formatting.AutoWrap && effectiveMaxWidth > 0 {
-			wrappedLines, _ := utils.WrapString(h, contentWidth)
-			if t.config.Header.Formatting.Truncate && len(wrappedLines) > 0 {
-				lines = []string{wrappedLines[0]}
-				fmt.Printf("DEBUG: Truncated header[%d]: %s -> %s (contentWidth=%d)\n", i, h, lines[0], contentWidth)
-			} else {
-				lines = wrappedLines
-				fmt.Printf("DEBUG: Wrapped header[%d]: %s -> %v (contentWidth=%d)\n", i, h, lines, contentWidth)
-			}
-		} else {
-			lines = []string{h}
-			fmt.Printf("DEBUG: Unwrapped header[%d]: %s (contentWidth=%d)\n", i, h, contentWidth)
-		}
-		formatted[i] = lines
-	}
-
-	if t.config.Header.Filter != nil {
-		for i := range formatted {
-			formatted[i] = t.config.Header.Filter(formatted[i])
-		}
-	}
-	t.headers = formatted
-	for _, lines := range formatted {
-		t.parseDimension(lines, renderer.Header, t.config.Header.Padding)
-	}
+	prepared := t.prepareContent(headers, t.config.Header)
+	t.headers = prepared
 }
 
 func (t *Table) SetFooter(footers []string) {
 	t.ensureInitialized()
-	numCols := len(t.headerWidths)
-	if len(t.rowWidths) > numCols {
-		numCols = len(t.rowWidths)
-	}
-	padded := make([][]string, numCols)
-	effectiveMaxWidth := t.config.MaxWidth
-	if t.config.Footer.Formatting.MaxWidth > 0 {
-		effectiveMaxWidth = t.config.Footer.Formatting.MaxWidth
-	}
-
-	for i, f := range footers {
-		if i >= numCols {
-			break
-		}
-		colMaxWidth := effectiveMaxWidth
-		if customMax, ok := t.config.Footer.ColMaxWidths[i]; ok && customMax > 0 {
-			colMaxWidth = customMax
-		}
-		contentWidth := colMaxWidth - utils.RuneWidth(t.config.Footer.Padding.Global.Left) - utils.RuneWidth(t.config.Footer.Padding.Global.Right)
-		if contentWidth < 1 {
-			contentWidth = 1
-		}
-		var lines []string
-		if t.config.Footer.Formatting.AutoWrap && colMaxWidth > 0 {
-			wrappedLines, _ := utils.WrapString(f, contentWidth)
-			if t.config.Footer.Formatting.Truncate && len(wrappedLines) > 0 {
-				lines = []string{wrappedLines[0]}
-			} else {
-				lines = wrappedLines
+	numCols := t.maxColumns()
+	prepared := t.prepareContent(footers, t.config.Footer)
+	if len(prepared) > 0 && len(prepared[0]) < numCols {
+		for i := range prepared {
+			for len(prepared[i]) < numCols {
+				prepared[i] = append(prepared[i], "")
 			}
-		} else {
-			lines = []string{f}
-		}
-		padded[i] = lines
-	}
-	for i := len(footers); i < numCols; i++ {
-		padded[i] = []string{""}
-	}
-
-	if t.config.Footer.Filter != nil {
-		for i := range padded {
-			padded[i] = t.config.Footer.Filter(padded[i])
 		}
 	}
-	t.footers = padded
-	for _, lines := range padded {
-		t.parseDimension(lines, renderer.Footer, t.config.Footer.Padding)
-	}
+	t.footers = prepared
 }
 
 func (t *Table) Render() error {
 	t.ensureInitialized()
+
+	// Calculate widths
 	t.headerWidths = make(map[int]int)
 	t.rowWidths = make(map[int]int)
 	t.footerWidths = make(map[int]int)
 
-	if len(t.headers) > 0 {
-		for _, lines := range t.headers {
-			t.parseDimension(lines, renderer.Header, t.config.Header.Padding)
+	for _, lines := range t.headers {
+		t.updateWidths(lines, t.headerWidths, t.config.Header.Padding)
+	}
+	for _, row := range t.rows {
+		for _, line := range row {
+			t.updateWidths(line, t.rowWidths, t.config.Row.Padding)
 		}
 	}
-	for _, lines := range t.rows {
-		for _, line := range lines {
-			t.parseDimension(line, renderer.Row, t.config.Row.Padding)
-		}
-	}
-	if len(t.footers) > 0 {
-		for _, lines := range t.footers {
-			t.parseDimension(lines, renderer.Footer, t.config.Footer.Padding)
-		}
+	for _, lines := range t.footers {
+		t.updateWidths(lines, t.footerWidths, t.config.Footer.Padding)
 	}
 
-	numCols := 0
-	if len(t.headers) > numCols {
-		numCols = len(t.headers)
-	}
-	for _, lines := range t.rows {
-		for _, line := range lines {
-			if len(line) > numCols {
-				numCols = len(line)
-			}
-		}
-	}
-	if len(t.footers) > numCols {
-		numCols = len(t.footers)
-	}
-
+	// Normalize widths
+	numCols := t.maxColumns()
 	for i := 0; i < numCols; i++ {
-		hWidth := t.headerWidths[i]
-		rWidth := t.rowWidths[i]
-		fWidth := t.footerWidths[i]
-		maxWidth := hWidth
-		if rWidth > maxWidth {
-			maxWidth = rWidth
-		}
-		if fWidth > maxWidth {
-			maxWidth = fWidth
-		}
-		if i < len(t.headers) && len(t.headers[i]) > 0 {
-			for _, h := range t.headers[i] {
-				minWidth := utils.RuneWidth(strings.TrimSpace(h)) + utils.RuneWidth(t.config.Header.Padding.Global.Left) + utils.RuneWidth(t.config.Header.Padding.Global.Right)
-				if minWidth > maxWidth {
-					maxWidth = minWidth
-				}
+		maxWidth := 0
+		for _, w := range []map[int]int{t.headerWidths, t.rowWidths, t.footerWidths} {
+			if w[i] > maxWidth {
+				maxWidth = w[i]
 			}
 		}
-		for _, lines := range t.rows {
-			if i < len(lines) {
-				for _, r := range lines {
-					if i < len(r) {
-						minWidth := utils.RuneWidth(strings.TrimSpace(r[i])) + utils.RuneWidth(t.config.Row.Padding.Global.Left) + utils.RuneWidth(t.config.Row.Padding.Global.Right)
-						if minWidth > maxWidth {
-							maxWidth = minWidth
-						}
-					}
-				}
-			}
-		}
-		if i < len(t.footers) && len(t.footers[i]) > 0 {
-			for _, f := range t.footers[i] {
-				minWidth := utils.RuneWidth(strings.TrimSpace(f)) + utils.RuneWidth(t.config.Footer.Padding.Global.Left) + utils.RuneWidth(t.config.Footer.Padding.Global.Right)
-				if minWidth > maxWidth {
-					maxWidth = minWidth
-				}
-			}
-		}
-		fmt.Printf("DEBUG: Column %d width - hWidth=%d, rWidth=%d, fWidth=%d, maxWidth=%d\n", i, hWidth, rWidth, fWidth, maxWidth)
 		t.headerWidths[i] = maxWidth
 		t.rowWidths[i] = maxWidth
 		t.footerWidths[i] = maxWidth
 	}
 
-	fmt.Println("DEBUG: Normalized widths - header:", t.headerWidths, "row:", t.rowWidths, "footer:", t.footerWidths)
+	// Add padding lines after width calculation
+	headerLines := t.addPaddingLines(t.headers, t.config.Header, renderer.Header)
+	rowLines := make([][][]string, len(t.rows))
+	for i, row := range t.rows {
+		rowLines[i] = t.addPaddingLines(row, t.config.Row, renderer.Row)
+	}
+	footerLines := t.addPaddingLines(t.footers, t.config.Footer, renderer.Footer)
 
 	f := t.renderer
 
-	if len(t.headers) > 0 {
-		colAligns := make(map[int]string)
-		for i := 0; i < numCols; i++ {
-			if i < len(t.config.Header.ColumnAligns) && t.config.Header.ColumnAligns[i] != "" {
-				colAligns[i] = t.config.Header.ColumnAligns[i]
-			} else {
-				colAligns[i] = t.config.Header.Formatting.Alignment
-			}
-		}
-		f.Header(t.writer, t.headers, renderer.Formatting{
+	if len(headerLines) > 0 {
+		colAligns := t.buildAligns(t.config.Header)
+		f.Header(t.writer, headerLines, renderer.Formatting{
 			Widths:     t.headerWidths,
 			Padding:    t.config.Header.Padding.Global,
-			ColPadding: make(map[int]symbols.Padding),
+			ColPadding: t.buildPadding(t.config.Header.Padding),
 			ColAligns:  colAligns,
 			HasFooter:  len(t.footers) > 0,
 		})
 	}
 
-	for i, lines := range t.rows {
+	for i, lines := range rowLines {
+		colAligns := t.buildAligns(t.config.Row)
+		colPadding := t.buildPadding(t.config.Row.Padding)
 		for j, line := range lines {
-			colPadding := make(map[int]symbols.Padding)
-			colAligns := make(map[int]string)
-			for colKey := range line {
-				colPadding[colKey] = t.config.Row.Padding.Global
-				if colKey < len(t.config.Row.Padding.PerColumn) && t.config.Row.Padding.PerColumn[colKey] != (symbols.Padding{}) {
-					colPadding[colKey] = t.config.Row.Padding.PerColumn[colKey]
-				}
-				if colKey < len(t.config.Row.ColumnAligns) && t.config.Row.ColumnAligns[colKey] != "" {
-					colAligns[colKey] = t.config.Row.ColumnAligns[colKey]
-				} else {
-					colAligns[colKey] = t.config.Row.Formatting.Alignment
-				}
-			}
-			lastRow := i == len(t.rows)-1 && j == len(lines)-1
 			f.Row(t.writer, line, renderer.Formatting{
 				Widths:     t.rowWidths,
-				Level:      renderer.Middle,
 				Padding:    t.config.Row.Padding.Global,
 				ColPadding: colPadding,
 				ColAligns:  colAligns,
 				IsFirst:    i == 0 && j == 0,
-				IsLast:     lastRow,
+				IsLast:     i == len(t.rows)-1 && j == len(lines)-1,
 				HasFooter:  len(t.footers) > 0,
 			})
 		}
 	}
 
-	if len(t.footers) > 0 {
-		colAligns := make(map[int]string)
-		for i := 0; i < numCols; i++ {
-			if i < len(t.config.Footer.ColumnAligns) && t.config.Footer.ColumnAligns[i] != "" {
-				colAligns[i] = t.config.Footer.ColumnAligns[i]
-			} else {
-				colAligns[i] = t.config.Footer.Formatting.Alignment
-			}
-		}
-		f.Footer(t.writer, t.footers, renderer.Formatting{
+	if len(footerLines) > 0 {
+		colAligns := t.buildAligns(t.config.Footer)
+		f.Footer(t.writer, footerLines, renderer.Formatting{
 			Widths:     t.footerWidths,
 			Padding:    t.config.Footer.Padding.Global,
-			ColPadding: make(map[int]symbols.Padding),
+			ColPadding: t.buildPadding(t.config.Footer.Padding),
 			ColAligns:  colAligns,
 			HasFooter:  true,
 		})
@@ -451,44 +303,16 @@ func (t *Table) ensureInitialized() {
 	if t.footerWidths == nil {
 		t.footerWidths = make(map[int]int)
 	}
-	if t.rowHeights == nil {
-		t.rowHeights = make(map[int]int)
-	}
 	if t.renderer == nil {
 		t.renderer = renderer.NewDefault()
 	}
 }
 
 func (t *Table) toStringLines(row interface{}, config CellConfig) ([][]string, error) {
+	var cells []string
 	switch v := row.(type) {
 	case []string:
-		result := make([][]string, len(v))
-		for i, cell := range v {
-			effectiveMaxWidth := t.config.MaxWidth
-			if config.Formatting.MaxWidth > 0 {
-				effectiveMaxWidth = config.Formatting.MaxWidth
-			}
-			if colMaxWidth, ok := config.ColMaxWidths[i]; ok && colMaxWidth > 0 {
-				effectiveMaxWidth = colMaxWidth
-			}
-			contentWidth := effectiveMaxWidth - utils.RuneWidth(config.Padding.Global.Left) - utils.RuneWidth(config.Padding.Global.Right)
-			if contentWidth < 1 {
-				contentWidth = 1
-			}
-			var lines []string
-			if config.Formatting.AutoWrap && effectiveMaxWidth > 0 {
-				wrappedLines, _ := utils.WrapString(cell, contentWidth)
-				if config.Formatting.Truncate && len(wrappedLines) > 0 {
-					lines = []string{wrappedLines[0]}
-				} else {
-					lines = wrappedLines
-				}
-			} else {
-				lines = strings.Split(cell, "\n")
-			}
-			result[i] = lines
-		}
-		return t.normalizeLines(result), nil
+		cells = v
 	default:
 		if t.stringer == nil {
 			return nil, errors.Newf("no stringer provided for type %T", row)
@@ -502,44 +326,157 @@ func (t *Table) toStringLines(row interface{}, config CellConfig) ([][]string, e
 		if len(out) != 1 || out[0].Kind() != reflect.Slice || out[0].Type().Elem().Kind() != reflect.String {
 			return nil, errors.Newf("stringer must return []string")
 		}
-		return t.toStringLines(out[0].Interface().([]string), config)
+		cells = out[0].Interface().([]string)
 	}
+
+	if config.Filter != nil {
+		cells = config.Filter(cells)
+	}
+
+	return t.prepareContent(cells, config), nil
 }
 
-func (t *Table) normalizeLines(lines [][]string) [][]string {
-	maxLines := 0
-	for _, col := range lines {
-		if len(col) > maxLines {
-			maxLines = len(col)
+func (t *Table) prepareContent(cells []string, config CellConfig) [][]string {
+	result := make([][]string, 0)
+	numCols := len(cells)
+
+	for i, cell := range cells {
+		effectiveMaxWidth := t.config.MaxWidth
+		if config.Formatting.MaxWidth > 0 {
+			effectiveMaxWidth = config.Formatting.MaxWidth
 		}
-	}
-	result := make([][]string, maxLines)
-	for i := 0; i < maxLines; i++ {
-		result[i] = make([]string, len(lines))
-		for j, col := range lines {
-			if i < len(col) {
-				result[i][j] = col[i]
+		if colMaxWidth, ok := config.ColMaxWidths[i]; ok && colMaxWidth > 0 {
+			effectiveMaxWidth = colMaxWidth
+		}
+
+		padLeftWidth := utils.RuneWidth(config.Padding.Global.Left)
+		padRightWidth := utils.RuneWidth(config.Padding.Global.Right)
+		if i < len(config.Padding.PerColumn) && config.Padding.PerColumn[i] != (symbols.Padding{}) {
+			padLeftWidth = utils.RuneWidth(config.Padding.PerColumn[i].Left)
+			padRightWidth = utils.RuneWidth(config.Padding.PerColumn[i].Right)
+		}
+
+		contentWidth := effectiveMaxWidth - padLeftWidth - padRightWidth
+		if contentWidth < 1 {
+			contentWidth = 1
+		}
+
+		if config.Formatting.AutoFormat {
+			cell = utils.Title(strings.Join(utils.SplitCamelCase(cell), " "))
+		}
+
+		// Split on newlines first
+		lines := strings.Split(cell, "\n")
+		finalLines := make([]string, 0)
+
+		for _, line := range lines {
+			if effectiveMaxWidth > 0 {
+				switch config.Formatting.AutoWrap {
+				case WrapNormal:
+					wrapped, _ := utils.WrapString(line, contentWidth)
+					finalLines = append(finalLines, wrapped...)
+				case WrapTruncate:
+					if utils.RuneWidth(line) > contentWidth {
+						finalLines = append(finalLines, utils.TruncateString(line, contentWidth-1)+CharEllipsis)
+					} else {
+						finalLines = append(finalLines, line)
+					}
+				case WrapBreak:
+					wrapped := make([]string, 0)
+					for len(line) > contentWidth {
+						wrapped = append(wrapped, line[:contentWidth]+CharBreak)
+						line = line[contentWidth:]
+					}
+					if len(line) > 0 {
+						wrapped = append(wrapped, line)
+					}
+					finalLines = append(finalLines, wrapped...)
+				default: // WrapNone
+					finalLines = append(finalLines, line)
+				}
 			} else {
-				result[i][j] = ""
+				finalLines = append(finalLines, line)
 			}
 		}
+
+		for len(result) < len(finalLines) {
+			newRow := make([]string, numCols)
+			for j := range newRow {
+				newRow[j] = ""
+			}
+			result = append(result, newRow)
+		}
+
+		for j, line := range finalLines {
+			result[j][i] = line
+		}
 	}
+
 	return result
 }
 
-func (t *Table) parseDimension(row []string, position renderer.Position, padding CellPadding) int {
-	var targetWidths map[int]int
-
-	switch position {
-	case renderer.Header:
-		targetWidths = t.headerWidths
-	case renderer.Footer:
-		targetWidths = t.footerWidths
-	default:
-		targetWidths = t.rowWidths
+func (t *Table) addPaddingLines(content [][]string, config CellConfig, position renderer.Position) [][]string {
+	if len(content) == 0 {
+		return content
 	}
 
-	maxWidth := 0
+	result := make([][]string, 0)
+	numCols := len(content[0])
+
+	if config.Padding.Global.Top != "" {
+		topPadding := make([]string, numCols)
+		for i := range topPadding {
+			var padWidth int
+			switch position {
+			case renderer.Header:
+				padWidth = t.headerWidths[i]
+			case renderer.Row:
+				padWidth = t.rowWidths[i]
+			case renderer.Footer:
+				padWidth = t.footerWidths[i]
+			}
+			if padWidth == 0 {
+				padWidth = utils.RuneWidth(config.Padding.Global.Top)
+			}
+			repeatCount := (padWidth + utils.RuneWidth(config.Padding.Global.Top) - 1) / utils.RuneWidth(config.Padding.Global.Top)
+			if repeatCount < 1 {
+				repeatCount = 1
+			}
+			topPadding[i] = strings.Repeat(config.Padding.Global.Top, repeatCount)
+		}
+		result = append(result, topPadding)
+	}
+
+	result = append(result, content...)
+
+	if config.Padding.Global.Bottom != "" {
+		bottomPadding := make([]string, numCols)
+		for i := range bottomPadding {
+			var padWidth int
+			switch position {
+			case renderer.Header:
+				padWidth = t.headerWidths[i]
+			case renderer.Row:
+				padWidth = t.rowWidths[i]
+			case renderer.Footer:
+				padWidth = t.footerWidths[i]
+			}
+			if padWidth == 0 {
+				padWidth = utils.RuneWidth(config.Padding.Global.Bottom)
+			}
+			repeatCount := (padWidth + utils.RuneWidth(config.Padding.Global.Bottom) - 1) / utils.RuneWidth(config.Padding.Global.Bottom)
+			if repeatCount < 1 {
+				repeatCount = 1
+			}
+			bottomPadding[i] = strings.Repeat(config.Padding.Global.Bottom, repeatCount)
+		}
+		result = append(result, bottomPadding)
+	}
+
+	return result
+}
+
+func (t *Table) updateWidths(row []string, widths map[int]int, padding CellPadding) {
 	for i, cell := range row {
 		padLeftWidth := utils.RuneWidth(padding.Global.Left)
 		padRightWidth := utils.RuneWidth(padding.Global.Right)
@@ -547,15 +484,137 @@ func (t *Table) parseDimension(row []string, position renderer.Position, padding
 			padLeftWidth = utils.RuneWidth(padding.PerColumn[i].Left)
 			padRightWidth = utils.RuneWidth(padding.PerColumn[i].Right)
 		}
-		cellWidth := utils.RuneWidth(strings.TrimSpace(cell))
-		// Ensure minimum width includes content + 1 left + 1 right padding
-		totalWidth := cellWidth + padLeftWidth + padRightWidth
-		if totalWidth > maxWidth {
-			maxWidth = totalWidth
-		}
-		if current, exists := targetWidths[i]; !exists || totalWidth > current {
-			targetWidths[i] = totalWidth
+		totalWidth := utils.RuneWidth(strings.TrimSpace(cell)) + padLeftWidth + padRightWidth
+		if current, exists := widths[i]; !exists || totalWidth > current {
+			widths[i] = totalWidth
 		}
 	}
-	return maxWidth
+}
+
+func (t *Table) maxColumns() int {
+	max := 0
+	if len(t.headers) > 0 && len(t.headers[0]) > max {
+		max = len(t.headers[0])
+	}
+	for _, row := range t.rows {
+		if len(row) > 0 && len(row[0]) > max {
+			max = len(row[0])
+		}
+	}
+	if len(t.footers) > 0 && len(t.footers[0]) > max {
+		max = len(t.footers[0])
+	}
+	return max
+}
+
+func (t *Table) buildAligns(config CellConfig) map[int]string {
+	colAligns := make(map[int]string)
+	numCols := t.maxColumns()
+	for i := 0; i < numCols; i++ {
+		if i < len(config.ColumnAligns) && config.ColumnAligns[i] != "" {
+			colAligns[i] = config.ColumnAligns[i]
+		} else {
+			colAligns[i] = config.Formatting.Alignment
+		}
+	}
+	return colAligns
+}
+
+func (t *Table) buildPadding(padding CellPadding) map[int]symbols.Padding {
+	colPadding := make(map[int]symbols.Padding)
+	numCols := t.maxColumns()
+	for i := 0; i < numCols; i++ {
+		if i < len(padding.PerColumn) && padding.PerColumn[i] != (symbols.Padding{}) {
+			colPadding[i] = padding.PerColumn[i]
+		} else {
+			colPadding[i] = padding.Global
+		}
+	}
+	return colPadding
+}
+
+// Add this merge function to handle nested struct merging
+func mergeConfig(dst, src Config) Config {
+	// Merge MaxWidth
+	if src.MaxWidth != 0 {
+		dst.MaxWidth = src.MaxWidth
+	}
+
+	// Merge Header config
+	dst.Header = mergeCellConfig(dst.Header, src.Header)
+
+	// Merge Row config
+	dst.Row = mergeCellConfig(dst.Row, src.Row)
+
+	// Merge Footer config
+	dst.Footer = mergeCellConfig(dst.Footer, src.Footer)
+
+	return dst
+}
+
+func mergeCellConfig(dst, src CellConfig) CellConfig {
+	// Merge Formatting
+	if src.Formatting.Alignment != "" {
+		dst.Formatting.Alignment = src.Formatting.Alignment
+	}
+	if src.Formatting.AutoWrap != 0 {
+		dst.Formatting.AutoWrap = src.Formatting.AutoWrap
+	}
+	if src.Formatting.MaxWidth != 0 {
+		dst.Formatting.MaxWidth = src.Formatting.MaxWidth
+	}
+	dst.Formatting.AutoFormat = src.Formatting.AutoFormat
+	dst.Formatting.AutoMerge = src.Formatting.AutoMerge
+
+	// Merge Padding
+	if src.Padding.Global != (symbols.Padding{}) {
+		dst.Padding.Global = src.Padding.Global
+	}
+	if len(src.Padding.PerColumn) > 0 {
+		if dst.Padding.PerColumn == nil {
+			dst.Padding.PerColumn = make([]symbols.Padding, len(src.Padding.PerColumn))
+		}
+		for i, pad := range src.Padding.PerColumn {
+			if pad != (symbols.Padding{}) {
+				dst.Padding.PerColumn[i] = pad
+			}
+		}
+	}
+
+	// Merge Callbacks
+	if src.Callbacks.Global != nil {
+		dst.Callbacks.Global = src.Callbacks.Global
+	}
+	if len(src.Callbacks.PerColumn) > 0 {
+		if dst.Callbacks.PerColumn == nil {
+			dst.Callbacks.PerColumn = make([]func(), len(src.Callbacks.PerColumn))
+		}
+		for i, cb := range src.Callbacks.PerColumn {
+			if cb != nil {
+				dst.Callbacks.PerColumn[i] = cb
+			}
+		}
+	}
+
+	// Merge Filter
+	if src.Filter != nil {
+		dst.Filter = src.Filter
+	}
+
+	// Merge ColumnAligns
+	if len(src.ColumnAligns) > 0 {
+		dst.ColumnAligns = src.ColumnAligns
+	}
+
+	// Merge ColMaxWidths
+	if len(src.ColMaxWidths) > 0 {
+		if dst.ColMaxWidths == nil {
+			dst.ColMaxWidths = make(map[int]int)
+		}
+		for k, v := range src.ColMaxWidths {
+			dst.ColMaxWidths[k] = v
+		}
+	}
+
+	return dst
 }

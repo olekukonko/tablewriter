@@ -65,7 +65,7 @@ func (hf *HeaderFormattingBuilder) WithAlignment(align string) *HeaderFormatting
 	return hf
 }
 
-func (hf *HeaderFormattingBuilder) WithAutoWrap(autoWrap bool) *HeaderFormattingBuilder {
+func (hf *HeaderFormattingBuilder) WithAutoWrap(autoWrap int) *HeaderFormattingBuilder {
 	hf.config.AutoWrap = autoWrap
 	return hf
 }
