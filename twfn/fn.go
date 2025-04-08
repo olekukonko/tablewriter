@@ -237,3 +237,26 @@ func ConvertToSorted(m map[int]int) []int {
 	}
 	return result
 }
+
+// vs
+
+// ConvertToSortedKeys converts a map[int]any (or map[int]int) to a sorted slice of its integer keys.
+func ConvertToSortedKeys[V any](m map[int]V) []int {
+	// Extract the integer keys from the map.
+	keys := make([]int, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	// Sort the keys numerically.
+	sort.Ints(keys)
+	// Return the sorted slice of keys.
+	return keys
+}
+
+// Max returns the maximum of two integers
+func Max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}

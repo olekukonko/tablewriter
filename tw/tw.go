@@ -45,9 +45,17 @@ const (
 type Level int
 
 const (
-	Top    Level = iota // Topmost line position
-	Middle              // Middle line position
-	Bottom              // Bottom line position
+	LevelHeader Level = iota // Topmost line position
+	LevelBody                // LevelBody line position
+	LevelFooter              // LevelFooter line position
+)
+
+type Location string
+
+const (
+	LocationFirst  Location = "first"  // Topmost line position
+	LocationMiddle Location = "middle" // LevelBody line position
+	LocationEnd    Location = "end"    // LevelFooter line position
 )
 
 // Text Wrapping Constants
@@ -61,6 +69,7 @@ const (
 
 // Cell Merge Constants
 // Specifies cell merging behavior in tables
+
 const (
 	MergeNone         = iota // No merging
 	MergeVertical            // Merge cells vertically

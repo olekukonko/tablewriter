@@ -25,8 +25,152 @@ func TestBasicTableDefault(t *testing.T) {
 	│ Bob   │ 30  │ Boston   │
 	└───────┴─────┴──────────┘
 `
-	visualCheck(t, "BasicTableRendering", buf.String(), expected)
+	debug := visualCheck(t, "BasicTableRendering", buf.String(), expected)
+	if !debug {
+		for _, v := range table.Debug() {
+			t.Error(v)
+		}
+	}
 }
+
+func TestBasicTableDefaultBorder(t *testing.T) {
+	var buf bytes.Buffer
+
+	//table := tablewriter.NewTable(&buf)
+	//table.SetHeader([]string{"Name", "Age", "City"})
+	//table.Append([]string{"Alice", "25", "New York"})
+	//table.Append([]string{"Bob", "30", "Boston"})
+	//table.Render()
+
+	t.Run("all-off", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf,
+			tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+				Borders: renderer.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
+			})),
+		)
+
+		table.SetHeader([]string{"Name", "Age", "City"})
+		table.Append([]string{"Alice", "25", "New York"})
+		table.Append([]string{"Bob", "30", "Boston"})
+		table.Render()
+
+		expected := `
+         NAME  │ AGE │   CITY   
+        ───────┼─────┼──────────
+         Alice │ 25  │ New York 
+         Bob   │ 30  │ Boston   
+`
+
+		visualCheck(t, "BasicTableRendering-all-off", buf.String(), expected)
+
+	})
+
+	t.Run("top-on", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf,
+			tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+				Borders: renderer.Border{Left: tw.Off, Right: tw.Off, Top: tw.On, Bottom: tw.Off},
+			})),
+		)
+
+		table.SetHeader([]string{"Name", "Age", "City"})
+		table.Append([]string{"Alice", "25", "New York"})
+		table.Append([]string{"Bob", "30", "Boston"})
+		table.Render()
+
+		expected := `
+        ───────┬─────┬──────────
+         NAME  │ AGE │   CITY   
+        ───────┼─────┼──────────
+         Alice │ 25  │ New York 
+         Bob   │ 30  │ Boston  
+
+`
+
+		visualCheck(t, "BasicTableRendering-top-on", buf.String(), expected)
+	})
+
+	t.Run("mix", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf,
+			tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+				Borders: renderer.Border{Left: tw.Off, Right: tw.On, Top: tw.On, Bottom: tw.On},
+			})),
+		)
+
+		table.SetHeader([]string{"Name", "Age", "City"})
+		table.Append([]string{"Alice", "25", "New York"})
+		table.Append([]string{"Bob", "30", "Boston"})
+		table.Render()
+
+		expected := `
+        ───────┬─────┬──────────┐
+         NAME  │ AGE │   CITY   │
+        ───────┼─────┼──────────┤
+         Alice │ 25  │ New York │
+         Bob   │ 30  │ Boston   │
+        ───────┴─────┴──────────┘
+
+`
+		visualCheck(t, "BasicTableRendering-mix", buf.String(), expected)
+
+	})
+}
+
+func TestUnicodeWithoutHeader(t *testing.T) {
+	data := [][]string{
+		{"Regular", "regular line", "1"},
+		{"Thick", "particularly thick line", "2"},
+		{"Double", "double line", "3"},
+	}
+
+	var buf bytes.Buffer
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+			Borders: renderer.Border{Left: tw.On, Right: tw.On, Top: tw.Off, Bottom: tw.Off},
+		})),
+	)
+	table.SetHeader([]string{"Name", "Age", "City"})
+	table.Bulk(data)
+
+	table.Render()
+
+	expected := `
+	│  NAME   │           AGE           │ CITY │
+	├─────────┼─────────────────────────┼──────┤
+	│ Regular │ regular line            │ 1    │
+	│ Thick   │ particularly thick line │ 2    │
+	│ Double  │ double line             │ 3    │
+`
+	visualCheck(t, "UnicodeWithoutHeader", buf.String(), expected)
+}
+
+//func TestUnicodeTableDefault(t *testing.T) {
+//	var buf bytes.Buffer
+//
+//	table := tablewriter.NewTable(&buf)
+//	table.SetHeader([]string{"Name", "Age", "City"})
+//	table.Append([]string{"Alice", "25", "New York"})
+//	table.Append([]string{"Bøb", "30", "Tōkyō"})    // Contains ø and ō
+//	table.Append([]string{"José", "28", "México"}) // Contains é and accented e (e + combining acute)
+//	table.Append([]string{"张三", "35", "北京"})        // Chinese characters
+//	table.Append([]string{"अनु", "40", "मुंबई"})    // Devanagari script
+//	table.Render()
+//
+//	expected := `
+//	┌───────┬─────┬──────────┐
+//	│ NAME  │ AGE │   CITY   │
+//	├───────┼─────┼──────────┤
+//	│ Alice │ 25  │ New York │
+//	│ Bøb   │ 30  │ Tōkyō    │
+//	│ José  │ 28  │ México   │
+//	│ 张三   │ 35  │ 北京     │
+//	│ अनु    │ 40  │ मुंबई      │
+//	└───────┴─────┴──────────┘
+//`
+//	visualCheck(t, "UnicodeTableRendering", buf.String(), expected)
+//}
 
 func TestBasicTableASCII(t *testing.T) {
 	var buf bytes.Buffer
@@ -95,34 +239,6 @@ func TestBasicTableUnicodeDouble(t *testing.T) {
 	╚═══════╩═════╩══════════╝
 `
 	visualCheck(t, "TableUnicodeDouble", buf.String(), expected)
-}
-
-func TestUnicodeWithoutHeader(t *testing.T) {
-	data := [][]string{
-		{"Regular", "regular line", "1"},
-		{"Thick", "particularly thick line", "2"},
-		{"Double", "double line", "3"},
-	}
-
-	var buf bytes.Buffer
-	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
-			Borders: renderer.Border{Left: tw.On, Right: tw.On, Top: tw.Off, Bottom: tw.Off},
-		})),
-	)
-	table.SetHeader([]string{"Name", "Age", "City"})
-	table.Bulk(data)
-
-	table.Render()
-
-	expected := `
-	│  NAME   │           AGE           │ CITY │
-	├─────────┼─────────────────────────┼──────┤
-	│ Regular │ regular line            │ 1    │
-	│ Thick   │ particularly thick line │ 2    │
-	│ Double  │ double line             │ 3    │
-`
-	visualCheck(t, "UnicodeWithoutHeader", buf.String(), expected)
 }
 
 func TestSeparator(t *testing.T) {
@@ -382,7 +498,11 @@ func TestLongValues(t *testing.T) {
 	└────┴─────────────────────────────┴──────────────────────────────┴─────────────────────┘
 
 `
-	visualCheck(t, "LongValues", buf.String(), expected)
+	if !visualCheck(t, "LongValues", buf.String(), expected) {
+		for _, v := range table.Debug() {
+			t.Error(v)
+		}
+	}
 }
 
 func TestWrapping(t *testing.T) {

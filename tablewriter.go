@@ -11,10 +11,6 @@ import (
 	"strings"
 )
 
-// -----------------------------------
-// Type Definitions
-// -----------------------------------
-
 // Filter defines a function type for processing cell content
 type Filter func([]string) []string
 
@@ -58,58 +54,50 @@ type Config struct {
 	Debug    bool       // Enable debug logging
 }
 
-// -----------------------------------
-// Configuration Defaults
-// -----------------------------------
-
 // defaultConfig returns a default table configuration
 func defaultConfig() Config {
 	defaultPadding := tw.Padding{Left: tw.Space, Right: tw.Space, Top: tw.Empty, Bottom: tw.Empty}
 	return Config{
-		MaxWidth: 0, // No maximum width by default
+		MaxWidth: 0,
 		Header: CellConfig{
 			Formatting: CellFormatting{
-				MaxWidth:   0,               // No width limit
-				AutoWrap:   tw.WrapTruncate, // Truncate long text
-				Alignment:  tw.AlignCenter,  // Center-aligned headers
-				AutoFormat: true,            // Auto-format header text
-				MergeMode:  tw.MergeNone,    // No merging
+				MaxWidth:   0,
+				AutoWrap:   tw.WrapTruncate,
+				Alignment:  tw.AlignCenter,
+				AutoFormat: true,
+				MergeMode:  tw.MergeNone,
 			},
 			Padding: CellPadding{
-				Global: defaultPadding, // Standard spacing
+				Global: defaultPadding,
 			},
 		},
 		Row: CellConfig{
 			Formatting: CellFormatting{
-				MaxWidth:   0,             // No width limit
-				AutoWrap:   tw.WrapNormal, // Wrap text normally
-				Alignment:  tw.AlignLeft,  // Left-aligned rows
-				AutoFormat: false,         // No auto-formatting
-				MergeMode:  tw.MergeNone,  // No merging
+				MaxWidth:   0,
+				AutoWrap:   tw.WrapNormal,
+				Alignment:  tw.AlignLeft,
+				AutoFormat: false,
+				MergeMode:  tw.MergeNone,
 			},
 			Padding: CellPadding{
-				Global: defaultPadding, // Standard spacing
+				Global: defaultPadding,
 			},
 		},
 		Footer: CellConfig{
 			Formatting: CellFormatting{
-				MaxWidth:   0,             // No width limit
-				AutoWrap:   tw.WrapNormal, // Wrap text normally
-				Alignment:  tw.AlignRight, // Right-aligned footers
-				AutoFormat: false,         // No auto-formatting
-				MergeMode:  tw.MergeNone,  // No merging
+				MaxWidth:   0,
+				AutoWrap:   tw.WrapNormal,
+				Alignment:  tw.AlignRight,
+				AutoFormat: false,
+				MergeMode:  tw.MergeNone,
 			},
 			Padding: CellPadding{
-				Global: defaultPadding, // Standard spacing
+				Global: defaultPadding,
 			},
 		},
-		Debug: true, // Debug mode enabled by default
+		Debug: true,
 	}
 }
-
-// -----------------------------------
-// Table Options
-// -----------------------------------
 
 // Option defines a function to configure a Table instance
 type Option func(*Table)
@@ -139,10 +127,6 @@ func WithStringer[T any](s func(T) []string) Option {
 	return func(t *Table) { t.stringer = s }
 }
 
-// -----------------------------------
-// Table Structure
-// -----------------------------------
-
 // Table represents a table with content and rendering capabilities
 type Table struct {
 	writer       io.Writer         // Output destination
@@ -160,10 +144,6 @@ type Table struct {
 	trace        []string          // Debug trace log
 }
 
-// -----------------------------------
-// Table Constructors
-// -----------------------------------
-
 // NewTable creates a new table instance with optional configurations
 func NewTable(w io.Writer, opts ...Option) *Table {
 	t := &Table{
@@ -171,13 +151,13 @@ func NewTable(w io.Writer, opts ...Option) *Table {
 		headerWidths: make(map[int]int),
 		rowWidths:    make(map[int]int),
 		footerWidths: make(map[int]int),
-		renderer:     renderer.NewDefault(),  // Default renderer
-		config:       defaultConfig(),        // Default configuration
-		newLine:      tw.NewLine,             // Standard newline
-		trace:        make([]string, 0, 100), // Pre-allocated debug trace
+		renderer:     renderer.NewDefault(),
+		config:       defaultConfig(),
+		newLine:      tw.NewLine,
+		trace:        make([]string, 0, 100),
 	}
 	for _, opt := range opts {
-		opt(t) // Apply each option
+		opt(t)
 	}
 	t.debug("Table initialized with %d options", len(opts))
 	return t
@@ -188,19 +168,6 @@ func NewWriter(w io.Writer) *Table {
 	t := NewTable(w)
 	t.debug("NewWriter created table")
 	return t
-}
-
-// -----------------------------------
-// Debug Utilities
-// -----------------------------------
-
-// debug logs a message to the trace if debug mode is enabled
-func (t *Table) debug(format string, a ...interface{}) {
-	if t.config.Debug {
-		msg := fmt.Sprintf(format, a...)
-		traceEntry := fmt.Sprintf("[TABLE] %s", msg)
-		t.trace = append(t.trace, traceEntry)
-	}
 }
 
 // Renderer returns the current renderer
@@ -214,10 +181,6 @@ func (t *Table) Debug() []string {
 	t.debug("Debug trace requested, returning %d entries", len(t.trace))
 	return append(t.trace, t.renderer.Debug()...)
 }
-
-// -----------------------------------
-// Data Management
-// -----------------------------------
 
 // Append adds a single row to the table
 func (t *Table) Append(row interface{}) error {
@@ -281,12 +244,11 @@ func (t *Table) SetFooter(footers []string) {
 	t.debug("Footer set, lines: %d", len(prepared))
 }
 
-// -----------------------------------
-// Rendering Logic
-// -----------------------------------
-
-// Render generates and outputs the table
 func (t *Table) Render() error {
+	return t.render()
+}
+
+func (t *Table) render() error {
 	t.ensureInitialized()
 	t.debug("Starting Render")
 
@@ -327,162 +289,703 @@ func (t *Table) Render() error {
 
 	// Prepare content with merges
 	t.debug("Preparing header content")
-	headerLines, _, headerHorzMerges, _ := t.prepareWithMerges(t.headers, t.config.Header, tw.Header)
-	t.debug("Header prepared: lines=%d, horzMerges=%v", len(headerLines), headerHorzMerges)
+	headerLines, headerVertMerges, headerHorzMerges := t.prepareWithMerges(t.headers, t.config.Header, tw.Header)
 
-	rowLines := make([][][]string, len(t.rows))
-	rowHorzMerges := make([]map[int]bool, len(t.rows))
 	t.debug("Preparing row content for %d rows", len(t.rows))
+	rowLines := make([][][]string, len(t.rows))
+	rowVertMerges := make([]map[int]renderer.MergeState, len(t.rows))
+	rowHorzMerges := make([]map[int]bool, len(t.rows))
 	for i, row := range t.rows {
-		originalRowCopy := make([][]string, len(row))
-		for rIdx, rLine := range row {
-			originalRowCopy[rIdx] = make([]string, len(rLine))
-			copy(originalRowCopy[rIdx], rLine)
-		}
+		preparedLines, vertMerges, horzMap := t.prepareWithMerges(row, t.config.Row, tw.Row)
+		rowLines[i] = preparedLines
+		rowVertMerges[i] = vertMerges
+		rowHorzMerges[i] = horzMap
+		t.debug("Row %d prepared: lines=%d", i, len(rowLines[i]))
+	}
 
-		// Ensure consistent column count
-		if len(row) > 0 && len(row[0]) < numCols {
-			t.debug("Row %d padded to %d columns", i, numCols)
-			for lineIdx := range row {
-				for len(row[lineIdx]) < numCols {
-					row[lineIdx] = append(row[lineIdx], tw.Empty)
+	// Apply vertical merges across all rows
+	if t.config.Row.Formatting.MergeMode == tw.MergeVertical || t.config.Row.Formatting.MergeMode == tw.MergeBoth {
+		t.debug("Applying vertical merges across %d rows", len(rowLines))
+		previousContent := make(map[int]string)
+		for i := 0; i < len(rowLines); i++ {
+			for j := 0; j < len(rowLines[i]); j++ {
+				for col := 0; col < numCols; col++ {
+					currentVal := strings.TrimSpace(rowLines[i][j][col])
+					prevVal, exists := previousContent[col]
+					if exists && currentVal == prevVal && currentVal != "" {
+						if _, ok := rowVertMerges[i][col]; !ok {
+							rowVertMerges[i][col] = renderer.MergeState{}
+						}
+						mergeState := rowVertMerges[i][col]
+						mergeState.Vertical = true
+						rowVertMerges[i][col] = mergeState
+						rowLines[i][j][col] = tw.Empty
+						t.debug("Vertical merge at row %d, line %d, col %d: cleared content", i, j, col)
+						for k := i - 1; k >= 0; k-- {
+							if len(rowLines[k]) > 0 && strings.TrimSpace(rowLines[k][0][col]) == prevVal {
+								if _, ok := rowVertMerges[k][col]; !ok {
+									rowVertMerges[k][col] = renderer.MergeState{}
+								}
+								startMerge := rowVertMerges[k][col]
+								startMerge.Vertical = true
+								startMerge.Span = i - k + 1
+								startMerge.Start = true
+								rowVertMerges[k][col] = startMerge
+								break
+							}
+						}
+					} else if currentVal != "" {
+						if _, ok := rowVertMerges[i][col]; !ok {
+							rowVertMerges[i][col] = renderer.MergeState{
+								Vertical: false,
+								Span:     1,
+								Start:    true,
+								End:      false,
+							}
+						}
+						previousContent[col] = currentVal
+					}
 				}
 			}
-		} else if len(row) > 0 && len(row[0]) > numCols {
-			t.debug("Row %d truncated to %d columns", i, numCols)
-			for lineIdx := range row {
-				row[lineIdx] = row[lineIdx][:numCols]
+		}
+		for i := 0; i < len(rowLines); i++ {
+			for col, mergeState := range rowVertMerges[i] {
+				if mergeState.Vertical && i == len(rowLines)-1 {
+					mergeState.End = true
+					rowVertMerges[i][col] = mergeState
+				}
 			}
 		}
-
-		preparedLines, _, horzMap, _ := t.prepareWithMerges(row, t.config.Row, tw.Row)
-		rowLines[i] = preparedLines
-		rowHorzMerges[i] = horzMap
-		t.debug("Row %d prepared: lines=%d, horzMerges=%v", i, len(rowLines[i]), rowHorzMerges[i])
 	}
 
 	t.debug("Preparing footer content")
-	footerLines, _, footerHorzMerges, _ := t.prepareWithMerges(t.footers, t.config.Footer, tw.Footer)
-	t.debug("Footer prepared: lines=%d, horzMerges=%v", len(footerLines), footerHorzMerges)
-
-	// Vertical merge detection
-	rowVertMerges := make([]tw.MapBool, len(t.rows))
-	rowIsMergeStart := make([]tw.MapBool, len(t.rows))
-	if t.config.Row.Formatting.MergeMode == tw.MergeVertical || t.config.Row.Formatting.MergeMode == tw.MergeBoth {
-		t.debug("Starting Vertical Merge Processing for %d columns", numCols)
-		lastRowRawValues := make(map[int]string)
-		for i, lines := range rowLines {
-			rowVertMerges[i] = make(tw.MapBool)
-			rowIsMergeStart[i] = make(tw.MapBool)
-			isPreviousRowMerged := make(tw.MapBool)
-			if i > 0 {
-				isPreviousRowMerged = rowVertMerges[i-1]
-			}
-			isPreviousRowMergeStart := make(tw.MapBool)
-			if i > 0 {
-				isPreviousRowMergeStart = rowIsMergeStart[i-1]
-			}
-
-			for colIndex := 0; colIndex < numCols; colIndex++ {
-				currentValue := tw.Empty
-				if len(lines) > 0 && colIndex < len(lines[0]) {
-					currentValue = strings.TrimSpace(lines[0][colIndex])
-				}
-				previousValue, _ := lastRowRawValues[colIndex]
-				shouldMerge := i > 0 && currentValue == previousValue &&
-					(isPreviousRowMergeStart.Get(colIndex) || isPreviousRowMerged.Get(colIndex))
-
-				if shouldMerge {
-					t.debug("Vertical Merge: Merging Row %d, Col %d", i, colIndex)
-					rowVertMerges[i][colIndex] = true
-					for lineIdx := range rowLines[i] {
-						if colIndex < len(rowLines[i][lineIdx]) {
-							rowLines[i][lineIdx][colIndex] = tw.Empty
-						}
-					}
-				} else {
-					rowIsMergeStart[i][colIndex] = true
-				}
-				lastRowRawValues[colIndex] = currentValue
-			}
-		}
-		t.debug("Finished Vertical Merge Processing")
-	} else {
-		t.debug("Vertical Merge Processing SKIPPED")
-		for i := range rowLines {
-			rowVertMerges[i] = make(map[int]bool)
-			rowIsMergeStart[i] = make(map[int]bool)
-		}
-	}
+	footerLines, footerVertMerges, footerHorzMerges := t.prepareWithMerges(t.footers, t.config.Footer, tw.Footer)
 
 	// Render sections
 	f := t.renderer
-	if len(headerLines) > 0 {
-		colAligns := t.buildAligns(t.config.Header)
-		colPadding := t.buildPadding(t.config.Header.Padding)
-		nextRowHMerge := make(map[int]bool)
-		if len(t.rows) > 0 {
-			nextRowHMerge = rowHorzMerges[0]
-		} else if len(t.footers) > 0 {
-			nextRowHMerge = footerHorzMerges
-		}
-		t.debug("Rendering header")
-		f.Header(t.writer, headerLines, renderer.Formatting{
-			Widths: t.headerWidths, Padding: t.config.Header.Padding.Global, ColPadding: colPadding,
-			ColAligns: colAligns, HasFooter: len(t.footers) > 0, MergedRows: headerHorzMerges,
-			ColMaxWidths: t.config.Header.ColMaxWidths, NextRowMergedRows: nextRowHMerge,
+	cfg := f.Config()
+
+	// Render table top border
+	if cfg.Borders.Top.Enabled() && cfg.Settings.Lines.ShowTop.Enabled() {
+		t.debug("Rendering table top border")
+		f.Line(t.writer, renderer.Formatting{
+			Row: renderer.RowContext{
+				Widths:   t.headerWidths,
+				Position: tw.Header,
+				Location: tw.LocationFirst,
+			},
+			Level:    tw.LevelHeader,
+			IsSubRow: false,
 		})
 	}
 
-	for i, lines := range rowLines {
-		colAligns := t.buildAligns(t.config.Row)
-		colPadding := t.buildPadding(t.config.Row.Padding)
-		nextRowContinuesMergeMap := make(map[int]bool)
-		if i+1 < len(rowVertMerges) {
-			for colIndex := 0; colIndex < numCols; colIndex++ {
-				if rowVertMerges[i+1].Get(colIndex) {
-					nextRowContinuesMergeMap[colIndex] = true
+	// Header section
+	if len(headerLines) > 0 {
+		colAligns := t.buildAligns(t.config.Header)
+		colPadding := t.buildPadding(t.config.Header.Padding)
+
+		if t.config.Header.Padding.Global.Top != tw.Empty {
+			t.debug("Rendering header top padding")
+			topPadding := make([]string, numCols)
+			for j := range topPadding {
+				repeatCount := t.headerWidths[j] / twfn.DisplayWidth(t.config.Header.Padding.Global.Top)
+				if repeatCount < 1 {
+					repeatCount = 1
+				}
+				topPadding[j] = strings.Repeat(t.config.Header.Padding.Global.Top, repeatCount)
+			}
+			currentCells := make(map[int]renderer.CellContext)
+			for j, cell := range topPadding {
+				currentCells[j] = renderer.CellContext{
+					Data:    cell,
+					Align:   colAligns[j],
+					Padding: colPadding[j],
+					Width:   t.headerWidths[j],
+					Merge:   headerVertMerges[j],
 				}
 			}
-		}
-		nextRowHorzMergeMap := make(map[int]bool)
-		if i+1 < len(rowHorzMerges) {
-			nextRowHorzMergeMap = rowHorzMerges[i+1]
-		} else if i+1 == len(t.rows) && len(t.footers) > 0 {
-			nextRowHorzMergeMap = footerHorzMerges
+			f.Header(t.writer, nil, renderer.Formatting{
+				Row: renderer.RowContext{
+					Widths:       t.headerWidths,
+					ColMaxWidths: t.config.Header.ColMaxWidths,
+					Current:      currentCells,
+					Position:     tw.Header,
+					Location:     tw.LocationFirst,
+				},
+				Level:    tw.LevelHeader,
+				IsSubRow: true,
+			})
 		}
 
-		t.debug("Rendering row %d", i)
-		for j, line := range lines {
-			f.Row(t.writer, line, renderer.Formatting{
-				Widths: t.rowWidths, Padding: t.config.Row.Padding.Global, ColPadding: colPadding,
-				ColAligns: colAligns, IsFirst: i == 0 && j == 0, IsLast: i == len(t.rows)-1 && j == len(lines)-1,
-				HasFooter: len(t.footers) > 0, MergedCols: rowVertMerges[i], MergedRows: rowHorzMerges[i],
-				NextRowContinuesMerge: nextRowContinuesMergeMap, NextRowMergedRows: nextRowHorzMergeMap,
-				ColMaxWidths: t.config.Row.ColMaxWidths,
+		for i, line := range headerLines {
+			currentCells := make(map[int]renderer.CellContext)
+			for j, cell := range line {
+				mergeState := headerVertMerges[j]
+				if headerHorzMerges[j] {
+					mergeState.Horizontal = true
+					mergeState.Span = t.calculateHorizontalSpan(headerHorzMerges, j)
+					mergeState.Start = j == 0 || !headerHorzMerges[j-1]
+					mergeState.End = j == numCols-1 || !headerHorzMerges[j+1]
+				}
+				currentCells[j] = renderer.CellContext{
+					Data:    cell,
+					Align:   colAligns[j],
+					Padding: colPadding[j],
+					Width:   t.headerWidths[j],
+					Merge:   mergeState,
+				}
+			}
+			previousCells := make(map[int]renderer.CellContext)
+			if i > 0 {
+				for j, cell := range headerLines[i-1] {
+					previousCells[j] = renderer.CellContext{Data: cell, Merge: headerVertMerges[j]}
+				}
+			}
+			nextCells := make(map[int]renderer.CellContext)
+			if i+1 < len(headerLines) {
+				for j, cell := range headerLines[i+1] {
+					nextCells[j] = renderer.CellContext{Data: cell, Merge: headerVertMerges[j]}
+				}
+			} else if len(rowLines) > 0 {
+				for j, cell := range rowLines[0][0] {
+					nextCells[j] = renderer.CellContext{Data: cell, Merge: rowVertMerges[0][j]}
+				}
+			}
+			location := tw.LocationMiddle
+			if i == 0 && t.config.Header.Padding.Global.Top == tw.Empty {
+				location = tw.LocationFirst
+			}
+			if i == len(headerLines)-1 && t.config.Header.Padding.Global.Bottom == tw.Empty {
+				location = tw.LocationEnd
+			}
+			f.Header(t.writer, headerLines, renderer.Formatting{
+				Row: renderer.RowContext{
+					Widths:       t.headerWidths,
+					ColMaxWidths: t.config.Header.ColMaxWidths,
+					Current:      currentCells,
+					Previous:     previousCells,
+					Next:         nextCells,
+					Position:     tw.Header,
+					Location:     location,
+				},
+				Level:    tw.LevelHeader,
+				IsSubRow: i > 0 || t.config.Header.Padding.Global.Top != tw.Empty,
+			})
+		}
+
+		if t.config.Header.Padding.Global.Bottom != tw.Empty {
+			t.debug("Rendering header bottom padding")
+			bottomPadding := make([]string, numCols)
+			for j := range bottomPadding {
+				repeatCount := t.headerWidths[j] / twfn.DisplayWidth(t.config.Header.Padding.Global.Bottom)
+				if repeatCount < 1 {
+					repeatCount = 1
+				}
+				bottomPadding[j] = strings.Repeat(t.config.Header.Padding.Global.Bottom, repeatCount)
+			}
+			currentCells := make(map[int]renderer.CellContext)
+			for j, cell := range bottomPadding {
+				currentCells[j] = renderer.CellContext{
+					Data:    cell,
+					Align:   colAligns[j],
+					Padding: colPadding[j],
+					Width:   t.headerWidths[j],
+					Merge:   headerVertMerges[j],
+				}
+			}
+			nextCells := make(map[int]renderer.CellContext)
+			if len(rowLines) > 0 {
+				for j, cell := range rowLines[0][0] {
+					nextCells[j] = renderer.CellContext{Data: cell, Merge: rowVertMerges[0][j]}
+				}
+			} else if len(footerLines) > 0 {
+				for j, cell := range footerLines[0] {
+					nextCells[j] = renderer.CellContext{Data: cell, Merge: footerVertMerges[j]}
+				}
+			}
+			f.Header(t.writer, nil, renderer.Formatting{
+				Row: renderer.RowContext{
+					Widths:       t.headerWidths,
+					ColMaxWidths: t.config.Header.ColMaxWidths,
+					Current:      currentCells,
+					Next:         nextCells,
+					Position:     tw.Header,
+					Location:     tw.LocationEnd,
+				},
+				Level:    tw.LevelHeader,
+				IsSubRow: true,
+			})
+		}
+
+		if cfg.Settings.Lines.ShowHeaderLine.Enabled() && (len(rowLines) > 0 || len(footerLines) > 0) {
+			t.debug("Rendering header separator line")
+			currentCells := make(map[int]renderer.CellContext)
+			for j := 0; j < numCols; j++ {
+				mergeState := headerVertMerges[j]
+				if headerHorzMerges[j] {
+					mergeState.Horizontal = true
+					mergeState.Span = t.calculateHorizontalSpan(headerHorzMerges, j)
+					mergeState.Start = j == 0 || !headerHorzMerges[j-1]
+					mergeState.End = j == numCols-1 || !headerHorzMerges[j+1]
+				}
+				currentCells[j] = renderer.CellContext{
+					Data:  headerLines[len(headerLines)-1][j],
+					Merge: mergeState,
+				}
+			}
+			nextCells := make(map[int]renderer.CellContext)
+			if len(rowLines) > 0 {
+				for j, cell := range rowLines[0][0] {
+					mergeState := rowVertMerges[0][j]
+					if rowHorzMerges[0][j] {
+						mergeState.Horizontal = true
+						mergeState.Span = t.calculateHorizontalSpan(rowHorzMerges[0], j)
+						mergeState.Start = j == 0 || !rowHorzMerges[0][j-1]
+						mergeState.End = j == numCols-1 || !rowHorzMerges[0][j+1]
+					}
+					nextCells[j] = renderer.CellContext{Data: cell, Merge: mergeState}
+				}
+			} else if len(footerLines) > 0 {
+				for j, cell := range footerLines[0] {
+					nextCells[j] = renderer.CellContext{Data: cell, Merge: footerVertMerges[j]}
+				}
+			}
+			f.Line(t.writer, renderer.Formatting{
+				Row: renderer.RowContext{
+					Widths:   t.headerWidths,
+					Current:  currentCells,
+					Next:     nextCells,
+					Position: tw.Header,
+					Location: tw.LocationMiddle,
+				},
+				Level:    tw.LevelBody,
+				IsSubRow: false,
 			})
 		}
 	}
 
+	// Rows section
+	for i, lines := range rowLines {
+		colAligns := t.buildAligns(t.config.Row)
+		colPadding := t.buildPadding(t.config.Row.Padding)
+
+		if t.config.Row.Padding.Global.Top != tw.Empty {
+			t.debug("Rendering row top padding for row %d", i)
+			topPadding := make([]string, numCols)
+			for j := range topPadding {
+				repeatCount := t.rowWidths[j] / twfn.DisplayWidth(t.config.Row.Padding.Global.Top)
+				if repeatCount < 1 {
+					repeatCount = 1
+				}
+				topPadding[j] = strings.Repeat(t.config.Row.Padding.Global.Top, repeatCount)
+			}
+			currentCells := make(map[int]renderer.CellContext)
+			for j, cell := range topPadding {
+				currentCells[j] = renderer.CellContext{
+					Data:    cell,
+					Align:   colAligns[j],
+					Padding: colPadding[j],
+					Width:   t.rowWidths[j],
+					Merge:   rowVertMerges[i][j],
+				}
+			}
+			location := tw.LocationMiddle
+			if i == 0 && len(t.headers) == 0 {
+				location = tw.LocationFirst
+			}
+			f.Row(t.writer, nil, renderer.Formatting{
+				Row: renderer.RowContext{
+					Widths:   t.rowWidths,
+					Current:  currentCells,
+					Position: tw.Row,
+					Location: location,
+				},
+				Level:    tw.LevelBody,
+				IsSubRow: true,
+			})
+		}
+
+		for j, line := range lines {
+			currentCells := make(map[int]renderer.CellContext)
+			for k := 0; k < numCols; k++ {
+				mergeState := rowVertMerges[i][k]
+				if rowHorzMerges[i][k] {
+					mergeState.Horizontal = true
+					mergeState.Span = t.calculateHorizontalSpan(rowHorzMerges[i], k)
+					mergeState.Start = k == 0 || !rowHorzMerges[i][k-1]
+					mergeState.End = k == numCols-1 || !rowHorzMerges[i][k+1]
+				}
+				currentCells[k] = renderer.CellContext{
+					Data:    line[k],
+					Align:   colAligns[k],
+					Padding: colPadding[k],
+					Width:   t.rowWidths[k],
+					Merge:   mergeState,
+				}
+			}
+			previousCells := make(map[int]renderer.CellContext)
+			if i > 0 || j > 0 || t.config.Row.Padding.Global.Top != tw.Empty {
+				prevLines := rowLines[twfn.Max(0, i-1)]
+				prevLineIdx := len(prevLines) - 1
+				if j > 0 {
+					prevLineIdx = j - 1
+					prevLines = lines
+				} else if i == 0 && t.config.Row.Padding.Global.Top != tw.Empty {
+					for k := range numCols {
+						prevMerge := rowVertMerges[i][k]
+						previousCells[k] = renderer.CellContext{
+							Data:  strings.Repeat(t.config.Row.Padding.Global.Top, t.rowWidths[k]/twfn.DisplayWidth(t.config.Row.Padding.Global.Top)),
+							Merge: prevMerge,
+						}
+					}
+				} else if j == 0 && i > 0 {
+					for k, cell := range prevLines[prevLineIdx] {
+						previousCells[k] = renderer.CellContext{Data: cell, Merge: rowVertMerges[twfn.Max(0, i-1)][k]}
+					}
+				}
+			} else if len(t.headers) > 0 {
+				for k, cell := range headerLines[len(headerLines)-1] {
+					previousCells[k] = renderer.CellContext{Data: cell, Merge: headerVertMerges[k]}
+				}
+			}
+			nextCells := make(map[int]renderer.CellContext)
+			if j+1 < len(lines) {
+				for k, cell := range lines[j+1] {
+					nextCells[k] = renderer.CellContext{Data: cell, Merge: rowVertMerges[i][k]}
+				}
+			} else if i+1 < len(rowLines) {
+				for k, cell := range rowLines[i+1][0] {
+					nextCells[k] = renderer.CellContext{Data: cell, Merge: rowVertMerges[i+1][k]}
+				}
+			} else if len(t.footers) > 0 {
+				for k, cell := range footerLines[0] {
+					nextCells[k] = renderer.CellContext{Data: cell, Merge: footerVertMerges[k]}
+				}
+			}
+			location := tw.LocationMiddle
+			if i == 0 && j == 0 && t.config.Row.Padding.Global.Top == tw.Empty && len(t.headers) == 0 {
+				location = tw.LocationFirst
+			}
+			if i == len(t.rows)-1 && j == len(lines)-1 && t.config.Row.Padding.Global.Bottom == tw.Empty {
+				location = tw.LocationEnd
+			}
+			f.Row(t.writer, line, renderer.Formatting{
+				Row: renderer.RowContext{
+					Widths:       t.rowWidths,
+					ColMaxWidths: t.config.Row.ColMaxWidths,
+					Current:      currentCells,
+					Previous:     previousCells,
+					Next:         nextCells,
+					Position:     tw.Row,
+					Location:     location,
+				},
+				Level:     tw.LevelBody,
+				HasFooter: len(t.footers) > 0,
+				IsSubRow:  j > 0 || t.config.Row.Padding.Global.Top != tw.Empty,
+			})
+
+			if cfg.Settings.Separators.BetweenRows.Enabled() && !(i == len(t.rows)-1 && j == len(lines)-1) {
+				t.debug("Rendering between-rows separator")
+				f.Line(t.writer, renderer.Formatting{
+					Row: renderer.RowContext{
+						Widths:   t.rowWidths,
+						Current:  currentCells,
+						Next:     nextCells,
+						Position: tw.Row,
+						Location: location,
+					},
+					Level:    tw.LevelBody,
+					IsSubRow: false,
+				})
+			}
+		}
+
+		if t.config.Row.Padding.Global.Bottom != tw.Empty {
+			t.debug("Rendering row bottom padding for row %d", i)
+			bottomPadding := make([]string, numCols)
+			for j := range bottomPadding {
+				repeatCount := t.rowWidths[j] / twfn.DisplayWidth(t.config.Row.Padding.Global.Bottom)
+				if repeatCount < 1 {
+					repeatCount = 1
+				}
+				bottomPadding[j] = strings.Repeat(t.config.Row.Padding.Global.Bottom, repeatCount)
+			}
+			currentCells := make(map[int]renderer.CellContext)
+			for j, cell := range bottomPadding {
+				currentCells[j] = renderer.CellContext{
+					Data:    cell,
+					Align:   colAligns[j],
+					Padding: colPadding[j],
+					Width:   t.rowWidths[j],
+					Merge:   rowVertMerges[i][j],
+				}
+			}
+			nextCells := make(map[int]renderer.CellContext)
+			if i+1 < len(rowLines) {
+				for j, cell := range rowLines[i+1][0] {
+					nextCells[j] = renderer.CellContext{Data: cell, Merge: rowVertMerges[i+1][j]}
+				}
+			} else if len(t.footers) > 0 {
+				for j, cell := range footerLines[0] {
+					nextCells[j] = renderer.CellContext{Data: cell, Merge: footerVertMerges[j]}
+				}
+			}
+			location := tw.LocationMiddle
+			if i == len(t.rows)-1 && len(t.footers) == 0 {
+				location = tw.LocationEnd
+			}
+			f.Row(t.writer, nil, renderer.Formatting{
+				Row: renderer.RowContext{
+					Widths:   t.rowWidths,
+					Current:  currentCells,
+					Next:     nextCells,
+					Position: tw.Row,
+					Location: location,
+				},
+				Level:    tw.LevelBody,
+				IsSubRow: true,
+			})
+		}
+
+		if i == len(t.rows)-1 && len(t.footers) == 0 && cfg.Borders.Bottom.Enabled() && cfg.Settings.Lines.ShowBottom.Enabled() {
+			t.debug("Rendering table bottom border (no footer)")
+			currentCells := make(map[int]renderer.CellContext)
+			lastLine := lines[len(lines)-1]
+			if t.config.Row.Padding.Global.Bottom != tw.Empty {
+				for j := range numCols {
+					currentCells[j] = renderer.CellContext{
+						Data:    strings.Repeat(t.config.Row.Padding.Global.Bottom, t.rowWidths[j]/twfn.DisplayWidth(t.config.Row.Padding.Global.Bottom)),
+						Align:   colAligns[j],
+						Padding: colPadding[j],
+						Width:   t.rowWidths[j],
+						Merge:   rowVertMerges[i][j],
+					}
+				}
+			} else {
+				for j := 0; j < numCols; j++ {
+					mergeState := rowVertMerges[i][j]
+					if rowHorzMerges[i][j] {
+						mergeState.Horizontal = true
+						mergeState.Span = t.calculateHorizontalSpan(rowHorzMerges[i], j)
+						mergeState.Start = j == 0 || !rowHorzMerges[i][j-1]
+						mergeState.End = j == numCols-1 || !rowHorzMerges[i][j+1]
+					}
+					currentCells[j] = renderer.CellContext{
+						Data:    lastLine[j],
+						Align:   colAligns[j],
+						Padding: colPadding[j],
+						Width:   t.rowWidths[j],
+						Merge:   mergeState,
+					}
+				}
+			}
+			f.Line(t.writer, renderer.Formatting{
+				Row: renderer.RowContext{
+					Widths:   t.rowWidths,
+					Current:  currentCells,
+					Position: tw.Row,
+					Location: tw.LocationEnd,
+				},
+				Level:    tw.LevelFooter,
+				IsSubRow: false,
+			})
+		}
+	}
+
+	// Footer section
 	if len(footerLines) > 0 {
 		colAligns := t.buildAligns(t.config.Footer)
 		colPadding := t.buildPadding(t.config.Footer.Padding)
-		t.debug("Rendering footer")
-		f.Footer(t.writer, footerLines, renderer.Formatting{
-			Widths: t.footerWidths, Padding: t.config.Footer.Padding.Global, ColPadding: colPadding,
-			ColAligns: colAligns, HasFooter: true, MergedRows: footerHorzMerges,
-			ColMaxWidths: t.config.Footer.ColMaxWidths,
-		})
+
+		if cfg.Settings.Lines.ShowFooterLine.Enabled() && len(t.rows) > 0 {
+			t.debug("Rendering footer separator line")
+			previousCells := make(map[int]renderer.CellContext)
+			lastRow := rowLines[len(t.rows)-1]
+			for j, cell := range lastRow[len(lastRow)-1] {
+				previousCells[j] = renderer.CellContext{Data: cell, Merge: rowVertMerges[len(t.rows)-1][j]}
+			}
+			nextCells := make(map[int]renderer.CellContext)
+			for j, cell := range footerLines[0] {
+				nextCells[j] = renderer.CellContext{Data: cell, Merge: footerVertMerges[j]}
+			}
+			f.Line(t.writer, renderer.Formatting{
+				Row: renderer.RowContext{
+					Widths:   t.footerWidths,
+					Current:  previousCells,
+					Next:     nextCells,
+					Position: tw.Footer,
+					Location: tw.LocationFirst,
+				},
+				Level:    tw.LevelBody,
+				IsSubRow: false,
+			})
+		}
+
+		if t.config.Footer.Padding.Global.Top != tw.Empty {
+			t.debug("Rendering footer top padding")
+			topPadding := make([]string, numCols)
+			for i := range topPadding {
+				repeatCount := t.footerWidths[i] / twfn.DisplayWidth(t.config.Footer.Padding.Global.Top)
+				if repeatCount < 1 {
+					repeatCount = 1
+				}
+				topPadding[i] = strings.Repeat(t.config.Footer.Padding.Global.Top, repeatCount)
+			}
+			currentCells := make(map[int]renderer.CellContext)
+			for j, cell := range topPadding {
+				currentCells[j] = renderer.CellContext{
+					Data:    cell,
+					Align:   colAligns[j],
+					Padding: colPadding[j],
+					Width:   t.footerWidths[j],
+					Merge:   footerVertMerges[j],
+				}
+			}
+			f.Footer(t.writer, nil, renderer.Formatting{
+				Row: renderer.RowContext{
+					Widths:   t.footerWidths,
+					Current:  currentCells,
+					Position: tw.Footer,
+					Location: tw.LocationFirst,
+				},
+				Level:    tw.LevelFooter,
+				IsSubRow: true,
+			})
+		}
+
+		for i, line := range footerLines {
+			currentCells := make(map[int]renderer.CellContext)
+			for j, cell := range line {
+				mergeState := footerVertMerges[j]
+				if footerHorzMerges[j] {
+					mergeState.Horizontal = true
+					mergeState.Span = t.calculateHorizontalSpan(footerHorzMerges, j)
+					mergeState.Start = j == 0 || !footerHorzMerges[j-1]
+					mergeState.End = j == numCols-1 || !footerHorzMerges[j+1]
+				}
+				currentCells[j] = renderer.CellContext{
+					Data:    cell,
+					Align:   colAligns[j],
+					Padding: colPadding[j],
+					Width:   t.footerWidths[j],
+					Merge:   mergeState,
+				}
+			}
+			previousCells := make(map[int]renderer.CellContext)
+			if i > 0 {
+				for j, cell := range footerLines[i-1] {
+					previousCells[j] = renderer.CellContext{Data: cell, Merge: footerVertMerges[j]}
+				}
+			} else if len(t.rows) > 0 {
+				for j, cell := range rowLines[len(t.rows)-1][len(rowLines[len(t.rows)-1])-1] {
+					previousCells[j] = renderer.CellContext{Data: cell, Merge: rowVertMerges[len(t.rows)-1][j]}
+				}
+			}
+			location := tw.LocationFirst
+			if i > 0 || t.config.Footer.Padding.Global.Top != tw.Empty {
+				location = tw.LocationMiddle
+			}
+			if i == len(footerLines)-1 && t.config.Footer.Padding.Global.Bottom == tw.Empty {
+				location = tw.LocationEnd
+			}
+			f.Footer(t.writer, footerLines, renderer.Formatting{
+				Row: renderer.RowContext{
+					Widths:       t.footerWidths,
+					ColMaxWidths: t.config.Footer.ColMaxWidths,
+					Current:      currentCells,
+					Previous:     previousCells,
+					Position:     tw.Footer,
+					Location:     location,
+				},
+				Level:     tw.LevelFooter,
+				HasFooter: true,
+				IsSubRow:  i > 0 || t.config.Footer.Padding.Global.Top != tw.Empty,
+			})
+		}
+
+		if t.config.Footer.Padding.Global.Bottom != tw.Empty {
+			t.debug("Rendering footer bottom padding")
+			bottomPadding := make([]string, numCols)
+			for i := range bottomPadding {
+				repeatCount := t.footerWidths[i] / twfn.DisplayWidth(t.config.Footer.Padding.Global.Bottom)
+				if repeatCount < 1 {
+					repeatCount = 1
+				}
+				bottomPadding[i] = strings.Repeat(t.config.Footer.Padding.Global.Bottom, repeatCount)
+			}
+			currentCells := make(map[int]renderer.CellContext)
+			for j, cell := range bottomPadding {
+				currentCells[j] = renderer.CellContext{
+					Data:    cell,
+					Align:   colAligns[j],
+					Padding: colPadding[j],
+					Width:   t.footerWidths[j],
+					Merge:   footerVertMerges[j],
+				}
+			}
+			f.Footer(t.writer, nil, renderer.Formatting{
+				Row: renderer.RowContext{
+					Widths:   t.footerWidths,
+					Current:  currentCells,
+					Position: tw.Footer,
+					Location: tw.LocationEnd,
+				},
+				Level:    tw.LevelFooter,
+				IsSubRow: true,
+			})
+		}
+
+		if cfg.Borders.Bottom.Enabled() && cfg.Settings.Lines.ShowBottom.Enabled() {
+			t.debug("Rendering table bottom border (with footer)")
+			currentCells := make(map[int]renderer.CellContext)
+			for j := 0; j < numCols; j++ {
+				mergeState := footerVertMerges[j]
+				if footerHorzMerges[j] {
+					mergeState.Horizontal = true
+					mergeState.Span = t.calculateHorizontalSpan(footerHorzMerges, j)
+					mergeState.Start = j == 0 || !footerHorzMerges[j-1]
+					mergeState.End = j == numCols-1 || !footerHorzMerges[j+1]
+				}
+				currentCells[j] = renderer.CellContext{
+					Data:    footerLines[len(footerLines)-1][j],
+					Align:   colAligns[j],
+					Padding: colPadding[j],
+					Width:   t.footerWidths[j],
+					Merge:   mergeState,
+				}
+			}
+			f.Line(t.writer, renderer.Formatting{
+				Row: renderer.RowContext{
+					Widths:   t.footerWidths,
+					Current:  currentCells,
+					Position: tw.Footer,
+					Location: tw.LocationEnd,
+				},
+				Level:    tw.LevelFooter,
+				IsSubRow: false,
+			})
+		}
+	}
+
+	if len(headerLines) == 0 && len(footerLines) == 0 && len(rowLines) > 0 {
+		if cfg.Borders.Top.Enabled() && cfg.Settings.Lines.ShowTop.Enabled() {
+			t.debug("Rendering table top border (rows only)")
+			f.Line(t.writer, renderer.Formatting{
+				Row: renderer.RowContext{
+					Widths:   t.rowWidths,
+					Position: tw.Row,
+					Location: tw.LocationFirst,
+				},
+				Level:    tw.LevelHeader,
+				IsSubRow: false,
+			})
+		}
 	}
 
 	t.hasPrinted = true
 	t.debug("Render completed")
 	return nil
 }
-
-// -----------------------------------
-// Helper Functions
-// -----------------------------------
 
 // ensureInitialized ensures all required fields are initialized
 func (t *Table) ensureInitialized() {
@@ -623,106 +1126,93 @@ func (t *Table) prepareContent(cells []string, config CellConfig) [][]string {
 	return result
 }
 
-// prepareWithMerges handles content preparation including horizontal merges
-func (t *Table) prepareWithMerges(content [][]string, config CellConfig, position tw.Position) ([][]string, map[int]bool, map[int]bool, []map[int]bool) {
+// prepareWithMerges handles content preparation including merges
+// prepareWithMerges handles content preparation including horizontal merges only
+func (t *Table) prepareWithMerges(content [][]string, config CellConfig, position tw.Position) ([][]string, map[int]renderer.MergeState, map[int]bool) {
 	t.debug("PrepareWithMerges START: position=%s, mergeMode=%d", position, config.Formatting.MergeMode)
 	if len(content) == 0 {
-		return content, nil, nil, nil
+		t.debug("PrepareWithMerges END: No content.")
+		return content, nil, nil
 	}
 
 	numCols := len(content[0])
 	horzMergeMap := make(map[int]bool)
+	vertMergeMap := make(map[int]renderer.MergeState)
 	result := make([][]string, len(content))
-	mergeStarts := make([]map[int]bool, len(content))
-
 	for i := range content {
-		result[i] = make([]string, numCols)
+		result[i] = make([]string, len(content[i]))
 		copy(result[i], content[i])
-		mergeStarts[i] = make(map[int]bool)
 	}
 
+	// Horizontal merges
 	if config.Formatting.MergeMode == tw.MergeHorizontal || config.Formatting.MergeMode == tw.MergeBoth {
-		t.debug("Checking for horizontal merges")
+		t.debug("Checking for horizontal merges in %d rows", len(content))
 		for row := 0; row < len(content); row++ {
-			for col := 0; col < numCols-1; col++ {
-				currentVal := strings.TrimSpace(content[row][col])
-				nextVal := strings.TrimSpace(content[row][col+1])
-				if currentVal != tw.Empty && currentVal == nextVal {
-					horzMergeMap[col] = true
-					horzMergeMap[col+1] = true
-					result[row][col+1] = tw.Empty
-					t.debug("Horizontal merge at row %d, col %d-%d", row, col, col+1)
+			currentRowLen := len(result[row])
+			if currentRowLen < numCols {
+				for k := currentRowLen; k < numCols; k++ {
+					result[row] = append(result[row], tw.Empty)
 				}
 			}
+			col := 0
+			for col < numCols-1 {
+				currentVal := strings.TrimSpace(result[row][col])
+				if currentVal == "" {
+					col++
+					continue
+				}
+				span := 1
+				startCol := col
+				for nextCol := col + 1; nextCol < numCols; nextCol++ {
+					nextVal := strings.TrimSpace(result[row][nextCol])
+					if currentVal == nextVal && currentVal != "" {
+						span++
+						result[row][nextCol] = tw.Empty
+						horzMergeMap[nextCol] = true
+						t.debug("Horizontal merge detected at row %d, col %d -> col %d", row, startCol, nextCol)
+					} else {
+						break
+					}
+				}
+				if span > 1 {
+					horzMergeMap[startCol] = true
+					vertMergeMap[startCol] = renderer.MergeState{
+						Horizontal: true,
+						Span:       span,
+						Start:      true,
+						End:        false,
+					}
+					vertMergeMap[startCol+span-1] = renderer.MergeState{
+						Horizontal: true,
+						Span:       span,
+						Start:      false,
+						End:        true,
+					}
+					for k := startCol + 1; k < startCol+span-1; k++ {
+						vertMergeMap[k] = renderer.MergeState{
+							Horizontal: true,
+							Span:       span,
+							Start:      false,
+							End:        false,
+						}
+					}
+				}
+				col += span
+			}
 		}
 	}
 
-	result = t.addPaddingLines(result, config, position)
-	t.debug("PrepareWithMerges END: lines=%d", len(result))
-	return result, nil, horzMergeMap, nil
+	t.debug("PrepareWithMerges END: position=%s, lines=%d", position, len(result))
+	return result, vertMergeMap, horzMergeMap
 }
 
-// addPaddingLines adds top and bottom padding to content
-func (t *Table) addPaddingLines(content [][]string, config CellConfig, position tw.Position) [][]string {
-	t.debug("Adding padding lines: position=%s", position)
-	if len(content) == 0 {
-		return content
+// calculateHorizontalSpan calculates the span of a horizontal merge
+func (t *Table) calculateHorizontalSpan(horzMerges map[int]bool, startCol int) int {
+	span := 1
+	for col := startCol + 1; horzMerges[col]; col++ {
+		span++
 	}
-
-	result := make([][]string, 0)
-	numCols := len(content[0])
-
-	if config.Padding.Global.Top != tw.Empty {
-		t.debug("Adding top padding")
-		topPadding := make([]string, numCols)
-		for i := range topPadding {
-			padWidth := t.getWidth(i, position)
-			repeatCount := (padWidth + twfn.DisplayWidth(config.Padding.Global.Top) - 1) / twfn.DisplayWidth(config.Padding.Global.Top)
-			if repeatCount < 1 {
-				repeatCount = 1
-			}
-			topPadding[i] = strings.Repeat(config.Padding.Global.Top, repeatCount)
-		}
-		result = append(result, topPadding)
-	}
-
-	result = append(result, content...)
-
-	if config.Padding.Global.Bottom != tw.Empty {
-		t.debug("Adding bottom padding")
-		bottomPadding := make([]string, numCols)
-		for i := range bottomPadding {
-			padWidth := t.getWidth(i, position)
-			repeatCount := (padWidth + twfn.DisplayWidth(config.Padding.Global.Bottom) - 1) / twfn.DisplayWidth(config.Padding.Global.Bottom)
-			if repeatCount < 1 {
-				repeatCount = 1
-			}
-			bottomPadding[i] = strings.Repeat(config.Padding.Global.Bottom, repeatCount)
-		}
-		result = append(result, bottomPadding)
-	}
-
-	t.debug("Padding lines added: total lines=%d", len(result))
-	return result
-}
-
-// getWidth retrieves the width for a column based on position
-func (t *Table) getWidth(i int, position tw.Position) int {
-	switch position {
-	case tw.Header:
-		if w, ok := t.headerWidths[i]; ok {
-			return w
-		}
-	case tw.Row:
-		if w, ok := t.rowWidths[i]; ok {
-			return w
-		}
-	case tw.Footer:
-		if w, ok := t.footerWidths[i]; ok {
-			return w
-		}
-	}
-	return twfn.DisplayWidth(t.config.Header.Padding.Global.Top) // Fallback
+	return span
 }
 
 // updateWidths calculates and updates column widths
@@ -744,20 +1234,20 @@ func (t *Table) updateWidths(row []string, widths map[int]int, padding CellPaddi
 
 // maxColumns determines the maximum number of columns in the table
 func (t *Table) maxColumns() int {
-	max := 0
-	if len(t.headers) > 0 && len(t.headers[0]) > max {
-		max = len(t.headers[0])
+	m := 0
+	if len(t.headers) > 0 && len(t.headers[0]) > m {
+		m = len(t.headers[0])
 	}
 	for _, row := range t.rows {
-		if len(row) > 0 && len(row[0]) > max {
-			max = len(row[0])
+		if len(row) > 0 && len(row[0]) > m {
+			m = len(row[0])
 		}
 	}
-	if len(t.footers) > 0 && len(t.footers[0]) > max {
-		max = len(t.footers[0])
+	if len(t.footers) > 0 && len(t.footers[0]) > m {
+		m = len(t.footers[0])
 	}
-	t.debug("Max columns calculated: %d", max)
-	return max
+	t.debug("Max columns calculated: %d", m)
+	return m
 }
 
 // buildAligns constructs alignment settings for columns
@@ -792,95 +1282,10 @@ func (t *Table) buildPadding(padding CellPadding) map[int]tw.Padding {
 	return colPadding
 }
 
-// -----------------------------------
-// Configuration Merging
-// -----------------------------------
-
-// mergeConfig merges a source configuration into a destination configuration
-func mergeConfig(dst, src Config) Config {
-	t := &Table{config: dst}
-	t.debug("Merging config: src.MaxWidth=%d", src.MaxWidth)
-	if src.MaxWidth != 0 {
-		dst.MaxWidth = src.MaxWidth
+// debug logs a message to the trace if debug mode is enabled
+func (t *Table) debug(format string, a ...interface{}) {
+	if t.config.Debug {
+		msg := fmt.Sprintf(format, a...)
+		t.trace = append(t.trace, fmt.Sprintf("[TABLE] %s", msg))
 	}
-	dst.Header = mergeCellConfig(dst.Header, src.Header)
-	dst.Row = mergeCellConfig(dst.Row, src.Row)
-	dst.Footer = mergeCellConfig(dst.Footer, src.Footer)
-	t.debug("Config merged")
-	return dst
-}
-
-// mergeCellConfig merges a source cell configuration into a destination
-func mergeCellConfig(dst, src CellConfig) CellConfig {
-	t := &Table{config: Config{Debug: true}}
-	t.debug("Merging cell config")
-	if src.Formatting.Alignment != tw.Empty {
-		dst.Formatting.Alignment = src.Formatting.Alignment
-	}
-	if src.Formatting.AutoWrap != 0 {
-		dst.Formatting.AutoWrap = src.Formatting.AutoWrap
-	}
-	if src.Formatting.MaxWidth != 0 {
-		dst.Formatting.MaxWidth = src.Formatting.MaxWidth
-	}
-	if src.Formatting.MergeMode != 0 {
-		dst.Formatting.MergeMode = src.Formatting.MergeMode
-	}
-	dst.Formatting.AutoFormat = src.Formatting.AutoFormat || dst.Formatting.AutoFormat
-
-	if src.Padding.Global != (tw.Padding{}) {
-		dst.Padding.Global = src.Padding.Global
-	}
-	if len(src.Padding.PerColumn) > 0 {
-		if dst.Padding.PerColumn == nil {
-			dst.Padding.PerColumn = make([]tw.Padding, len(src.Padding.PerColumn))
-		}
-		for i, pad := range src.Padding.PerColumn {
-			if pad != (tw.Padding{}) {
-				if i < len(dst.Padding.PerColumn) {
-					dst.Padding.PerColumn[i] = pad
-				} else {
-					dst.Padding.PerColumn = append(dst.Padding.PerColumn, pad)
-				}
-			}
-		}
-	}
-
-	if src.Callbacks.Global != nil {
-		dst.Callbacks.Global = src.Callbacks.Global
-	}
-	if len(src.Callbacks.PerColumn) > 0 {
-		if dst.Callbacks.PerColumn == nil {
-			dst.Callbacks.PerColumn = make([]func(), len(src.Callbacks.PerColumn))
-		}
-		for i, cb := range src.Callbacks.PerColumn {
-			if cb != nil {
-				if i < len(dst.Callbacks.PerColumn) {
-					dst.Callbacks.PerColumn[i] = cb
-				} else {
-					dst.Callbacks.PerColumn = append(dst.Callbacks.PerColumn, cb)
-				}
-			}
-		}
-	}
-
-	if src.Filter != nil {
-		dst.Filter = src.Filter
-	}
-
-	if len(src.ColumnAligns) > 0 {
-		dst.ColumnAligns = src.ColumnAligns
-	}
-
-	if len(src.ColMaxWidths) > 0 {
-		if dst.ColMaxWidths == nil {
-			dst.ColMaxWidths = make(map[int]int)
-		}
-		for k, v := range src.ColMaxWidths {
-			dst.ColMaxWidths[k] = v
-		}
-	}
-
-	t.debug("Cell config merged")
-	return dst
 }

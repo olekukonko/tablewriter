@@ -212,29 +212,91 @@ func (c *ColumnConfigBuilder) Build() *ConfigBuilder {
 	return c.parent
 }
 
-//// Example usage:
-//func ExampleBuilderUsage() {
-//	cfg := NewConfigBuilder().
-//		WithMaxWidth(120).
-//		Header().
-//		Formatting().
-//		WithAlignment(AlignCenter).
-//		WithAutoWrap(true).
-//		Build().
-//		Padding().
-//		WithGlobal(symbols.Padding{Left: " ", Right: " "}).
-//		Build().
-//		Build().
-//		Row().
-//		Formatting().
-//		WithAlignment(AlignLeft).
-//		Build().
-//		Build().
-//		ForColumn(0).
-//		WithMaxWidth(30).
-//		WithAlignment(AlignRight).
-//		Build().
-//		Build()
-//
-//	_ = cfg // use the config
-//}
+// mergeConfig merges a source configuration into a destination configuration
+func mergeConfig(dst, src Config) Config {
+	t := &Table{config: dst}
+	t.debug("Merging config: src.MaxWidth=%d", src.MaxWidth)
+	if src.MaxWidth != 0 {
+		dst.MaxWidth = src.MaxWidth
+	}
+	dst.Header = mergeCellConfig(dst.Header, src.Header)
+	dst.Row = mergeCellConfig(dst.Row, src.Row)
+	dst.Footer = mergeCellConfig(dst.Footer, src.Footer)
+	t.debug("Config merged")
+	return dst
+}
+
+// mergeCellConfig merges a source cell configuration into a destination
+func mergeCellConfig(dst, src CellConfig) CellConfig {
+	t := &Table{config: Config{Debug: true}}
+	t.debug("Merging cell config")
+	if src.Formatting.Alignment != tw.Empty {
+		dst.Formatting.Alignment = src.Formatting.Alignment
+	}
+	if src.Formatting.AutoWrap != 0 {
+		dst.Formatting.AutoWrap = src.Formatting.AutoWrap
+	}
+	if src.Formatting.MaxWidth != 0 {
+		dst.Formatting.MaxWidth = src.Formatting.MaxWidth
+	}
+	if src.Formatting.MergeMode != 0 {
+		dst.Formatting.MergeMode = src.Formatting.MergeMode
+	}
+	dst.Formatting.AutoFormat = src.Formatting.AutoFormat || dst.Formatting.AutoFormat
+
+	if src.Padding.Global != (tw.Padding{}) {
+		dst.Padding.Global = src.Padding.Global
+	}
+	if len(src.Padding.PerColumn) > 0 {
+		if dst.Padding.PerColumn == nil {
+			dst.Padding.PerColumn = make([]tw.Padding, len(src.Padding.PerColumn))
+		}
+		for i, pad := range src.Padding.PerColumn {
+			if pad != (tw.Padding{}) {
+				if i < len(dst.Padding.PerColumn) {
+					dst.Padding.PerColumn[i] = pad
+				} else {
+					dst.Padding.PerColumn = append(dst.Padding.PerColumn, pad)
+				}
+			}
+		}
+	}
+
+	if src.Callbacks.Global != nil {
+		dst.Callbacks.Global = src.Callbacks.Global
+	}
+	if len(src.Callbacks.PerColumn) > 0 {
+		if dst.Callbacks.PerColumn == nil {
+			dst.Callbacks.PerColumn = make([]func(), len(src.Callbacks.PerColumn))
+		}
+		for i, cb := range src.Callbacks.PerColumn {
+			if cb != nil {
+				if i < len(dst.Callbacks.PerColumn) {
+					dst.Callbacks.PerColumn[i] = cb
+				} else {
+					dst.Callbacks.PerColumn = append(dst.Callbacks.PerColumn, cb)
+				}
+			}
+		}
+	}
+
+	if src.Filter != nil {
+		dst.Filter = src.Filter
+	}
+
+	if len(src.ColumnAligns) > 0 {
+		dst.ColumnAligns = src.ColumnAligns
+	}
+
+	if len(src.ColMaxWidths) > 0 {
+		if dst.ColMaxWidths == nil {
+			dst.ColMaxWidths = make(map[int]int)
+		}
+		for k, v := range src.ColMaxWidths {
+			dst.ColMaxWidths[k] = v
+		}
+	}
+
+	t.debug("Cell config merged")
+	return dst
+}

@@ -19,14 +19,14 @@ type Symbols interface {
 	Column() string // Vertical line symbol
 
 	// Corner and junction symbols
-	TopLeft() string     // Top-left corner
-	TopMid() string      // Top junction
-	TopRight() string    // Top-right corner
+	TopLeft() string     // LevelHeader-left corner
+	TopMid() string      // LevelHeader junction
+	TopRight() string    // LevelHeader-right corner
 	MidLeft() string     // Left junction
 	MidRight() string    // Right junction
-	BottomLeft() string  // Bottom-left corner
-	BottomMid() string   // Bottom junction
-	BottomRight() string // Bottom-right corner
+	BottomLeft() string  // LevelFooter-left corner
+	BottomMid() string   // LevelFooter junction
+	BottomRight() string // LevelFooter-right corner
 
 	// Optional header-specific symbols
 	HeaderLeft() string
@@ -177,9 +177,9 @@ func NewSymbols(style BorderStyle) Symbols {
 			column: "│", // Light column
 			center: ".", // Simplified junction
 			corners: [9]string{
-				"┌", ".", "┐", // Top row
-				".", "", ".", // Middle row (simplified junctions)
-				"└", ".", "┘", // Bottom row
+				"┌", ".", "┐", // LevelHeader row
+				".", "", ".", // LevelBody row (simplified junctions)
+				"└", ".", "┘", // LevelFooter row
 			},
 		}
 	default:
@@ -290,14 +290,14 @@ func (s *SymbolGraphical) Name() string        { return NameGraphical }
 func (s *SymbolGraphical) Center() string      { return "➕" }  // Cross
 func (s *SymbolGraphical) Row() string         { return "➖" }  // Horizontal line
 func (s *SymbolGraphical) Column() string      { return "➡️" } // Vertical line (using right arrow)
-func (s *SymbolGraphical) TopLeft() string     { return "↖️" } // Top-left corner
-func (s *SymbolGraphical) TopMid() string      { return "⬆️" } // Top junction
-func (s *SymbolGraphical) TopRight() string    { return "↗️" } // Top-right corner
+func (s *SymbolGraphical) TopLeft() string     { return "↖️" } // LevelHeader-left corner
+func (s *SymbolGraphical) TopMid() string      { return "⬆️" } // LevelHeader junction
+func (s *SymbolGraphical) TopRight() string    { return "↗️" } // LevelHeader-right corner
 func (s *SymbolGraphical) MidLeft() string     { return "⬅️" } // Left junction
 func (s *SymbolGraphical) MidRight() string    { return "➡️" } // Right junction
-func (s *SymbolGraphical) BottomLeft() string  { return "↙️" } // Bottom-left corner
-func (s *SymbolGraphical) BottomMid() string   { return "⬇️" } // Bottom junction
-func (s *SymbolGraphical) BottomRight() string { return "↘️" } // Bottom-right corner
+func (s *SymbolGraphical) BottomLeft() string  { return "↙️" } // LevelFooter-left corner
+func (s *SymbolGraphical) BottomMid() string   { return "⬇️" } // LevelFooter junction
+func (s *SymbolGraphical) BottomRight() string { return "↘️" } // LevelFooter-right corner
 func (s *SymbolGraphical) HeaderLeft() string  { return "⏩" }  // Header left
 func (s *SymbolGraphical) HeaderMid() string   { return "⏺️" } // Header middle
 func (s *SymbolGraphical) HeaderRight() string { return "⏪" }  // Header right
@@ -316,12 +316,12 @@ func (s *SymbolMerger) Center() string      { return s.center } // Main crossing
 func (s *SymbolMerger) Row() string         { return s.row }
 func (s *SymbolMerger) Column() string      { return s.column }
 func (s *SymbolMerger) TopLeft() string     { return s.corners[0] }
-func (s *SymbolMerger) TopMid() string      { return s.corners[1] } // Top junction
+func (s *SymbolMerger) TopMid() string      { return s.corners[1] } // LevelHeader junction
 func (s *SymbolMerger) TopRight() string    { return s.corners[2] }
 func (s *SymbolMerger) MidLeft() string     { return s.corners[3] } // Left junction
 func (s *SymbolMerger) MidRight() string    { return s.corners[5] } // Right junction
 func (s *SymbolMerger) BottomLeft() string  { return s.corners[6] }
-func (s *SymbolMerger) BottomMid() string   { return s.corners[7] } // Bottom junction
+func (s *SymbolMerger) BottomMid() string   { return s.corners[7] } // LevelFooter junction
 func (s *SymbolMerger) BottomRight() string { return s.corners[8] }
 func (s *SymbolMerger) HeaderLeft() string  { return s.MidLeft() }
 func (s *SymbolMerger) HeaderMid() string   { return s.Center() }

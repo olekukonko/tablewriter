@@ -8,51 +8,67 @@ import (
 	"strings"
 )
 
-// Formatting holds table rendering context
+// Formatting represents the formatting context for an entire row in a table.
 type Formatting struct {
-	Position              tw.Position
-	Level                 tw.Level
-	IsFirst               bool
-	IsLast                bool
-	MaxWidth              int
-	Widths                map[int]int
-	ColMaxWidths          map[int]int
-	Align                 tw.Align
-	ColAligns             map[int]tw.Align
-	Padding               tw.Padding
-	ColPadding            map[int]tw.Padding
-	HasFooter             bool
-	MergedCols            tw.MapBool // Columns merged vertically
-	MergedRows            tw.MapBool // Columns merged horizontally in this row
-	IsMergeStart          bool       // Indicates start of a merge group
-	IsMergeEnd            bool       // Indicates end of a merge group
-	NextRowContinuesMerge tw.MapBool // Indicates if the NEXT row continues a vertical merge
-	NextRowMergedRows     tw.MapBool // Horizontal merge state for the row BELOW the separator
+	Row       RowContext // Detailed properties for the row and its cells
+	Level     tw.Level   // Hierarchical level (LevelHeader, LevelBody, LevelFooter) - Used for Line drawing
+	HasFooter bool       // True if the table includes a footer
+	IsSubRow  bool       // True if this is a continuation line of a multi-line row or a padding line
 }
 
-// Renderer defines the interface for table rendering
+// CellContext defines the formatting and state of an individual cell within a row.
+type CellContext struct {
+	Data    string     // The cell’s content. Should be populated by the caller.
+	Align   tw.Align   // Alignment of the cell’s content.
+	Padding tw.Padding // Padding around the cell’s content.
+	Width   int        // Intrinsic width suggestion (often ignored, uses Row.Widths).
+	Merge   MergeState // Merge details, indicating if and how this cell spans rows or columns.
+}
+
+// MergeState captures the merging properties of a cell.
+type MergeState struct {
+	Vertical   bool // True if this cell merges vertically
+	Horizontal bool // True if this cell merges horizontally
+	Span       int  // Number of rows/cols spanned
+	Start      bool // True if this is the start cell of the merge
+	End        bool // True if this is the end cell of the merge
+}
+
+// RowContext manages layout and relational properties for the row and its columns.
+type RowContext struct {
+	Position     tw.Position         // Row’s section in the table (Header, Row, Footer).
+	Location     tw.Location         // Row’s boundary location (LocationFirst, LocationMiddle, LocationEnd).
+	Current      map[int]CellContext // Cells in this row, keyed by column index.
+	Previous     map[int]CellContext // Cells from the previous row (visually above); nil if none.
+	Next         map[int]CellContext // Cells from the next row (visually below); nil if none.
+	Widths       map[int]int         // Final computed width of each column.
+	ColMaxWidths map[int]int         // Maximum allowed width for each column.
+}
+
+// Renderer defines the interface for rendering a table to an io.Writer.
 type Renderer interface {
 	Header(w io.Writer, headers [][]string, ctx Formatting)
-	Row(w io.Writer, rows []string, ctx Formatting)
+	Row(w io.Writer, row []string, ctx Formatting)
 	Footer(w io.Writer, footers [][]string, ctx Formatting)
 	Line(w io.Writer, ctx Formatting)
 	Debug() []string
+	Config() DefaultConfig // Added for tablewriter to access config
 }
 
 // Separators controls separator visibility
 type Separators struct {
-	ShowHeader     tw.State
-	ShowFooter     tw.State
-	BetweenRows    tw.State
-	BetweenColumns tw.State
+	ShowHeader     tw.State // Not directly used by default renderer? Might be tablewriter config.
+	ShowFooter     tw.State // Not directly used by default renderer? Might be tablewriter config.
+	BetweenRows    tw.State // Used by tablewriter to decide when to call Line
+	BetweenColumns tw.State // Used by renderer for rendering lines and segments
 }
 
 // Lines controls line visibility
 type Lines struct {
-	ShowTop        tw.State
-	ShowBottom     tw.State
-	ShowHeaderLine tw.State
-	ShowFooterLine tw.State
+	ShowTop        tw.State // Used by tablewriter to decide when to call Line
+	ShowBottom     tw.State // Used by tablewriter to decide when to call Line
+	ShowHeaderLine tw.State // Used by tablewriter to decide when to call Line
+	ShowFooterLine tw.State // Used by tablewriter to decide when to call Line
 }
 
 // Settings holds rendering preferences
@@ -60,7 +76,7 @@ type Settings struct {
 	Separators     Separators
 	Lines          Lines
 	TrimWhitespace tw.State
-	CompactMode    tw.State
+	CompactMode    tw.State // Not currently used?
 }
 
 // Border defines table border states
@@ -79,119 +95,67 @@ type DefaultConfig struct {
 	Debug    bool
 }
 
-// Default is the default table renderer implementation
 type Default struct {
 	config DefaultConfig
 	trace  []string
 }
 
-// Private: Internal debugging utility
+// [Existing struct definitions remain unchanged: Formatting, CellContext, MergeState, RowContext, Renderer, Separators, Lines, Settings, Border, DefaultConfig, Default]
+
+// Config returns the current configuration
+func (f *Default) Config() DefaultConfig {
+	return f.config
+}
+
 func (f *Default) debug(format string, a ...interface{}) {
 	if f.config.Debug {
 		msg := fmt.Sprintf(format, a...)
-		traceEntry := fmt.Sprintf("[DEFAULT] %s", msg)
-		f.trace = append(f.trace, traceEntry)
+		f.trace = append(f.trace, fmt.Sprintf("[DEFAULT] %s", msg))
 	}
 }
 
-// Debug returns the debug trace
 func (f *Default) Debug() []string {
 	return f.trace
 }
 
-// Header renders the table header
+// Header renders the table header.
 func (f *Default) Header(w io.Writer, headers [][]string, ctx Formatting) {
-	f.debug("Starting Header render: lines=%d, widths=%v", len(headers), ctx.Widths)
-	if f.config.Borders.Top.Enabled() {
-		f.debug("Rendering top border with level=Top")
-		f.Line(w, Formatting{Widths: ctx.Widths, Level: tw.Top, Position: tw.Header, MergedCols: ctx.MergedCols, MergedRows: ctx.MergedRows})
-	}
-
-	for i, line := range headers {
-		f.debug("Processing header line %d: content=%v, mergedCols=%v", i, line, ctx.MergedCols)
-		f.renderLine(w, line, ctx)
-		if i < len(headers)-1 && f.config.Settings.Separators.BetweenRows.Enabled() {
-			f.debug("Adding row separator between header lines %d and %d", i, i+1)
-			f.Line(w, Formatting{Widths: ctx.Widths, Level: tw.Middle, Position: tw.Header, MergedCols: ctx.MergedCols, MergedRows: ctx.MergedRows})
-		}
-	}
-
-	if f.config.Settings.Lines.ShowHeaderLine.Enabled() && len(headers) > 0 {
-		f.debug("Rendering header line separator with %d headers", len(headers))
-		f.Line(w, Formatting{Widths: ctx.Widths, Level: tw.Middle, Position: tw.Header, MergedCols: ctx.MergedCols, MergedRows: ctx.MergedRows})
-	}
+	f.debug("Starting Header render: IsSubRow=%v, Location=%v, Pos=%s, lines=%d, widths=%v", ctx.IsSubRow, ctx.Row.Location, ctx.Row.Position, len(ctx.Row.Current), ctx.Row.Widths)
+	f.renderLine(w, ctx)
 	f.debug("Completed Header render")
 }
 
-// Row renders a table row
+// Row renders a table row.
 func (f *Default) Row(w io.Writer, row []string, ctx Formatting) {
-	f.debug("Starting Row render: content=%v, isLast=%v, hasFooter=%v, mergedCols=%v, nextRowMerge=%v",
-		row, ctx.IsLast, ctx.HasFooter, ctx.MergedCols, ctx.NextRowContinuesMerge)
-
-	f.renderLine(w, row, ctx)
-
-	betweenRowsState := f.config.Settings.Separators.BetweenRows
-	isEnabled := betweenRowsState.Enabled()
-	f.debug("Row Sep Check: State=%v (%d), Enabled()=%v, !ctx.IsLast=%v",
-		betweenRowsState, int(betweenRowsState), isEnabled, !ctx.IsLast)
-
-	shouldConsiderSeparator := isEnabled && !ctx.IsLast
-
-	if shouldConsiderSeparator {
-		f.debug("Considering between-rows separator draw after row (isLast=%v)", ctx.IsLast)
-		f.Line(w, Formatting{
-			Widths:                ctx.Widths,
-			Level:                 tw.Middle,
-			Position:              tw.Row,
-			MergedCols:            ctx.MergedCols,
-			MergedRows:            ctx.MergedRows,
-			NextRowContinuesMerge: ctx.NextRowContinuesMerge,
-		})
-	} else {
-		f.debug("Not considering between-rows separator draw (isLast=%v, separatorEnabled=%v)",
-			ctx.IsLast, isEnabled)
-	}
-
-	if ctx.IsLast && !ctx.HasFooter && f.config.Borders.Bottom.Enabled() {
-		f.debug("Rendering bottom border for last row (no footer)")
-		f.Line(w, Formatting{
-			Widths:     ctx.Widths,
-			Level:      tw.Bottom,
-			Position:   tw.Row,
-			MergedCols: nil,
-			MergedRows: nil,
-		})
-	}
+	f.debug("Starting Row render: IsSubRow=%v, Location=%v, Pos=%s, hasFooter=%v", ctx.IsSubRow, ctx.Row.Location, ctx.Row.Position, ctx.HasFooter)
+	f.renderLine(w, ctx)
 	f.debug("Completed Row render")
 }
 
-// Footer renders the table footer
+// Footer renders the table footer.
 func (f *Default) Footer(w io.Writer, footers [][]string, ctx Formatting) {
-	f.debug("Starting Footer render: lines=%d", len(footers))
-	if f.config.Settings.Lines.ShowFooterLine.Enabled() && len(footers) > 0 {
-		f.debug("Rendering footer line separator")
-		f.Line(w, Formatting{Widths: ctx.Widths, Level: tw.Middle, Position: tw.Footer, MergedCols: ctx.MergedCols, MergedRows: ctx.MergedRows})
-	}
-
-	for i, line := range footers {
-		f.debug("Processing footer line %d: content=%v", i, line)
-		f.renderLine(w, line, ctx)
-		if i < len(footers)-1 && f.config.Settings.Separators.BetweenRows.Enabled() {
-			f.debug("Adding separator between footer lines %d and %d", i, i+1)
-			f.Line(w, Formatting{Widths: ctx.Widths, Level: tw.Middle, Position: tw.Footer, MergedCols: ctx.MergedCols, MergedRows: ctx.MergedRows})
-		}
-	}
-
-	if ctx.HasFooter && f.config.Borders.Bottom.Enabled() {
-		f.debug("Rendering bottom border for footer")
-		f.Line(w, Formatting{Widths: ctx.Widths, Level: tw.Bottom, Position: tw.Footer, MergedCols: ctx.MergedCols, MergedRows: ctx.MergedRows})
-	}
+	f.debug("Starting Footer render: IsSubRow=%v, Location=%v, Pos=%s", ctx.IsSubRow, ctx.Row.Location, ctx.Row.Position)
+	f.renderLine(w, ctx)
 	f.debug("Completed Footer render")
 }
 
-// Private: Renders a single line of cells
-func (f *Default) renderLine(w io.Writer, cells []string, ctx Formatting) {
-	f.debug("Starting renderLine: cells=%v, position=%s", cells, ctx.Position)
+// renderLine renders a single line of cells based on ctx.Row.Current.
+func (f *Default) renderLine(w io.Writer, ctx Formatting) {
+	sortedKeys := twfn.ConvertToSortedKeys(ctx.Row.Widths)
+
+	numCols := 0
+	if len(sortedKeys) > 0 {
+		maxCol := sortedKeys[len(sortedKeys)-1]
+		numCols = maxCol + 1
+	}
+	f.debug("Starting renderLine: numCols=%d, position=%s, isSubRow=%v, widths=%v", numCols, ctx.Row.Position, ctx.IsSubRow, ctx.Row.Widths)
+
+	if numCols == 0 && (!f.config.Borders.Left.Enabled() || !f.config.Borders.Right.Enabled()) {
+		f.debug("renderLine: No columns and no side borders, rendering empty line.")
+		fmt.Fprintln(w)
+		return
+	}
+
 	prefix := ""
 	if f.config.Borders.Left.Enabled() {
 		prefix = f.config.Symbols.Column()
@@ -203,88 +167,103 @@ func (f *Default) renderLine(w io.Writer, cells []string, ctx Formatting) {
 		f.debug("Added right border suffix: %s", suffix)
 	}
 
-	formattedCells := make([]string, len(cells))
-	merged := make(map[int]bool)
-	for i := 0; i < len(cells); i++ {
-		if merged[i] {
-			formattedCells[i] = ""
-			f.debug("Cell %d skipped due to previous merge", i)
-			continue
-		}
-		padding := ctx.Padding
-		if customPad, ok := ctx.ColPadding[i]; ok {
-			padding = customPad
-			f.debug("Using custom padding for cell %d: left=%s, right=%s", i, padding.Left, padding.Right)
-		}
-		align := ctx.Align
-		if colAlign, ok := ctx.ColAligns[i]; ok && colAlign != "" {
-			align = colAlign
-			f.debug("Using column-specific alignment for cell %d: %s", i, align)
-		}
-		mergedWidth := ctx.Widths[i]
-
-		if ctx.MergedRows != nil && ctx.MergedRows[i] {
-			f.debug("Processing horizontal merge starting at cell %d", i)
-			for j := i + 1; j < len(cells) && ctx.MergedRows[j]; j++ {
-				mergedWidth += ctx.Widths[j]
-				if f.config.Settings.Separators.BetweenColumns.Enabled() {
-					mergedWidth += twfn.DisplayWidth(f.config.Symbols.Column())
-				}
-				merged[j] = true
-				formattedCells[j] = ""
-				f.debug("Merged cell %d into width calculation, new width=%d", j, mergedWidth)
-			}
-			formattedCells[i] = f.formatCell(cells[i], mergedWidth, padding, align)
-			f.debug("Formatted merged cell %d: %s", i, formattedCells[i])
-			continue
-		}
-
-		if ctx.MergedCols != nil && ctx.MergedCols[i] {
-			if ctx.IsMergeStart && strings.TrimSpace(cells[i]) != "" {
-				formattedCells[i] = f.formatCell(cells[i], mergedWidth, padding, align)
-				f.debug("Formatted cell %d as merge start: %s", i, formattedCells[i])
-			} else {
-				formattedCells[i] = f.formatCell("", mergedWidth, padding, align)
-				f.debug("Cell %d formatted as empty due to vertical merge continuation", i)
-			}
-		} else {
-			formattedCells[i] = f.formatCell(cells[i], mergedWidth, padding, align)
-			f.debug("Formatted cell %d: %s", i, formattedCells[i])
-		}
-	}
-
-	var output string
-	if f.config.Settings.Separators.BetweenColumns.Enabled() {
-		separator := f.config.Symbols.Column()
-		parts := make([]string, 0, len(formattedCells))
-		for i, cell := range formattedCells {
-			if cell != "" || (!merged[i] && !(ctx.MergedCols != nil && ctx.MergedCols[i])) {
-				parts = append(parts, cell)
-			}
-		}
-		output = prefix + strings.Join(parts, separator) + suffix + tw.NewLine
-		f.debug("Constructed output with column separators: %s", output)
-	} else {
-		output = prefix + strings.Join(formattedCells, "") + suffix + tw.NewLine
-		f.debug("Constructed output without column separators: %s", output)
-	}
-	fmt.Fprint(w, output)
-	f.debug("renderLine completed")
-}
-
-// Line draws a horizontal line based on context
-func (f *Default) Line(w io.Writer, ctx Formatting) {
-	f.debug("Starting Line render: level=%d, pos=%s, vAbove=%v, vBelow=%v, hAbove=%v, hBelow=%v",
-		ctx.Level, ctx.Position, ctx.MergedCols, ctx.NextRowContinuesMerge, ctx.MergedRows, ctx.NextRowMergedRows)
-
-	if !f.shouldDrawLine(ctx) {
-		f.debug("Skipping line render - disabled by config or context")
+	if numCols == 0 {
+		f.debug("renderLine: No columns, rendering side borders only.")
+		fmt.Fprintln(w, prefix+suffix)
 		return
 	}
 
-	widths := twfn.ConvertToSorted(ctx.Widths)
-	if len(widths) == 0 {
-		f.debug("Line render warning: No widths provided.")
+	formattedCells := make([]string, numCols)
+	colIndex := 0
+	for colIndex < numCols {
+		cellCtx, ok := ctx.Row.Current[colIndex]
+		if !ok {
+			f.debug("renderLine Warning: Missing CellContext for column %d. Rendering empty.", colIndex)
+			width := 0
+			if w, wOK := ctx.Row.Widths[colIndex]; wOK {
+				width = w
+			}
+			formattedCells[colIndex] = f.formatCell("", width, tw.Padding{}, tw.AlignLeft)
+			colIndex++
+			continue
+		}
+
+		padding := cellCtx.Padding
+		align := cellCtx.Align
+		cellData := cellCtx.Data
+		targetWidth := ctx.Row.Widths[colIndex]
+
+		if cellCtx.Merge.Vertical && !cellCtx.Merge.Start {
+			cellData = ""
+			f.debug("Cell %d content cleared due to vertical merge continuation", colIndex)
+		}
+
+		if cellCtx.Merge.Horizontal && cellCtx.Merge.Start {
+			f.debug("Processing horizontal merge starting at cell %d, span=%d", colIndex, cellCtx.Merge.Span)
+			calculatedSpanWidth := 0
+			separatorWidth := 0
+			if f.config.Settings.Separators.BetweenColumns.Enabled() {
+				separatorWidth = twfn.DisplayWidth(f.config.Symbols.Column())
+			}
+			for j := 0; j < cellCtx.Merge.Span && colIndex+j < numCols; j++ {
+				mergeColIndex := colIndex + j
+				if w, wOK := ctx.Row.Widths[mergeColIndex]; wOK {
+					calculatedSpanWidth += w
+					if j > 0 {
+						calculatedSpanWidth += separatorWidth
+					}
+				}
+			}
+			targetWidth = calculatedSpanWidth
+			formattedCells[colIndex] = f.formatCell(cellData, targetWidth, padding, align)
+			for k := 1; k < cellCtx.Merge.Span && colIndex+k < numCols; k++ {
+				formattedCells[colIndex+k] = "" // Skip continuation cells
+				f.debug("Cell %d skipped due to horizontal merge continuation", colIndex+k)
+			}
+			colIndex += cellCtx.Merge.Span
+		} else {
+			formattedCells[colIndex] = f.formatCell(cellData, targetWidth, padding, align)
+			f.debug("Formatted cell %d: data='%s', width=%d, align=%s -> '%s'", colIndex, cellData, targetWidth, align, formattedCells[colIndex])
+			colIndex++
+		}
+	}
+
+	var output strings.Builder
+	output.WriteString(prefix)
+	if f.config.Settings.Separators.BetweenColumns.Enabled() {
+		separator := f.config.Symbols.Column()
+		firstVisible := true
+		for i := 0; i < numCols; i++ {
+			if formattedCells[i] != "" { // Only render non-empty cells (skips horizontal merge continuations)
+				if !firstVisible {
+					output.WriteString(separator)
+				}
+				output.WriteString(formattedCells[i])
+				firstVisible = false
+			}
+		}
+		f.debug("Constructed output with column separators")
+	} else {
+		for i := 0; i < numCols; i++ {
+			if formattedCells[i] != "" {
+				output.WriteString(formattedCells[i])
+			}
+		}
+		f.debug("Constructed output without column separators")
+	}
+	output.WriteString(suffix)
+	output.WriteString(tw.NewLine)
+	fmt.Fprint(w, output.String())
+	f.debug("renderLine completed, output: %q", output.String())
+}
+
+// Line draws a horizontal line based on context provided by tablewriter.
+func (f *Default) Line(w io.Writer, ctx Formatting) {
+	f.debug("Starting Line render: level=%d, pos=%s, widths=%v", ctx.Level, ctx.Row.Position, ctx.Row.Widths)
+	sortedKeys := twfn.ConvertToSortedKeys(ctx.Row.Widths)
+	if len(sortedKeys) == 0 && (!f.config.Borders.Left.Enabled() || !f.config.Borders.Right.Enabled()) {
+		f.debug("Line render warning: No widths and no side borders. Skipping line.")
+		fmt.Fprintln(w)
 		return
 	}
 
@@ -292,251 +271,348 @@ func (f *Default) Line(w io.Writer, ctx Formatting) {
 	sym := f.config.Symbols
 
 	if f.config.Borders.Left.Enabled() {
-		line.WriteString(f.getLeftBorderSymbol(ctx, sym))
+		if ctx.Row.Location == tw.LocationEnd {
+			line.WriteString(sym.BottomLeft())
+		} else {
+			line.WriteString(f.getLeftBorderSymbol(ctx, sym))
+		}
+	}
+
+	if len(sortedKeys) == 0 {
+		if f.config.Borders.Right.Enabled() {
+			if ctx.Row.Location == tw.LocationEnd {
+				line.WriteString(sym.BottomRight())
+			} else {
+				line.WriteString(f.getRightBorderSymbol(ctx, sym, -1))
+			}
+		}
+		fmt.Fprintln(w, line.String())
+		return
 	}
 
 	if f.config.Settings.Separators.BetweenColumns.Enabled() {
-		f.buildLineWithSeparators(&line, widths, ctx, sym)
+		for i, colIdx := range sortedKeys {
+			if i > 0 {
+				prevColIdx := sortedKeys[i-1]
+				mergeAbove := getCellMergeState(ctx.Row.Current, prevColIdx).Vertical
+				mergeBelow := getCellMergeState(ctx.Row.Next, prevColIdx).Vertical
+				hMergeAbove := getCellMergeState(ctx.Row.Current, prevColIdx).Horizontal && getCellMergeState(ctx.Row.Current, colIdx).Horizontal
+				hMergeBelow := getCellMergeState(ctx.Row.Next, prevColIdx).Horizontal && getCellMergeState(ctx.Row.Next, colIdx).Horizontal
+				if hMergeAbove && !hMergeBelow {
+					line.WriteString(sym.BottomMid())
+				} else if !hMergeAbove && hMergeBelow {
+					line.WriteString(sym.TopMid())
+				} else if hMergeAbove && hMergeBelow {
+					line.WriteString(sym.Row())
+				} else if mergeAbove && mergeBelow {
+					line.WriteString(sym.Column())
+				} else {
+					if ctx.Row.Location == tw.LocationEnd {
+						line.WriteString(sym.BottomMid())
+					} else {
+						line.WriteString(f.getJunctionSymbol(prevColIdx, colIdx, ctx, sym))
+					}
+				}
+			}
+			segmentChar := f.getSegmentSymbol(colIdx, ctx, sym)
+			if width := ctx.Row.Widths[colIdx]; width > 0 {
+				line.WriteString(strings.Repeat(segmentChar, width))
+			}
+		}
 	} else {
-		f.buildSolidLine(&line, widths, sym)
+		for _, colIdx := range sortedKeys {
+			segmentChar := sym.Row()
+			mergeAbove := getCellMergeState(ctx.Row.Current, colIdx).Vertical
+			mergeBelow := getCellMergeState(ctx.Row.Next, colIdx).Vertical
+			if ctx.Level == tw.LevelBody && mergeAbove && mergeBelow {
+				segmentChar = ""
+			}
+			if width, ok := ctx.Row.Widths[colIdx]; ok && width > 0 {
+				line.WriteString(strings.Repeat(segmentChar, width))
+			}
+		}
 	}
 
 	if f.config.Borders.Right.Enabled() {
-		line.WriteString(f.getRightBorderSymbol(ctx, sym, len(widths)))
+		lastColIndex := -1
+		if len(sortedKeys) > 0 {
+			lastColIndex = sortedKeys[len(sortedKeys)-1]
+		}
+		if ctx.Row.Location == tw.LocationEnd {
+			mergeAbove := getCellMergeState(ctx.Row.Current, lastColIndex).Horizontal
+			if mergeAbove && getCellMergeState(ctx.Row.Current, lastColIndex).End {
+				line.WriteString(sym.BottomRight())
+			} else {
+				line.WriteString(sym.BottomRight())
+			}
+		} else {
+			line.WriteString(f.getRightBorderSymbol(ctx, sym, lastColIndex))
+		}
 	}
 
 	fmt.Fprintln(w, line.String())
 	f.debug("Line render completed: [%s]", line.String())
 }
 
-// Private: Determines if a line should be drawn
-func (f *Default) shouldDrawLine(ctx Formatting) bool {
-	switch ctx.Level {
-	case tw.Top:
-		return f.config.Borders.Top.Enabled()
-	case tw.Bottom:
-		return f.config.Borders.Bottom.Enabled()
-	case tw.Middle:
-		switch ctx.Position {
-		case tw.Header:
-			return f.config.Settings.Lines.ShowHeaderLine.Enabled() || f.config.Settings.Separators.BetweenRows.Enabled()
-		case tw.Row:
-			return f.config.Settings.Separators.BetweenRows.Enabled()
-		case tw.Footer:
-			return f.config.Settings.Lines.ShowFooterLine.Enabled() || f.config.Settings.Separators.BetweenRows.Enabled()
-		}
-	}
-	f.debug("shouldDrawLine: Condition not met (level=%d, pos=%s)", ctx.Level, ctx.Position)
-	return false
-}
-
-// Private: Gets the left border symbol
+// getLeftBorderSymbol gets the left border symbol based on line level and merge state below.
 func (f *Default) getLeftBorderSymbol(ctx Formatting, sym tw.Symbols) string {
-	defaultMap := map[tw.Level]string{tw.Top: sym.TopLeft(), tw.Middle: sym.MidLeft(), tw.Bottom: sym.BottomLeft()}
-	symbol := defaultMap[ctx.Level]
+	mergeBelow := getCellMergeState(ctx.Row.Next, 0).Vertical
+	mergeAbove := getCellMergeState(ctx.Row.Current, 0).Vertical
 
-	if ctx.Level == tw.Middle {
-		vMergeAboveFirstCol := ctx.MergedCols.Get(0)
-		vMergeBelowFirstCol := ctx.NextRowContinuesMerge.Get(0)
-		if vMergeAboveFirstCol || vMergeBelowFirstCol {
-			symbol = sym.Column()
-			f.debug("Left Border Symbol: Col 0 V-Merge Active -> '%s'", symbol)
-		} else {
-			f.debug("Left Border Symbol: Col 0 No V-Merge -> Default '%s'", symbol)
+	switch ctx.Level {
+	case tw.LevelHeader:
+		return sym.TopLeft()
+	case tw.LevelFooter:
+		if mergeAbove {
+			return sym.Column()
 		}
+		return sym.BottomLeft()
+	case tw.LevelBody:
+		if mergeAbove && mergeBelow {
+			return sym.Column()
+		} else if mergeAbove {
+			return sym.Column()
+		} else if mergeBelow {
+			return sym.MidLeft()
+		}
+		return sym.MidLeft()
 	}
-	return symbol
+	f.debug("getLeftBorderSymbol: Unknown level %d", ctx.Level)
+	return sym.MidLeft()
 }
 
-// Private: Builds line with separators
-func (f *Default) buildLineWithSeparators(line *strings.Builder, widths []int, ctx Formatting, sym tw.Symbols) {
-	for i, width := range widths {
-		if i > 0 {
-			line.WriteString(f.getJunctionSymbol(i, ctx, sym))
+// getJunctionSymbol gets junction symbol based on merge states around the junction.
+func (f *Default) getJunctionSymbol(leftColIndex, rightColIndex int, ctx Formatting, sym tw.Symbols) string {
+	vMergeLeftAbove := getCellMergeState(ctx.Row.Current, leftColIndex).Vertical
+	vMergeLeftBelow := getCellMergeState(ctx.Row.Next, leftColIndex).Vertical
+	vMergeRightAbove := getCellMergeState(ctx.Row.Current, rightColIndex).Vertical
+	vMergeRightBelow := getCellMergeState(ctx.Row.Next, rightColIndex).Vertical
+
+	hMergeLeft := getCellMergeState(ctx.Row.Current, leftColIndex).Horizontal
+	hMergeRight := getCellMergeState(ctx.Row.Current, rightColIndex).Horizontal
+	hMergeBelowLeft := getCellMergeState(ctx.Row.Next, leftColIndex).Horizontal
+	hMergeBelowRight := getCellMergeState(ctx.Row.Next, rightColIndex).Horizontal
+
+	hMergeAbove := hMergeLeft && hMergeRight
+	hMergeBelow := hMergeBelowLeft && hMergeBelowRight
+
+	hasContentBelow := ctx.Row.Next != nil && len(ctx.Row.Next) > 0
+
+	switch ctx.Level {
+	case tw.LevelHeader:
+		if ctx.Row.Location == tw.LocationFirst {
+			return sym.TopMid()
 		}
-		segmentChar := f.getSegmentSymbol(i, ctx, sym)
-		if width > 0 {
-			line.WriteString(strings.Repeat(segmentChar, width))
+		if hMergeBelow {
+			return sym.TopMid()
 		}
-	}
-}
-
-// Private: Gets junction symbol based on merge states
-func (f *Default) getJunctionSymbol(colIndex int, ctx Formatting, sym tw.Symbols) string {
-	prevColIndex := colIndex - 1
-	junctionChar := ""
-
-	vMergeAboveLeft := ctx.MergedCols.Get(prevColIndex)
-	vMergeBelowLeft := ctx.NextRowContinuesMerge.Get(prevColIndex)
-	vMergeAboveRight := ctx.MergedCols.Get(colIndex)
-	vMergeBelowRight := ctx.NextRowContinuesMerge.Get(colIndex)
-
-	hMergeAbove := ctx.MergedRows.Get(colIndex)
-	hMergeBelow := ctx.NextRowMergedRows.Get(colIndex)
-
-	if ctx.Level == tw.Middle {
-		isVerticallyMergedLeft := vMergeAboveLeft || vMergeBelowLeft
-		isVerticallyMergedRight := vMergeAboveRight || vMergeBelowRight
-
-		f.debug("getJunctionSymbol (Middle, Before col %d): vAL:%t vBL:%t vAR:%t vBR:%t hA:%t hB:%t",
-			colIndex, vMergeAboveLeft, vMergeBelowLeft, vMergeAboveRight, vMergeBelowRight, hMergeAbove, hMergeBelow)
-
+		return sym.Center()
+	case tw.LevelBody:
 		if hMergeAbove && hMergeBelow {
-			junctionChar = sym.Row()
-		} else if hMergeAbove && !hMergeBelow {
-			junctionChar = sym.BottomMid()
-		} else if !hMergeAbove && hMergeBelow {
-			junctionChar = sym.TopMid()
-		} else {
-			if isVerticallyMergedLeft && isVerticallyMergedRight {
-				junctionChar = sym.Column()
-			} else if isVerticallyMergedLeft && !isVerticallyMergedRight {
-				junctionChar = sym.MidRight()
-			} else if !isVerticallyMergedLeft && isVerticallyMergedRight {
-				junctionChar = sym.MidLeft()
-			} else {
-				junctionChar = sym.Center()
-			}
+			return sym.Row() // Continuous line if merged above and below
+		} else if hMergeAbove {
+			return sym.BottomMid() // Merge above ends here
+		} else if hMergeBelow {
+			return sym.TopMid() // Merge below starts here
+		} else if vMergeLeftAbove && vMergeLeftBelow && vMergeRightAbove && vMergeRightBelow {
+			return sym.Column()
+		} else if vMergeLeftAbove && vMergeLeftBelow {
+			return sym.MidRight()
+		} else if vMergeRightAbove && vMergeRightBelow {
+			return sym.MidLeft()
 		}
-	} else {
-		f.debug("getJunctionSymbol (Top/Bottom, Before col %d): hA:%t hB:%t", colIndex, hMergeAbove, hMergeBelow)
-		if ctx.Level == tw.Top && hMergeBelow {
-			junctionChar = sym.TopMid()
-		} else if ctx.Level == tw.Bottom && hMergeAbove {
-			junctionChar = sym.BottomMid()
-		} else {
-			defaultMap := map[tw.Level]string{tw.Top: sym.TopMid(), tw.Bottom: sym.BottomMid()}
-			junctionChar = defaultMap[ctx.Level]
+		if hasContentBelow || ctx.HasFooter {
+			return sym.Center()
 		}
+		return sym.BottomMid()
+	case tw.LevelFooter:
+		if hMergeAbove {
+			return sym.Row()
+		}
+		return sym.BottomMid()
 	}
-
-	if junctionChar == "" {
-		f.debug("Junction Warning: Character not assigned, using fallback")
-		fallbackMap := map[tw.Level]string{tw.Top: sym.TopMid(), tw.Middle: sym.Center(), tw.Bottom: sym.BottomMid()}
-		junctionChar = fallbackMap[ctx.Level]
-	}
-	f.debug("Selected Junction Char: '%s'", junctionChar)
-	return junctionChar
+	return sym.Center() // Fallback
 }
 
-// Private: Gets segment symbol for horizontal lines
+// getSegmentSymbol gets segment symbol for horizontal lines within a column.
 func (f *Default) getSegmentSymbol(colIndex int, ctx Formatting, sym tw.Symbols) string {
-	segmentChar := sym.Row()
-	if ctx.Level == tw.Middle {
-		vMergeBelow := ctx.NextRowContinuesMerge.Get(colIndex)
-		if vMergeBelow {
-			segmentChar = tw.Space
-			f.debug("getSegmentSymbol (Col %d): Using space due to VMerge below", colIndex)
-		} else {
-			f.debug("getSegmentSymbol (Col %d): Using row char '%s'", colIndex, segmentChar)
+	segment := sym.Row()
+	if ctx.Level == tw.LevelBody {
+		mergeAbove := getCellMergeState(ctx.Row.Current, colIndex).Vertical
+		mergeBelow := getCellMergeState(ctx.Row.Next, colIndex).Vertical
+		if mergeAbove && mergeBelow {
+			segment = ""
 		}
 	}
-	return segmentChar
+	return segment
 }
 
-// Private: Builds a solid line without separators
-func (f *Default) buildSolidLine(line *strings.Builder, widths []int, sym tw.Symbols) {
-	totalWidth := 0
-	for _, w := range widths {
-		if w > 0 {
-			totalWidth += w
+// getRightBorderSymbol gets the right border symbol based on line level and merge state below.
+func (f *Default) getRightBorderSymbol(ctx Formatting, sym tw.Symbols, lastColIndex int) string {
+	if lastColIndex < 0 {
+		switch ctx.Level {
+		case tw.LevelHeader:
+			return sym.TopRight()
+		case tw.LevelFooter:
+			return sym.BottomRight()
+		case tw.LevelBody:
+			return sym.MidRight()
+		default:
+			return sym.MidRight()
 		}
 	}
-	if totalWidth > 0 {
-		line.WriteString(strings.Repeat(sym.Row(), totalWidth))
-	}
-	f.debug("buildSolidLine: totalWidth=%d", totalWidth)
-}
 
-// Private: Gets the right border symbol
-func (f *Default) getRightBorderSymbol(ctx Formatting, sym tw.Symbols, numCols int) string {
-	defaultMap := map[tw.Level]string{tw.Top: sym.TopRight(), tw.Middle: sym.MidRight(), tw.Bottom: sym.BottomRight()}
-	symbol := defaultMap[ctx.Level]
+	mergeBelow := getCellMergeState(ctx.Row.Next, lastColIndex).Vertical
+	mergeAbove := getCellMergeState(ctx.Row.Current, lastColIndex).Vertical
 
-	lastColIndex := numCols - 1
-	if lastColIndex >= 0 && ctx.Level == tw.Middle {
-		vMergeAboveLastCol := ctx.MergedCols.Get(lastColIndex)
-		vMergeBelowLastCol := ctx.NextRowContinuesMerge.Get(lastColIndex)
-		if vMergeAboveLastCol || vMergeBelowLastCol {
-			symbol = sym.Column()
-			f.debug("Right Border Symbol: Last Col V-Merge Active -> '%s'", symbol)
-		} else {
-			f.debug("Right Border Symbol: Last Col No V-Merge -> Default '%s'", symbol)
+	switch ctx.Level {
+	case tw.LevelHeader:
+		return sym.TopRight()
+	case tw.LevelFooter:
+		if mergeAbove {
+			return sym.Column()
 		}
+		return sym.BottomRight()
+	case tw.LevelBody:
+		if mergeAbove && mergeBelow {
+			return sym.Column()
+		}
+		return sym.MidRight()
 	}
-	return symbol
+	f.debug("getRightBorderSymbol: Unknown level %d", ctx.Level)
+	return sym.MidRight()
 }
 
-// Private: Formats a single cell
+// getCellMergeState safely retrieves merge state from a row context map.
+func getCellMergeState(rowCtx map[int]CellContext, colIndex int) MergeState {
+	if rowCtx == nil || colIndex < 0 {
+		return MergeState{}
+	}
+	if cellCtx, ok := rowCtx[colIndex]; ok {
+		return cellCtx.Merge
+	}
+	return MergeState{}
+}
+
+// formatCell formats a single cell's content to fit the given width, applying padding and alignment.
 func (f *Default) formatCell(content string, width int, padding tw.Padding, align tw.Align) string {
-	f.debug("Formatting cell: content='%s', width=%d, align=%s", content, width, align)
-	content = strings.TrimSpace(content)
+	if width < 0 {
+		f.debug("formatCell Warning: Received negative width %d, using 0.", width)
+		width = 0
+	}
+
+	f.debug("Formatting cell: content='%s', width=%d, align=%s, padding={L:'%s' R:'%s'}", content, width, align, padding.Left, padding.Right)
+	if f.config.Settings.TrimWhitespace.Enabled() {
+		content = strings.TrimSpace(content)
+		f.debug("Trimmed content: '%s'", content)
+	}
+
 	runeWidth := twfn.DisplayWidth(content)
 	padLeftWidth := twfn.DisplayWidth(padding.Left)
 	padRightWidth := twfn.DisplayWidth(padding.Right)
-	totalPadding := padLeftWidth + padRightWidth
-	f.debug("Calculated widths: content=%d, padding=%d+%d", runeWidth, padLeftWidth, padRightWidth)
+	totalPaddingWidth := padLeftWidth + padRightWidth
 
-	availableWidth := width - totalPadding
-	if availableWidth < 0 {
-		availableWidth = 0
+	availableContentWidth := width - totalPaddingWidth
+	if availableContentWidth < 0 {
+		availableContentWidth = 0
 	}
+	f.debug("Available content width: %d", availableContentWidth)
 
-	if runeWidth > availableWidth && availableWidth > 0 {
-		content = twfn.TruncateString(content, availableWidth)
+	if runeWidth > availableContentWidth {
+		content = twfn.TruncateString(content, availableContentWidth)
 		runeWidth = twfn.DisplayWidth(content)
-		f.debug("Truncated content to width %d: %s", availableWidth, content)
+		f.debug("Truncated content to fit %d: '%s' (new width %d)", availableContentWidth, content, runeWidth)
 	}
 
-	var builder strings.Builder
-	remaining := width - runeWidth - totalPadding
-	f.debug("Remaining space: %d", remaining)
+	remainingSpace := width - runeWidth - totalPaddingWidth
+	if remainingSpace < 0 {
+		remainingSpace = 0
+	}
+	f.debug("Remaining space for alignment padding: %d", remainingSpace)
 
+	leftPad := padding.Left
+	rightPad := padding.Right
+	if leftPad == "" {
+		leftPad = tw.Space
+	}
+	if rightPad == "" {
+		rightPad = tw.Space
+	}
+
+	var result strings.Builder
 	switch align {
 	case tw.AlignLeft:
-		builder.WriteString(padding.Left)
-		builder.WriteString(content)
-		if remaining > 0 {
-			builder.WriteString(strings.Repeat(padding.Right, remaining))
+		result.WriteString(leftPad)
+		result.WriteString(content)
+		repeatCount := (width - runeWidth - padLeftWidth) / twfn.DisplayWidth(rightPad)
+		if repeatCount > 0 {
+			result.WriteString(strings.Repeat(rightPad, repeatCount))
 		}
-		builder.WriteString(padding.Right)
-		f.debug("Left aligned cell")
 	case tw.AlignRight:
-		if remaining > 0 {
-			builder.WriteString(strings.Repeat(padding.Left, remaining))
+		repeatCount := (width - runeWidth - padRightWidth) / twfn.DisplayWidth(leftPad)
+		if repeatCount > 0 {
+			result.WriteString(strings.Repeat(leftPad, repeatCount))
 		}
-		builder.WriteString(padding.Left)
-		builder.WriteString(content)
-		builder.WriteString(padding.Right)
-		f.debug("Right aligned cell")
+		result.WriteString(content)
+		result.WriteString(rightPad)
 	case tw.AlignCenter:
-		leftPad := remaining / 2
-		rightPad := remaining - leftPad
-		if leftPad > 0 {
-			builder.WriteString(strings.Repeat(padding.Left, leftPad))
+		extraSpace := remainingSpace
+		leftExtra := extraSpace / 2
+		rightExtra := extraSpace - leftExtra
+		leftRepeat := (padLeftWidth + leftExtra) / twfn.DisplayWidth(leftPad)
+		if leftRepeat < 1 {
+			leftRepeat = 1
 		}
-		builder.WriteString(padding.Left)
-		builder.WriteString(content)
-		builder.WriteString(padding.Right)
-		if rightPad > 0 {
-			builder.WriteString(strings.Repeat(padding.Right, rightPad))
+		rightRepeat := (padRightWidth + rightExtra) / twfn.DisplayWidth(rightPad)
+		if rightRepeat < 1 {
+			rightRepeat = 1
 		}
-		f.debug("Center aligned cell: leftPad=%d, rightPad=%d", leftPad, rightPad)
+		result.WriteString(strings.Repeat(leftPad, leftRepeat))
+		result.WriteString(content)
+		result.WriteString(strings.Repeat(rightPad, rightRepeat))
 	default:
-		builder.WriteString(padding.Left)
-		builder.WriteString(content)
-		if remaining > 0 {
-			builder.WriteString(strings.Repeat(padding.Left, remaining))
+		result.WriteString(leftPad)
+		result.WriteString(content)
+		repeatCount := (width - runeWidth - padLeftWidth) / twfn.DisplayWidth(rightPad)
+		if repeatCount > 0 {
+			result.WriteString(strings.Repeat(rightPad, repeatCount))
 		}
-		builder.WriteString(padding.Right)
-		f.debug("Default (left) aligned cell")
 	}
-	result := builder.String()
-	f.debug("Formatted cell result: %s", result)
-	return result
+
+	finalWidth := twfn.DisplayWidth(result.String())
+	if finalWidth < width {
+		switch align {
+		case tw.AlignLeft:
+			result.WriteString(strings.Repeat(rightPad, (width-finalWidth)/twfn.DisplayWidth(rightPad)))
+		case tw.AlignRight:
+			pad := strings.Repeat(leftPad, (width-finalWidth)/twfn.DisplayWidth(leftPad))
+			result = strings.Builder{}
+			result.WriteString(pad)
+			result.WriteString(result.String())
+		case tw.AlignCenter:
+			extra := width - finalWidth
+			leftExtra := extra / 2
+			result.WriteString(strings.Repeat(rightPad, (extra-leftExtra)/twfn.DisplayWidth(rightPad)))
+			pad := strings.Repeat(leftPad, leftExtra/twfn.DisplayWidth(leftPad))
+			temp := result.String()
+			result = strings.Builder{}
+			result.WriteString(pad)
+			result.WriteString(temp)
+		}
+	}
+
+	output := result.String()
+	if f.config.Debug && twfn.DisplayWidth(output) != width && width > 0 {
+		f.debug("formatCell Warning: Final width %d does not match target %d for result '%s'", twfn.DisplayWidth(output), width, output)
+	}
+
+	f.debug("Formatted cell final result: '%s' (target width %d)", output, width)
+	return output
 }
 
-// Private: Returns default configuration
+// [Remaining functions remain unchanged: defaultConfig, NewDefault, mergeSettings]
+
+// defaultConfig returns default configuration
 func defaultConfig() DefaultConfig {
 	return DefaultConfig{
 		Borders: Border{
@@ -566,7 +642,7 @@ func defaultConfig() DefaultConfig {
 	}
 }
 
-// NewDefault creates a new Default renderer instance
+// NewDefault creates a new Default renderer instance, merging provided config with defaults.
 func NewDefault(configs ...DefaultConfig) *Default {
 	cfg := defaultConfig()
 	if len(configs) > 0 {
@@ -587,11 +663,12 @@ func NewDefault(configs ...DefaultConfig) *Default {
 			cfg.Symbols = userCfg.Symbols
 		}
 		cfg.Settings = mergeSettings(cfg.Settings, userCfg.Settings)
+		cfg.Debug = userCfg.Debug
 	}
 	return &Default{config: cfg}
 }
 
-// Private: Merges user settings with defaults
+// mergeSettings merges user settings with defaults for the Settings struct.
 func mergeSettings(defaults, overrides Settings) Settings {
 	if overrides.Separators.ShowHeader != 0 {
 		defaults.Separators.ShowHeader = overrides.Separators.ShowHeader
@@ -624,9 +701,4 @@ func mergeSettings(defaults, overrides Settings) Settings {
 		defaults.CompactMode = overrides.CompactMode
 	}
 	return defaults
-}
-
-// Config returns the current configuration
-func (f *Default) Config() DefaultConfig {
-	return f.config
 }
