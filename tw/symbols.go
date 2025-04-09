@@ -175,11 +175,11 @@ func NewSymbols(style BorderStyle) Symbols {
 		return &SymbolMerger{
 			row:    "─", // Light row
 			column: "│", // Light column
-			center: ".", // Simplified junction
+			center: "+", // Simplified junction
 			corners: [9]string{
-				"┌", ".", "┐", // LevelHeader row
-				".", "", ".", // LevelBody row (simplified junctions)
-				"└", ".", "┘", // LevelFooter row
+				"┌", "┬", "┐",
+				"├", "┼", "┤",
+				"└", "┴", "┘",
 			},
 		}
 	default:

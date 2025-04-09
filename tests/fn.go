@@ -168,6 +168,7 @@ func visualCheck(t *testing.T, name string, output string, expected string) bool
 
 	// Compare line counts
 	if len(outputLines) != len(expectedLines) {
+
 		t.Errorf("%s: line count mismatch - expected %d, got %d", name, len(expectedLines), len(outputLines))
 		t.Errorf("Expected:\n%s\n", strings.Join(expectedLines, "\n"))
 		t.Errorf("Got:\n%s\n", strings.Join(outputLines, "\n"))
