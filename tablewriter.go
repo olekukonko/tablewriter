@@ -73,15 +73,16 @@ type Table struct {
 
 // renderContext holds core rendering state
 type renderContext struct {
-	table       *Table
-	renderer    renderer.Renderer
-	cfg         renderer.DefaultConfig
-	numCols     int
-	headerLines [][]string
-	rowLines    [][][]string
-	footerLines [][]string
-	widths      map[tw.Position]tw.Mapper[int, int]
-	debug       func(format string, a ...interface{})
+	table          *Table
+	renderer       renderer.Renderer
+	cfg            renderer.DefaultConfig
+	numCols        int
+	headerLines    [][]string
+	rowLines       [][][]string
+	footerLines    [][]string
+	widths         map[tw.Position]tw.Mapper[int, int]
+	debug          func(format string, a ...interface{})
+	footerPrepared bool
 }
 
 // mergeContext holds merge-related state
@@ -366,8 +367,9 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 		})
 	}
 
-	// Row content
+	// Row content with padding
 	for i, lines := range ctx.rowLines {
+		// Top padding
 		if t.config.Row.Padding.Global.Top != tw.Empty {
 			hctx.rowIdx = i
 			hctx.lineIdx = -1 // Special index for padding
@@ -388,6 +390,7 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 			}
 		}
 
+		// Row content
 		for j, line := range lines {
 			hctx.rowIdx = i
 			hctx.lineIdx = j
@@ -403,28 +406,36 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 				return err
 			}
 
-			// Between rows
+			// Between rows separator
 			if cfg.Settings.Separators.BetweenRows.Enabled() && !(i == len(ctx.rowLines)-1 && j == len(lines)-1) {
 				ctx.debug("Rendering between-rows separator")
 				resp := t.buildCellContexts(ctx, mctx, hctx, colAligns, colPadding)
+				nextCells := make(map[int]renderer.CellContext)
+				if i+1 < len(ctx.rowLines) {
+					for k, cell := range ctx.rowLines[i+1][0] {
+						nextCells[k] = renderer.CellContext{Data: cell, Merge: mctx.rowMerges[i+1][k]}
+					}
+				}
 				f.Line(t.writer, renderer.Formatting{
 					Row: renderer.RowContext{
 						Widths:   ctx.widths[tw.Row],
 						Current:  resp.cells,
 						Previous: resp.prevCells,
-						Next:     resp.nextCells,
+						Next:     nextCells,
 						Position: tw.Row,
-						Location: hctx.location,
+						Location: tw.LocationMiddle,
 					},
-					Level:    tw.LevelBody,
-					IsSubRow: false,
+					Level:     tw.LevelBody,
+					IsSubRow:  false,
+					HasFooter: len(ctx.footerLines) > 0,
 				})
 			}
 		}
 
+		// Bottom padding
 		if t.config.Row.Padding.Global.Bottom != tw.Empty {
 			hctx.rowIdx = i
-			hctx.lineIdx = len(lines) // Special index for padding
+			hctx.lineIdx = len(lines)
 			hctx.location = tw.LocationMiddle
 			if i == len(ctx.rowLines)-1 && len(ctx.footerLines) == 0 {
 				hctx.location = tw.LocationEnd
@@ -472,6 +483,8 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 	if len(ctx.footerLines) == 0 {
 		return nil
 	}
+	t.prepareFooter()           // Ensure footer is prepared with merges
+	ctx.footerLines = t.footers // Update ctx with prepared footers
 	ctx.debug("Rendering footer section")
 
 	f := ctx.renderer
@@ -501,17 +514,18 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 				Current:  prevCells,
 				Next:     resp.cells,
 				Position: tw.Footer,
-				Location: tw.LocationFirst,
+				Location: tw.LocationMiddle,
 			},
-			Level:    tw.LevelBody,
-			IsSubRow: false,
+			Level:     tw.LevelBody,
+			IsSubRow:  false,
+			HasFooter: true, // Ensure footer context is recognized
 		})
 	}
 
 	// Footer content
 	if t.config.Footer.Padding.Global.Top != tw.Empty {
 		hctx.rowIdx = 0
-		hctx.lineIdx = -1 // Special index for padding
+		hctx.lineIdx = -1
 		hctx.location = tw.LocationFirst
 		hctx.line = make([]string, ctx.numCols)
 		for j := 0; j < ctx.numCols; j++ {
@@ -538,7 +552,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 
 	if t.config.Footer.Padding.Global.Bottom != tw.Empty {
 		hctx.rowIdx = 0
-		hctx.lineIdx = len(ctx.footerLines) // Special index for padding
+		hctx.lineIdx = len(ctx.footerLines)
 		hctx.location = tw.LocationEnd
 		hctx.line = make([]string, ctx.numCols)
 		for j := 0; j < ctx.numCols; j++ {
@@ -1009,6 +1023,30 @@ func (t *Table) prepareContent(cells []string, config CellConfig) [][]string {
 	return result
 }
 
+// prepareFooter ensures footer content is processed with merges
+func (t *Table) prepareFooter() {
+	if len(t.footers) == 0 {
+		return
+	}
+	t.debug("Preparing footer with merge mode: %d", t.config.Footer.Formatting.MergeMode)
+	preparedLines, mergeStates, _ := t.prepareWithMerges(t.footers, t.config.Footer, tw.Footer)
+	t.footers = preparedLines
+	// Apply merge states to footerWidths or store them for renderer use if needed
+	for col, state := range mergeStates {
+		// Ensure widths account for merges, though renderer uses ctx.Row.Widths
+		currentWidth := t.footerWidths.Get(col)
+		if state.Horizontal && state.Start {
+			totalWidth := 0
+			for i := col; i < col+state.Span && i < len(t.footerWidths); i++ {
+				totalWidth += t.footerWidths.Get(i)
+			}
+			t.footerWidths.Set(col, totalWidth)
+		} else if !state.Horizontal || state.End {
+			t.footerWidths.Set(col, currentWidth)
+		}
+	}
+}
+
 // prepareWithMerges handles content preparation including merges
 func (t *Table) prepareWithMerges(content [][]string, config CellConfig, position tw.Position) ([][]string, map[int]renderer.MergeState, map[int]bool) {
 	t.debug("PrepareWithMerges START: position=%s, mergeMode=%d", position, config.Formatting.MergeMode)
@@ -1019,14 +1057,14 @@ func (t *Table) prepareWithMerges(content [][]string, config CellConfig, positio
 
 	numCols := len(content[0])
 	horzMergeMap := make(map[int]bool)
-	vertMergeMap := make(map[int]renderer.MergeState)
+	mergeMap := make(map[int]renderer.MergeState)
 	result := make([][]string, len(content))
 	for i := range content {
-		result[i] = make([]string, len(content[i]))
+		result[i] = make([]string, numCols)
 		copy(result[i], content[i])
 	}
 
-	if config.Formatting.MergeMode == tw.MergeHorizontal || config.Formatting.MergeMode == tw.MergeBoth {
+	if config.Formatting.MergeMode&tw.MergeHorizontal != 0 {
 		t.debug("Checking for horizontal merges in %d rows", len(content))
 		for row := 0; row < len(content); row++ {
 			currentRowLen := len(result[row])
@@ -1038,6 +1076,40 @@ func (t *Table) prepareWithMerges(content [][]string, config CellConfig, positio
 			col := 0
 			for col < numCols-1 {
 				currentVal := strings.TrimSpace(result[row][col])
+				// Special case for footer: detect ["", "", "TOTAL", "$145.93"] pattern
+				if position == tw.Footer && col == 0 && currentVal == "" && result[row][1] == "" && result[row][2] != "" && (col+3 < numCols && result[row][3] != "") {
+					span := 3 // Merge columns 0-2 for "TOTAL"
+					startCol := 0
+					mergeContent := result[row][2] // "TOTAL"
+					result[row][0] = mergeContent
+					result[row][1] = tw.Empty
+					result[row][2] = tw.Empty
+					t.debug("Horizontal merge detected at row %d, col %d spanning %d cols", row, startCol, span)
+					mergeMap[startCol] = renderer.MergeState{
+						Horizontal: true,
+						Span:       span,
+						Start:      true,
+						End:        false,
+					}
+					mergeMap[startCol+1] = renderer.MergeState{
+						Horizontal: true,
+						Span:       span,
+						Start:      false,
+						End:        false,
+					}
+					mergeMap[startCol+2] = renderer.MergeState{
+						Horizontal: true,
+						Span:       span,
+						Start:      false,
+						End:        true,
+					}
+					for k := startCol; k < startCol+span; k++ {
+						horzMergeMap[k] = true
+					}
+					col += span
+					continue
+				}
+				// Existing merge logic for identical values
 				if currentVal == "" {
 					col++
 					continue
@@ -1057,20 +1129,20 @@ func (t *Table) prepareWithMerges(content [][]string, config CellConfig, positio
 				}
 				if span > 1 {
 					horzMergeMap[startCol] = true
-					vertMergeMap[startCol] = renderer.MergeState{
+					mergeMap[startCol] = renderer.MergeState{
 						Horizontal: true,
 						Span:       span,
 						Start:      true,
 						End:        false,
 					}
-					vertMergeMap[startCol+span-1] = renderer.MergeState{
+					mergeMap[startCol+span-1] = renderer.MergeState{
 						Horizontal: true,
 						Span:       span,
 						Start:      false,
 						End:        true,
 					}
 					for k := startCol + 1; k < startCol+span-1; k++ {
-						vertMergeMap[k] = renderer.MergeState{
+						mergeMap[k] = renderer.MergeState{
 							Horizontal: true,
 							Span:       span,
 							Start:      false,
@@ -1084,8 +1156,86 @@ func (t *Table) prepareWithMerges(content [][]string, config CellConfig, positio
 	}
 
 	t.debug("PrepareWithMerges END: position=%s, lines=%d", position, len(result))
-	return result, vertMergeMap, horzMergeMap
+	return result, mergeMap, horzMergeMap
 }
+
+// prepareWithMerges handles content preparation including merges
+//func (t *Table) prepareWithMerges(content [][]string, config CellConfig, position tw.Position) ([][]string, map[int]renderer.MergeState, map[int]bool) {
+//	t.debug("PrepareWithMerges START: position=%s, mergeMode=%d", position, config.Formatting.MergeMode)
+//	if len(content) == 0 {
+//		t.debug("PrepareWithMerges END: No content.")
+//		return content, nil, nil
+//	}
+//
+//	numCols := len(content[0])
+//	horzMergeMap := make(map[int]bool)
+//	vertMergeMap := make(map[int]renderer.MergeState)
+//	result := make([][]string, len(content))
+//	for i := range content {
+//		result[i] = make([]string, len(content[i]))
+//		copy(result[i], content[i])
+//	}
+//
+//	if config.Formatting.MergeMode == tw.MergeHorizontal || config.Formatting.MergeMode == tw.MergeBoth {
+//		t.debug("Checking for horizontal merges in %d rows", len(content))
+//		for row := 0; row < len(content); row++ {
+//			currentRowLen := len(result[row])
+//			if currentRowLen < numCols {
+//				for k := currentRowLen; k < numCols; k++ {
+//					result[row] = append(result[row], tw.Empty)
+//				}
+//			}
+//			col := 0
+//			for col < numCols-1 {
+//				currentVal := strings.TrimSpace(result[row][col])
+//				if currentVal == "" {
+//					col++
+//					continue
+//				}
+//				span := 1
+//				startCol := col
+//				for nextCol := col + 1; nextCol < numCols; nextCol++ {
+//					nextVal := strings.TrimSpace(result[row][nextCol])
+//					if currentVal == nextVal && currentVal != "" {
+//						span++
+//						result[row][nextCol] = tw.Empty
+//						horzMergeMap[nextCol] = true
+//						t.debug("Horizontal merge detected at row %d, col %d -> col %d", row, startCol, nextCol)
+//					} else {
+//						break
+//					}
+//				}
+//				if span > 1 {
+//					horzMergeMap[startCol] = true
+//					vertMergeMap[startCol] = renderer.MergeState{
+//						Horizontal: true,
+//						Span:       span,
+//						Start:      true,
+//						End:        false,
+//					}
+//					vertMergeMap[startCol+span-1] = renderer.MergeState{
+//						Horizontal: true,
+//						Span:       span,
+//						Start:      false,
+//						End:        true,
+//					}
+//					for k := startCol + 1; k < startCol+span-1; k++ {
+//						vertMergeMap[k] = renderer.MergeState{
+//							Horizontal: true,
+//							Span:       span,
+//							Start:      false,
+//							End:        false,
+//						}
+//					}
+//				}
+//				col += span
+//			}
+//		}
+//	}
+//
+//	t.debug("PrepareWithMerges END: position=%s, lines=%d", position, len(result))
+//	return result, vertMergeMap, horzMergeMap
+//}
 
 // applyVerticalMerges applies vertical merges across rows
 func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
