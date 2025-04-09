@@ -8,305 +8,117 @@ import (
 	"strings"
 )
 
+// JunctionRenderer handles junction rendering with row context
 type JunctionRenderer struct {
-	symbols   tw.Symbols
+	sym       tw.Symbols
 	ctx       Formatting
 	colIdx    int
 	debugging bool
-	debug     func(format string, a ...interface{}) // Debug callback
+	debug     func(format string, a ...interface{})
 }
 
-// NewJunctionRenderer creates a new JunctionRenderer with a debug callback
+// NewJunctionRenderer creates a new JunctionRenderer instance
 func NewJunctionRenderer(symbols tw.Symbols, ctx Formatting, colIdx int, debug func(format string, a ...interface{})) *JunctionRenderer {
 	return &JunctionRenderer{
-		symbols:   symbols,
+		sym:       symbols,
 		ctx:       ctx,
 		colIdx:    colIdx,
-		debug:     debug,
 		debugging: true,
+		debug:     debug,
 	}
 }
 
+// log logs debug messages if debugging is enabled
 func (jr *JunctionRenderer) log(format string, a ...interface{}) {
 	if jr.debugging {
 		jr.debug("[JUNCTION] "+format, a...)
 	}
 }
 
-func (jr *JunctionRenderer) DetermineJunction(nextColIdx int) string {
-	current := jr.getMergeState(0, 0)
-	next := jr.getMergeState(0, nextColIdx-jr.colIdx)
-	prev := jr.getMergeState(0, -1)
-	above := jr.getMergeState(-1, 0)
-	below := jr.getMergeState(1, 0)
-
-	jr.log("DetermineJunction: colIdx=%d, nextColIdx=%d, current=%v (span=%d), next=%v, prev=%v, above=%v, below=%v",
-		jr.colIdx, nextColIdx, current, current.Span, next, prev, above, below)
-
-	// Handle horizontal merges
-	if current.Horizontal {
-		if current.Start && nextColIdx <= jr.colIdx+current.Span {
-			jr.log("Horizontal merge start at col %d, span %d, returning Row", jr.colIdx, current.Span)
-			return jr.symbols.Row()
+// RenderLeft returns the left border symbol based on level and location
+func (jr *JunctionRenderer) RenderLeft() string {
+	jr.log("Rendering left border: level=%d, location=%v", jr.ctx.Level, jr.ctx.Row.Location)
+	switch jr.ctx.Level {
+	case tw.LevelHeader:
+		if jr.ctx.Row.Location == tw.LocationFirst {
+			return jr.sym.TopLeft() // ┌
 		}
-		if current.End && jr.colIdx == nextColIdx-1 {
-			jr.log("Horizontal merge end at col %d, returning MidRight", jr.colIdx)
-			return jr.symbols.MidRight()
+		return jr.sym.MidLeft() // ├
+	case tw.LevelBody:
+		if jr.ctx.Row.Location == tw.LocationFirst {
+			return jr.sym.MidLeft() // ├
 		}
-		if !current.Start && !current.End && nextColIdx <= jr.colIdx+current.Span {
-			jr.log("Horizontal merge middle at col %d, returning Row", jr.colIdx)
-			return jr.symbols.Row()
+		if jr.ctx.Row.Location == tw.LocationEnd {
+			return jr.sym.BottomLeft() // └
 		}
-	}
-
-	hasLeft := prev.Horizontal || jr.getMergeState(0, -1).Horizontal
-	hasRight := next.Horizontal || jr.getMergeState(0, nextColIdx-jr.colIdx).Horizontal
-	hasAbove := above.Vertical || (current.Vertical && current.Start)
-	hasBelow := below.Vertical || (current.Vertical && !current.Start)
-
-	jr.log("Flags: hasLeft=%v, hasRight=%v, hasAbove=%v, hasBelow=%v", hasLeft, hasRight, hasAbove, hasBelow)
-
-	// Handle transitions for horizontal merges in adjacent rows
-	if !current.Horizontal && next.Horizontal && next.Start {
-		jr.log("Next row has horizontal merge start at col %d, returning BottomMid", nextColIdx)
-		return jr.symbols.BottomMid()
-	}
-	if !current.Horizontal && prev.Horizontal && prev.End {
-		jr.log("Previous row has horizontal merge end at col %d, returning TopMid", jr.colIdx-1)
-		return jr.symbols.TopMid()
-	}
-
-	switch {
-	case jr.ctx.Level == tw.LevelHeader && jr.ctx.Row.Location == tw.LocationFirst:
-		jr.log("Header first row, rendering top border junction")
-		return jr.renderTopBorderJunction(hasRight, hasLeft)
-	case jr.ctx.Level == tw.LevelFooter && jr.ctx.Row.Location == tw.LocationEnd:
-		jr.log("Footer last row, rendering bottom border junction")
-		return jr.renderBottomBorderJunction(hasRight, hasLeft)
-	case jr.ctx.Row.Location == tw.LocationFirst && jr.ctx.Level == tw.LevelBody:
-		jr.log("Body first row, rendering header separator junction")
-		return jr.renderHeaderSeparatorJunction(hasAbove, hasBelow, hasRight, hasLeft)
-	case jr.ctx.Row.Location == tw.LocationEnd && jr.ctx.Level == tw.LevelBody:
-		jr.log("Body last row, rendering bottom separator junction")
-		return jr.renderBottomSeparatorJunction(hasAbove, hasRight, hasLeft)
-	default:
-		jr.log("Default case, rendering standard junction")
-		return jr.renderStandardJunction(hasAbove, hasBelow, hasRight, hasLeft)
-	}
-}
-
-func (jr *JunctionRenderer) getMergeState(rowOffset, colOffset int) MergeState {
-	targetCol := jr.colIdx + colOffset
-	if targetCol < 0 || targetCol >= len(jr.ctx.Row.Widths) {
-		jr.log("getMergeState: targetCol %d out of bounds, returning empty MergeState", targetCol)
-		return MergeState{}
-	}
-
-	var cellCtx CellContext
-	var ok bool
-	if rowOffset < 0 {
-		if jr.ctx.Row.Previous != nil && targetCol < len(jr.ctx.Row.Previous) {
-			cellCtx, ok = jr.ctx.Row.Previous[targetCol]
+		return jr.sym.MidLeft() // ├
+	case tw.LevelFooter:
+		if jr.ctx.Row.Location == tw.LocationEnd {
+			return jr.sym.BottomLeft() // └
 		}
-	} else if rowOffset > 0 {
-		if jr.ctx.Row.Next != nil && targetCol < len(jr.ctx.Row.Next) {
-			cellCtx, ok = jr.ctx.Row.Next[targetCol]
+		return jr.sym.MidLeft() // ├
+	}
+	return jr.sym.MidLeft() // Default: ├
+}
+
+// RenderRight returns the right border symbol based on level and location
+func (jr *JunctionRenderer) RenderRight(lastColIdx int) string {
+	jr.log("Rendering right border: level=%d, location=%v, lastColIdx=%d", jr.ctx.Level, jr.ctx.Row.Location, lastColIdx)
+	switch jr.ctx.Level {
+	case tw.LevelHeader:
+		if jr.ctx.Row.Location == tw.LocationFirst {
+			return jr.sym.TopRight() // ┐
 		}
-	} else {
-		if targetCol < len(jr.ctx.Row.Current) {
-			cellCtx, ok = jr.ctx.Row.Current[targetCol]
+		return jr.sym.MidRight() // ┤
+	case tw.LevelBody:
+		if jr.ctx.Row.Location == tw.LocationEnd {
+			return jr.sym.BottomRight() // ┘
 		}
-	}
-
-	if ok {
-		jr.log("getMergeState: rowOffset=%d, colOffset=%d, found merge state %v", rowOffset, colOffset, cellCtx.Merge)
-		return cellCtx.Merge
-	}
-	jr.log("getMergeState: rowOffset=%d, colOffset=%d, no cell found, returning empty MergeState", rowOffset, colOffset)
-	return MergeState{}
-}
-
-func (jr *JunctionRenderer) renderTopBorderJunction(right, left bool) string {
-	switch {
-	case right && left:
-		return jr.symbols.TopMid()
-	case right:
-		return jr.symbols.TopLeft()
-	case left:
-		return jr.symbols.TopRight()
-	default:
-		return jr.symbols.TopMid()
-	}
-}
-
-func (jr *JunctionRenderer) renderBottomBorderJunction(right, left bool) string {
-	switch {
-	case right && left:
-		return jr.symbols.BottomMid()
-	case right:
-		return jr.symbols.BottomLeft()
-	case left:
-		return jr.symbols.BottomRight()
-	default:
-		return jr.symbols.BottomMid()
-	}
-}
-
-func (jr *JunctionRenderer) renderHeaderSeparatorJunction(above, below, right, left bool) string {
-	switch {
-	case above && below && right && left:
-		return jr.symbols.Center()
-	case above && below && right:
-		return jr.symbols.MidLeft()
-	case above && below && left:
-		return jr.symbols.MidRight()
-	case right && left:
-		return jr.symbols.Center()
-	case below && right:
-		return jr.symbols.MidLeft()
-	case below && left:
-		return jr.symbols.MidRight()
-	default:
-		return jr.symbols.Center()
-	}
-}
-
-func (jr *JunctionRenderer) renderBottomSeparatorJunction(above, right, left bool) string {
-	current := jr.getMergeState(0, 0)
-	if current.Horizontal {
-		if current.Start {
-			return jr.symbols.MidLeft()
+		return jr.sym.MidRight() // ┤
+	case tw.LevelFooter:
+		if jr.ctx.Row.Location == tw.LocationEnd {
+			return jr.sym.BottomRight() // ┘
 		}
-		if current.End {
-			return jr.symbols.MidRight()
+		return jr.sym.MidRight() // ┤
+	}
+	return jr.sym.MidRight() // Default: ┤
+}
+
+// RenderJunction returns the junction symbol between two columns
+func (jr *JunctionRenderer) RenderJunction(nextColIdx int) string {
+	jr.log("Rendering junction: colIdx=%d, nextColIdx=%d, level=%d, location=%v", jr.colIdx, nextColIdx, jr.ctx.Level, jr.ctx.Row.Location)
+	switch jr.ctx.Level {
+	case tw.LevelHeader:
+		if jr.ctx.Row.Location == tw.LocationFirst {
+			return jr.sym.TopMid() // ┬ for top border
 		}
-		return jr.symbols.Row()
+		return jr.sym.Center() // ┼ for header separator
+	case tw.LevelBody:
+		if jr.ctx.Row.Location == tw.LocationFirst {
+			return jr.sym.Center() // ┼ for first row separator
+		}
+		if jr.ctx.Row.Location == tw.LocationEnd {
+			return jr.sym.BottomMid() // ┴ for last row separator
+		}
+		return jr.sym.Center() // ┼ for middle rows
+	case tw.LevelFooter:
+		if jr.ctx.Row.Location == tw.LocationFirst {
+			return jr.sym.Center() // ┼ for footer separator
+		}
+		return jr.sym.BottomMid() // ┴ for bottom border
 	}
-
-	switch {
-	case above && right && left:
-		return jr.symbols.Row()
-	case right && left:
-		return jr.symbols.BottomMid()
-	case above && right:
-		return jr.symbols.MidLeft()
-	case above && left:
-		return jr.symbols.MidRight()
-	default:
-		return jr.symbols.BottomMid()
-	}
+	return jr.sym.Center() // Default: ┼
 }
 
-func (jr *JunctionRenderer) renderStandardJunction(above, below, right, left bool) string {
-	switch {
-	case above && below && right && left:
-		return jr.symbols.Center()
-	case above && below && right:
-		return jr.symbols.MidLeft()
-	case above && below && left:
-		return jr.symbols.MidRight()
-	case above && right && left:
-		return jr.symbols.BottomMid()
-	case below && right && left:
-		return jr.symbols.TopMid()
-	case above && right:
-		return jr.symbols.BottomLeft()
-	case above && left:
-		return jr.symbols.BottomRight()
-	case below && right:
-		return jr.symbols.TopLeft()
-	case below && left:
-		return jr.symbols.TopRight()
-	case above && below:
-		return jr.symbols.Column()
-	case right && left:
-		return jr.symbols.Row()
-	default:
-		return jr.symbols.Center()
-	}
+// GetSegment returns the horizontal segment character
+func (jr *JunctionRenderer) GetSegment() string {
+	jr.log("Getting segment for colIdx=%d", jr.colIdx)
+	return jr.sym.Row() // ─ for basic rendering
 }
 
-func (jr *JunctionRenderer) renderLeftBorder() string {
-	current := jr.getMergeState(0, 0)
-	above := jr.getMergeState(-1, 0)
-	below := jr.getMergeState(1, 0)
-	hasAbove := above.Vertical || (current.Vertical && current.Start)
-	hasBelow := below.Vertical || (current.Vertical && !current.Start)
-
-	jr.log("renderLeftBorder: current=%v, hasAbove=%v, hasBelow=%v, level=%d, location=%v",
-		current, hasAbove, hasBelow, jr.ctx.Level, jr.ctx.Row.Location)
-
-	// Footer last row should always use BottomLeft unless overridden by a full-span horizontal merge
-	if jr.ctx.Level == tw.LevelFooter && jr.ctx.Row.Location == tw.LocationEnd {
-		jr.log("Left border: footer last, returning BottomLeft")
-		return jr.symbols.BottomLeft()
-	}
-
-	// Vertical merge continuation should use MidLeft
-	if current.Vertical && !current.Start {
-		jr.log("Left border: vertical merge continuation, returning MidLeft")
-		return jr.symbols.MidLeft() // Use ├ for continuation to maintain structure
-	}
-
-	switch {
-	case jr.ctx.Level == tw.LevelHeader && jr.ctx.Row.Location == tw.LocationFirst:
-		jr.log("Left border: header first, returning TopLeft")
-		return jr.symbols.TopLeft()
-	case jr.ctx.Row.Location == tw.LocationFirst && jr.ctx.Level == tw.LevelBody:
-		jr.log("Left border: body first, returning MidLeft")
-		return jr.symbols.MidLeft()
-	case hasAbove && hasBelow:
-		jr.log("Left border: hasAbove && hasBelow, returning Column")
-		return jr.symbols.Column()
-	default:
-		jr.log("Left border: default, returning MidLeft")
-		return jr.symbols.MidLeft()
-	}
-}
-
-func (jr *JunctionRenderer) renderRightBorder() string {
-	current := jr.getMergeState(0, 0)
-	above := jr.getMergeState(-1, 0)
-	below := jr.getMergeState(1, 0)
-	hasAbove := above.Vertical || (current.Vertical && current.Start)
-	hasBelow := below.Vertical || (current.Vertical && !current.Start)
-
-	jr.log("renderRightBorder: current=%v, hasAbove=%v, hasBelow=%v, level=%d, location=%v",
-		current, hasAbove, hasBelow, jr.ctx.Level, jr.ctx.Row.Location)
-
-	if current.Horizontal && current.End && current.Span == len(jr.ctx.Row.Widths) {
-		jr.log("Right border: full-span horizontal merge end, returning BottomRight")
-		return jr.symbols.BottomRight()
-	}
-
-	switch {
-	case jr.ctx.Level == tw.LevelHeader && jr.ctx.Row.Location == tw.LocationFirst:
-		return jr.symbols.TopRight()
-	case jr.ctx.Level == tw.LevelFooter && jr.ctx.Row.Location == tw.LocationEnd:
-		return jr.symbols.BottomRight()
-	case jr.ctx.Row.Location == tw.LocationFirst && jr.ctx.Level == tw.LevelBody:
-		return jr.symbols.MidRight()
-	case hasAbove && hasBelow:
-		return jr.symbols.Column()
-	default:
-		return jr.symbols.MidRight()
-	}
-}
-
-func (jr *JunctionRenderer) getSegment() string {
-	current := jr.getMergeState(0, 0)
-	if current.Horizontal {
-		jr.log("getSegment: horizontal merge, returning Row")
-		return jr.symbols.Row()
-	}
-	jr.log("getSegment: default, returning Row")
-	return jr.symbols.Row()
-}
-
+// Line renders a horizontal line with junctions
 func (f *Default) Line(w io.Writer, ctx Formatting) {
-	f.debug("Starting Line render: level=%d, pos=%s, loc=%v, widths=%v",
-		ctx.Level, ctx.Row.Position, ctx.Row.Location, ctx.Row.Widths)
-
+	f.debug("Starting Line render: level=%d, pos=%s, loc=%v, widths=%v", ctx.Level, ctx.Row.Position, ctx.Row.Location, ctx.Row.Widths)
 	sortedKeys := twfn.ConvertToSortedKeys(ctx.Row.Widths)
 	if len(sortedKeys) == 0 {
 		if f.config.Borders.Left.Enabled() {
@@ -322,56 +134,29 @@ func (f *Default) Line(w io.Writer, ctx Formatting) {
 	var line strings.Builder
 	lastColIdx := sortedKeys[len(sortedKeys)-1]
 
+	// Left border
 	if f.config.Borders.Left.Enabled() {
 		jr := NewJunctionRenderer(f.config.Symbols, ctx, sortedKeys[0], f.debug)
-		line.WriteString(jr.renderLeftBorder())
+		line.WriteString(jr.RenderLeft())
 	}
 
-	fullSpanMerge := false
-	var mergeStartIdx, mergeEndIdx int
-	if len(ctx.Row.Current) > 0 {
-		for colIdx, cell := range ctx.Row.Current {
-			if cell.Merge.Horizontal && cell.Merge.Start && cell.Merge.Span > 1 {
-				fullSpanMerge = cell.Merge.Span == len(sortedKeys)
-				mergeStartIdx = colIdx
-				mergeEndIdx = colIdx + cell.Merge.Span - 1
-				f.debug("Detected horizontal merge: start=%d, end=%d, span=%d, fullSpan=%v", mergeStartIdx, mergeEndIdx, cell.Merge.Span, fullSpanMerge)
-				break
-			}
-		}
-	}
-
+	// Columns and junctions
 	for i, colIdx := range sortedKeys {
 		jr := NewJunctionRenderer(f.config.Symbols, ctx, colIdx, f.debug)
-		current := jr.getMergeState(0, 0)
-
+		segment := jr.GetSegment()
 		if width, ok := ctx.Row.Widths[colIdx]; ok && width > 0 {
-			line.WriteString(strings.Repeat(jr.getSegment(), width))
+			line.WriteString(strings.Repeat(segment, width))
 		}
-
-		// Add junction between columns unless within a horizontal merge span and not at the end
 		if i < len(sortedKeys)-1 && f.config.Settings.Separators.BetweenColumns.Enabled() {
-			if fullSpanMerge && ctx.Row.Location == tw.LocationEnd {
-				// Skip all junctions for a full-span merge on the last row
-				continue
-			}
-			if current.Horizontal && colIdx >= mergeStartIdx && colIdx < mergeEndIdx {
-				// Skip junction within a horizontal merge span, except at the end
-				continue
-			}
 			nextColIdx := sortedKeys[i+1]
-			line.WriteString(jr.DetermineJunction(nextColIdx))
+			line.WriteString(jr.RenderJunction(nextColIdx))
 		}
 	}
 
+	// Right border
 	if f.config.Borders.Right.Enabled() {
 		jr := NewJunctionRenderer(f.config.Symbols, ctx, lastColIdx, f.debug)
-		if fullSpanMerge && ctx.Row.Location == tw.LocationEnd {
-			f.debug("Full-span merge at end, using BottomRight")
-			line.WriteString(jr.symbols.BottomRight())
-		} else {
-			line.WriteString(jr.renderRightBorder())
-		}
+		line.WriteString(jr.RenderRight(lastColIdx))
 	}
 
 	fmt.Fprintln(w, line.String())

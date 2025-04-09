@@ -247,9 +247,16 @@ func (t *Table) renderHeader(ctx *renderContext, mctx *mergeContext) error {
 	// Top border
 	if cfg.Borders.Top.Enabled() && cfg.Settings.Lines.ShowTop.Enabled() {
 		ctx.debug("Rendering table top border")
+		nextCells := make(map[int]renderer.CellContext)
+		if len(ctx.headerLines) > 0 {
+			for j, cell := range ctx.headerLines[0] {
+				nextCells[j] = renderer.CellContext{Data: cell, Merge: mctx.headerMerges[j]}
+			}
+		}
 		f.Line(t.writer, renderer.Formatting{
 			Row: renderer.RowContext{
 				Widths:   ctx.widths[tw.Header],
+				Next:     nextCells,
 				Position: tw.Header,
 				Location: tw.LocationFirst,
 			},
@@ -312,8 +319,9 @@ func (t *Table) renderHeader(ctx *renderContext, mctx *mergeContext) error {
 		f.Line(t.writer, renderer.Formatting{
 			Row: renderer.RowContext{
 				Widths:   ctx.widths[tw.Header],
-				Current:  resp.cells,
-				Next:     resp.nextCells,
+				Current:  resp.cells, // Last header line
+				Previous: resp.prevCells,
+				Next:     resp.nextCells, // First row or footer
 				Position: tw.Header,
 				Location: tw.LocationMiddle,
 			},
@@ -321,7 +329,6 @@ func (t *Table) renderHeader(ctx *renderContext, mctx *mergeContext) error {
 			IsSubRow: false,
 		})
 	}
-
 	return nil
 }
 
@@ -341,9 +348,16 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 	// Rows-only top border
 	if len(ctx.headerLines) == 0 && len(ctx.footerLines) == 0 && cfg.Borders.Top.Enabled() && cfg.Settings.Lines.ShowTop.Enabled() {
 		ctx.debug("Rendering table top border (rows only)")
+		nextCells := make(map[int]renderer.CellContext)
+		if len(ctx.rowLines) > 0 {
+			for j, cell := range ctx.rowLines[0][0] {
+				nextCells[j] = renderer.CellContext{Data: cell, Merge: mctx.rowMerges[0][j]}
+			}
+		}
 		f.Line(t.writer, renderer.Formatting{
 			Row: renderer.RowContext{
 				Widths:   ctx.widths[tw.Row],
+				Next:     nextCells,
 				Position: tw.Row,
 				Location: tw.LocationFirst,
 			},
@@ -389,6 +403,7 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 				return err
 			}
 
+			// Between rows
 			if cfg.Settings.Separators.BetweenRows.Enabled() && !(i == len(ctx.rowLines)-1 && j == len(lines)-1) {
 				ctx.debug("Rendering between-rows separator")
 				resp := t.buildCellContexts(ctx, mctx, hctx, colAligns, colPadding)
@@ -396,6 +411,7 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 					Row: renderer.RowContext{
 						Widths:   ctx.widths[tw.Row],
 						Current:  resp.cells,
+						Previous: resp.prevCells,
 						Next:     resp.nextCells,
 						Position: tw.Row,
 						Location: hctx.location,
@@ -426,6 +442,7 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 			}
 		}
 
+		// Bottom border (no footer)
 		if i == len(ctx.rowLines)-1 && len(ctx.footerLines) == 0 && cfg.Borders.Bottom.Enabled() && cfg.Settings.Lines.ShowBottom.Enabled() {
 			ctx.debug("Rendering table bottom border (no footer)")
 			hctx.rowIdx = i
@@ -437,6 +454,7 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 				Row: renderer.RowContext{
 					Widths:   ctx.widths[tw.Row],
 					Current:  resp.cells,
+					Previous: resp.prevCells,
 					Position: tw.Row,
 					Location: tw.LocationEnd,
 				},
@@ -465,10 +483,12 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 	// Footer separator
 	if cfg.Settings.Lines.ShowFooterLine.Enabled() && len(ctx.rowLines) > 0 {
 		ctx.debug("Rendering footer separator line")
-		lastRow := ctx.rowLines[len(ctx.rowLines)-1]
 		prevCells := make(map[int]renderer.CellContext)
-		for j, cell := range lastRow[len(lastRow)-1] {
-			prevCells[j] = renderer.CellContext{Data: cell, Merge: mctx.rowMerges[len(ctx.rowLines)-1][j]}
+		if len(ctx.rowLines) > 0 {
+			lastRow := ctx.rowLines[len(ctx.rowLines)-1]
+			for j, cell := range lastRow[len(lastRow)-1] {
+				prevCells[j] = renderer.CellContext{Data: cell, Merge: mctx.rowMerges[len(ctx.rowLines)-1][j]}
+			}
 		}
 		hctx.rowIdx = 0
 		hctx.lineIdx = 0
@@ -545,6 +565,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 			Row: renderer.RowContext{
 				Widths:   ctx.widths[tw.Footer],
 				Current:  resp.cells,
+				Previous: resp.prevCells,
 				Position: tw.Footer,
 				Location: tw.LocationEnd,
 			},
