@@ -1,7 +1,9 @@
 package tablewriter
 
 import (
+	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
+	"io"
 )
 
 // ConfigBuilder provides a fluent interface for building Config
@@ -299,4 +301,41 @@ func mergeCellConfig(dst, src CellConfig) CellConfig {
 
 	t.debug("Cell config merged")
 	return dst
+}
+
+// Option defines a function to configure a Table instance
+type Option func(*Table)
+
+// ---- Option Functions ----
+
+// WithHeader sets the table headers
+func WithHeader(headers []string) Option {
+	return func(t *Table) { t.SetHeader(headers) }
+}
+
+// WithFooter sets the table footers
+func WithFooter(footers []string) Option {
+	return func(t *Table) { t.SetFooter(footers) }
+}
+
+// WithRenderer sets a custom renderer for the table
+func WithRenderer(f renderer.Renderer) Option {
+	return func(t *Table) { t.renderer = f }
+}
+
+// WithConfig applies a custom configuration to the table
+func WithConfig(cfg Config) Option {
+	return func(t *Table) { t.config = mergeConfig(defaultConfig(), cfg) }
+}
+
+// WithStringer sets a custom stringer function for row conversion
+func WithStringer[T any](s func(T) []string) Option {
+	return func(t *Table) { t.stringer = s }
+}
+
+// NewWriter creates a new table with default settings (**added for laagacy comaptibility reason***)
+func NewWriter(w io.Writer) *Table {
+	t := NewTable(w)
+	t.debug("NewWriter created table")
+	return t
 }
