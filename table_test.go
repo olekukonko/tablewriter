@@ -1309,13 +1309,13 @@ func TestLessFooterColumnsThanHeaders(t *testing.T) {
 		data   = [][]string{
 			{"1", "2", "3"},
 		}
-		footer = []string{"a", "b"}
+		footer = []string{"a"}
 		want   = `+---+---+---+
 | A | B | C |
 +---+---+---+
 | 1 | 2 | 3 |
 +---+---+---+
-| A | B |   |
+| A |   |   |
 +---+---+---+
 `
 	)
