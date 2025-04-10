@@ -13,188 +13,47 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-// ansi is a compiled regular expression used to filter out ANSI escape sequences.
+//
+// ────────────────────────────────────────────────────────────
+//  ANSI FILTERING AND TERMINAL WIDTH UTILITIES
+// ────────────────────────────────────────────────────────────
+//
+
+// ansi is a compiled regex pattern used to strip ANSI escape codes.
+// These codes are used in terminal output for styling and are invisible in rendered text.
 var ansi = CompileANSIFilter()
 
-// CompileANSIFilter generates a regular expression to filter out ANSI escape sequences.
-// It returns a compiled regexp that matches both control sequences and operating system commands.
+// CompileANSIFilter constructs and compiles a regex for matching ANSI sequences.
+// It supports both control sequences and operating system commands like hyperlinks.
 func CompileANSIFilter() *regexp.Regexp {
-	var regESC = "\x1b" // ASCII escape
-	var regBEL = "\x07" // ASCII bell
+	var regESC = "\x1b" // ASCII escape character
+	var regBEL = "\x07" // ASCII bell character
 
-	// String Terminator - ends ANSI sequences.
-	var regST = "(" + regESC + "\\\\" + "|" + regBEL + ")"
-
-	// Control Sequence Introducer - usually for color codes.
-	// Matches: esc + [ + zero or more characters in [0x30-0x3f] + zero or more characters in [0x20-0x2f] + a single character in [0x40-0x7e].
-	var regCSI = regESC + "\\[" + "[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]"
-
-	// Operating System Command - e.g., hyperlinks.
-	// Matches: esc + ] + any characters (non-greedy) + string terminator.
-	var regOSC = regESC + "\\]" + ".*?" + regST
+	var regST = "(" + regESC + "\\\\" + "|" + regBEL + ")"              // ANSI string terminator
+	var regCSI = regESC + "\\[" + "[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]" // Control codes
+	var regOSC = regESC + "\\]" + ".*?" + regST                         // OSC codes like hyperlinks
 
 	return regexp.MustCompile("(" + regCSI + "|" + regOSC + ")")
 }
 
-// DisplayWidth returns the display width of a string by first removing any ANSI escape sequences.
-// This is useful for calculating the true length of strings when formatting table outputs.
+// DisplayWidth calculates the visual width of a string.
+// ANSI escape sequences are stripped before measurement for accuracy.
 func DisplayWidth(str string) int {
 	return runewidth.StringWidth(ansi.ReplaceAllLiteralString(str, ""))
 }
 
-// ConditionOr returns the 'valid' string if the condition is true; otherwise, it returns 'inValid'.
-// This is a simple helper to choose between two strings based on a boolean condition.
-func ConditionOr(cond bool, valid, inValid string) string {
-	if cond {
-		return valid
-	}
-	return inValid
-}
-
-// Title formats a table header by replacing underscores and dots (where appropriate) with spaces,
-// trimming whitespace, and converting the result to uppercase.
-// If the resulting string is empty (but the original had characters), it returns a single space.
-func Title(name string) string {
-	origLen := len(name)
-	rs := []rune(name)
-	for i, r := range rs {
-		switch r {
-		case '_':
-			rs[i] = ' '
-		case '.':
-			// Ignore a dot in a floating number (e.g., 0.0) if adjacent to numeric characters.
-			if (i != 0 && !IsNumOrSpace(rs[i-1])) || (i != len(rs)-1 && !IsNumOrSpace(rs[i+1])) {
-				rs[i] = ' '
-			}
-		}
-	}
-	name = string(rs)
-	name = strings.TrimSpace(name)
-	if len(name) == 0 && origLen > 0 {
-		// Preserve at least one character for empty lines in multi-line headers/footers.
-		name = " "
-	}
-	return strings.ToUpper(name)
-}
-
-// PadCenter centers the string 's' within a field of a given 'width' by padding it with the provided 'pad' string.
-// If the string is shorter than 'width', the remaining space is split evenly (with left side receiving the extra space if needed).
-func PadCenter(s, pad string, width int) string {
-	gap := width - DisplayWidth(s)
-	if gap > 0 {
-		gapLeft := int(math.Ceil(float64(gap) / 2))
-		gapRight := gap - gapLeft
-		return strings.Repeat(pad, gapLeft) + s + strings.Repeat(pad, gapRight)
-	}
-	return s
-}
-
-// PadRight pads the string 's' on the right with the 'pad' string until it reaches the specified 'width'.
-// This effectively left-aligns the string.
-func PadRight(s, pad string, width int) string {
-	gap := width - DisplayWidth(s)
-	if gap > 0 {
-		return s + strings.Repeat(pad, gap)
-	}
-	return s
-}
-
-// PadLeft pads the string 's' on the left with the 'pad' string until it reaches the specified 'width'.
-// This effectively right-aligns the string.
-func PadLeft(s, pad string, width int) string {
-	gap := width - DisplayWidth(s)
-	if gap > 0 {
-		return strings.Repeat(pad, gap) + s
-	}
-	return s
-}
-
-// IsNumOrSpace checks whether the rune 'r' is a numeric digit (0-9) or a space.
-// It returns true if the rune meets these conditions.
-func IsNumOrSpace(r rune) bool {
-	return ('0' <= r && r <= '9') || r == ' '
-}
-
-// IsNumeric checks whether a string represents a numeric value.
-// It returns true for valid integers or floating-point numbers, and false otherwise.
-func IsNumeric(s string) bool {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return false
-	}
-	// Check for plain integer numbers.
-	_, err := strconv.Atoi(s)
-	if err == nil {
-		return true
-	}
-	// Check for floating-point numbers.
-	_, err = strconv.ParseFloat(s, 64)
-	return err == nil
-}
-
-// SplitCamelCase splits a camel case string into its constituent words.
-// It handles transitions such as an uppercase letter followed by lowercase letters
-// (e.g., "PDFLoader" becomes ["PDF", "Loader"]).
-func SplitCamelCase(src string) (entries []string) {
-	// Do not split if the string is invalid UTF-8.
-	if !utf8.ValidString(src) {
-		return []string{src}
-	}
-	entries = []string{}
-	var runes [][]rune
-	lastClass := 0
-	class := 0
-	// Split into fields based on the Unicode class of each character.
-	for _, r := range src {
-		switch {
-		case unicode.IsLower(r):
-			class = 1
-		case unicode.IsUpper(r):
-			class = 2
-		case unicode.IsDigit(r):
-			class = 3
-		default:
-			class = 4
-		}
-		if class == lastClass {
-			runes[len(runes)-1] = append(runes[len(runes)-1], r)
-		} else {
-			runes = append(runes, []rune{r})
-		}
-		lastClass = class
-	}
-	// Handle transitions from uppercase sequences to lowercase (e.g., "PDFLoader").
-	for i := 0; i < len(runes)-1; i++ {
-		if unicode.IsUpper(runes[i][0]) && unicode.IsLower(runes[i+1][0]) {
-			runes[i+1] = append([]rune{runes[i][len(runes[i])-1]}, runes[i+1]...)
-			runes[i] = runes[i][:len(runes[i])-1]
-		}
-	}
-	// Slice rune slices to strings and collect non-empty entries.
-	for _, s := range runes {
-		if len(s) > 0 {
-			if strings.TrimSpace(string(s)) == "" {
-				continue
-			}
-			entries = append(entries, string(s))
-		}
-	}
-	return
-}
-
-// TruncateString truncates a string to fit within maxWidth while preserving ANSI codes
+// TruncateString shortens a string to a max width while preserving ANSI color codes.
+// An optional suffix (like "...") can be appended to indicate truncation.
 func TruncateString(s string, maxWidth int, suffix ...string) string {
 	if maxWidth <= 0 {
 		return ""
 	}
 
-	// First strip ANSI codes to measure real content width
 	stripped := ansi.ReplaceAllLiteralString(s, "")
 	if runewidth.StringWidth(stripped) <= maxWidth {
 		return s
 	}
 
-	// Preserve ANSI codes while truncating
 	var buf bytes.Buffer
 	var currentWidth int
 	ansiEnabled := false
@@ -221,16 +80,150 @@ func TruncateString(s string, maxWidth int, suffix ...string) string {
 	return buf.String()
 }
 
-// ConvertToSorted converts any map[int]int to a sorted slice of widths
+//
+// ────────────────────────────────────────────────────────────
+//  STRING FORMATTING AND ALIGNMENT
+// ────────────────────────────────────────────────────────────
+//
+
+// Title normalizes and uppercases a label string for use in headers.
+// It replaces underscores and select dots with spaces, trimming whitespace.
+func Title(name string) string {
+	origLen := len(name)
+	rs := []rune(name)
+	for i, r := range rs {
+		switch r {
+		case '_':
+			rs[i] = ' '
+		case '.':
+			if (i != 0 && !IsNumOrSpace(rs[i-1])) || (i != len(rs)-1 && !IsNumOrSpace(rs[i+1])) {
+				rs[i] = ' '
+			}
+		}
+	}
+	name = string(rs)
+	name = strings.TrimSpace(name)
+	if len(name) == 0 && origLen > 0 {
+		name = " "
+	}
+	return strings.ToUpper(name)
+}
+
+// PadCenter centers the input string within a fixed width using the pad character.
+// If the string is smaller, extra padding is split between left and right.
+func PadCenter(s, pad string, width int) string {
+	gap := width - DisplayWidth(s)
+	if gap > 0 {
+		gapLeft := int(math.Ceil(float64(gap) / 2))
+		gapRight := gap - gapLeft
+		return strings.Repeat(pad, gapLeft) + s + strings.Repeat(pad, gapRight)
+	}
+	return s
+}
+
+// PadRight left-aligns the string within the specified width.
+// The remaining space on the right is filled using the pad string.
+func PadRight(s, pad string, width int) string {
+	gap := width - DisplayWidth(s)
+	if gap > 0 {
+		return s + strings.Repeat(pad, gap)
+	}
+	return s
+}
+
+// PadLeft right-aligns the string within the specified width.
+// The remaining space on the left is filled using the pad string.
+func PadLeft(s, pad string, width int) string {
+	gap := width - DisplayWidth(s)
+	if gap > 0 {
+		return strings.Repeat(pad, gap) + s
+	}
+	return s
+}
+
+//
+// ────────────────────────────────────────────────────────────
+//  STRING AND CHARACTER UTILITIES
+// ────────────────────────────────────────────────────────────
+//
+
+// IsNumOrSpace checks if a rune is a digit or space character.
+// It is used for safely replacing characters in formatting logic.
+func IsNumOrSpace(r rune) bool {
+	return ('0' <= r && r <= '9') || r == ' '
+}
+
+// IsNumeric returns true if a string represents a valid number.
+// It supports both integers and floating-point values.
+func IsNumeric(s string) bool {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return false
+	}
+	if _, err := strconv.Atoi(s); err == nil {
+		return true
+	}
+	_, err := strconv.ParseFloat(s, 64)
+	return err == nil
+}
+
+// SplitCamelCase breaks a camelCase or PascalCase string into word segments.
+// It handles transitions between uppercase and lowercase characters.
+func SplitCamelCase(src string) (entries []string) {
+	if !utf8.ValidString(src) {
+		return []string{src}
+	}
+	entries = []string{}
+	var runes [][]rune
+	lastClass := 0
+	class := 0
+	for _, r := range src {
+		switch {
+		case unicode.IsLower(r):
+			class = 1
+		case unicode.IsUpper(r):
+			class = 2
+		case unicode.IsDigit(r):
+			class = 3
+		default:
+			class = 4
+		}
+		if class == lastClass {
+			runes[len(runes)-1] = append(runes[len(runes)-1], r)
+		} else {
+			runes = append(runes, []rune{r})
+		}
+		lastClass = class
+	}
+	for i := 0; i < len(runes)-1; i++ {
+		if unicode.IsUpper(runes[i][0]) && unicode.IsLower(runes[i+1][0]) {
+			runes[i+1] = append([]rune{runes[i][len(runes[i])-1]}, runes[i+1]...)
+			runes[i] = runes[i][:len(runes[i])-1]
+		}
+	}
+	for _, s := range runes {
+		if len(s) > 0 && strings.TrimSpace(string(s)) != "" {
+			entries = append(entries, string(s))
+		}
+	}
+	return
+}
+
+//
+// ────────────────────────────────────────────────────────────
+//  MAP TRANSFORMATION UTILITIES
+// ────────────────────────────────────────────────────────────
+//
+
+// ConvertToSorted returns a sorted slice of map values by key order.
+// It is useful for converting maps into ordered table structures.
 func ConvertToSorted(m map[int]int) []int {
-	// Get and sort the keys
 	columns := make([]int, 0, len(m))
 	for col := range m {
 		columns = append(columns, col)
 	}
 	sort.Ints(columns)
 
-	// Create the sorted result
 	result := make([]int, 0, len(columns))
 	for _, col := range columns {
 		result = append(result, m[col])
@@ -238,25 +231,46 @@ func ConvertToSorted(m map[int]int) []int {
 	return result
 }
 
-// vs
-
-// ConvertToSortedKeys converts a map[int]any (or map[int]int) to a sorted slice of its integer keys.
+// ConvertToSortedKeys returns sorted integer keys of a generic map.
+// This helps when iterating over maps in a consistent order.
 func ConvertToSortedKeys[V any](m map[int]V) []int {
-	// Extract the integer keys from the map.
 	keys := make([]int, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
 	}
-	// Sort the keys numerically.
 	sort.Ints(keys)
-	// Return the sorted slice of keys.
 	return keys
 }
 
-// Max returns the maximum of two integers
+//
+// ────────────────────────────────────────────────────────────
+//  MISCELLANEOUS UTILITIES
+// ────────────────────────────────────────────────────────────
+//
+
+// Or returns 'valid' if cond is true; otherwise returns 'inValid'.
+// It simplifies ternary-like decisions for string output.
+func Or(cond bool, valid, inValid string) string {
+	if cond {
+		return valid
+	}
+	return inValid
+}
+
+// Max returns the greater of two integer values.
+// Simple helper for comparison logic.
 func Max(a, b int) int {
 	if a > b {
 		return a
 	}
 	return b
+}
+
+// MapKeys GetMapKeys returns a slice containing all keys from the input map
+func MapKeys[K comparable, V any](m map[K]V) []K {
+	keys := make([]K, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }

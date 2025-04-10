@@ -52,92 +52,6 @@ func MaskCard(cells []string) []string {
 	return cells
 }
 
-// diffOptions configures diff behavior (unexported since it's internal).
-type diffOptions struct {
-	ignoreCase       bool
-	ignoreWhitespace bool
-	showContext      bool
-	contextLines     int
-}
-
-// defaultDiffOpts defines sensible defaults (unexported).
-var defaultDiffOpts = diffOptions{
-	ignoreCase:       false,
-	ignoreWhitespace: false,
-	showContext:      false,
-	contextLines:     0,
-}
-
-// diff compares two strings with default options (unexported helper).
-func diff(a, b string) string {
-	return diffWithOpts(a, b, defaultDiffOpts)
-}
-
-// diffWithOpts compares two strings with custom options (unexported).
-func diffWithOpts(a, b string, opts diffOptions) string {
-	aLines := strings.Split(strings.ReplaceAll(a, "\r\n", "\n"), "\n")
-	bLines := strings.Split(strings.ReplaceAll(b, "\r\n", "\n"), "\n")
-
-	maxLines := max(len(aLines), len(bLines))
-	var sb strings.Builder
-
-	for i := 0; i < maxLines; i++ {
-		lineA, lineB := getLine(aLines, i), getLine(bLines, i)
-
-		// Normalize based on options.
-		if opts.ignoreWhitespace {
-			lineA, lineB = strings.TrimSpace(lineA), strings.TrimSpace(lineB)
-		}
-		if opts.ignoreCase {
-			lineA, lineB = strings.ToLower(lineA), strings.ToLower(lineB)
-		}
-
-		if lineA != lineB {
-			if opts.showContext && opts.contextLines > 0 {
-				addContext(&sb, aLines, bLines, i, opts.contextLines)
-			}
-			sb.WriteString(fmt.Sprintf("Line %d:\n- %s\n+ %s\n", i+1, getLine(aLines, i), getLine(bLines, i)))
-		}
-	}
-	return sb.String()
-}
-
-// Helpers (unexported).
-func getLine(lines []string, i int) string {
-	if i < len(lines) {
-		return lines[i]
-	}
-	return ""
-}
-
-func addContext(sb *strings.Builder, aLines, bLines []string, currentLine, contextLines int) {
-	start := max(0, currentLine-contextLines)
-	end := min(len(aLines), currentLine+contextLines+1)
-
-	for i := start; i < end; i++ {
-		if i == currentLine {
-			continue
-		}
-		lineA, lineB := getLine(aLines, i), getLine(bLines, i)
-		if lineA == lineB {
-			sb.WriteString(fmt.Sprintf("  %s\n", lineA))
-		}
-	}
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // visualCheck compares rendered output against exact expected lines
 func visualCheck(t *testing.T, name string, output string, expected string) bool {
 	t.Helper()
@@ -169,10 +83,11 @@ func visualCheck(t *testing.T, name string, output string, expected string) bool
 	// Compare line counts
 	if len(outputLines) != len(expectedLines) {
 
+		ex := strings.Join(expectedLines, "\n")
+		ot := strings.Join(outputLines, "\n")
 		t.Errorf("%s: line count mismatch - expected %d, got %d", name, len(expectedLines), len(outputLines))
-		t.Errorf("Expected:\n%s\n", strings.Join(expectedLines, "\n"))
-		t.Errorf("Got:\n%s\n", strings.Join(outputLines, "\n"))
-		//t.Errorf("Diff:\n%s\n", diff(strings.Join(expectedLines, "\n"), strings.Join(outputLines, "\n")))
+		t.Errorf("Expected:\n%s\n", ex)
+		t.Errorf("Got:\n%s\n", ot)
 		return false
 	}
 
