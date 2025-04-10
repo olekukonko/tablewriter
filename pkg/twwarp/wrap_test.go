@@ -5,7 +5,7 @@
 // This module is a Table Writer  API for the Go Programming Language.
 // The protocols were written in pure Go and works on windows and unix systems
 
-package tests
+package twwarp
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ import (
 
 var (
 	text    = "The quick brown fox jumps over the lazy dog."
-	testDir = "./"
+	testDir = "./_data"
 )
 
 // checkEqual compares two values and fails the test if they are not equal
@@ -44,13 +44,13 @@ func TestWrap(t *testing.T) {
 		"The", "quick", "brown", "fox",
 		"jumps", "over", "the", "lazy", "dog."}
 
-	got, _ := twfn.WrapString(text, 6)
+	got, _ := WrapString(text, 6)
 	checkEqual(t, len(got), len(exp))
 }
 
 func TestWrapOneLine(t *testing.T) {
 	exp := "The quick brown fox jumps over the lazy dog."
-	words, _ := twfn.WrapString(text, 500)
+	words, _ := WrapString(text, 500)
 	checkEqual(t, strings.Join(words, string(tw.Space)), exp)
 
 }
@@ -59,9 +59,9 @@ func TestUnicode(t *testing.T) {
 	input := "Česká řeřicha"
 	var wordsUnicode []string
 	if runewidth.IsEastAsian() {
-		wordsUnicode, _ = twfn.WrapString(input, 14)
+		wordsUnicode, _ = WrapString(input, 14)
 	} else {
-		wordsUnicode, _ = twfn.WrapString(input, 13)
+		wordsUnicode, _ = WrapString(input, 13)
 	}
 	// input contains 13 (or 14 for CJK) runes, so it fits on one line.
 	checkEqual(t, len(wordsUnicode), 1)
@@ -87,13 +87,13 @@ func TestDisplayWidth(t *testing.T) {
 // WrapString was extremely memory greedy, it performed insane number of
 // allocations for what it was doing. See BenchmarkWrapString for details.
 func TestWrapStringAllocation(t *testing.T) {
-	originalTextBytes, err := os.ReadFile(testDir + "/testdata/long-text.txt")
+	originalTextBytes, err := os.ReadFile(testDir + "/long-text.txt")
 	if err != nil {
 		t.Fatal(err)
 	}
 	originalText := string(originalTextBytes)
 
-	wantWrappedBytes, err := os.ReadFile(testDir + "/testdata/long-text-wrapped.txt")
+	wantWrappedBytes, err := os.ReadFile(testDir + "/long-text-wrapped.txt")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestWrapStringAllocation(t *testing.T) {
 	heapAllocBefore := int64(ms.HeapAlloc / 1024 / 1024)
 
 	// When
-	gotLines, gotLim := twfn.WrapString(originalText, 80)
+	gotLines, gotLim := WrapString(originalText, 80)
 
 	// Then
 	wantLim := 80
@@ -130,12 +130,12 @@ func TestWrapStringAllocation(t *testing.T) {
 // After optimization:
 // BenchmarkWrapString-16    	    1652	    658098 ns/op	    230223 B/op	    5176 allocs/op
 func BenchmarkWrapString(b *testing.B) {
-	d, err := os.ReadFile(testDir + "/testdata/long-text.txt")
+	d, err := os.ReadFile(testDir + "/long-text.txt")
 	if err != nil {
 		b.Fatal(err)
 	}
 	for i := 0; i < b.N; i++ {
-		twfn.WrapString(string(d), 128)
+		WrapString(string(d), 128)
 	}
 }
 
@@ -160,7 +160,7 @@ func TestSplitWords(t *testing.T) {
 		out: []string{"a", "b"},
 	}} {
 		t.Run(tt.in, func(t *testing.T) {
-			got := twfn.SplitWords(tt.in)
+			got := SplitWords(tt.in)
 			if !reflect.DeepEqual(tt.out, got) {
 				t.Errorf("want=%s, got=%s", tt.out, got)
 			}
@@ -170,6 +170,6 @@ func TestSplitWords(t *testing.T) {
 
 func TestWrapString(t *testing.T) {
 	want := []string{"ああああああああああああああああああああああああ", "あああああああ"}
-	got, _ := twfn.WrapString("ああああああああああああああああああああああああ あああああああ", 55)
+	got, _ := WrapString("ああああああああああああああああああああああああ あああああああ", 55)
 	checkEqual(t, got, want)
 }
