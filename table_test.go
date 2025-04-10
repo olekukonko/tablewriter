@@ -55,6 +55,32 @@ func ExampleShort() {
 	// +------+-----------------------+--------+
 }
 
+func ExampleWithArray() {
+	data := [][]string{
+		{"A", "The Good", "500"},
+		{"B", "The Very very Bad Man", "288"},
+		{"C", "The Ugly", "120"},
+		{"D", "The Gopher", "800"},
+	}
+
+	table := NewWriter(os.Stdout)
+	table.SetHeader([]string{"Name", "Sign", "Rating"})
+
+	for _, v := range data {
+		table.Append(v)
+	}
+	table.Render()
+
+	// Output: +------+-----------------------+--------+
+	// | NAME |         SIGN          | RATING |
+	// +------+-----------------------+--------+
+	// | A    | The Good              |    500 |
+	// | B    | The Very very Bad Man |    288 |
+	// | C    | The Ugly              |    120 |
+	// | D    | The Gopher            |    800 |
+	// +------+-----------------------+--------+
+}
+
 func ExampleTable() {
 	data := [][]string{
 		{"Learn East has computers with adapted keyboards with enlarged print etc", "  Some Data  ", " Another Data"},
@@ -96,6 +122,83 @@ func ExampleNewCSV() {
 	// | Kathy      | Smith     |  687987 |
 	// | Bob        | McCornick | 3979870 |
 	// *============*===========*=========*
+}
+
+func ExampleNewHTMLWithHeadings() {
+	table, _ := NewHTML(os.Stdout, "testdata/test1.html", 4)
+	table.SetCenterSeparator("*")
+	table.SetRowSeparator("=")
+
+	table.Render()
+
+	// 	Output: *=====*========*=====*================================*
+	// | S/N |  NAME  | AGE |            HOBBIES             |
+	// *=====*========*=====*================================*
+	// |   1 | Sydney |  20 | Coding, Partying and trolling  |
+	// |     |        |     | on Twitter                     |
+	// |   2 | Harith |  21 | Coding, Praying and learning   |
+	// |     |        |     | new things                     |
+	// |   3 | Iyanu  |  20 | Coding, Arguing and listening  |
+	// |     |        |     | to weird Music                 |
+	// |   4 | Seun   |  20 | Watching movie and making      |
+	// |     |        |     | money                          |
+	// *=====*========*=====*================================*
+}
+
+func ExampleNewHTMLWithoutHeadings() {
+	table, _ := NewHTML(os.Stdout, "testdata/test3.html", 4)
+	table.SetCenterSeparator("*")
+	table.SetRowSeparator("=")
+
+	table.Render()
+
+	//Output:  *===*========*====*================================*
+	// | 1 | Sydney | 20 | Coding, Partying and trolling  |
+	// |    |        |    | on Twitter                     |
+	// | 2 | Harith | 21 | Coding, Praying and learning   |
+	// |    |        |    | new things                     |
+	// | 3 | Iyanu  | 20 | Coding, Arguing and listening  |
+	// |    |        |    | to weird Music                 |
+	// | 4 | Seun   | 20 | Watching movie and making      |
+	// |    |        |    | money                          |
+	// *===*========*====*================================*
+}
+
+func ExampleNewMalHTML() {
+	// html has some unclosed tags
+	table, _ := NewHTML(os.Stdout, "testdata/test2.html", 4)
+	table.SetCenterSeparator("*")
+	table.SetRowSeparator("=")
+
+	table.Render()
+
+	// Output: *==========*==========*==========*================================*
+	// |   S/N    |   NAME   |   AGE    |            HOBBIES             |
+	// |          |          |          |                                |
+	// *==========*==========*==========*================================*
+	// | 1        | Sydney   | 20       | Coding, Partying and trolling  |
+	// |          |          |          | on Twitter                     |
+	// |        2 | Harith   |       21 | Coding, Praying and learning   |
+	// |          |          |          | new things                     |
+	// |        3 | Iyanu    |       20 | Coding, Arguing and listening  |
+	// |          |          |          | to weird Music                 |
+	// |        4 | Seun     |       20 | Watching movie and making      |
+	// |          |          |          | money                          |
+	// *==========*==========*==========*================================*
+}
+
+func ExampleNewMalHTML2() {
+	table, _ := NewHTML(os.Stdout, "testdata/test4.html", 1)
+	table.SetCenterSeparator("*")
+	table.SetRowSeparator("=")
+
+	table.Render()
+
+	// 	Output: *=====*
+	// | BAR |
+	// *=====*
+	// | foo |
+	// *=====*
 }
 
 func ExampleTable_SetUnicodeHV() {
