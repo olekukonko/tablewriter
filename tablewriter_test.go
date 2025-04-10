@@ -1,6 +1,7 @@
 package tablewriter
 
 import (
+	"bytes"
 	"github.com/olekukonko/tablewriter/tw"
 	"testing"
 )
@@ -190,5 +191,33 @@ func TestMergeCellConfig(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestCallbacks(t *testing.T) {
+	var buf bytes.Buffer
+	globalCount := 0
+	col0Count := 0
+	table := NewTable(&buf, WithConfig(Config{
+		Header: CellConfig{
+			Callbacks: CellCallbacks{
+				Global: func() { globalCount++ },
+				PerColumn: []func(){
+					func() { col0Count++ }, // Callback for column 0
+					nil,                    // No callback for column 1
+					nil,                    // No callback for column 2
+				},
+			},
+		},
+	}))
+	table.SetHeader([]string{"Name", "Email", "Age"})
+	table.Append([]string{"Alice", "alice@example.com", "25"})
+	table.Render()
+
+	if globalCount != 1 {
+		t.Errorf("Expected global callback to run 1 time, got %d", globalCount)
+	}
+	if col0Count != 1 {
+		t.Errorf("Expected column 0 callback to run 1 time, got %d", col0Count)
 	}
 }

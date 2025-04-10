@@ -24,7 +24,6 @@ func (b *ConfigBuilder) Build() Config {
 }
 
 // Global settings ------------------------------------------------------------
-
 func (b *ConfigBuilder) WithMaxWidth(width int) *ConfigBuilder {
 	b.config.MaxWidth = width
 	return b
@@ -282,8 +281,24 @@ func mergeCellConfig(dst, src CellConfig) CellConfig {
 		}
 	}
 
-	if src.Filter != nil {
-		dst.Filter = src.Filter
+	if src.Filter.Global != nil {
+		dst.Filter.Global = src.Filter.Global
+	}
+
+	if src.Filter.PerColumn != nil {
+		dst.Filter.PerColumn = src.Filter.PerColumn
+	}
+
+	if len(src.ColumnAligns) > 0 {
+		dst.ColumnAligns = src.ColumnAligns
+	}
+
+	if src.Callbacks.Global != nil {
+		dst.Callbacks.Global = src.Callbacks.Global
+	}
+
+	if src.Callbacks.PerColumn != nil {
+		dst.Callbacks.PerColumn = src.Callbacks.PerColumn
 	}
 
 	if len(src.ColumnAligns) > 0 {
@@ -331,6 +346,31 @@ func WithConfig(cfg Config) Option {
 // WithStringer sets a custom stringer function for row conversion
 func WithStringer[T any](s func(T) []string) Option {
 	return func(t *Table) { t.stringer = s }
+}
+
+// Configuration options
+func WithDebug(debug bool) Option {
+	return func(t *Table) {
+		t.config.Debug = debug
+	}
+}
+
+func WithHeaderConfig(config CellConfig) Option {
+	return func(t *Table) {
+		t.config.Header = config
+	}
+}
+
+func WithRowConfig(config CellConfig) Option {
+	return func(t *Table) {
+		t.config.Row = config
+	}
+}
+
+func WithFooterConfig(config CellConfig) Option {
+	return func(t *Table) {
+		t.config.Footer = config
+	}
 }
 
 // NewWriter creates a new table with default settings (**added for laagacy comaptibility reason***)
