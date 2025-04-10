@@ -75,7 +75,9 @@ func TestFilterMasking(t *testing.T) {
 				Row: tablewriter.CellConfig{
 					Formatting: tablewriter.CellFormatting{Alignment: tw.AlignLeft},
 					Padding:    tablewriter.CellPadding{Global: tw.Padding{Left: " ", Right: " "}},
-					Filter:     tt.filter,
+					Filter: tablewriter.CellFilter{
+						Global: tt.filter,
+					},
 				},
 			}))
 			header := []string{"Name", tt.name, "Age"}
