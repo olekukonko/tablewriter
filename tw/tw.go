@@ -26,7 +26,8 @@ type Align string
 // Table Alignment Constants
 // Defines text alignment options for table content
 const (
-	AlignCenter Align = "center" // Center-aligned text
+	AlignNone   Align = "none"   // Center-aligned text
+	AlignCenter       = "center" // Center-aligned text
 	AlignRight        = "right"  // Right-aligned text
 	AlignLeft         = "left"   // Left-aligned text
 )
