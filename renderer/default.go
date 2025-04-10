@@ -99,6 +99,8 @@ type Border struct {
 	Bottom tw.State // Bottom border visibility
 }
 
+var BorderNone = Border{tw.Off, tw.Off, tw.Off, tw.Off}
+
 // Default is the default implementation of the Renderer interface.
 type Default struct {
 	config DefaultConfig // Configuration for rendering

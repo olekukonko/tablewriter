@@ -95,3 +95,87 @@ func TestFilterMasking(t *testing.T) {
 		})
 	}
 }
+
+//func TestMasterClass(t *testing.T) {
+//	var buf bytes.Buffer
+//
+//	littleConfig := tablewriter.Config{
+//		MaxWidth: 30,
+//		Row: tablewriter.CellConfig{
+//			Formatting: tablewriter.CellFormatting{
+//				Alignment: tw.AlignCenter,
+//			},
+//			Padding: tablewriter.CellPadding{
+//				Global: tw.Padding{Left: tw.Skip, Right: tw.Skip, Top: tw.Skip, Bottom: tw.Skip},
+//			},
+//		},
+//	}
+//
+//	bigConfig := tablewriter.Config{
+//		MaxWidth: 50,
+//		Header: tablewriter.CellConfig{Formatting: tablewriter.CellFormatting{
+//			AutoWrap: tw.WrapTruncate,
+//		}},
+//	}
+//
+//	little := func(s string) string {
+//		var b bytes.Buffer
+//		table := tablewriter.NewTable(&b,
+//			tablewriter.WithConfig(littleConfig),
+//			tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+//				Borders: renderer.BorderNone,
+//				Settings: renderer.Settings{
+//					Separators: renderer.Separators{
+//						ShowHeader:     tw.Off,
+//						ShowFooter:     tw.Off,
+//						BetweenRows:    tw.Off,
+//						BetweenColumns: tw.Off,
+//					},
+//					Lines: renderer.Lines{
+//						ShowTop:        tw.Off,
+//						ShowBottom:     tw.Off,
+//						ShowHeaderLine: tw.Off,
+//						ShowFooterLine: tw.Off,
+//					},
+//				},
+//				Debug: false,
+//			})),
+//		)
+//		table.Append([]string{s, s})
+//		table.Append([]string{s, s})
+//		table.Render()
+//
+//		return b.String()
+//	}
+//
+//	table := tablewriter.NewTable(&buf,
+//		tablewriter.WithConfig(bigConfig),
+//		tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+//			//Borders: renderer.BorderNone,
+//			Settings: renderer.Settings{
+//				Separators: renderer.Separators{
+//					ShowHeader:     tw.Off,
+//					ShowFooter:     tw.Off,
+//					BetweenRows:    tw.Off,
+//					BetweenColumns: tw.Off,
+//				},
+//				Lines: renderer.Lines{
+//					ShowTop:        tw.Off,
+//					ShowBottom:     tw.Off,
+//					ShowHeaderLine: tw.Off,
+//					ShowFooterLine: tw.Off,
+//				},
+//			},
+//			Debug: false,
+//		})),
+//	)
+//	table.Append([]string{little("A"), little("B")})
+//	table.Append([]string{little("C"), little("D")})
+//	table.Render()
+//
+//	expected := `
+//
+//`
+//	visualCheck(t, "BasicTableRendering", buf.String(), expected)
+//
+//}
