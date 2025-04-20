@@ -140,6 +140,11 @@ func NewTable(w io.Writer, opts ...Option) *Table {
 	return t
 }
 
+func (t *Table) Configure(fn func(*Config)) *Table {
+	fn(&t.config)
+	return t
+}
+
 // Append adds one or more rows to the table.
 // Rows can be of any type if a stringer is provided.
 func (t *Table) Append(rows ...interface{}) error {
@@ -298,12 +303,25 @@ func (t *Table) renderHeader(ctx *renderContext, mctx *mergeContext) error {
 		}
 	}
 
-	// Render header content lines
+	// Render header content lines with callbacks
 	for i, line := range ctx.headerLines {
-		hctx.rowIdx = 0 // Header is a single-row section
+		hctx.rowIdx = 0
 		hctx.lineIdx = i
 		hctx.line = padLine(line, ctx.numCols)
 		hctx.location = t.determineLocation(i, len(ctx.headerLines), t.config.Header.Padding.Global.Top, t.config.Header.Padding.Global.Bottom)
+
+		// Execute callbacks before rendering each line
+		if t.config.Header.Callbacks.Global != nil {
+			ctx.debug("Executing global header callback for line %d", i)
+			t.config.Header.Callbacks.Global()
+		}
+		for colIdx, cb := range t.config.Header.Callbacks.PerColumn {
+			if colIdx < ctx.numCols && cb != nil {
+				ctx.debug("Executing per-column header callback for line %d, col %d", i, colIdx)
+				cb()
+			}
+		}
+
 		if err := t.renderLine(ctx, mctx, hctx, colAligns, colPadding); err != nil {
 			return err
 		}

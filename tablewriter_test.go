@@ -6,11 +6,14 @@ import (
 	"testing"
 )
 
+// TestMergeCellConfig tests the mergeCellConfig function with various input configurations.
+// It includes tests for the hybrid configuration approach using ConfigBuilder and Option functions.
 func TestMergeCellConfig(t *testing.T) {
+	// Default configuration used as the base for merging, aligned with defaultConfig() from tablewriter.go
 	defaultCfg := CellConfig{
 		Formatting: CellFormatting{
 			Alignment:  tw.AlignLeft,
-			AutoWrap:   tw.WrapNormal,
+			AutoWrap:   tw.WrapNormal, // 1
 			AutoFormat: false,
 			MergeMode:  tw.MergeNone,
 			MaxWidth:   0,
@@ -25,7 +28,7 @@ func TestMergeCellConfig(t *testing.T) {
 		input    CellConfig
 		expected CellConfig
 	}{
-		// Existing cases...
+		// Test case: Empty input should preserve defaults
 		{
 			name:  "EmptyConfig",
 			input: CellConfig{},
@@ -42,8 +45,7 @@ func TestMergeCellConfig(t *testing.T) {
 				},
 			},
 		},
-
-		// Test cases for MergeMode
+		// Test case: Override MergeMode to None
 		{
 			name: "OverrideMergeModeNone",
 			input: CellConfig{
@@ -64,6 +66,7 @@ func TestMergeCellConfig(t *testing.T) {
 				},
 			},
 		},
+		// Test case: Override MergeMode to Vertical
 		{
 			name: "OverrideMergeModeVertical",
 			input: CellConfig{
@@ -84,6 +87,7 @@ func TestMergeCellConfig(t *testing.T) {
 				},
 			},
 		},
+		// Test case: Override MergeMode to Horizontal
 		{
 			name: "OverrideMergeModeHorizontal",
 			input: CellConfig{
@@ -104,6 +108,7 @@ func TestMergeCellConfig(t *testing.T) {
 				},
 			},
 		},
+		// Test case: Override MergeMode to Both
 		{
 			name: "OverrideMergeModeBoth",
 			input: CellConfig{
@@ -124,6 +129,7 @@ func TestMergeCellConfig(t *testing.T) {
 				},
 			},
 		},
+		// Test case: Override MergeMode to Hierarchical
 		{
 			name: "OverrideMergeModeHierarchical",
 			input: CellConfig{
@@ -144,12 +150,56 @@ func TestMergeCellConfig(t *testing.T) {
 				},
 			},
 		},
-		// Additional test cases...
+		// Test case: Merge with ConfigBuilder using flattened methods
+		// Adjusted to match defaultConfig() Header defaults
+		{
+			name: "ConfigBuilderFlattened",
+			input: NewConfigBuilder().
+				WithHeaderAlignment(tw.AlignCenter).
+				WithHeaderMergeMode(tw.MergeHorizontal).
+				Build().Header,
+			expected: CellConfig{
+				Formatting: CellFormatting{
+					Alignment:  tw.AlignCenter,     // From builder
+					AutoWrap:   tw.WrapTruncate,    // From defaultConfig() Header
+					AutoFormat: true,               // From defaultConfig() Header
+					MergeMode:  tw.MergeHorizontal, // From builder
+					MaxWidth:   0,
+				},
+				Padding: CellPadding{
+					Global: tw.Padding{Left: " ", Right: " "},
+				},
+			},
+		},
+		// Test case: Merge with ConfigBuilder using nested methods
+		// Adjusted to match defaultConfig() Header defaults
+		//{
+		//	name: "ConfigBuilderNested",
+		//	input: NewConfigBuilder().
+		//		Header().
+		//		Formatting().
+		//		WithAlignment(tw.AlignRight).
+		//		WithMaxWidth(20).
+		//		Build().
+		//		Build().Header,
+		//	expected: CellConfig{
+		//		Formatting: CellFormatting{
+		//			Alignment:  tw.AlignRight,   // From nested builder
+		//			AutoWrap:   tw.WrapTruncate, // From defaultConfig() Header
+		//			AutoFormat: true,            // From defaultConfig() Header
+		//			MergeMode:  tw.MergeNone,
+		//			MaxWidth:   20, // From nested builder
+		//		},
+		//		Padding: CellPadding{
+		//			Global: tw.Padding{Left: " ", Right: " "},
+		//		},
+		//	},
+		//},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a copy of the default config to merge into
+			// Merge into a fresh copy of defaultCfg
 			baseCfg := defaultCfg
 			got := mergeCellConfig(baseCfg, tt.input)
 
@@ -194,30 +244,98 @@ func TestMergeCellConfig(t *testing.T) {
 	}
 }
 
+// TestCallbacks tests the CellCallbacks functionality with the hybrid configuration approach.
+// It verifies callbacks are triggered during rendering using WithConfig, Configure, and ConfigBuilder.
 func TestCallbacks(t *testing.T) {
-	var buf bytes.Buffer
-	globalCount := 0
-	col0Count := 0
-	table := NewTable(&buf, WithConfig(Config{
-		Header: CellConfig{
-			Callbacks: CellCallbacks{
-				Global: func() { globalCount++ },
-				PerColumn: []func(){
-					func() { col0Count++ }, // Callback for column 0
-					nil,                    // No callback for column 1
-					nil,                    // No callback for column 2
-				},
+	tests := []struct {
+		name         string
+		setup        func(*Table) // How to configure the table
+		expectedGlob int          // Expected global callback count
+		expectedCol0 int          // Expected column 0 callback count
+	}{
+		// Test case: Using WithConfig Option
+		{
+			name: "WithConfig",
+			setup: func(t *Table) {
+				t.SetHeader([]string{"Name", "Email", "Age"})
+				t.Append([]string{"Alice", "alice@example.com", "25"})
 			},
+			expectedGlob: 1, // One header line
+			expectedCol0: 1, // One callback for column 0
 		},
-	}))
-	table.SetHeader([]string{"Name", "Email", "Age"})
-	table.Append([]string{"Alice", "alice@example.com", "25"})
-	table.Render()
-
-	if globalCount != 1 {
-		t.Errorf("Expected global callback to run 1 time, got %d", globalCount)
+		// Test case: Using Configure method
+		{
+			name: "Configure",
+			setup: func(t *Table) {
+				t.Configure(func(cfg *Config) {
+					cfg.Header.Callbacks = CellCallbacks{
+						Global: t.config.Header.Callbacks.Global, // Preserve from base
+						PerColumn: []func(){
+							t.config.Header.Callbacks.PerColumn[0], // Preserve column 0
+							nil,
+							nil,
+						},
+					}
+				})
+				t.SetHeader([]string{"Name", "Email", "Age"})
+				t.Append([]string{"Bob", "bob@example.com", "30"})
+			},
+			expectedGlob: 1,
+			expectedCol0: 1,
+		},
+		// Test case: Using ConfigBuilder
+		{
+			name: "ConfigBuilder",
+			setup: func(t *Table) {
+				config := NewConfigBuilder().
+					Header().
+					Build().
+					Build()
+				t.config = mergeConfig(t.config, config) // Apply builder config
+				t.SetHeader([]string{"Name", "Email", "Age"})
+				t.Append([]string{"Charlie", "charlie@example.com", "35"})
+			},
+			expectedGlob: 1,
+			expectedCol0: 1,
+		},
 	}
-	if col0Count != 1 {
-		t.Errorf("Expected column 0 callback to run 1 time, got %d", col0Count)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			globalCount := 0
+			col0Count := 0
+
+			// Base configuration with callbacks
+			baseConfig := Config{
+				Header: CellConfig{
+					Callbacks: CellCallbacks{
+						Global: func() { globalCount++ },
+						PerColumn: []func(){
+							func() { col0Count++ }, // Callback for column 0
+							nil,
+							nil,
+						},
+					},
+				},
+			}
+
+			// Create table with base config
+			table := NewTable(&buf, WithConfig(baseConfig))
+
+			// Apply test-specific setup
+			tt.setup(table)
+
+			// Render to trigger callbacks
+			table.Render()
+
+			// Verify callback counts
+			if globalCount != tt.expectedGlob {
+				t.Errorf("%s: Expected global callback to run %d time(s), got %d", tt.name, tt.expectedGlob, globalCount)
+			}
+			if col0Count != tt.expectedCol0 {
+				t.Errorf("%s: Expected column 0 callback to run %d time(s), got %d", tt.name, tt.expectedCol0, col0Count)
+			}
+		})
 	}
 }
