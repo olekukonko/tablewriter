@@ -18,7 +18,7 @@ const (
 // Represents enabled/disabled states for features
 const (
 	On  State = Success // Feature is enabled
-	Off       = Fail    // Feature is disabled
+	Off State = Fail    // Feature is disabled
 )
 
 type Align string
@@ -27,9 +27,9 @@ type Align string
 // Defines text alignment options for table content
 const (
 	AlignNone   Align = "none"   // Center-aligned text
-	AlignCenter       = "center" // Center-aligned text
-	AlignRight        = "right"  // Right-aligned text
-	AlignLeft         = "left"   // Left-aligned text
+	AlignCenter Align = "center" // Center-aligned text
+	AlignRight  Align = "right"  // Right-aligned text
+	AlignLeft   Align = "left"   // Left-aligned text
 )
 
 // Position Type and Constants
@@ -38,8 +38,8 @@ type Position string
 
 const (
 	Header Position = "header" // Table header section
-	Row             = "row"    // Table row section
-	Footer          = "footer" // Table footer section
+	Row    Position = "row"    // Table row section
+	Footer Position = "footer" // Table footer section
 )
 
 // Level indicates the vertical position of a line in the table

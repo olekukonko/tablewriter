@@ -72,7 +72,7 @@ type Table struct {
 	headerWidths tw.Mapper[int, int] // Computed widths for header columns
 	rowWidths    tw.Mapper[int, int] // Computed widths for row columns
 	footerWidths tw.Mapper[int, int] // Computed widths for footer columns
-	renderer     renderer.Renderer   // Engine for rendering the table
+	renderer     tw.Renderer         // Engine for rendering the table
 	config       Config              // Table configuration settings
 	stringer     any                 // Function to convert rows to strings
 	newLine      string              // Newline character (e.g., "\n")
@@ -83,8 +83,8 @@ type Table struct {
 // renderContext holds the core state for rendering the table.
 type renderContext struct {
 	table          *Table                                // Reference to the table instance
-	renderer       renderer.Renderer                     // Renderer instance
-	cfg            renderer.DefaultConfig                // Renderer configuration
+	renderer       tw.Renderer                           // Renderer instance
+	cfg            tw.RendererConfig                     // Renderer configuration
 	numCols        int                                   // Total number of columns
 	headerLines    [][]string                            // Processed header lines
 	rowLines       [][][]string                          // Processed row lines
@@ -96,10 +96,10 @@ type renderContext struct {
 
 // mergeContext holds state related to cell merging.
 type mergeContext struct {
-	headerMerges map[int]renderer.MergeState   // Merge states for header columns
-	rowMerges    []map[int]renderer.MergeState // Merge states for each row
-	footerMerges map[int]renderer.MergeState   // Merge states for footer columns
-	horzMerges   map[tw.Position]map[int]bool  // Tracks horizontal merges (unused)
+	headerMerges map[int]tw.MergeState        // Merge states for header columns
+	rowMerges    []map[int]tw.MergeState      // Merge states for each row
+	footerMerges map[int]tw.MergeState        // Merge states for footer columns
+	horzMerges   map[tw.Position]map[int]bool // Tracks horizontal merges (unused)
 }
 
 // helperContext holds additional data for rendering helpers.
@@ -113,9 +113,9 @@ type helperContext struct {
 
 // renderMergeResponse holds cell context data from rendering operations.
 type renderMergeResponse struct {
-	cells     map[int]renderer.CellContext // Current line cells
-	prevCells map[int]renderer.CellContext // Previous line cells
-	nextCells map[int]renderer.CellContext // Next line cells
+	cells     map[int]tw.CellContext // Current line cells
+	prevCells map[int]tw.CellContext // Previous line cells
+	nextCells map[int]tw.CellContext // Next line cells
 }
 
 // ---- Public Methods ----
@@ -128,7 +128,7 @@ func NewTable(w io.Writer, opts ...Option) *Table {
 		headerWidths: tw.NewMapper[int, int](),
 		rowWidths:    tw.NewMapper[int, int](),
 		footerWidths: tw.NewMapper[int, int](),
-		renderer:     renderer.NewDefault(),
+		renderer:     renderer.NewBlueprint(),
 		config:       defaultConfig(),
 		newLine:      tw.NewLine,
 		trace:        make([]string, 0, 100),
@@ -216,7 +216,7 @@ func (t *Table) Render() error {
 }
 
 // Renderer returns the current renderer instance used by the table.
-func (t *Table) Renderer() renderer.Renderer {
+func (t *Table) Renderer() tw.Renderer {
 	t.debug("Renderer requested")
 	return t.renderer
 }
@@ -269,14 +269,14 @@ func (t *Table) renderHeader(ctx *renderContext, mctx *mergeContext) error {
 	// Render top border if enabled
 	if cfg.Borders.Top.Enabled() && cfg.Settings.Lines.ShowTop.Enabled() {
 		ctx.debug("Rendering table top border")
-		nextCells := make(map[int]renderer.CellContext)
+		nextCells := make(map[int]tw.CellContext)
 		if len(ctx.headerLines) > 0 {
 			for j, cell := range ctx.headerLines[0] {
-				nextCells[j] = renderer.CellContext{Data: cell, Merge: mctx.headerMerges[j]}
+				nextCells[j] = tw.CellContext{Data: cell, Merge: mctx.headerMerges[j]}
 			}
 		}
-		f.Line(t.writer, renderer.Formatting{
-			Row: renderer.RowContext{
+		f.Line(t.writer, tw.Formatting{
+			Row: tw.RowContext{
 				Widths:   ctx.widths[tw.Header],
 				Next:     nextCells,
 				Position: tw.Header,
@@ -351,8 +351,8 @@ func (t *Table) renderHeader(ctx *renderContext, mctx *mergeContext) error {
 		hctx.line = padLine(ctx.headerLines[hctx.lineIdx], ctx.numCols)
 		hctx.location = tw.LocationMiddle
 		resp := t.buildCellContexts(ctx, mctx, hctx, colAligns, colPadding)
-		f.Line(t.writer, renderer.Formatting{
-			Row: renderer.RowContext{
+		f.Line(t.writer, tw.Formatting{
+			Row: tw.RowContext{
 				Widths:   ctx.widths[tw.Header],
 				Current:  resp.cells,
 				Previous: resp.prevCells,
@@ -384,20 +384,20 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 	footerIsEmptyOrNonExistent := !t.hasFooterElements()
 	if len(ctx.headerLines) == 0 && footerIsEmptyOrNonExistent && cfg.Borders.Top.Enabled() && cfg.Settings.Lines.ShowTop.Enabled() {
 		ctx.debug("Rendering table top border (rows only table)")
-		nextCells := make(map[int]renderer.CellContext)
+		nextCells := make(map[int]tw.CellContext)
 		if len(ctx.rowLines) > 0 && len(ctx.rowLines[0]) > 0 && len(mctx.rowMerges) > 0 {
 			firstLine := ctx.rowLines[0][0]
 			firstMerges := mctx.rowMerges[0]
 			for j, cell := range padLine(firstLine, ctx.numCols) {
-				mergeState := renderer.MergeState{}
+				mergeState := tw.MergeState{}
 				if firstMerges != nil {
 					mergeState = firstMerges[j]
 				}
-				nextCells[j] = renderer.CellContext{Data: cell, Merge: mergeState, Width: ctx.widths[tw.Row].Get(j)}
+				nextCells[j] = tw.CellContext{Data: cell, Merge: mergeState, Width: ctx.widths[tw.Row].Get(j)}
 			}
 		}
-		f.Line(t.writer, renderer.Formatting{
-			Row: renderer.RowContext{
+		f.Line(t.writer, tw.Formatting{
+			Row: tw.RowContext{
 				Widths:   ctx.widths[tw.Row],
 				Next:     nextCells,
 				Position: tw.Row,
@@ -431,7 +431,7 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 
 			for j := 0; j < ctx.numCols; j++ {
 				colWd := ctx.widths[tw.Row].Get(j)
-				mergeState := renderer.MergeState{}
+				mergeState := tw.MergeState{}
 				if i < len(mctx.rowMerges) && mctx.rowMerges[i] != nil {
 					mergeState = mctx.rowMerges[i][j]
 				}
@@ -504,10 +504,10 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 				ctx.debug("Rendering between-rows separator after row %d line %d", i, j)
 				resp := t.buildCellContexts(ctx, mctx, hctx, colAligns, colPadding)
 
-				nextCells := make(map[int]renderer.CellContext)
+				nextCells := make(map[int]tw.CellContext)
 				nextRowIdx := i
 				nextLineIdx := j + 1
-				var nextRowMerges map[int]renderer.MergeState
+				var nextRowMerges map[int]tw.MergeState
 
 				if nextLineIdx >= len(lines) {
 					nextRowIdx = i + 1
@@ -519,11 +519,11 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 						nextLineData := ctx.rowLines[nextRowIdx][nextLineIdx]
 						nextRowMerges = mctx.rowMerges[nextRowIdx]
 						for k, cell := range padLine(nextLineData, ctx.numCols) {
-							mergeState := renderer.MergeState{}
+							mergeState := tw.MergeState{}
 							if nextRowMerges != nil {
 								mergeState = nextRowMerges[k]
 							}
-							nextCells[k] = renderer.CellContext{Data: cell, Merge: mergeState, Width: ctx.widths[tw.Row].Get(k)}
+							nextCells[k] = tw.CellContext{Data: cell, Merge: mergeState, Width: ctx.widths[tw.Row].Get(k)}
 						}
 						ctx.debug("Separator context: Next is row %d line %d", nextRowIdx, nextLineIdx)
 					} else if nextLineIdx == 0 && len(ctx.rowLines[nextRowIdx]) == 0 {
@@ -538,8 +538,8 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 					nextCells = nil
 				}
 
-				f.Line(t.writer, renderer.Formatting{
-					Row: renderer.RowContext{
+				f.Line(t.writer, tw.Formatting{
+					Row: tw.RowContext{
 						Widths:   ctx.widths[tw.Row],
 						Current:  resp.cells,
 						Previous: resp.prevCells,
@@ -577,7 +577,7 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 
 			for j := 0; j < ctx.numCols; j++ {
 				colWd := ctx.widths[tw.Row].Get(j)
-				mergeState := renderer.MergeState{}
+				mergeState := tw.MergeState{}
 				if i < len(mctx.rowMerges) && mctx.rowMerges[i] != nil {
 					mergeState = mctx.rowMerges[i][j]
 				}
@@ -685,8 +685,8 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 
 			resp := t.buildCellContexts(ctx, mctx, lastLineAboveCtx, lastLineAligns, lastLinePadding)
 			ctx.debug("Bottom border: Using Widths=%v", ctx.widths[tw.Row])
-			f.Line(t.writer, renderer.Formatting{
-				Row: renderer.RowContext{
+			f.Line(t.writer, tw.Formatting{
+				Row: tw.RowContext{
 					Widths:       ctx.widths[tw.Row],
 					Current:      resp.cells,
 					Previous:     resp.prevCells,
@@ -755,20 +755,20 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 		}
 
 		resp := t.buildCellContexts(ctx, mctx, lastLineAboveCtx, lastLineAligns, lastLinePadding)
-		var nextCells map[int]renderer.CellContext
+		var nextCells map[int]tw.CellContext
 		if hasContent {
-			nextCells = make(map[int]renderer.CellContext)
+			nextCells = make(map[int]tw.CellContext)
 			for j, cellData := range padLine(ctx.footerLines[0], ctx.numCols) {
-				mergeState := renderer.MergeState{}
+				mergeState := tw.MergeState{}
 				if mctx.footerMerges != nil {
 					mergeState = mctx.footerMerges[j]
 				}
-				nextCells[j] = renderer.CellContext{Data: cellData, Merge: mergeState, Width: ctx.widths[tw.Footer].Get(j)}
+				nextCells[j] = tw.CellContext{Data: cellData, Merge: mergeState, Width: ctx.widths[tw.Footer].Get(j)}
 			}
 		}
 		ctx.debug("Footer separator: Using Widths=%v", ctx.widths[tw.Row])
-		f.Line(t.writer, renderer.Formatting{
-			Row: renderer.RowContext{
+		f.Line(t.writer, tw.Formatting{
+			Row: tw.RowContext{
 				Widths:       ctx.widths[tw.Row],
 				Current:      resp.cells,
 				Previous:     resp.prevCells,
@@ -794,7 +794,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 		ctx.debug("Constructing Footer Global Top Padding line content")
 		for j := 0; j < ctx.numCols; j++ {
 			colWd := ctx.widths[tw.Footer].Get(j)
-			mergeState := renderer.MergeState{}
+			mergeState := tw.MergeState{}
 			if mctx.footerMerges != nil {
 				mergeState = mctx.footerMerges[j]
 			}
@@ -871,7 +871,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 		ctx.debug("Constructing Footer Bottom Padding line content strings")
 		for j := 0; j < ctx.numCols; j++ {
 			colWd := ctx.widths[tw.Footer].Get(j)
-			mergeState := renderer.MergeState{}
+			mergeState := tw.MergeState{}
 			if mctx.footerMerges != nil {
 				mergeState = mctx.footerMerges[j]
 			}
@@ -937,7 +937,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 			if colIdx < len(formattedPaddingCells) {
 				paddingLineOutput.WriteString(formattedPaddingCells[colIdx])
 			}
-			currentMergeState := renderer.MergeState{}
+			currentMergeState := tw.MergeState{}
 			if mctx.footerMerges != nil {
 				if state, ok := mctx.footerMerges[colIdx]; ok {
 					currentMergeState = state
@@ -993,8 +993,8 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 		}
 		resp := t.buildCellContexts(ctx, mctx, hctx, colAligns, colPadding)
 		ctx.debug("Bottom border: Using Widths=%v", ctx.widths[tw.Row])
-		f.Line(t.writer, renderer.Formatting{
-			Row: renderer.RowContext{
+		f.Line(t.writer, tw.Formatting{
+			Row: tw.RowContext{
 				Widths:       ctx.widths[tw.Row],
 				Current:      resp.cells,
 				Previous:     resp.prevCells,
@@ -1015,8 +1015,8 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 
 // buildCellContexts constructs CellContext objects for a given line.
 func (t *Table) buildCellContexts(ctx *renderContext, mctx *mergeContext, hctx *helperContext, aligns map[int]tw.Align, padding map[int]tw.Padding) renderMergeResponse {
-	cells := make(map[int]renderer.CellContext)
-	var merges map[int]renderer.MergeState
+	cells := make(map[int]tw.CellContext)
+	var merges map[int]tw.MergeState
 
 	switch hctx.position {
 	case tw.Header:
@@ -1025,18 +1025,18 @@ func (t *Table) buildCellContexts(ctx *renderContext, mctx *mergeContext, hctx *
 		if hctx.rowIdx >= 0 && hctx.rowIdx < len(mctx.rowMerges) {
 			merges = mctx.rowMerges[hctx.rowIdx]
 		} else {
-			merges = make(map[int]renderer.MergeState)
+			merges = make(map[int]tw.MergeState)
 			t.debug("Warning: Invalid row index %d in buildCellContexts for row merges", hctx.rowIdx)
 		}
 	case tw.Footer:
 		merges = mctx.footerMerges
 	default:
-		merges = make(map[int]renderer.MergeState)
+		merges = make(map[int]tw.MergeState)
 		t.debug("Warning: Invalid position '%s' in buildCellContexts", hctx.position)
 	}
 
 	if merges == nil {
-		merges = make(map[int]renderer.MergeState)
+		merges = make(map[int]tw.MergeState)
 		t.debug("Warning: merges map was nil in buildCellContexts, using empty map")
 	}
 
@@ -1046,7 +1046,7 @@ func (t *Table) buildCellContexts(ctx *renderContext, mctx *mergeContext, hctx *
 		if j < len(hctx.line) {
 			cellData = hctx.line[j]
 		}
-		cells[j] = renderer.CellContext{
+		cells[j] = tw.CellContext{
 			Data:    cellData,
 			Align:   aligns[j],
 			Padding: padding[j],
@@ -1066,10 +1066,10 @@ func (t *Table) buildCellContexts(ctx *renderContext, mctx *mergeContext, hctx *
 }
 
 // buildAdjacentCells constructs cell contexts for adjacent lines (previous or next).
-func (t *Table) buildAdjacentCells(ctx *renderContext, mctx *mergeContext, hctx *helperContext, direction int) map[int]renderer.CellContext {
-	adjCells := make(map[int]renderer.CellContext)
+func (t *Table) buildAdjacentCells(ctx *renderContext, mctx *mergeContext, hctx *helperContext, direction int) map[int]tw.CellContext {
+	adjCells := make(map[int]tw.CellContext)
 	var adjLine []string
-	var adjMerges map[int]renderer.MergeState
+	var adjMerges map[int]tw.MergeState
 	found := false
 	adjPosition := hctx.position
 
@@ -1195,7 +1195,7 @@ func (t *Table) buildAdjacentCells(ctx *renderContext, mctx *mergeContext, hctx 
 	}
 
 	if adjMerges == nil {
-		adjMerges = make(map[int]renderer.MergeState)
+		adjMerges = make(map[int]tw.MergeState)
 		t.debug("Warning: adjMerges was nil despite found=true")
 	}
 
@@ -1203,7 +1203,7 @@ func (t *Table) buildAdjacentCells(ctx *renderContext, mctx *mergeContext, hctx 
 	for j := 0; j < ctx.numCols; j++ {
 		mergeState := adjMerges[j]
 		cellData := paddedAdjLine[j]
-		adjCells[j] = renderer.CellContext{
+		adjCells[j] = tw.CellContext{
 			Data:  cellData,
 			Merge: mergeState,
 			Width: ctx.widths[adjPosition].Get(j),
@@ -1279,13 +1279,13 @@ func (t *Table) prepareContexts() (*renderContext, *mergeContext, error) {
 	normalizedWidths := tw.NewMapper[int, int]()
 
 	mctx := &mergeContext{
-		headerMerges: make(map[int]renderer.MergeState),
-		rowMerges:    make([]map[int]renderer.MergeState, len(t.rows)),
-		footerMerges: make(map[int]renderer.MergeState),
+		headerMerges: make(map[int]tw.MergeState),
+		rowMerges:    make([]map[int]tw.MergeState, len(t.rows)),
+		footerMerges: make(map[int]tw.MergeState),
 		horzMerges:   make(map[tw.Position]map[int]bool),
 	}
 	for i := range mctx.rowMerges {
-		mctx.rowMerges[i] = make(map[int]renderer.MergeState)
+		mctx.rowMerges[i] = make(map[int]tw.MergeState)
 	}
 
 	if err := t.calculateAndNormalizeWidths(ctx); err != nil {
@@ -1300,7 +1300,7 @@ func (t *Table) prepareContexts() (*renderContext, *mergeContext, error) {
 	processedRowLines := make([][][]string, len(ctx.rowLines))
 	for i, row := range ctx.rowLines {
 		if mctx.rowMerges[i] == nil {
-			mctx.rowMerges[i] = make(map[int]renderer.MergeState)
+			mctx.rowMerges[i] = make(map[int]tw.MergeState)
 		}
 		processedRowLines[i], mctx.rowMerges[i], _ = t.prepareWithMerges(row, t.config.Row, tw.Row)
 	}
@@ -1347,8 +1347,8 @@ func (t *Table) renderLine(ctx *renderContext, mctx *mergeContext, hctx *helperC
 	sectionWidths := ctx.widths[hctx.position]
 	normalizedWidths := ctx.widths[tw.Row]
 
-	formatting := renderer.Formatting{
-		Row: renderer.RowContext{
+	formatting := tw.Formatting{
+		Row: tw.RowContext{
 			Widths:       sectionWidths,
 			ColMaxWidths: t.getColMaxWidths(hctx.position),
 			Current:      resp.cells,
@@ -1572,7 +1572,7 @@ func (t *Table) prepareFooter(ctx *renderContext, mctx *mergeContext) {
 }
 
 // prepareWithMerges processes content and detects horizontal merges.
-func (t *Table) prepareWithMerges(content [][]string, config CellConfig, position tw.Position) ([][]string, map[int]renderer.MergeState, map[int]bool) {
+func (t *Table) prepareWithMerges(content [][]string, config CellConfig, position tw.Position) ([][]string, map[int]tw.MergeState, map[int]bool) {
 	t.debug("PrepareWithMerges START: position=%s, mergeMode=%d", position, config.Formatting.MergeMode)
 	if len(content) == 0 {
 		t.debug("PrepareWithMerges END: No content.")
@@ -1599,7 +1599,7 @@ func (t *Table) prepareWithMerges(content [][]string, config CellConfig, positio
 	}
 
 	horzMergeMap := make(map[int]bool)
-	mergeMap := make(map[int]renderer.MergeState)
+	mergeMap := make(map[int]tw.MergeState)
 	result := make([][]string, len(content))
 	for i := range content {
 		result[i] = padLine(content[i], numCols)
@@ -1655,13 +1655,13 @@ func (t *Table) prepareWithMerges(content [][]string, config CellConfig, positio
 						}
 
 						startState := mergeMap[startCol]
-						startState.Horizontal = renderer.MergeStateOption{Present: true, Span: span, Start: true, End: (span == 1)}
+						startState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: true, End: (span == 1)}
 						mergeMap[startCol] = startState
 						horzMergeMap[startCol] = true
 
 						for k := startCol + 1; k < startCol+span; k++ {
 							colState := mergeMap[k]
-							colState.Horizontal = renderer.MergeStateOption{Present: true, Span: span, Start: false, End: (k == startCol+span-1)}
+							colState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: false, End: (k == startCol+span-1)}
 							mergeMap[k] = colState
 							horzMergeMap[k] = true
 						}
@@ -1680,7 +1680,7 @@ func (t *Table) prepareWithMerges(content [][]string, config CellConfig, positio
 					if mergeState, ok := mergeMap[col]; ok && mergeState.Horizontal.Present && !mergeState.Horizontal.Start {
 						tempCol := col - 1
 						startCol := -1
-						startState := renderer.MergeState{}
+						startState := tw.MergeState{}
 						for tempCol >= 0 {
 							if state, okS := mergeMap[tempCol]; okS && state.Horizontal.Present && state.Horizontal.Start {
 								startCol = tempCol
@@ -1731,7 +1731,7 @@ func (t *Table) prepareWithMerges(content [][]string, config CellConfig, positio
 				if span > 1 {
 					t.debug("Standard horizontal merge at line %d, col %d, span %d", lineIdx, startCol, span)
 					startState := mergeMap[startCol]
-					startState.Horizontal = renderer.MergeStateOption{Present: true, Span: span, Start: true, End: (span == 1)}
+					startState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: true, End: (span == 1)}
 					mergeMap[startCol] = startState
 					horzMergeMap[startCol] = true
 
@@ -1740,7 +1740,7 @@ func (t *Table) prepareWithMerges(content [][]string, config CellConfig, positio
 							currentLineResult[k] = tw.Empty
 						}
 						colState := mergeMap[k]
-						colState.Horizontal = renderer.MergeStateOption{Present: true, Span: span, Start: false, End: (k == startCol+span-1)}
+						colState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: false, End: (k == startCol+span-1)}
 						mergeMap[k] = colState
 						horzMergeMap[k] = true
 					}
@@ -1766,15 +1766,15 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 
 	for i := 0; i < len(ctx.rowLines); i++ {
 		if i >= len(mctx.rowMerges) {
-			newRowMerges := make([]map[int]renderer.MergeState, i+1)
+			newRowMerges := make([]map[int]tw.MergeState, i+1)
 			copy(newRowMerges, mctx.rowMerges)
 			for k := len(mctx.rowMerges); k <= i; k++ {
-				newRowMerges[k] = make(map[int]renderer.MergeState)
+				newRowMerges[k] = make(map[int]tw.MergeState)
 			}
 			mctx.rowMerges = newRowMerges
 			ctx.debug("Extended rowMerges to index %d", i)
 		} else if mctx.rowMerges[i] == nil {
-			mctx.rowMerges[i] = make(map[int]renderer.MergeState)
+			mctx.rowMerges[i] = make(map[int]tw.MergeState)
 		}
 
 		if len(ctx.rowLines[i]) == 0 {
@@ -1790,7 +1790,7 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 			mergeState := mctx.rowMerges[i][col]
 
 			if ongoingMerge && currentVal == startContent && currentVal != "" {
-				mergeState.Vertical = renderer.MergeStateOption{
+				mergeState.Vertical = tw.MergeStateOption{
 					Present: true,
 					Span:    0,
 					Start:   false,
@@ -1822,7 +1822,7 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 				}
 
 				if currentVal != "" {
-					mergeState.Vertical = renderer.MergeStateOption{
+					mergeState.Vertical = tw.MergeStateOption{
 						Present: true,
 						Span:    1,
 						Start:   true,
@@ -1833,7 +1833,7 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 					mergeStartContent[col] = currentVal
 					ctx.debug("Vertical merge started at row %d, col %d", i, col)
 				} else if !mergeState.Horizontal.Present {
-					mergeState.Vertical = renderer.MergeStateOption{}
+					mergeState.Vertical = tw.MergeStateOption{}
 					mctx.rowMerges[i][col] = mergeState
 				}
 			}
@@ -1863,7 +1863,7 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 }
 
 // applyHorizontalMergeWidths recalculates widths for a section after H-merges are known.
-func (t *Table) applyHorizontalMergeWidths(position tw.Position, ctx *renderContext, mergeStates map[int]renderer.MergeState) {
+func (t *Table) applyHorizontalMergeWidths(position tw.Position, ctx *renderContext, mergeStates map[int]tw.MergeState) {
 	if mergeStates == nil {
 		t.debug("applyHorizontalMergeWidths: Skipping %s - no merge states", position)
 		return
@@ -1954,10 +1954,10 @@ func (t *Table) applyHierarchicalMerges(ctx *renderContext, mctx *mergeContext) 
 
 		for c := 0; c < numCols; c++ {
 			if mctx.rowMerges[r] == nil {
-				mctx.rowMerges[r] = make(map[int]renderer.MergeState)
+				mctx.rowMerges[r] = make(map[int]tw.MergeState)
 			}
 			if mctx.rowMerges[r-1] == nil {
-				mctx.rowMerges[r-1] = make(map[int]renderer.MergeState)
+				mctx.rowMerges[r-1] = make(map[int]tw.MergeState)
 			}
 
 			canCompare := r > 0 &&
@@ -1966,7 +1966,7 @@ func (t *Table) applyHierarchicalMerges(ctx *renderContext, mctx *mergeContext) 
 
 			if !canCompare {
 				currentState := mctx.rowMerges[r][c]
-				currentState.Hierarchical = renderer.MergeStateOption{}
+				currentState.Hierarchical = tw.MergeStateOption{}
 				mctx.rowMerges[r][c] = currentState
 				ctx.debug("HCompare Skipped: r=%d, c=%d - Insufficient data in snapshot", r, c)
 				leftCellContinuedHierarchical = false
@@ -2021,7 +2021,7 @@ func (t *Table) applyHierarchicalMerges(ctx *renderContext, mctx *mergeContext) 
 
 				leftCellContinuedHierarchical = true
 			} else {
-				currentState.Hierarchical = renderer.MergeStateOption{}
+				currentState.Hierarchical = tw.MergeStateOption{}
 
 				if startRow, ok := hMergeStartRow[c]; ok {
 					t.finalizeHierarchicalMergeBlock(ctx, mctx, c, startRow, r-1)
@@ -2060,10 +2060,10 @@ func (t *Table) finalizeHierarchicalMergeBlock(ctx *renderContext, mctx *mergeCo
 		return
 	}
 	if mctx.rowMerges[startRow] == nil {
-		mctx.rowMerges[startRow] = make(map[int]renderer.MergeState)
+		mctx.rowMerges[startRow] = make(map[int]tw.MergeState)
 	}
 	if mctx.rowMerges[endRow] == nil {
-		mctx.rowMerges[endRow] = make(map[int]renderer.MergeState)
+		mctx.rowMerges[endRow] = make(map[int]tw.MergeState)
 	}
 
 	finalSpan := (endRow - startRow) + 1
@@ -2167,18 +2167,34 @@ func (t *Table) maxColumns() int {
 
 // buildAligns constructs a map of column alignments based on config.
 func (t *Table) buildAligns(config CellConfig) map[int]tw.Align {
-	t.debug("Building aligns")
-	colAligns := make(map[int]tw.Align)
+	t.debug("Building aligns for section. Section Default: '%s', ColumnAligns: %v", config.Formatting.Alignment, config.ColumnAligns)
+	colAlignsResult := make(map[int]tw.Align)
 	numCols := t.maxColumns()
+
 	for i := 0; i < numCols; i++ {
-		if i < len(config.ColumnAligns) && config.ColumnAligns[i] != tw.Empty {
-			colAligns[i] = config.ColumnAligns[i]
-		} else {
-			colAligns[i] = config.Formatting.Alignment
+		// Default to the section's configured alignment
+		currentAlign := config.Formatting.Alignment
+		// t.debug("  Col %d: Initial align from section default: '%s'", i, currentAlign)
+
+		// Check for a per-column override
+		if i < len(config.ColumnAligns) {
+			colSpecificAlign := config.ColumnAligns[i]
+			// t.debug("  Col %d: Found ColumnAligns value: '%s'", i, colSpecificAlign)
+			if colSpecificAlign == tw.Skip { // If explicitly "skip", signal renderer to use its default
+				currentAlign = tw.AlignNone
+				// t.debug("  Col %d: ColumnAligns is tw.Skip, setting to tw.AlignNone for renderer default.", i)
+			} else if colSpecificAlign != "" { // If any other non-empty specific alignment, use it
+				currentAlign = colSpecificAlign
+				// t.debug("  Col %d: ColumnAligns provides specific override: '%s'", i, currentAlign)
+			}
+			// If colSpecificAlign is "" but not tw.Skip (e.g. an uninitialized entry), it won't override,
+			// and we stick with section default. However, tw.Skip is also "", so this case is covered by the above.
+			// If colSpecificAlign is tw.AlignNone ("none"), that's a valid specific override.
 		}
+		colAlignsResult[i] = currentAlign
 	}
-	t.debug("Aligns built: %v", colAligns)
-	return colAligns
+	t.debug("Aligns built: %v", colAlignsResult)
+	return colAlignsResult
 }
 
 // buildPadding constructs a map of column padding settings based on config.
@@ -2217,7 +2233,7 @@ func (t *Table) ensureInitialized() {
 		t.footerWidths = tw.NewMapper[int, int]()
 	}
 	if t.renderer == nil {
-		t.renderer = renderer.NewDefault()
+		t.renderer = renderer.NewBlueprint()
 	}
 	t.debug("ensureInitialized called")
 }
