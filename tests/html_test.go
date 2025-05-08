@@ -42,14 +42,14 @@ func TestHTMLWithFooterAndAlignment(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
-		tablewriter.WithHeaderConfig(tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{Alignment: tw.AlignCenter},
+		tablewriter.WithHeaderConfig(tw.CellConfig{
+			Formatting: tw.CellFormatting{Alignment: tw.AlignCenter},
 		}),
-		tablewriter.WithRowConfig(tablewriter.CellConfig{
+		tablewriter.WithRowConfig(tw.CellConfig{
 			ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignRight, tw.AlignCenter},
 		}),
-		tablewriter.WithFooterConfig(tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{Alignment: tw.AlignRight},
+		tablewriter.WithFooterConfig(tw.CellConfig{
+			Formatting: tw.CellFormatting{Alignment: tw.AlignRight},
 		}),
 	)
 	table.SetHeader([]string{"Item", "Qty", "Price"})
@@ -185,9 +185,9 @@ func TestHTMLHorizontalMerge(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
 		tablewriter.WithConfig(tablewriter.Config{
-			Header: tablewriter.CellConfig{Formatting: tablewriter.CellFormatting{MergeMode: tw.MergeHorizontal}},
-			Row:    tablewriter.CellConfig{Formatting: tablewriter.CellFormatting{MergeMode: tw.MergeHorizontal}},
-			Footer: tablewriter.CellConfig{Formatting: tablewriter.CellFormatting{MergeMode: tw.MergeHorizontal}},
+			Header: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal}},
+			Row:    tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal}},
+			Footer: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal}},
 		}),
 	)
 	table.SetHeader([]string{"A", "Merged Header", "Merged Header"})
@@ -222,7 +222,7 @@ func TestHTMLVerticalMerge(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
 		tablewriter.WithConfig(tablewriter.Config{
-			Row: tablewriter.CellConfig{Formatting: tablewriter.CellFormatting{MergeMode: tw.MergeVertical}},
+			Row: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeVertical}},
 		}),
 	)
 	table.SetHeader([]string{"Category", "Item", "Value"})
@@ -261,7 +261,7 @@ func TestHTMLCombinedMerge(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
 		tablewriter.WithConfig(tablewriter.Config{
-			Row: tablewriter.CellConfig{Formatting: tablewriter.CellFormatting{MergeMode: tw.MergeBoth}},
+			Row: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeBoth}},
 		}),
 	)
 	table.SetHeader([]string{"Region", "Quarter", "Sales", "Target"})
@@ -299,10 +299,10 @@ func TestHTMLHierarchicalMerge(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
 		tablewriter.WithConfig(tablewriter.Config{
-			Row: tablewriter.CellConfig{Formatting: tablewriter.CellFormatting{MergeMode: tw.MergeHierarchical}},
+			Row: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHierarchical}},
 		}),
-		tablewriter.WithHeaderConfig(tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		tablewriter.WithHeaderConfig(tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				AutoFormat: false,
 				Alignment:  tw.AlignCenter,
 			},
@@ -384,8 +384,8 @@ func TestHTMLCSSClasses(t *testing.T) {
 	}
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewHTML(&buf, false, htmlCfg)),
-		tablewriter.WithHeaderConfig(tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{AutoFormat: false, Alignment: tw.AlignCenter},
+		tablewriter.WithHeaderConfig(tw.CellConfig{
+			Formatting: tw.CellFormatting{AutoFormat: false, Alignment: tw.AlignCenter},
 		}),
 	)
 	table.SetHeader([]string{"H1"})

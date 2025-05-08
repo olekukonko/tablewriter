@@ -193,7 +193,7 @@ func (b *ConfigBuilder) ForColumn(col int) *ColumnConfigBuilder {
 // HeaderConfigBuilder provides advanced configuration for the header section.
 type HeaderConfigBuilder struct {
 	parent  *ConfigBuilder
-	config  *CellConfig
+	config  *tw.CellConfig
 	section string
 }
 
@@ -223,7 +223,7 @@ func (h *HeaderConfigBuilder) Padding() *HeaderPaddingBuilder {
 // HeaderFormattingBuilder configures formatting options for the header.
 type HeaderFormattingBuilder struct {
 	parent  *HeaderConfigBuilder
-	config  *CellFormatting
+	config  *tw.CellFormatting
 	section string
 }
 
@@ -259,7 +259,7 @@ func (hf *HeaderFormattingBuilder) Build() *HeaderConfigBuilder {
 // HeaderPaddingBuilder configures padding options for the header.
 type HeaderPaddingBuilder struct {
 	parent  *HeaderConfigBuilder
-	config  *CellPadding
+	config  *tw.CellPadding
 	section string
 }
 
@@ -286,7 +286,7 @@ func (hp *HeaderPaddingBuilder) Build() *HeaderConfigBuilder {
 // (Similar structure to HeaderConfigBuilder, omitted for brevity but follows the same pattern)
 type RowConfigBuilder struct {
 	parent  *ConfigBuilder
-	config  *CellConfig
+	config  *tw.CellConfig
 	section string
 }
 
@@ -313,7 +313,7 @@ func (r *RowConfigBuilder) Padding() *RowPaddingBuilder {
 // RowFormattingBuilder configures formatting options for rows.
 type RowFormattingBuilder struct {
 	parent  *RowConfigBuilder
-	config  *CellFormatting
+	config  *tw.CellFormatting
 	section string
 }
 
@@ -349,7 +349,7 @@ func (rf *RowFormattingBuilder) Build() *RowConfigBuilder {
 // RowPaddingBuilder configures padding options for rows.
 type RowPaddingBuilder struct {
 	parent  *RowConfigBuilder
-	config  *CellPadding
+	config  *tw.CellPadding
 	section string
 }
 
@@ -376,7 +376,7 @@ func (rp *RowPaddingBuilder) Build() *RowConfigBuilder {
 // (Similar structure to HeaderConfigBuilder, omitted for brevity)
 type FooterConfigBuilder struct {
 	parent  *ConfigBuilder
-	config  *CellConfig
+	config  *tw.CellConfig
 	section string
 }
 
@@ -403,7 +403,7 @@ func (f *FooterConfigBuilder) Padding() *FooterPaddingBuilder {
 // FooterFormattingBuilder configures formatting options for the footer.
 type FooterFormattingBuilder struct {
 	parent  *FooterConfigBuilder
-	config  *CellFormatting
+	config  *tw.CellFormatting
 	section string
 }
 
@@ -439,7 +439,7 @@ func (ff *FooterFormattingBuilder) Build() *FooterConfigBuilder {
 // FooterPaddingBuilder configures padding options for the footer.
 type FooterPaddingBuilder struct {
 	parent  *FooterConfigBuilder
-	config  *CellPadding
+	config  *tw.CellPadding
 	section string
 }
 
@@ -516,7 +516,7 @@ func mergeConfig(dst, src Config) Config {
 }
 
 // mergeCellConfig merges a source CellConfig into a destination CellConfig.
-func mergeCellConfig(dst, src CellConfig) CellConfig {
+func mergeCellConfig(dst, src tw.CellConfig) tw.CellConfig {
 	t := &Table{config: Config{Debug: true}}
 	t.debug("Merging cell config")
 	if src.Formatting.Alignment != tw.Empty {
@@ -655,17 +655,17 @@ func WithFooterMergeMode(mergeMode int) Option {
 }
 
 // WithHeaderConfig applies a full header configuration.
-func WithHeaderConfig(config CellConfig) Option {
+func WithHeaderConfig(config tw.CellConfig) Option {
 	return func(t *Table) { t.config.Header = config }
 }
 
 // WithRowConfig applies a full row configuration.
-func WithRowConfig(config CellConfig) Option {
+func WithRowConfig(config tw.CellConfig) Option {
 	return func(t *Table) { t.config.Row = config }
 }
 
 // WithFooterConfig applies a full footer configuration.
-func WithFooterConfig(config CellConfig) Option {
+func WithFooterConfig(config tw.CellConfig) Option {
 	return func(t *Table) { t.config.Footer = config }
 }
 

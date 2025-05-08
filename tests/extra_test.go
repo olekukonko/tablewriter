@@ -11,7 +11,7 @@ import (
 func TestFilterMasking(t *testing.T) {
 	tests := []struct {
 		name     string
-		filter   tablewriter.Filter
+		filter   tw.Filter
 		data     [][]string
 		expected string
 	}{
@@ -69,14 +69,14 @@ func TestFilterMasking(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
-				Header: tablewriter.CellConfig{
-					Formatting: tablewriter.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: true},
-					Padding:    tablewriter.CellPadding{Global: tw.Padding{Left: " ", Right: " "}},
+				Header: tw.CellConfig{
+					Formatting: tw.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: true},
+					Padding:    tw.CellPadding{Global: tw.Padding{Left: " ", Right: " "}},
 				},
-				Row: tablewriter.CellConfig{
-					Formatting: tablewriter.CellFormatting{Alignment: tw.AlignLeft},
-					Padding:    tablewriter.CellPadding{Global: tw.Padding{Left: " ", Right: " "}},
-					Filter: tablewriter.CellFilter{
+				Row: tw.CellConfig{
+					Formatting: tw.CellFormatting{Alignment: tw.AlignLeft},
+					Padding:    tw.CellPadding{Global: tw.Padding{Left: " ", Right: " "}},
+					Filter: tw.CellFilter{
 						Global: tt.filter,
 					},
 				},
@@ -102,11 +102,11 @@ func TestMasterClass(t *testing.T) {
 
 	littleConfig := tablewriter.Config{
 		MaxWidth: 30,
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				Alignment: tw.AlignCenter,
 			},
-			Padding: tablewriter.CellPadding{
+			Padding: tw.CellPadding{
 				Global: tw.Padding{Left: tw.Skip, Right: tw.Skip, Top: tw.Skip, Bottom: tw.Skip},
 			},
 		},
@@ -114,14 +114,14 @@ func TestMasterClass(t *testing.T) {
 
 	bigConfig := tablewriter.Config{
 		MaxWidth: 50,
-		Header: tablewriter.CellConfig{Formatting: tablewriter.CellFormatting{
+		Header: tw.CellConfig{Formatting: tw.CellFormatting{
 			AutoWrap: tw.WrapTruncate,
 		}},
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				Alignment: tw.AlignCenter,
 			},
-			Padding: tablewriter.CellPadding{
+			Padding: tw.CellPadding{
 				Global: tw.Padding{Left: tw.Skip, Right: tw.Skip, Top: tw.Skip, Bottom: tw.Skip},
 			},
 		},

@@ -10,37 +10,37 @@ import (
 // It includes tests for the hybrid configuration approach using ConfigBuilder and Option functions.
 func TestMergeCellConfig(t *testing.T) {
 	// Default configuration used as the base for merging, aligned with defaultConfig() from tablewriter.go
-	defaultCfg := CellConfig{
-		Formatting: CellFormatting{
+	defaultCfg := tw.CellConfig{
+		Formatting: tw.CellFormatting{
 			Alignment:  tw.AlignLeft,
 			AutoWrap:   tw.WrapNormal, // 1
 			AutoFormat: false,
 			MergeMode:  tw.MergeNone,
 			MaxWidth:   0,
 		},
-		Padding: CellPadding{
+		Padding: tw.CellPadding{
 			Global: tw.Padding{Left: " ", Right: " "},
 		},
 	}
 
 	tests := []struct {
 		name     string
-		input    CellConfig
-		expected CellConfig
+		input    tw.CellConfig
+		expected tw.CellConfig
 	}{
 		// Test case: Empty input should preserve defaults
 		{
 			name:  "EmptyConfig",
-			input: CellConfig{},
-			expected: CellConfig{
-				Formatting: CellFormatting{
+			input: tw.CellConfig{},
+			expected: tw.CellConfig{
+				Formatting: tw.CellFormatting{
 					Alignment:  tw.AlignLeft,
 					AutoWrap:   tw.WrapNormal,
 					AutoFormat: false,
 					MergeMode:  tw.MergeNone,
 					MaxWidth:   0,
 				},
-				Padding: CellPadding{
+				Padding: tw.CellPadding{
 					Global: tw.Padding{Left: " ", Right: " "},
 				},
 			},
@@ -48,20 +48,20 @@ func TestMergeCellConfig(t *testing.T) {
 		// Test case: Override MergeMode to None
 		{
 			name: "OverrideMergeModeNone",
-			input: CellConfig{
-				Formatting: CellFormatting{
+			input: tw.CellConfig{
+				Formatting: tw.CellFormatting{
 					MergeMode: tw.MergeNone,
 				},
 			},
-			expected: CellConfig{
-				Formatting: CellFormatting{
+			expected: tw.CellConfig{
+				Formatting: tw.CellFormatting{
 					Alignment:  tw.AlignLeft,
 					AutoWrap:   tw.WrapNormal,
 					AutoFormat: false,
 					MergeMode:  tw.MergeNone,
 					MaxWidth:   0,
 				},
-				Padding: CellPadding{
+				Padding: tw.CellPadding{
 					Global: tw.Padding{Left: " ", Right: " "},
 				},
 			},
@@ -69,20 +69,20 @@ func TestMergeCellConfig(t *testing.T) {
 		// Test case: Override MergeMode to Vertical
 		{
 			name: "OverrideMergeModeVertical",
-			input: CellConfig{
-				Formatting: CellFormatting{
+			input: tw.CellConfig{
+				Formatting: tw.CellFormatting{
 					MergeMode: tw.MergeVertical,
 				},
 			},
-			expected: CellConfig{
-				Formatting: CellFormatting{
+			expected: tw.CellConfig{
+				Formatting: tw.CellFormatting{
 					Alignment:  tw.AlignLeft,
 					AutoWrap:   tw.WrapNormal,
 					AutoFormat: false,
 					MergeMode:  tw.MergeVertical,
 					MaxWidth:   0,
 				},
-				Padding: CellPadding{
+				Padding: tw.CellPadding{
 					Global: tw.Padding{Left: " ", Right: " "},
 				},
 			},
@@ -90,20 +90,20 @@ func TestMergeCellConfig(t *testing.T) {
 		// Test case: Override MergeMode to Horizontal
 		{
 			name: "OverrideMergeModeHorizontal",
-			input: CellConfig{
-				Formatting: CellFormatting{
+			input: tw.CellConfig{
+				Formatting: tw.CellFormatting{
 					MergeMode: tw.MergeHorizontal,
 				},
 			},
-			expected: CellConfig{
-				Formatting: CellFormatting{
+			expected: tw.CellConfig{
+				Formatting: tw.CellFormatting{
 					Alignment:  tw.AlignLeft,
 					AutoWrap:   tw.WrapNormal,
 					AutoFormat: false,
 					MergeMode:  tw.MergeHorizontal,
 					MaxWidth:   0,
 				},
-				Padding: CellPadding{
+				Padding: tw.CellPadding{
 					Global: tw.Padding{Left: " ", Right: " "},
 				},
 			},
@@ -111,20 +111,20 @@ func TestMergeCellConfig(t *testing.T) {
 		// Test case: Override MergeMode to Both
 		{
 			name: "OverrideMergeModeBoth",
-			input: CellConfig{
-				Formatting: CellFormatting{
+			input: tw.CellConfig{
+				Formatting: tw.CellFormatting{
 					MergeMode: tw.MergeBoth,
 				},
 			},
-			expected: CellConfig{
-				Formatting: CellFormatting{
+			expected: tw.CellConfig{
+				Formatting: tw.CellFormatting{
 					Alignment:  tw.AlignLeft,
 					AutoWrap:   tw.WrapNormal,
 					AutoFormat: false,
 					MergeMode:  tw.MergeBoth,
 					MaxWidth:   0,
 				},
-				Padding: CellPadding{
+				Padding: tw.CellPadding{
 					Global: tw.Padding{Left: " ", Right: " "},
 				},
 			},
@@ -132,20 +132,20 @@ func TestMergeCellConfig(t *testing.T) {
 		// Test case: Override MergeMode to Hierarchical
 		{
 			name: "OverrideMergeModeHierarchical",
-			input: CellConfig{
-				Formatting: CellFormatting{
+			input: tw.CellConfig{
+				Formatting: tw.CellFormatting{
 					MergeMode: tw.MergeHierarchical,
 				},
 			},
-			expected: CellConfig{
-				Formatting: CellFormatting{
+			expected: tw.CellConfig{
+				Formatting: tw.CellFormatting{
 					Alignment:  tw.AlignLeft,
 					AutoWrap:   tw.WrapNormal,
 					AutoFormat: false,
 					MergeMode:  tw.MergeHierarchical,
 					MaxWidth:   0,
 				},
-				Padding: CellPadding{
+				Padding: tw.CellPadding{
 					Global: tw.Padding{Left: " ", Right: " "},
 				},
 			},
@@ -158,15 +158,15 @@ func TestMergeCellConfig(t *testing.T) {
 				WithHeaderAlignment(tw.AlignCenter).
 				WithHeaderMergeMode(tw.MergeHorizontal).
 				Build().Header,
-			expected: CellConfig{
-				Formatting: CellFormatting{
+			expected: tw.CellConfig{
+				Formatting: tw.CellFormatting{
 					Alignment:  tw.AlignCenter,     // From builder
 					AutoWrap:   tw.WrapTruncate,    // From defaultConfig() Header
 					AutoFormat: true,               // From defaultConfig() Header
 					MergeMode:  tw.MergeHorizontal, // From builder
 					MaxWidth:   0,
 				},
-				Padding: CellPadding{
+				Padding: tw.CellPadding{
 					Global: tw.Padding{Left: " ", Right: " "},
 				},
 			},
@@ -268,7 +268,7 @@ func TestCallbacks(t *testing.T) {
 			name: "Configure",
 			setup: func(t *Table) {
 				t.Configure(func(cfg *Config) {
-					cfg.Header.Callbacks = CellCallbacks{
+					cfg.Header.Callbacks = tw.CellCallbacks{
 						Global: t.config.Header.Callbacks.Global, // Preserve from base
 						PerColumn: []func(){
 							t.config.Header.Callbacks.PerColumn[0], // Preserve column 0
@@ -308,8 +308,8 @@ func TestCallbacks(t *testing.T) {
 
 			// Base configuration with callbacks
 			baseConfig := Config{
-				Header: CellConfig{
-					Callbacks: CellCallbacks{
+				Header: tw.CellConfig{
+					Callbacks: tw.CellCallbacks{
 						Global: func() { globalCount++ },
 						PerColumn: []func(){
 							func() { col0Count++ }, // Callback for column 0

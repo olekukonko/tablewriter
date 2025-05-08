@@ -11,8 +11,8 @@ import (
 func TestVerticalMerge(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeVertical,
 			},
 			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignRight},
@@ -53,8 +53,8 @@ func TestVerticalMerge(t *testing.T) {
 func TestHorizontalMerge(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeHorizontal,
 			},
 			ColumnAligns: []tw.Align{tw.AlignCenter, tw.AlignCenter, tw.AlignCenter, tw.AlignCenter},
@@ -100,13 +100,13 @@ func TestHorizontalMerge(t *testing.T) {
 func TestHorizontalMergeEachLine(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeHorizontal,
 			},
 		},
-		Footer: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Footer: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeHorizontal,
 			},
 			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft},
@@ -154,8 +154,8 @@ func TestHorizontalMergeEachLine(t *testing.T) {
 func TestHorizontalMergeEachLineCenter(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				Alignment: tw.AlignCenter,
 				MergeMode: tw.MergeHorizontal,
 			},
@@ -202,13 +202,13 @@ func TestHorizontalMergeEachLineCenter(t *testing.T) {
 func TestHorizontalMergeAlignFooter(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeHorizontal,
 			},
 		},
-		Footer: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Footer: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeHorizontal,
 			},
 			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft},
@@ -253,8 +253,8 @@ func TestHorizontalMergeAlignFooter(t *testing.T) {
 func TestVerticalMergeLines(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeVertical,
 			},
 			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignRight},
@@ -299,13 +299,13 @@ func TestMergeBoth(t *testing.T) {
 	var buf bytes.Buffer
 
 	c := tablewriter.Config{
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeBoth,
 			},
 		},
-		Footer: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Footer: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeHorizontal,
 			},
 			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft},
@@ -389,8 +389,8 @@ func TestMergeBoth(t *testing.T) {
 func TestMergeHierarchical(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeHierarchical,
 			},
 		},
@@ -435,8 +435,8 @@ func TestMergeHierarchical(t *testing.T) {
 func TestMergeHierarchicalUnicode(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeHierarchical,
 			},
 		},
@@ -482,14 +482,14 @@ func TestMergeWithPadding(t *testing.T) {
 	var buf bytes.Buffer
 
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeBoth,
 			},
 			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft},
 		},
-		Footer: tablewriter.CellConfig{
-			Padding: tablewriter.CellPadding{
+		Footer: tw.CellConfig{
+			Padding: tw.CellPadding{
 				Global:    tw.Padding{Left: "*", Right: "*", Top: "", Bottom: ""},
 				PerColumn: []tw.Padding{tw.Padding{}, tw.Padding{}, tw.Padding{Bottom: "^"}, tw.Padding{Bottom: "."}},
 			},

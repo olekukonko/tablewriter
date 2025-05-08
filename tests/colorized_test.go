@@ -87,7 +87,7 @@ func TestColorizedCustomColors(t *testing.T) {
 				BG: renderer.Colors{color.BgBlue},
 			},
 		})),
-		tablewriter.WithFooterConfig(tablewriter.CellConfig{
+		tablewriter.WithFooterConfig(tw.CellConfig{
 			ColumnAligns: []tw.Align{tw.AlignRight, tw.AlignCenter}, // Align "1" to center
 		}),
 	)
@@ -116,8 +116,8 @@ func TestColorizedCustomColors(t *testing.T) {
 func TestColorizedLongValues(t *testing.T) {
 	var buf bytes.Buffer
 	c := tablewriter.Config{
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MaxWidth:  20,
 				AutoWrap:  tw.WrapNormal,
 				Alignment: tw.AlignLeft,
@@ -150,13 +150,13 @@ func TestColorizedLongValues(t *testing.T) {
 func TestColorizedHorizontalMerge(t *testing.T) {
 	var buf bytes.Buffer
 	c := tablewriter.Config{
-		Header: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Header: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeHorizontal,
 			},
 		},
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeHorizontal,
 			},
 		},

@@ -138,14 +138,14 @@ func process(r io.Reader) {
 	}
 }
 
-func getHeaderConfig() tablewriter.CellConfig {
-	cfg := tablewriter.CellConfig{
-		Formatting: tablewriter.CellFormatting{
+func getHeaderConfig() tw.CellConfig {
+	cfg := tw.CellConfig{
+		Formatting: tw.CellFormatting{
 			Alignment:  tw.AlignCenter,
 			AutoFormat: true,
 			AutoWrap:   tw.WrapTruncate,
 		},
-		Padding: tablewriter.CellPadding{
+		Padding: tw.CellPadding{
 			Global: tw.Padding{Left: " ", Right: " ", Top: "", Bottom: ""},
 		},
 	}
@@ -162,12 +162,12 @@ func getHeaderConfig() tablewriter.CellConfig {
 	return cfg
 }
 
-func getRowConfig() tablewriter.CellConfig {
-	cfg := tablewriter.CellConfig{
-		Formatting: tablewriter.CellFormatting{
+func getRowConfig() tw.CellConfig {
+	cfg := tw.CellConfig{
+		Formatting: tw.CellFormatting{
 			AutoWrap: tw.WrapNormal,
 		},
-		Padding: tablewriter.CellPadding{
+		Padding: tw.CellPadding{
 			Global: tw.Padding{Left: " ", Right: " ", Top: "", Bottom: ""},
 		},
 	}
@@ -185,9 +185,9 @@ func getRowConfig() tablewriter.CellConfig {
 	return cfg
 }
 
-func getFooterConfig() tablewriter.CellConfig {
-	return tablewriter.CellConfig{
-		Formatting: tablewriter.CellFormatting{
+func getFooterConfig() tw.CellConfig {
+	return tw.CellConfig{
+		Formatting: tw.CellFormatting{
 			Alignment: tw.AlignRight,
 			AutoWrap:  tw.WrapNormal,
 		},

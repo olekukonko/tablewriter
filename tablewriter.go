@@ -14,11 +14,11 @@ import (
 
 // Config represents the overall configuration for a table.
 type Config struct {
-	MaxWidth int        // Maximum width of the entire table (0 for unlimited)
-	Header   CellConfig // Configuration for the header section
-	Row      CellConfig // Configuration for the row section
-	Footer   CellConfig // Configuration for the footer section
-	Debug    bool       // Enables debug logging when true
+	MaxWidth int           // Maximum width of the entire table (0 for unlimited)
+	Header   tw.CellConfig // Configuration for the header section
+	Row      tw.CellConfig // Configuration for the row section
+	Footer   tw.CellConfig // Configuration for the footer section
+	Debug    bool          // Enables debug logging when true
 }
 
 // Table represents a table instance with content and rendering capabilities.
@@ -1202,39 +1202,39 @@ func defaultConfig() Config {
 	defaultPadding := tw.Padding{Left: tw.Space, Right: tw.Space, Top: tw.Empty, Bottom: tw.Empty}
 	return Config{
 		MaxWidth: 0,
-		Header: CellConfig{
-			Formatting: CellFormatting{
+		Header: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MaxWidth:   0,
 				AutoWrap:   tw.WrapTruncate,
 				Alignment:  tw.AlignCenter,
 				AutoFormat: true,
 				MergeMode:  tw.MergeNone,
 			},
-			Padding: CellPadding{
+			Padding: tw.CellPadding{
 				Global: defaultPadding,
 			},
 		},
-		Row: CellConfig{
-			Formatting: CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MaxWidth:   0,
 				AutoWrap:   tw.WrapNormal,
 				Alignment:  tw.AlignLeft,
 				AutoFormat: false,
 				MergeMode:  tw.MergeNone,
 			},
-			Padding: CellPadding{
+			Padding: tw.CellPadding{
 				Global: defaultPadding,
 			},
 		},
-		Footer: CellConfig{
-			Formatting: CellFormatting{
+		Footer: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MaxWidth:   0,
 				AutoWrap:   tw.WrapNormal,
 				Alignment:  tw.AlignRight,
 				AutoFormat: false,
 				MergeMode:  tw.MergeNone,
 			},
-			Padding: CellPadding{
+			Padding: tw.CellPadding{
 				Global: defaultPadding,
 			},
 		},
@@ -1395,7 +1395,7 @@ func (t *Table) appendSingle(row interface{}) error {
 }
 
 // toStringLines converts a row to string lines using the stringer or direct cast.
-func (t *Table) toStringLines(row interface{}, config CellConfig) ([][]string, error) {
+func (t *Table) toStringLines(row interface{}, config tw.CellConfig) ([][]string, error) {
 	t.debug("Converting row to string lines: %v", row)
 	var cells []string
 	switch v := row.(type) {
@@ -1447,7 +1447,7 @@ func (t *Table) toStringLines(row interface{}, config CellConfig) ([][]string, e
 }
 
 // prepareContent processes cell content with formatting, wrapping, and splitting.
-func (t *Table) prepareContent(cells []string, config CellConfig) [][]string {
+func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string {
 	t.debug("Preparing content: cells=%v", cells)
 	result := make([][]string, 0)
 	numCols := len(cells)
@@ -1555,7 +1555,7 @@ func (t *Table) prepareFooter(ctx *renderContext, mctx *mergeContext) {
 }
 
 // prepareWithMerges processes content and detects horizontal merges.
-func (t *Table) prepareWithMerges(content [][]string, config CellConfig, position tw.Position) ([][]string, map[int]tw.MergeState, map[int]bool) {
+func (t *Table) prepareWithMerges(content [][]string, config tw.CellConfig, position tw.Position) ([][]string, map[int]tw.MergeState, map[int]bool) {
 	t.debug("PrepareWithMerges START: position=%s, mergeMode=%d", position, config.Formatting.MergeMode)
 	if len(content) == 0 {
 		t.debug("PrepareWithMerges END: No content.")
@@ -2149,7 +2149,7 @@ func (t *Table) maxColumns() int {
 }
 
 // buildAligns constructs a map of column alignments based on config.
-func (t *Table) buildAligns(config CellConfig) map[int]tw.Align {
+func (t *Table) buildAligns(config tw.CellConfig) map[int]tw.Align {
 	t.debug("Building aligns for section. Section Default: '%s', ColumnAligns: %v", config.Formatting.Alignment, config.ColumnAligns)
 	colAlignsResult := make(map[int]tw.Align)
 	numCols := t.maxColumns()
@@ -2181,7 +2181,7 @@ func (t *Table) buildAligns(config CellConfig) map[int]tw.Align {
 }
 
 // buildPadding constructs a map of column padding settings based on config.
-func (t *Table) buildPadding(padding CellPadding) map[int]tw.Padding {
+func (t *Table) buildPadding(padding tw.CellPadding) map[int]tw.Padding {
 	t.debug("Building padding")
 	colPadding := make(map[int]tw.Padding)
 	numCols := t.maxColumns()
@@ -2261,7 +2261,7 @@ func (t *Table) determineLocation(lineIdx, totalLines int, topPad, bottomPad str
 }
 
 // updateWidths updates the width map based on cell content and padding.
-func (t *Table) updateWidths(row []string, widths tw.Mapper[int, int], padding CellPadding) {
+func (t *Table) updateWidths(row []string, widths tw.Mapper[int, int], padding tw.CellPadding) {
 	t.debug("Updating widths for row: %v", row)
 	for i, cell := range row {
 		padLeftWidth := twfn.DisplayWidth(padding.Global.Left)

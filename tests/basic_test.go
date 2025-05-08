@@ -381,7 +381,7 @@ func TestLongHeaders(t *testing.T) {
 	t.Run("long-headers", func(t *testing.T) {
 		c := tablewriter.Config{
 			MaxWidth: 30,
-			Header: tablewriter.CellConfig{Formatting: tablewriter.CellFormatting{
+			Header: tw.CellConfig{Formatting: tw.CellFormatting{
 				AutoWrap: tw.WrapTruncate,
 			}},
 		}
@@ -408,7 +408,7 @@ func TestLongHeaders(t *testing.T) {
 
 		c := tablewriter.Config{
 			MaxWidth: 30,
-			Header: tablewriter.CellConfig{Formatting: tablewriter.CellFormatting{
+			Header: tw.CellConfig{Formatting: tw.CellFormatting{
 				AutoWrap: tw.WrapNormal,
 			}},
 		}
@@ -441,22 +441,22 @@ func TestLongValues(t *testing.T) {
 	}
 
 	c := tablewriter.Config{
-		Header: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Header: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MaxWidth:   30,
 				Alignment:  tw.AlignCenter,
 				AutoFormat: true,
 			},
 		},
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MaxWidth:  30,
 				AutoWrap:  tw.WrapNormal,
 				Alignment: tw.AlignLeft,
 			},
 		},
-		Footer: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Footer: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MaxWidth:  30,
 				Alignment: tw.AlignRight,
 			},
@@ -513,21 +513,21 @@ func TestWrapping(t *testing.T) {
 	}
 
 	c := tablewriter.Config{
-		Header: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Header: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				Alignment:  tw.AlignCenter,
 				AutoFormat: true,
 			},
 		},
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MaxWidth:  30,
 				AutoWrap:  tw.WrapBreak,
 				Alignment: tw.AlignLeft,
 			},
 		},
-		Footer: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Footer: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MaxWidth:  30,
 				Alignment: tw.AlignRight,
 			},
@@ -563,29 +563,29 @@ func TestTableWithCustomPadding(t *testing.T) {
 	}
 
 	c := tablewriter.Config{
-		Header: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Header: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				Alignment:  tw.AlignCenter,
 				AutoFormat: true,
 			},
-			Padding: tablewriter.CellPadding{
+			Padding: tw.CellPadding{
 				Global: tw.Padding{Left: " ", Right: " ", Top: "^", Bottom: "^"},
 			},
 		},
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				Alignment: tw.AlignCenter,
 			},
-			Padding: tablewriter.CellPadding{
+			Padding: tw.CellPadding{
 				Global: tw.Padding{Left: "L", Right: "R", Top: "T", Bottom: "B"},
 			},
 		},
-		Footer: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Footer: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				Alignment:  tw.AlignCenter,
 				AutoFormat: true,
 			},
-			Padding: tablewriter.CellPadding{
+			Padding: tw.CellPadding{
 				Global: tw.Padding{Left: "*", Right: "*", Top: "", Bottom: ""},
 			},
 		},

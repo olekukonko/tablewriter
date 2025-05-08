@@ -79,8 +79,8 @@ func TestMarkdownLongHeaders(t *testing.T) {
 	var buf bytes.Buffer
 	c := tablewriter.Config{
 		MaxWidth: 20,
-		Header: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Header: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				AutoWrap: tw.WrapTruncate,
 			},
 		},
@@ -106,8 +106,8 @@ func TestMarkdownLongHeaders(t *testing.T) {
 func TestMarkdownLongValues(t *testing.T) {
 	var buf bytes.Buffer
 	c := tablewriter.Config{
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MaxWidth:  20,
 				AutoWrap:  tw.WrapNormal,
 				Alignment: tw.AlignLeft,
@@ -137,13 +137,13 @@ func TestMarkdownLongValues(t *testing.T) {
 func TestMarkdownCustomPadding(t *testing.T) {
 	var buf bytes.Buffer
 	c := tablewriter.Config{
-		Header: tablewriter.CellConfig{
-			Padding: tablewriter.CellPadding{
+		Header: tw.CellConfig{
+			Padding: tw.CellPadding{
 				Global: tw.Padding{Left: "*", Right: "*", Top: "", Bottom: ""},
 			},
 		},
-		Row: tablewriter.CellConfig{
-			Padding: tablewriter.CellPadding{
+		Row: tw.CellConfig{
+			Padding: tw.CellPadding{
 				Global: tw.Padding{Left: ">", Right: "<", Top: "", Bottom: ""},
 			},
 		},
@@ -169,13 +169,13 @@ func TestMarkdownCustomPadding(t *testing.T) {
 func TestMarkdownHorizontalMerge(t *testing.T) {
 	var buf bytes.Buffer
 	c := tablewriter.Config{
-		Header: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Header: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeHorizontal,
 			},
 		},
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeHorizontal,
 			},
 		},
@@ -210,8 +210,8 @@ func TestMarkdownEmptyTable(t *testing.T) {
 func TestMarkdownWithFooter(t *testing.T) {
 	var buf bytes.Buffer
 	c := tablewriter.Config{
-		Footer: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Footer: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				Alignment: tw.AlignRight,
 			},
 		},

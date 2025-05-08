@@ -56,19 +56,19 @@ func TestStructTableWithDB(t *testing.T) {
 
 	// Configure table with custom settings
 	config := tablewriter.Config{
-		Header: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Header: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				Alignment:  tw.AlignCenter,
 				AutoFormat: true,
 			},
 		},
-		Row: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				Alignment: tw.AlignLeft,
 			},
 		},
-		Footer: tablewriter.CellConfig{
-			Formatting: tablewriter.CellFormatting{
+		Footer: tw.CellConfig{
+			Formatting: tw.CellFormatting{
 				Alignment: tw.AlignRight,
 			},
 		},
