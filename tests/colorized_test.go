@@ -15,7 +15,7 @@ func TestColorizedBasicTable(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewColorized()),
 	)
-	table.SetHeader([]string{"Name", "Age", "City"})
+	table.Header([]string{"Name", "Age", "City"})
 	table.Append([]string{"Alice", "25", "New York"})
 	table.Append([]string{"Bob", "30", "Boston"})
 	table.Render()
@@ -40,7 +40,7 @@ func TestColorizedNoBorders(t *testing.T) {
 			Borders: tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
 		})),
 	)
-	table.SetHeader([]string{"Name", "Age", "City"})
+	table.Header([]string{"Name", "Age", "City"})
 	table.Append([]string{"Alice", "25", "New York"})
 	table.Append([]string{"Bob", "30", "Boston"})
 	table.Render()
@@ -91,9 +91,9 @@ func TestColorizedCustomColors(t *testing.T) {
 			ColumnAligns: []tw.Align{tw.AlignRight, tw.AlignCenter}, // Align "1" to center
 		}),
 	)
-	table.SetHeader([]string{"Name", "Age"})
+	table.Header([]string{"Name", "Age"})
 	table.Append([]string{"Alice", "25"})
-	table.SetFooter([]string{"Total", "1"})
+	table.Footer([]string{"Total", "1"})
 	table.Render()
 
 	// Expected colors: Headers (red, yellow on blue), Rows (magenta, blue on black), Footers (yellow on blue), Borders/Separators (white on blue)
@@ -128,7 +128,7 @@ func TestColorizedLongValues(t *testing.T) {
 		tablewriter.WithConfig(c),
 		tablewriter.WithRenderer(renderer.NewColorized()),
 	)
-	table.SetHeader([]string{"No", "Description", "Note"})
+	table.Header([]string{"No", "Description", "Note"})
 	table.Append([]string{"1", "This is a very long description that should wrap", "Short"})
 	table.Append([]string{"2", "Short desc", "Another note"})
 	table.Render()
@@ -165,7 +165,7 @@ func TestColorizedHorizontalMerge(t *testing.T) {
 		tablewriter.WithConfig(c),
 		tablewriter.WithRenderer(renderer.NewColorized()),
 	)
-	table.SetHeader([]string{"Merged", "Merged", "Normal"})
+	table.Header([]string{"Merged", "Merged", "Normal"})
 	table.Append([]string{"Same", "Same", "Unique"})
 	table.Render()
 

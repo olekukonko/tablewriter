@@ -12,7 +12,7 @@ func TestBasicTableDefault(t *testing.T) {
 	var buf bytes.Buffer
 
 	table := tablewriter.NewTable(&buf)
-	table.SetHeader([]string{"Name", "Age", "City"})
+	table.Header([]string{"Name", "Age", "City"})
 	table.Append([]string{"Alice", "25", "New York"})
 	table.Append([]string{"Bob", "30", "Boston"})
 	table.Render()
@@ -37,7 +37,7 @@ func TestBasicTableDefaultBorder(t *testing.T) {
 	var buf bytes.Buffer
 
 	//table := tablewriter.NewTable(&buf)
-	//table.SetHeader([]string{"Name", "Age", "City"})
+	//table.Header([]string{"Name", "Age", "City"})
 	//table.Append([]string{"Alice", "25", "New York"})
 	//table.Append([]string{"Bob", "30", "Boston"})
 	//table.Render()
@@ -50,7 +50,7 @@ func TestBasicTableDefaultBorder(t *testing.T) {
 			})),
 		)
 
-		table.SetHeader([]string{"Name", "Age", "City"})
+		table.Header([]string{"Name", "Age", "City"})
 		table.Append([]string{"Alice", "25", "New York"})
 		table.Append([]string{"Bob", "30", "Boston"})
 		table.Render()
@@ -74,7 +74,7 @@ func TestBasicTableDefaultBorder(t *testing.T) {
 			})),
 		)
 
-		table.SetHeader([]string{"Name", "Age", "City"})
+		table.Header([]string{"Name", "Age", "City"})
 		table.Append([]string{"Alice", "25", "New York"})
 		table.Append([]string{"Bob", "30", "Boston"})
 		table.Render()
@@ -99,7 +99,7 @@ func TestBasicTableDefaultBorder(t *testing.T) {
 			})),
 		)
 
-		table.SetHeader([]string{"Name", "Age", "City"})
+		table.Header([]string{"Name", "Age", "City"})
 		table.Append([]string{"Alice", "25", "New York"})
 		table.Append([]string{"Bob", "30", "Boston"})
 		table.Render()
@@ -131,7 +131,7 @@ func TestUnicodeWithoutHeader(t *testing.T) {
 			Borders: tw.Border{Left: tw.On, Right: tw.On, Top: tw.Off, Bottom: tw.Off},
 		})),
 	)
-	table.SetHeader([]string{"Name", "Age", "City"})
+	table.Header([]string{"Name", "Age", "City"})
 	table.Bulk(data)
 
 	table.Render()
@@ -150,7 +150,7 @@ func TestUnicodeWithoutHeader(t *testing.T) {
 //	var buf bytes.Buffer
 //
 //	table := tablewriter.NewTable(&buf)
-//	table.SetHeader([]string{"Name", "Age", "City"})
+//	table.Header([]string{"Name", "Age", "City"})
 //	table.Append([]string{"Alice", "25", "New York"})
 //	table.Append([]string{"Bøb", "30", "Tōkyō"})    // Contains ø and ō
 //	table.Append([]string{"José", "28", "México"}) // Contains é and accented e (e + combining acute)
@@ -179,7 +179,7 @@ func TestBasicTableASCII(t *testing.T) {
 			Symbols: tw.NewSymbols(tw.StyleASCII),
 		})),
 	)
-	table.SetHeader([]string{"Name", "Age", "City"})
+	table.Header([]string{"Name", "Age", "City"})
 	table.Append([]string{"Alice", "25", "New York"})
 	table.Append([]string{"Bob", "30", "Boston"})
 	table.Render()
@@ -202,7 +202,7 @@ func TestBasicTableUnicodeRounded(t *testing.T) {
 			Symbols: tw.NewSymbols(tw.StyleRounded),
 		})),
 	)
-	table.SetHeader([]string{"Name", "Age", "City"})
+	table.Header([]string{"Name", "Age", "City"})
 	table.Append([]string{"Alice", "25", "New York"})
 	table.Append([]string{"Bob", "30", "Boston"})
 	table.Render()
@@ -225,7 +225,7 @@ func TestBasicTableUnicodeDouble(t *testing.T) {
 			Symbols: tw.NewSymbols(tw.StyleDouble),
 		})),
 	)
-	table.SetHeader([]string{"Name", "Age", "City"})
+	table.Header([]string{"Name", "Age", "City"})
 	table.Append([]string{"Alice", "25", "New York"})
 	table.Append([]string{"Bob", "30", "Boston"})
 	table.Render()
@@ -263,7 +263,7 @@ func TestSeparator(t *testing.T) {
 				},
 			})),
 		)
-		table.SetHeader([]string{"Name", "Age", "City"})
+		table.Header([]string{"Name", "Age", "City"})
 		table.Bulk(data)
 		table.Render()
 
@@ -296,7 +296,7 @@ func TestSeparator(t *testing.T) {
 				},
 			})),
 		)
-		table.SetHeader([]string{"Name", "Age", "City"})
+		table.Header([]string{"Name", "Age", "City"})
 		table.Bulk(data)
 		table.Render()
 
@@ -327,7 +327,7 @@ func TestSeparator(t *testing.T) {
 				},
 			})),
 		)
-		table.SetHeader([]string{"Name", "Age", "City"})
+		table.Header([]string{"Name", "Age", "City"})
 		table.Bulk(data)
 		table.Render()
 
@@ -358,7 +358,7 @@ func TestSeparator(t *testing.T) {
 				},
 			})),
 		)
-		table.SetHeader([]string{"Name", "Age", "City"})
+		table.Header([]string{"Name", "Age", "City"})
 		table.Bulk(data)
 		table.Render()
 
@@ -387,7 +387,7 @@ func TestLongHeaders(t *testing.T) {
 		}
 		buf.Reset()
 		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c))
-		table.SetHeader([]string{"Name", "Age", "This is a very long header, let see if this will be properly wrapped"})
+		table.Header([]string{"Name", "Age", "This is a very long header, let see if this will be properly wrapped"})
 		table.Append([]string{"Alice", "25", "New York"})
 		table.Append([]string{"Bob", "30", "Boston"})
 		table.Render()
@@ -414,7 +414,7 @@ func TestLongHeaders(t *testing.T) {
 		}
 
 		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c))
-		table.SetHeader([]string{"Name", "Age", "This is a very long header, let see if this will be properly wrapped"})
+		table.Header([]string{"Name", "Age", "This is a very long header, let see if this will be properly wrapped"})
 		table.Append([]string{"Alice", "25", "New York"})
 		table.Append([]string{"Bob", "30", "Boston"})
 		table.Render()
@@ -466,8 +466,8 @@ func TestLongValues(t *testing.T) {
 
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c))
-	table.SetHeader([]string{"No", "Comments", "Another", ""})
-	table.SetFooter([]string{"", "", "---------->", "<---------"})
+	table.Header([]string{"No", "Comments", "Another", ""})
+	table.Footer([]string{"", "", "---------->", "<---------"})
 	table.Bulk(data)
 
 	table.Render()
@@ -536,7 +536,7 @@ func TestWrapping(t *testing.T) {
 
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c))
-	table.SetHeader([]string{"No", "Package", "Comments"})
+	table.Header([]string{"No", "Package", "Comments"})
 	table.Bulk(data)
 	table.Render()
 
@@ -593,7 +593,7 @@ func TestTableWithCustomPadding(t *testing.T) {
 
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c))
-	table.SetHeader([]string{"Name", "Age", "City"})
+	table.Header([]string{"Name", "Age", "City"})
 	table.Bulk(data)
 	table.Render()
 

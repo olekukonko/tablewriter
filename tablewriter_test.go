@@ -257,7 +257,7 @@ func TestCallbacks(t *testing.T) {
 		{
 			name: "WithConfig",
 			setup: func(t *Table) {
-				t.SetHeader([]string{"Name", "Email", "Age"})
+				t.Header([]string{"Name", "Email", "Age"})
 				t.Append([]string{"Alice", "alice@example.com", "25"})
 			},
 			expectedGlob: 1, // One header line
@@ -277,7 +277,7 @@ func TestCallbacks(t *testing.T) {
 						},
 					}
 				})
-				t.SetHeader([]string{"Name", "Email", "Age"})
+				t.Header([]string{"Name", "Email", "Age"})
 				t.Append([]string{"Bob", "bob@example.com", "30"})
 			},
 			expectedGlob: 1,
@@ -292,7 +292,7 @@ func TestCallbacks(t *testing.T) {
 					Build().
 					Build()
 				t.config = mergeConfig(t.config, config) // Apply builder config
-				t.SetHeader([]string{"Name", "Email", "Age"})
+				t.Header([]string{"Name", "Email", "Age"})
 				t.Append([]string{"Charlie", "charlie@example.com", "35"})
 			},
 			expectedGlob: 1,

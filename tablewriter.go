@@ -138,9 +138,9 @@ func (t *Table) Bulk(rows interface{}) error {
 	return nil
 }
 
-// SetHeader configures the table's header content.
+// Header configures the table's header content.
 // Multi-line headers are supported via prepareContent.
-func (t *Table) SetHeader(headers []string) {
+func (t *Table) Header(headers []string) {
 	t.ensureInitialized()
 	t.debug("Setting header: %v", headers)
 	prepared := t.prepareContent(headers, t.config.Header)
@@ -148,9 +148,9 @@ func (t *Table) SetHeader(headers []string) {
 	t.debug("Header set, lines: %d", len(prepared))
 }
 
-// SetFooter configures the table's footer content, padding to match column count.
+// Footer configures the table's footer content, padding to match column count.
 // Multi-line footers are supported.
-func (t *Table) SetFooter(footers []string) {
+func (t *Table) Footer(footers []string) {
 	t.ensureInitialized()
 	t.debug("Setting footer: %v", footers)
 	numCols := t.maxColumns()

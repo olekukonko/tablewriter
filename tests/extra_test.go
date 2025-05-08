@@ -89,7 +89,7 @@ func TestFilterMasking(t *testing.T) {
 			} else if tt.name == "MaskCard" {
 				header[1] = "Credit Card"
 			}
-			table.SetHeader(header)
+			table.Header(header)
 			table.Bulk(tt.data)
 			table.Render()
 			visualCheck(t, tt.name, buf.String(), tt.expected)

@@ -14,7 +14,7 @@ func TestMarkdownBasicTable(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewMarkdown()),
 	)
-	table.SetHeader([]string{"Name", "Age", "City"})
+	table.Header([]string{"Name", "Age", "City"})
 	table.Append([]string{"Alice", "25", "New York"})
 	table.Append([]string{"Bob", "30", "Boston"})
 	table.Render()
@@ -39,7 +39,7 @@ func TestMarkdownNoBorders(t *testing.T) {
 			Borders: tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
 		})),
 	)
-	table.SetHeader([]string{"Name", "Age", "City"})
+	table.Header([]string{"Name", "Age", "City"})
 	table.Append([]string{"Alice", "25", "New York"})
 	table.Append([]string{"Bob", "30", "Boston"})
 	table.Render()
@@ -58,7 +58,7 @@ func TestMarkdownUnicode(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewMarkdown()),
 	)
-	table.SetHeader([]string{"Name", "Age", "City"})
+	table.Header([]string{"Name", "Age", "City"})
 	table.Append([]string{"Bøb", "30", "Tōkyō"})
 	table.Append([]string{"José", "28", "México"})
 	table.Append([]string{"张三", "35", "北京"})
@@ -89,7 +89,7 @@ func TestMarkdownLongHeaders(t *testing.T) {
 		tablewriter.WithConfig(c),
 		tablewriter.WithRenderer(renderer.NewMarkdown()),
 	)
-	table.SetHeader([]string{"Name", "Age", "Very Long Header That Needs Truncation"})
+	table.Header([]string{"Name", "Age", "Very Long Header That Needs Truncation"})
 	table.Append([]string{"Alice", "25", "New York"})
 	table.Append([]string{"Bob", "30", "Boston"})
 	table.Render()
@@ -118,7 +118,7 @@ func TestMarkdownLongValues(t *testing.T) {
 		tablewriter.WithConfig(c),
 		tablewriter.WithRenderer(renderer.NewMarkdown()),
 	)
-	table.SetHeader([]string{"No", "Description", "Note"})
+	table.Header([]string{"No", "Description", "Note"})
 	table.Append([]string{"1", "This is a very long description that should wrap", "Short"})
 	table.Append([]string{"2", "Short desc", "Another note"})
 	table.Render()
@@ -152,7 +152,7 @@ func TestMarkdownCustomPadding(t *testing.T) {
 		tablewriter.WithConfig(c),
 		tablewriter.WithRenderer(renderer.NewMarkdown()),
 	)
-	table.SetHeader([]string{"Name", "Age", "City"})
+	table.Header([]string{"Name", "Age", "City"})
 	table.Append([]string{"Alice", "25", "New York"})
 	table.Append([]string{"Bob", "30", "Boston"})
 	table.Render()
@@ -184,7 +184,7 @@ func TestMarkdownHorizontalMerge(t *testing.T) {
 		tablewriter.WithConfig(c),
 		tablewriter.WithRenderer(renderer.NewMarkdown()),
 	)
-	table.SetHeader([]string{"Merged", "Merged", "Normal"})
+	table.Header([]string{"Merged", "Merged", "Normal"})
 	table.Append([]string{"Same", "Same", "Unique"})
 	table.Render()
 
@@ -220,10 +220,10 @@ func TestMarkdownWithFooter(t *testing.T) {
 		tablewriter.WithConfig(c),
 		tablewriter.WithRenderer(renderer.NewMarkdown()),
 	)
-	table.SetHeader([]string{"Name", "Age", "City"})
+	table.Header([]string{"Name", "Age", "City"})
 	table.Append([]string{"Alice", "25", "New York"})
 	table.Append([]string{"Bob", "30", "Boston"})
-	table.SetFooter([]string{"Total", "2", ""})
+	table.Footer([]string{"Total", "2", ""})
 	table.Render()
 
 	expected := `

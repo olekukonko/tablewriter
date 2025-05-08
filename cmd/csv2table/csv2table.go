@@ -121,7 +121,7 @@ func process(r io.Reader) {
 
 	// Set header if enabled
 	if *header && len(records) > 0 {
-		table.SetHeader(records[0])
+		table.Header(records[0])
 		records = records[1:]
 	}
 

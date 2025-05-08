@@ -96,7 +96,7 @@ func TestStructTableWithDB(t *testing.T) {
 	// Set the stringer for converting Employee structs
 
 	// Set header
-	table.SetHeader([]string{"ID", "Name", "Age", "Department", "Salary"})
+	table.Header([]string{"ID", "Name", "Age", "Department", "Salary"})
 
 	// Fetch data from "database" and append to table
 	employees := db.fetchEmployees()
@@ -111,7 +111,7 @@ func TestStructTableWithDB(t *testing.T) {
 	for _, emp := range employees {
 		totalSalary += emp.Salary
 	}
-	table.SetFooter([]string{"", "", "", "Total", fmt.Sprintf("%.2f", totalSalary)})
+	table.Footer([]string{"", "", "", "Total", fmt.Sprintf("%.2f", totalSalary)})
 
 	// Render the table
 	if err := table.Render(); err != nil {

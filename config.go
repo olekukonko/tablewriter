@@ -611,12 +611,12 @@ type Option func(*Table)
 
 // WithHeader sets the table headers.
 func WithHeader(headers []string) Option {
-	return func(t *Table) { t.SetHeader(headers) }
+	return func(t *Table) { t.Header(headers) }
 }
 
 // WithFooter sets the table footers.
 func WithFooter(footers []string) Option {
-	return func(t *Table) { t.SetFooter(footers) }
+	return func(t *Table) { t.Footer(footers) }
 }
 
 // WithRenderer sets a custom renderer for the table.

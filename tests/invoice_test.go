@@ -20,9 +20,9 @@ package tests
 //	// Test with ASCII and "TOTAL" footer
 //	var bufASCII bytes.Buffer
 //	tableASCII := NewTable(&bufASCII, WithRenderer(renderer.NewInvoice()))
-//	tableASCII.SetHeader([]string{"DATE", "DESCRIPTION", "CV2", "AMOUNT"})
+//	tableASCII.Header([]string{"DATE", "DESCRIPTION", "CV2", "AMOUNT"})
 //	tableASCII.Bulk(data)
-//	tableASCII.SetFooter([]string{"", "", "", "TOTAL | $145.93"})
+//	tableASCII.Footer([]string{"", "", "", "TOTAL | $145.93"})
 //	tableASCII.Render()
 //
 //	expected := `
@@ -48,9 +48,9 @@ package tests
 //		Symbols: symbols.NewSymbols(symbols.StyleLight),
 //	})))
 //
-//	tableMulti.SetHeader([]string{"DATE", "DESCRIPTION", "CV2", "AMOUNT"})
+//	tableMulti.Header([]string{"DATE", "DESCRIPTION", "CV2", "AMOUNT"})
 //	tableMulti.Bulk(data)
-//	tableMulti.SetFooter([]string{"", "Credit", "", "$50.00"})
+//	tableMulti.Footer([]string{"", "Credit", "", "$50.00"})
 //	tableMulti.Render()
 //
 //	expectedMulti := `
@@ -74,9 +74,9 @@ package tests
 //	// Test with empty footer
 //	var bufEmpty bytes.Buffer
 //	tableEmpty := NewTable(&bufEmpty, WithRenderer(renderer.NewInvoice()))
-//	tableEmpty.SetHeader([]string{"DATE", "DESCRIPTION", "CV2", "AMOUNT"})
+//	tableEmpty.Header([]string{"DATE", "DESCRIPTION", "CV2", "AMOUNT"})
 //	tableEmpty.Bulk(data)
-//	tableEmpty.SetFooter([]string{"", "", "", ""})
+//	tableEmpty.Footer([]string{"", "", "", ""})
 //	tableEmpty.Render()
 //
 //	expected = `

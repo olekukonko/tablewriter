@@ -4,5 +4,6 @@
 .idea
 .vscode
 /tmp
+/lab
 dev.sh
 *csv2table

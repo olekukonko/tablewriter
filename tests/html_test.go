@@ -15,7 +15,7 @@ func TestHTMLBasicTable(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
 	)
-	table.SetHeader([]string{"Name", "Age", "City"})
+	table.Header([]string{"Name", "Age", "City"})
 	table.Append([]string{"Alice", "25", "New York"})
 	table.Append([]string{"Bob", "30", "Boston"})
 	table.Render()
@@ -52,10 +52,10 @@ func TestHTMLWithFooterAndAlignment(t *testing.T) {
 			Formatting: tw.CellFormatting{Alignment: tw.AlignRight},
 		}),
 	)
-	table.SetHeader([]string{"Item", "Qty", "Price"})
+	table.Header([]string{"Item", "Qty", "Price"})
 	table.Append([]string{"Apple", "5", "1.20"})
 	table.Append([]string{"Banana", "12", "0.35"})
-	table.SetFooter([]string{"", "Total", "7.20"})
+	table.Footer([]string{"", "Total", "7.20"})
 	table.Render()
 
 	expected := `
@@ -85,7 +85,7 @@ func TestHTMLEscaping(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
 	)
-	table.SetHeader([]string{"Tag", "Attribute"})
+	table.Header([]string{"Tag", "Attribute"})
 	table.Append([]string{"<br>", "should escape < & >"})
 	table.Render()
 
@@ -111,7 +111,7 @@ func TestHTMLEscaping(t *testing.T) {
 	tableNoEscape := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewHTML(&buf, false, renderer.HTMLConfig{EscapeContent: false})),
 	)
-	tableNoEscape.SetHeader([]string{"Tag", "Attribute"})
+	tableNoEscape.Header([]string{"Tag", "Attribute"})
 	tableNoEscape.Append([]string{"<br>", "should NOT escape < & >"})
 	tableNoEscape.Render()
 
@@ -190,10 +190,10 @@ func TestHTMLHorizontalMerge(t *testing.T) {
 			Footer: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal}},
 		}),
 	)
-	table.SetHeader([]string{"A", "Merged Header", "Merged Header"})
+	table.Header([]string{"A", "Merged Header", "Merged Header"})
 	table.Append([]string{"Data 1", "Data 2", "Data 2"})
 	table.Append([]string{"Merged Row", "Merged Row", "Data 3"})
-	table.SetFooter([]string{"Footer 1", "Merged Footer", "Merged Footer"})
+	table.Footer([]string{"Footer 1", "Merged Footer", "Merged Footer"})
 	table.Render()
 
 	expected := `
@@ -225,7 +225,7 @@ func TestHTMLVerticalMerge(t *testing.T) {
 			Row: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeVertical}},
 		}),
 	)
-	table.SetHeader([]string{"Category", "Item", "Value"})
+	table.Header([]string{"Category", "Item", "Value"})
 	table.Append([]string{"Fruit", "Apple", "10"})
 	table.Append([]string{"Fruit", "Banana", "5"})
 	table.Append([]string{"Fruit", "Orange", "8"})
@@ -264,7 +264,7 @@ func TestHTMLCombinedMerge(t *testing.T) {
 			Row: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeBoth}},
 		}),
 	)
-	table.SetHeader([]string{"Region", "Quarter", "Sales", "Target"})
+	table.Header([]string{"Region", "Quarter", "Sales", "Target"})
 	table.Append([]string{"North", "Q1", "1000", "900"})
 	table.Append([]string{"North", "Q2", "1200", "1100"})
 	table.Append([]string{"South", "Q1+Q2", "Q1+Q2", "2000"})
@@ -308,7 +308,7 @@ func TestHTMLHierarchicalMerge(t *testing.T) {
 			},
 		}),
 	)
-	table.SetHeader([]string{"L1", "L2", "L3"})
+	table.Header([]string{"L1", "L2", "L3"})
 	table.Append([]string{"A", "a", "1"})
 	table.Append([]string{"A", "b", "2"})
 	table.Append([]string{"A", "b", "3"})
@@ -358,7 +358,7 @@ func TestHTMLEmptyTable(t *testing.T) {
 	tableHeaderOnly := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
 	)
-	tableHeaderOnly.SetHeader([]string{"Col A"})
+	tableHeaderOnly.Header([]string{"Col A"})
 	tableHeaderOnly.Render()
 
 	expectedHeaderOnly := `
@@ -388,9 +388,9 @@ func TestHTMLCSSClasses(t *testing.T) {
 			Formatting: tw.CellFormatting{AutoFormat: false, Alignment: tw.AlignCenter},
 		}),
 	)
-	table.SetHeader([]string{"H1"})
+	table.Header([]string{"H1"})
 	table.Append([]string{"R1"})
-	table.SetFooter([]string{"F1"})
+	table.Footer([]string{"F1"})
 	table.Render()
 
 	expected := `
@@ -418,10 +418,10 @@ func TestHTMLStructureStrict(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
 	)
-	table.SetHeader([]string{"A", "B"})
+	table.Header([]string{"A", "B"})
 	table.Append([]string{"1", "2"})
 	table.Append([]string{"3", "4"})
-	table.SetFooter([]string{"F1", "F2"})
+	table.Footer([]string{"F1", "F2"})
 	table.Render()
 
 	expectedStructure := `<table><thead><tr><th style="text-align: center;">A</th><th style="text-align: center;">B</th></tr></thead><tbody><tr><td style="text-align: left;">1</td><td style="text-align: left;">2</td></tr><tr><td style="text-align: left;">3</td><td style="text-align: left;">4</td></tr></tbody><tfoot><tr><td style="text-align: right;">F1</td><td style="text-align: right;">F2</td></tr></tfoot></table>`

@@ -25,7 +25,7 @@ func TestVerticalMerge(t *testing.T) {
 		},
 	})),
 	)
-	table.SetHeader([]string{"Name", "Sign", "Rating"})
+	table.Header([]string{"Name", "Sign", "Rating"})
 	table.Append([]string{"A", "The Good", "500"})
 	table.Append([]string{"A", "The Very very Bad Man", "288"})
 	table.Append([]string{"B", "", "120"})
@@ -67,7 +67,7 @@ func TestHorizontalMerge(t *testing.T) {
 		},
 	})),
 	)
-	table.SetHeader([]string{"Col1", "Col2", "Col2"})
+	table.Header([]string{"Col1", "Col2", "Col2"})
 	table.Append([]string{"A", "B", "B"})
 	table.Append([]string{"A", "A", "C"})
 	table.Append([]string{"A", "B", "C"})
@@ -121,7 +121,7 @@ func TestHorizontalMergeEachLine(t *testing.T) {
 			},
 		})),
 	)
-	table.SetHeader([]string{"Date", "Section A", "Section B", "Section C", "Section D", "Section E"})
+	table.Header([]string{"Date", "Section A", "Section B", "Section C", "Section D", "Section E"})
 	table.Append([]string{"1/1/2014", "apple", "boy", "cat", "dog", "elephant"})
 	table.Append([]string{"1/1/2014", "apple", "apple", "boy", "dog", "elephant"})
 	table.Append([]string{"1/1/2014", "apple", "boy", "boy", "cat", "dog"})
@@ -170,7 +170,7 @@ func TestHorizontalMergeEachLineCenter(t *testing.T) {
 			},
 		})),
 	)
-	table.SetHeader([]string{"Date", "Section A", "Section B", "Section C", "Section D", "Section E"})
+	table.Header([]string{"Date", "Section A", "Section B", "Section C", "Section D", "Section E"})
 	table.Append([]string{"1/1/2014", "apple", "boy", "cat", "dog", "elephant"})
 	table.Append([]string{"1/1/2014", "apple", "apple", "boy", "dog", "elephant"})
 	table.Append([]string{"1/1/2014", "apple", "boy", "boy", "cat", "dog"})
@@ -222,11 +222,11 @@ func TestHorizontalMergeAlignFooter(t *testing.T) {
 			},
 		})),
 	)
-	table.SetHeader([]string{"Date", "Description", "Status", "Conclusion"})
+	table.Header([]string{"Date", "Description", "Status", "Conclusion"})
 	table.Append([]string{"1/1/2014", "Domain name", "Successful", "Successful"})
 	table.Append([]string{"1/1/2014", "Domain name", "Pending", "Waiting"})
 	table.Append([]string{"1/1/2014", "Domain name", "Successful", "Rejected"})
-	table.SetFooter([]string{"", "", "TOTAL", "$145.93"}) // Fixed from Append
+	table.Footer([]string{"", "", "TOTAL", "$145.93"}) // Fixed from Append
 	table.Render()
 
 	expected := `
@@ -267,7 +267,7 @@ func TestVerticalMergeLines(t *testing.T) {
 			},
 		},
 	})))
-	table.SetHeader([]string{"Name", "Sign", "Rating"})
+	table.Header([]string{"Name", "Sign", "Rating"})
 	table.Append([]string{"A", "The Good", "500"})
 	table.Append([]string{"A", "The Very very Bad Man", "288"})
 	table.Append([]string{"B", "C", "120"})
@@ -323,7 +323,7 @@ func TestMergeBoth(t *testing.T) {
 	t.Run("mixed-1", func(t *testing.T) {
 		buf.Reset()
 		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c), tablewriter.WithRenderer(r))
-		table.SetHeader([]string{"Date", "Description", "Status", "Conclusion"})
+		table.Header([]string{"Date", "Description", "Status", "Conclusion"})
 		table.Append([]string{"1/1/2014", "Domain name", "Successful", "Successful"})
 		table.Append([]string{"1/1/2014", "Domain name", "Pending", "Waiting"})
 		table.Append([]string{"1/1/2014", "Domain name", "Successful", "Rejected"})
@@ -356,7 +356,7 @@ func TestMergeBoth(t *testing.T) {
 	t.Run("mixed-2", func(t *testing.T) {
 		buf.Reset()
 		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c), tablewriter.WithRenderer(r))
-		table.SetHeader([]string{"Date", "Description", "Status", "Conclusion"})
+		table.Header([]string{"Date", "Description", "Status", "Conclusion"})
 		table.Append([]string{"1/1/2014", "Domain name", "Successful", "Successful"})
 		table.Append([]string{"1/1/2014", "Domain name", "Pending", "Waiting"})
 		table.Append([]string{"1/1/2015", "Domain name", "Successful", "Rejected"})
@@ -404,7 +404,7 @@ func TestMergeHierarchical(t *testing.T) {
 			},
 		})),
 	)
-	table.SetHeader([]string{"0", "1", "2", "3"})
+	table.Header([]string{"0", "1", "2", "3"})
 	table.Append([]string{"A", "a", "c", "-"})
 	table.Append([]string{"A", "b", "c", "-"})
 	table.Append([]string{"A", "b", "d", "-"})
@@ -450,7 +450,7 @@ func TestMergeHierarchicalUnicode(t *testing.T) {
 			},
 		})),
 	)
-	table.SetHeader([]string{"0", "1", "2", "3"})
+	table.Header([]string{"0", "1", "2", "3"})
 	table.Append([]string{"A", "a", "c", "-"})
 	table.Append([]string{"A", "b", "c", "-"})
 	table.Append([]string{"A", "b", "d", "-"})
@@ -504,7 +504,7 @@ func TestMergeWithPadding(t *testing.T) {
 		},
 	})))
 
-	table.SetHeader([]string{"Date", "Description", "Status", "Conclusion"})
+	table.Header([]string{"Date", "Description", "Status", "Conclusion"})
 	table.Append([]string{"1/1/2014", "Domain name", "Successful", "Successful"})
 	table.Append([]string{"1/1/2014", "Domain name", "Pending", "Waiting"})
 	table.Append([]string{"1/1/2014", "Domain name", "Successful", "Rejected"})
