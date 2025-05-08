@@ -3,6 +3,7 @@ package tests
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -59,6 +60,7 @@ func visualCheck(t *testing.T, name string, output string, expected string) bool
 	// Normalize line endings and split into lines
 	normalize := func(s string) []string {
 		s = strings.ReplaceAll(s, "\r\n", "\n")
+		s = StripColors(s)
 		return strings.Split(s, "\n")
 	}
 
@@ -121,4 +123,11 @@ func visualCheck(t *testing.T, name string, output string, expected string) bool
 	}
 
 	return true
+}
+
+var ansiColorRegex = regexp.MustCompile(`\x1b\[[0-9;]*m`)
+
+// StripColors removes ANSI color codes from a string.
+func StripColors(s string) string {
+	return ansiColorRegex.ReplaceAllString(s, "")
 }

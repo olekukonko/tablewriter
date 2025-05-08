@@ -1,23 +1,26 @@
 package renderer
 
-import "github.com/olekukonko/tablewriter/tw"
+import (
+	"github.com/fatih/color"
+	"github.com/olekukonko/tablewriter/tw"
+)
 
-func defaultConfig() DefaultConfig {
-	return DefaultConfig{
-		Borders: Border{
+func defaultOptions() tw.RendererConfig {
+	return tw.RendererConfig{
+		Borders: tw.Border{
 			Left:   tw.On,
 			Right:  tw.On,
 			Top:    tw.On,
 			Bottom: tw.On,
 		},
-		Settings: Settings{
-			Separators: Separators{
+		Settings: tw.Settings{
+			Separators: tw.Separators{
 				ShowHeader:     tw.On,
 				ShowFooter:     tw.On,
 				BetweenRows:    tw.Off,
 				BetweenColumns: tw.On,
 			},
-			Lines: Lines{
+			Lines: tw.Lines{
 				ShowTop:        tw.On,
 				ShowBottom:     tw.On,
 				ShowHeaderLine: tw.On,
@@ -30,32 +33,52 @@ func defaultConfig() DefaultConfig {
 	}
 }
 
-func NewDefault(configs ...DefaultConfig) *Default {
-	cfg := defaultConfig()
-	cfg.Debug = true
-	if len(configs) > 0 {
-		userCfg := configs[0]
-		if userCfg.Borders.Left != 0 {
-			cfg.Borders.Left = userCfg.Borders.Left
-		}
-		if userCfg.Borders.Right != 0 {
-			cfg.Borders.Right = userCfg.Borders.Right
-		}
-		if userCfg.Borders.Top != 0 {
-			cfg.Borders.Top = userCfg.Borders.Top
-		}
-		if userCfg.Borders.Bottom != 0 {
-			cfg.Borders.Bottom = userCfg.Borders.Bottom
-		}
-		if userCfg.Symbols != nil {
-			cfg.Symbols = userCfg.Symbols
-		}
-		cfg.Settings = mergeSettings(cfg.Settings, userCfg.Settings)
+// defaultColorized returns a default configuration optimized for dark terminal backgrounds.
+func defaultColorized() ColorizedConfig {
+	return ColorizedConfig{
+		Borders: tw.Border{Left: tw.On, Right: tw.On, Top: tw.On, Bottom: tw.On},
+		Settings: tw.Settings{
+			Separators: tw.Separators{
+				ShowHeader:     tw.On,
+				ShowFooter:     tw.On,
+				BetweenRows:    tw.Off,
+				BetweenColumns: tw.On,
+			},
+			Lines: tw.Lines{
+				ShowTop:        tw.On,
+				ShowBottom:     tw.On,
+				ShowHeaderLine: tw.On,
+				ShowFooterLine: tw.On,
+			},
+			TrimWhitespace: tw.On,
+			CompactMode:    tw.Off,
+		},
+		Header: Tint{
+			FG: Colors{color.FgWhite, color.Bold},
+			BG: Colors{color.BgBlack},
+		},
+		Column: Tint{
+			FG: Colors{color.FgCyan},
+			BG: Colors{color.BgBlack},
+		},
+		Footer: Tint{
+			FG: Colors{color.FgYellow},
+			BG: Colors{color.BgBlack},
+		},
+		Border: Tint{
+			FG: Colors{color.FgWhite},
+			BG: Colors{color.BgBlack},
+		},
+		Separator: Tint{
+			FG: Colors{color.FgWhite},
+			BG: Colors{color.BgBlack},
+		},
+		Symbols: tw.NewSymbols(tw.StyleLight),
+		Debug:   false,
 	}
-	return &Default{config: cfg}
 }
 
-func mergeSettings(defaults, overrides Settings) Settings {
+func mergeSettings(defaults, overrides tw.Settings) tw.Settings {
 	if overrides.Separators.ShowHeader != 0 {
 		defaults.Separators.ShowHeader = overrides.Separators.ShowHeader
 	}
@@ -85,6 +108,40 @@ func mergeSettings(defaults, overrides Settings) Settings {
 	}
 	if overrides.CompactMode != 0 {
 		defaults.CompactMode = overrides.CompactMode
+	}
+	return defaults
+}
+
+// mergeSeparators combines default and override separator settings, preserving defaults for unset (zero) overrides.
+func mergeSeparators(defaults, overrides tw.Separators) tw.Separators {
+	if overrides.ShowHeader != 0 {
+		defaults.ShowHeader = overrides.ShowHeader
+	}
+	if overrides.ShowFooter != 0 {
+		defaults.ShowFooter = overrides.ShowFooter
+	}
+	if overrides.BetweenRows != 0 {
+		defaults.BetweenRows = overrides.BetweenRows
+	}
+	if overrides.BetweenColumns != 0 {
+		defaults.BetweenColumns = overrides.BetweenColumns
+	}
+	return defaults
+}
+
+// mergeLines combines default and override line settings, preserving defaults for unset (zero) overrides.
+func mergeLines(defaults, overrides tw.Lines) tw.Lines {
+	if overrides.ShowTop != 0 {
+		defaults.ShowTop = overrides.ShowTop
+	}
+	if overrides.ShowBottom != 0 {
+		defaults.ShowBottom = overrides.ShowBottom
+	}
+	if overrides.ShowHeaderLine != 0 {
+		defaults.ShowHeaderLine = overrides.ShowHeaderLine
+	}
+	if overrides.ShowFooterLine != 0 {
+		defaults.ShowFooterLine = overrides.ShowFooterLine
 	}
 	return defaults
 }
