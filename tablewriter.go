@@ -1,6 +1,7 @@
 package tablewriter
 
 import (
+	"database/sql"
 	"fmt"
 	"github.com/olekukonko/errors"
 	"github.com/olekukonko/tablewriter/pkg/twwarp"
@@ -1394,56 +1395,165 @@ func (t *Table) appendSingle(row interface{}) error {
 	return nil
 }
 
-// toStringLines converts a row to string lines using the stringer or direct cast.
+// toStringLines converts a row to string lines.
+// Handles []string, []any, []interface{}, or types compatible with a custom stringer.
 func (t *Table) toStringLines(row interface{}, config tw.CellConfig) ([][]string, error) {
-	t.debug("Converting row to string lines: %v", row)
+	t.debug("Converting row to string lines: %v (type: %T)", row, row)
 	var cells []string
+
 	switch v := row.(type) {
 	case []string:
 		cells = v
 		t.debug("Row is already []string")
+	case []any: // Handle []any
+		t.debug("Row is []any, converting elements")
+		cells = make([]string, len(v))
+		for i, element := range v {
+			cells[i] = t.elementToString(element)
+		}
 	default:
-		if t.stringer == nil {
-			err := errors.Newf("no stringer provided for type %T", row)
-			t.debug("Stringer error: %v", err)
+		// Try using the custom stringer if provided
+		if t.stringer != nil {
+			t.debug("Attempting conversion using custom stringer for type %T", row)
+			rv := reflect.ValueOf(t.stringer)
+			// Basic validation of the stringer function signature
+			if rv.Kind() != reflect.Func || rv.Type().NumIn() != 1 || rv.Type().NumOut() != 1 {
+				err := errors.Newf("stringer must be a func(T) []string, got %T", t.stringer)
+				t.debug("Stringer format error: %v", err)
+				return nil, err
+			}
+			inType := rv.Type().In(0)
+			rowType := reflect.TypeOf(row)
+			if !rowType.AssignableTo(inType) {
+				err := errors.Newf("cannot assign row type %T to stringer input type %s", row, inType)
+				t.debug("Stringer type mismatch error: %v", err)
+				return nil, err
+			}
+
+			in := []reflect.Value{reflect.ValueOf(row)}
+			out := rv.Call(in)
+
+			// Basic validation of the stringer function output
+			if len(out) != 1 || out[0].Kind() != reflect.Slice || out[0].Type().Elem().Kind() != reflect.String {
+				err := errors.Newf("stringer must return []string, got %T", out[0].Interface())
+				t.debug("Stringer return error: %v", err)
+				return nil, err
+			}
+			cells = out[0].Interface().([]string)
+			t.debug("Converted row using stringer: %v", cells)
+		} else {
+			// If no stringer and not a known slice type, report error
+			err := errors.Newf("cannot convert row type %T to []string; provide a stringer via WithStringer", row)
+			t.debug("Conversion error: %v", err)
 			return nil, err
 		}
-		rv := reflect.ValueOf(t.stringer)
-		if rv.Kind() != reflect.Func || rv.Type().NumIn() != 1 || rv.Type().NumOut() != 1 {
-			err := errors.Newf("stringer must be a func(T) []string")
-			t.debug("Stringer format error: %v", err)
-			return nil, err
-		}
-		in := []reflect.Value{reflect.ValueOf(row)}
-		out := rv.Call(in)
-		if len(out) != 1 || out[0].Kind() != reflect.Slice || out[0].Type().Elem().Kind() != reflect.String {
-			err := errors.Newf("stringer must return []string")
-			t.debug("Stringer return error: %v", err)
-			return nil, err
-		}
-		cells = out[0].Interface().([]string)
-		t.debug("Converted row using stringer: %v", cells)
 	}
 
 	// Apply global filter if present
 	if config.Filter.Global != nil {
-		t.debug("Applying global filter to cells")
+		t.debug("Applying global filter to cells: %v", cells)
 		cells = config.Filter.Global(cells)
+		t.debug("Cells after global filter: %v", cells)
 	}
 
 	// Apply per-column filters if present
 	if len(config.Filter.PerColumn) > 0 {
 		t.debug("Applying per-column filters to cells")
+		numFilters := len(config.Filter.PerColumn)
 		for i, cell := range cells {
-			if i < len(config.Filter.PerColumn) && config.Filter.PerColumn[i] != nil {
+			if i < numFilters && config.Filter.PerColumn[i] != nil {
+				originalCell := cell
 				cells[i] = config.Filter.PerColumn[i](cell)
+				if cells[i] != originalCell {
+					t.debug("  Col %d filter applied: '%s' -> '%s'", i, originalCell, cells[i])
+				}
 			}
 		}
 	}
 
+	// Prepare content (wrapping, splitting multi-line cells)
 	result := t.prepareContent(cells, config)
-	t.debug("Prepared content: %v", result)
+	t.debug("Prepared content lines: %v", result)
 	return result, nil
+}
+
+// elementToString converts a single element to its string representation.
+// It prioritizes the tw.Formatter interface if implemented.
+func (t *Table) elementToString(element interface{}) string {
+	if element == nil {
+		return ""
+	}
+
+	// 1. Check for custom formatter (tw.Formatter)
+	if formatter, ok := element.(tw.Formatter); ok {
+		return formatter.Format()
+	}
+
+	// 2. Handle io.Reader (with fixed buffer to prevent OOM)
+	if reader, ok := element.(io.Reader); ok {
+		const maxReadSize = 512 // Prevent huge reads
+		var buf strings.Builder
+		_, err := io.CopyN(&buf, reader, maxReadSize)
+		if err != nil && err != io.EOF {
+			return fmt.Sprintf("[reader error: %v]", err)
+		}
+		if buf.Len() == maxReadSize {
+			buf.WriteString("...") // Indicate truncation
+		}
+		return buf.String()
+	}
+
+	// 3. Handle SQL nullable types (sql.NullString, sql.NullInt64, etc.)
+	switch v := element.(type) {
+	case sql.NullString:
+		if v.Valid {
+			return v.String
+		}
+		return "" // NULL in SQL → empty string
+	case sql.NullInt64:
+		if v.Valid {
+			return fmt.Sprintf("%d", v.Int64)
+		}
+		return ""
+	case sql.NullFloat64:
+		if v.Valid {
+			return fmt.Sprintf("%f", v.Float64)
+		}
+		return ""
+	case sql.NullBool:
+		if v.Valid {
+			return fmt.Sprintf("%t", v.Bool)
+		}
+		return ""
+	case sql.NullTime:
+		if v.Valid {
+			return v.Time.String() // Or format as needed
+		}
+		return ""
+	}
+
+	// 4. Handle []byte (common in DB results)
+	if b, ok := element.([]byte); ok {
+		return string(b)
+	}
+
+	// 5. Handle errors (implements Error())
+	if err, ok := element.(error); ok {
+		return err.Error()
+	}
+
+	// 6. Handle fmt.Stringer (like time.Time, net.IP, etc.)
+	if stringer, ok := element.(fmt.Stringer); ok {
+		return stringer.String()
+	}
+
+	// 7. Fallback: Use %v, but avoid panics on weird types
+	defer func() {
+		if r := recover(); r != nil {
+			return // Return empty string on format panic
+		}
+	}()
+	return fmt.Sprintf("%v", element)
 }
 
 // prepareContent processes cell content with formatting, wrapping, and splitting.

@@ -89,3 +89,7 @@ const (
 // Filter defines a function type for processing cell content.
 // It takes a slice of strings and returns a processed slice.
 type Filter func([]string) []string
+
+type Formatter interface {
+	Format() string
+}
