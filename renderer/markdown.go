@@ -396,3 +396,13 @@ func (m *Markdown) Reset() {
 	m.trace = nil
 	m.debug("Reset: Cleared debug trace")
 }
+
+func (m *Markdown) Start(w io.Writer) error {
+	m.debug("Markdown.Start() called (no-op).")
+	return nil
+}
+
+func (m *Markdown) Close(w io.Writer) error {
+	m.debug("Markdown.Close() called (no-op).")
+	return nil
+}

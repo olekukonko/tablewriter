@@ -652,3 +652,13 @@ func (f *Colorized) Line(w io.Writer, ctx tw.Formatting) {
 	fmt.Fprint(w, line.String())
 	f.debug("Line rendered: %s", strings.TrimSuffix(line.String(), f.newLine))
 }
+
+func (f *Colorized) Start(w io.Writer) error {
+	f.debug("Colorized.Start() called (no-op).")
+	return nil
+}
+
+func (f *Colorized) Close(w io.Writer) error {
+	f.debug("Colorized.Close() called (no-op).")
+	return nil
+}

@@ -12,48 +12,6 @@ import (
 	"strings"
 )
 
-// Filter defines a function type for processing cell content.
-// It takes a slice of strings and returns a processed slice.
-type Filter func([]string) []string
-
-// CellFormatting holds formatting options for table cells.
-type CellFormatting struct {
-	Alignment  tw.Align // Text alignment within the cell (e.g., Left, Right, Center)
-	AutoWrap   int      // Wrapping behavior (e.g., WrapTruncate, WrapNormal)
-	AutoFormat bool     // Enables automatic formatting (e.g., title case for headers)
-	MaxWidth   int      // Maximum content width for the cell
-	MergeMode  int      // Bitmask for merge behavior (e.g., MergeHorizontal, MergeVertical)
-}
-
-// CellPadding defines padding settings for table cells.
-type CellPadding struct {
-	Global    tw.Padding   // Default padding applied to all cells
-	PerColumn []tw.Padding // Column-specific padding overrides
-}
-
-// CellFilter defines filtering functions for cell content.
-type CellFilter struct {
-	Global    func([]string) []string // Processes the entire row
-	PerColumn []func(string) string   // Processes individual cells by column
-}
-
-// CellCallbacks holds callback functions for cell processing.
-// Note: These are currently placeholders and not fully implemented.
-type CellCallbacks struct {
-	Global    func()   // Global callback applied to all cells
-	PerColumn []func() // Column-specific callbacks
-}
-
-// CellConfig combines formatting, padding, and callback settings for a table section.
-type CellConfig struct {
-	Formatting   CellFormatting // Cell formatting options
-	Padding      CellPadding    // Padding configuration
-	Callbacks    CellCallbacks  // Callback functions (unused)
-	Filter       CellFilter     // Function to filter cell content (renamed from Filter Filter)
-	ColumnAligns []tw.Align     // Per-column alignment overrides
-	ColMaxWidths map[int]int    // Per-column maximum width overrides
-}
-
 // Config represents the overall configuration for a table.
 type Config struct {
 	MaxWidth int        // Maximum width of the entire table (0 for unlimited)
@@ -227,30 +185,55 @@ func (t *Table) Debug() []string {
 	return append(t.trace, t.renderer.Debug()...)
 }
 
-// ---- Renderers ----
-
-// render orchestrates the full table rendering process.
-// It prepares contexts and renders each section in sequence.
+// render generates the table output using the configured renderer, handling headers, rows, footers, and cleanup.
+// It initializes the renderer, renders sections, and ensures proper closure, continuing through section errors to attempt cleanup.
 func (t *Table) render() error {
 	t.ensureInitialized()
+
+	// Prepare contexts first
 	ctx, mctx, err := t.prepareContexts()
 	if err != nil {
 		return err
 	}
 
+	// Always call Start() before rendering sections
+	ctx.debug("Calling renderer Start()")
+	if err := ctx.renderer.Start(t.writer); err != nil {
+		ctx.debug("Renderer Start() error: %v", err)
+		return fmt.Errorf("renderer start failed: %w", err)
+	}
+
+	renderError := false
 	for _, renderFn := range []func(*renderContext, *mergeContext) error{
 		t.renderHeader,
 		t.renderRow,
 		t.renderFooter,
 	} {
 		if err := renderFn(ctx, mctx); err != nil {
-			return err
+			ctx.debug("Renderer section error: %v", err)
+			renderError = true
+			// Optional: break here if you don't want to attempt subsequent sections
 		}
+	}
+
+	// Always call Close() after attempting to render sections
+	ctx.debug("Calling renderer Close()")
+	closeErr := ctx.renderer.Close(t.writer)
+	if closeErr != nil {
+		ctx.debug("Renderer Close() error: %v", closeErr)
+		if !renderError { // Prioritize returning renderError if it happened
+			return fmt.Errorf("renderer close failed: %w", closeErr)
+		}
+	}
+
+	// If a rendering error happened earlier, return it now
+	if renderError {
+		return errors.New("table rendering failed in one or more sections")
 	}
 
 	t.hasPrinted = true
 	ctx.debug("Render completed")
-	return nil
+	return nil // Success
 }
 
 // renderHeader renders the table's header section, including borders and padding.
@@ -412,7 +395,7 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 	// Render all rows with padding and separators
 	for i, lines := range ctx.rowLines {
 		// Top row padding
-		rowHasTopPadding := (t.config.Row.Padding.Global.Top != tw.Empty)
+		rowHasTopPadding := t.config.Row.Padding.Global.Top != tw.Empty
 		if rowHasTopPadding {
 			hctx.rowIdx = i
 			hctx.lineIdx = -1
@@ -472,17 +455,17 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 
 		// Row content lines
 		footerExists := t.hasFooterElements()
-		rowHasBottomPadding := (t.config.Row.Padding.Global.Bottom != tw.Empty)
+		rowHasBottomPadding := t.config.Row.Padding.Global.Bottom != tw.Empty
 
 		for j, line := range lines {
 			hctx.rowIdx = i
 			hctx.lineIdx = j
 			hctx.line = padLine(line, ctx.numCols)
 
-			isFirstRow := (i == 0)
-			isLastRow := (i == len(ctx.rowLines)-1)
-			isFirstLineOfRow := (j == 0)
-			isLastLineOfRow := (j == len(lines)-1)
+			isFirstRow := i == 0
+			isLastRow := i == len(ctx.rowLines)-1
+			isFirstLineOfRow := j == 0
+			isLastLineOfRow := j == len(lines)-1
 
 			if isFirstRow && isFirstLineOfRow && !rowHasTopPadding && len(ctx.headerLines) == 0 {
 				hctx.location = tw.LocationFirst
@@ -554,7 +537,7 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 				})
 			} else if cfg.Settings.Separators.BetweenRows.Enabled() && isLastRow && isLastLineOfRow {
 				ctx.debug("Skipping between-rows separator after last row %d line %d (footerExists=%v, rowHasBottomPadding=%v, bottomBorderEnabled=%v)",
-					i, j, footerExists, rowHasBottomPadding, (cfg.Borders.Bottom.Enabled() && cfg.Settings.Lines.ShowBottom.Enabled()))
+					i, j, footerExists, rowHasBottomPadding, cfg.Borders.Bottom.Enabled() && cfg.Settings.Lines.ShowBottom.Enabled())
 			}
 		}
 
@@ -847,8 +830,8 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 		hctx.rowIdx = 0
 		hctx.lineIdx = i
 		hctx.line = padLine(line, ctx.numCols)
-		isFirstContentLine := (i == 0)
-		isLastContentLine := (i == len(ctx.footerLines)-1)
+		isFirstContentLine := i == 0
+		isLastContentLine := i == len(ctx.footerLines)-1
 		if isFirstContentLine && !hasTopPadding && !(hasContentAbove && cfg.Settings.Lines.ShowFooterLine.Enabled()) {
 			hctx.location = tw.LocationFirst
 		} else if isLastContentLine && !hasBottomPaddingConfig {
@@ -1655,13 +1638,13 @@ func (t *Table) prepareWithMerges(content [][]string, config CellConfig, positio
 						}
 
 						startState := mergeMap[startCol]
-						startState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: true, End: (span == 1)}
+						startState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: true, End: span == 1}
 						mergeMap[startCol] = startState
 						horzMergeMap[startCol] = true
 
 						for k := startCol + 1; k < startCol+span; k++ {
 							colState := mergeMap[k]
-							colState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: false, End: (k == startCol+span-1)}
+							colState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: false, End: k == startCol+span-1}
 							mergeMap[k] = colState
 							horzMergeMap[k] = true
 						}
@@ -1740,7 +1723,7 @@ func (t *Table) prepareWithMerges(content [][]string, config CellConfig, positio
 							currentLineResult[k] = tw.Empty
 						}
 						colState := mergeMap[k]
-						colState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: false, End: (k == startCol+span-1)}
+						colState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: false, End: k == startCol+span-1}
 						mergeMap[k] = colState
 						horzMergeMap[k] = true
 					}
@@ -2072,7 +2055,7 @@ func (t *Table) finalizeHierarchicalMergeBlock(ctx *renderContext, mctx *mergeCo
 	startState := mctx.rowMerges[startRow][col]
 	if startState.Hierarchical.Present && startState.Hierarchical.Start {
 		startState.Hierarchical.Span = finalSpan
-		startState.Hierarchical.End = (finalSpan == 1)
+		startState.Hierarchical.End = finalSpan == 1
 		mctx.rowMerges[startRow][col] = startState
 		ctx.debug(" -> Updated start state: %+v", startState.Hierarchical)
 	} else {

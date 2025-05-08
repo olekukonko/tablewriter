@@ -7,12 +7,14 @@ import (
 // Renderer defines the interface for rendering tables to an io.Writer.
 // Implementations must handle headers, rows, footers, and separator lines.
 type Renderer interface {
+	Start(w io.Writer) error
 	Header(w io.Writer, headers [][]string, ctx Formatting) // Renders table header
 	Row(w io.Writer, row []string, ctx Formatting)          // Renders a single row
 	Footer(w io.Writer, footers [][]string, ctx Formatting) // Renders table footer
 	Line(w io.Writer, ctx Formatting)                       // Renders separator line
 	Debug() []string                                        // Returns debug trace
 	Config() RendererConfig                                 // Returns renderer config
+	Close(w io.Writer) error
 }
 
 // RendererConfig holds the configuration for the default renderer.

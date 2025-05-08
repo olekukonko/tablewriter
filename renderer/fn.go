@@ -1,10 +1,12 @@
 package renderer
 
 import (
+	"fmt"
 	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter/tw"
 )
 
+// defaultOptions returns a default RendererConfig for ASCII table rendering with borders and light symbols.
 func defaultOptions() tw.RendererConfig {
 	return tw.RendererConfig{
 		Borders: tw.Border{
@@ -33,7 +35,7 @@ func defaultOptions() tw.RendererConfig {
 	}
 }
 
-// defaultColorized returns a default configuration optimized for dark terminal backgrounds.
+// defaultColorized returns a default ColorizedConfig optimized for dark terminal backgrounds with colored headers, rows, and borders.
 func defaultColorized() ColorizedConfig {
 	return ColorizedConfig{
 		Borders: tw.Border{Left: tw.On, Right: tw.On, Top: tw.On, Bottom: tw.On},
@@ -78,6 +80,7 @@ func defaultColorized() ColorizedConfig {
 	}
 }
 
+// mergeSettings combines default and override settings, preserving defaults for unset (zero) overrides.
 func mergeSettings(defaults, overrides tw.Settings) tw.Settings {
 	if overrides.Separators.ShowHeader != 0 {
 		defaults.Separators.ShowHeader = overrides.Separators.ShowHeader
@@ -144,4 +147,21 @@ func mergeLines(defaults, overrides tw.Lines) tw.Lines {
 		defaults.ShowFooterLine = overrides.ShowFooterLine
 	}
 	return defaults
+}
+
+// getHTMLStyle remains the same
+func getHTMLStyle(align tw.Align) string {
+	styleContent := ""
+	switch align {
+	case tw.AlignRight:
+		styleContent = "text-align: right;"
+	case tw.AlignCenter:
+		styleContent = "text-align: center;"
+	case tw.AlignLeft:
+		styleContent = "text-align: left;"
+	}
+	if styleContent != "" {
+		return fmt.Sprintf(` style="%s"`, styleContent)
+	}
+	return ""
 }

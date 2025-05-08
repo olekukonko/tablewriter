@@ -463,3 +463,13 @@ func (f *Blueprint) Line(w io.Writer, ctx tw.Formatting) {
 	fmt.Fprint(w, line.String())
 	f.debug("Line rendered: %s", strings.TrimSuffix(line.String(), tw.NewLine))
 }
+
+func (f *Blueprint) Start(w io.Writer) error {
+	f.debug("Blueprint.Start() called (no-op).")
+	return nil
+}
+
+func (f *Blueprint) Close(w io.Writer) error {
+	f.debug("Blueprint.Close() called (no-op).")
+	return nil
+}
