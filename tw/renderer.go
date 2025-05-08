@@ -72,6 +72,10 @@ type RowContext struct {
 	ColMaxWidths map[int]int         // Maximum allowed width per column
 }
 
+func (r RowContext) GetCell(col int) CellContext {
+	return r.Current[col]
+}
+
 // Separators controls the visibility of separators in the table.
 type Separators struct {
 	ShowHeader     State // Controls header separator visibility
