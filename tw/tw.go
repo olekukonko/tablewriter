@@ -26,10 +26,11 @@ type Align string
 // Table Alignment Constants
 // Defines text alignment options for table content
 const (
-	AlignNone   Align = "none"   // Center-aligned text
-	AlignCenter Align = "center" // Center-aligned text
-	AlignRight  Align = "right"  // Right-aligned text
-	AlignLeft   Align = "left"   // Left-aligned text
+	AlignNone    Align = "none"    // Center-aligned text
+	AlignCenter  Align = "center"  // Center-aligned text
+	AlignRight   Align = "right"   // Right-aligned text
+	AlignLeft    Align = "left"    // Left-aligned text
+	AlignDefault       = AlignLeft // Left-aligned text
 )
 
 // Position Type and Constants

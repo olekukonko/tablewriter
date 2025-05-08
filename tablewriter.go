@@ -1258,7 +1258,7 @@ func defaultConfig() Config {
 				Global: defaultPadding,
 			},
 		},
-		Debug:    true,
+		Debug:    false,
 		AutoHide: false,
 	}
 }
