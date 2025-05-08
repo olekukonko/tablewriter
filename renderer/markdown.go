@@ -9,55 +9,60 @@ import (
 	"github.com/olekukonko/tablewriter/twfn"
 )
 
-// Markdown implements a Markdown table formatter.
+// Markdown renders tables in Markdown format with customizable settings.
 type Markdown struct {
-	config DefaultConfig // Configuration for rendering
-	trace  []string      // Debug trace messages
+	config tw.RendererConfig // Rendering configuration
+	trace  []string          // Debug trace messages
 }
 
-// NewMarkdown creates a new Markdown renderer with default settings.
-func NewMarkdown(configs ...DefaultConfig) *Markdown {
-	cfg := defaultConfig()
+// NewMarkdown initializes a Markdown renderer with defaults tailored for Markdown (e.g., pipes, header separator).
+// Only the first config is used if multiple are provided.
+func NewMarkdown(configs ...tw.RendererConfig) *Markdown {
+	cfg := defaultOptions()
+	// Configure Markdown-specific defaults
 	cfg.Symbols = tw.NewSymbols(tw.StyleMarkdown)
-	cfg.Borders = Border{Left: tw.On, Right: tw.On, Top: tw.Off, Bottom: tw.Off}
+	cfg.Borders = tw.Border{Left: tw.On, Right: tw.On, Top: tw.Off, Bottom: tw.Off}
 	cfg.Settings.Separators.BetweenColumns = tw.On
+	cfg.Settings.Separators.BetweenRows = tw.Off
 	cfg.Settings.Lines.ShowHeaderLine = tw.On
 	cfg.Settings.Lines.ShowTop = tw.Off
 	cfg.Settings.Lines.ShowBottom = tw.Off
+	cfg.Settings.Lines.ShowFooterLine = tw.Off
+	cfg.Settings.TrimWhitespace = tw.On
+
+	// Apply user overrides
 	if len(configs) > 0 {
-		userCfg := configs[0]
-		cfg = mergeConfig(cfg, userCfg)
+		cfg = mergeMarkdownConfig(cfg, configs[0])
 	}
 	return &Markdown{config: cfg}
 }
 
-// mergeConfig merges user-provided config with defaults, preserving non-zero values.
-func mergeConfig(defaults, overrides DefaultConfig) DefaultConfig {
+// mergeMarkdownConfig combines user-provided config with Markdown defaults, enforcing Markdown-specific settings.
+func mergeMarkdownConfig(defaults, overrides tw.RendererConfig) tw.RendererConfig {
 	if overrides.Borders.Left != 0 {
 		defaults.Borders.Left = overrides.Borders.Left
 	}
 	if overrides.Borders.Right != 0 {
 		defaults.Borders.Right = overrides.Borders.Right
 	}
-	if overrides.Borders.Top != 0 {
-		defaults.Borders.Top = overrides.Borders.Top
-	}
-	if overrides.Borders.Bottom != 0 {
-		defaults.Borders.Bottom = overrides.Borders.Bottom
-	}
 	if overrides.Symbols != nil {
 		defaults.Symbols = overrides.Symbols
 	}
 	defaults.Settings = mergeSettings(defaults.Settings, overrides.Settings)
+	// Enforce Markdown requirements
+	defaults.Settings.Lines.ShowHeaderLine = tw.On
+	defaults.Settings.Separators.BetweenColumns = tw.On
+	defaults.Settings.TrimWhitespace = tw.On
+	defaults.Debug = overrides.Debug
 	return defaults
 }
 
-// Config returns the current renderer configuration.
-func (m *Markdown) Config() DefaultConfig {
+// Config returns the renderer's current configuration.
+func (m *Markdown) Config() tw.RendererConfig {
 	return m.config
 }
 
-// debug logs a debug message if debugging is enabled.
+// debug logs a message to the trace if debugging is enabled.
 func (m *Markdown) debug(format string, a ...interface{}) {
 	if m.config.Debug {
 		msg := fmt.Sprintf(format, a...)
@@ -65,247 +70,328 @@ func (m *Markdown) debug(format string, a ...interface{}) {
 	}
 }
 
-// Debug returns the accumulated debug trace.
+// Debug returns the accumulated debug trace messages.
 func (m *Markdown) Debug() []string {
 	return m.trace
 }
 
-// formatCell formats a cell's content according to width, padding, and alignment.
+// formatCell formats a Markdown cell's content with padding and alignment, ensuring at least 3 characters wide.
 func (m *Markdown) formatCell(content string, width int, align tw.Align, padding tw.Padding) string {
 	if m.config.Settings.TrimWhitespace.Enabled() {
 		content = strings.TrimSpace(content)
 	}
-	m.debug("Formatting cell: content='%s', width=%d, align=%s", content, width, align)
+	contentVisualWidth := twfn.DisplayWidth(content)
 
-	runeWidth := twfn.DisplayWidth(content)
-	padLeftWidth := twfn.DisplayWidth(padding.Left)
-	padRightWidth := twfn.DisplayWidth(padding.Right)
-	totalContentWidth := runeWidth + padLeftWidth + padRightWidth
-
-	if totalContentWidth > width && width > 0 {
-		width = totalContentWidth
+	// Use specified padding characters or default to spaces
+	padLeftChar := padding.Left
+	if padLeftChar == "" {
+		padLeftChar = " "
+	}
+	padRightChar := padding.Right
+	if padRightChar == "" {
+		padRightChar = " "
 	}
 
-	gap := width - runeWidth - padLeftWidth - padRightWidth
-	if gap < 0 {
-		gap = 0
+	// Calculate padding widths
+	padLeftCharWidth := twfn.DisplayWidth(padLeftChar)
+	padRightCharWidth := twfn.DisplayWidth(padRightChar)
+	minWidth := twfn.Max(3, contentVisualWidth+padLeftCharWidth+padRightCharWidth)
+	targetWidth := twfn.Max(width, minWidth)
+
+	// Calculate padding
+	totalPaddingNeeded := targetWidth - contentVisualWidth
+	if totalPaddingNeeded < 0 {
+		totalPaddingNeeded = 0
 	}
 
-	leftPadChar := " "
-	if padding.Left != "" {
-		leftPadChar = padding.Left
-	}
-	rightPadChar := " "
-	if padding.Right != "" {
-		rightPadChar = padding.Right
-	}
-
-	var result strings.Builder
+	var leftPadStr, rightPadStr string
 	switch align {
-	case tw.AlignCenter:
-		leftGap := gap / 2
-		rightGap := gap - leftGap
-		result.WriteString(padding.Left)
-		result.WriteString(strings.Repeat(leftPadChar, leftGap))
-		result.WriteString(content)
-		result.WriteString(strings.Repeat(rightPadChar, rightGap))
-		result.WriteString(padding.Right)
 	case tw.AlignRight:
-		result.WriteString(padding.Left)
-		result.WriteString(strings.Repeat(leftPadChar, gap))
-		result.WriteString(content)
-		result.WriteString(padding.Right)
-	default: // Left or default
-		result.WriteString(padding.Left)
-		result.WriteString(content)
-		result.WriteString(strings.Repeat(rightPadChar, gap))
-		result.WriteString(padding.Right)
+		leftPadCount := twfn.Max(0, totalPaddingNeeded-padRightCharWidth)
+		rightPadCount := totalPaddingNeeded - leftPadCount
+		leftPadStr = strings.Repeat(padLeftChar, leftPadCount)
+		rightPadStr = strings.Repeat(padRightChar, rightPadCount)
+	case tw.AlignCenter:
+		leftPadCount := totalPaddingNeeded / 2
+		rightPadCount := totalPaddingNeeded - leftPadCount
+		if leftPadCount < padLeftCharWidth && totalPaddingNeeded >= padLeftCharWidth+padRightCharWidth {
+			leftPadCount = padLeftCharWidth
+			rightPadCount = totalPaddingNeeded - leftPadCount
+		}
+		if rightPadCount < padRightCharWidth && totalPaddingNeeded >= padLeftCharWidth+padRightCharWidth {
+			rightPadCount = padRightCharWidth
+			leftPadCount = totalPaddingNeeded - rightPadCount
+		}
+		leftPadStr = strings.Repeat(padLeftChar, leftPadCount)
+		rightPadStr = strings.Repeat(padRightChar, rightPadCount)
+	default: // AlignLeft
+		rightPadCount := twfn.Max(0, totalPaddingNeeded-padLeftCharWidth)
+		leftPadCount := totalPaddingNeeded - rightPadCount
+		leftPadStr = strings.Repeat(padLeftChar, leftPadCount)
+		rightPadStr = strings.Repeat(padRightChar, rightPadCount)
 	}
 
-	output := result.String()
-	m.debug("Formatted cell result: '%s' (width %d)", output, twfn.DisplayWidth(output))
-	return output
+	// Build result
+	result := leftPadStr + content + rightPadStr
+
+	// Adjust width if needed
+	finalWidth := twfn.DisplayWidth(result)
+	if finalWidth != targetWidth {
+		m.debug("Markdown formatCell MISMATCH: content='%s', target_w=%d, paddingL='%s', paddingR='%s', align=%s -> result='%s', result_w=%d",
+			content, targetWidth, padding.Left, padding.Right, align, result, finalWidth)
+		adjNeeded := targetWidth - finalWidth
+		if adjNeeded > 0 {
+			adjStr := strings.Repeat(" ", adjNeeded)
+			if align == tw.AlignRight {
+				result = adjStr + result
+			} else if align == tw.AlignCenter {
+				leftAdj := adjNeeded / 2
+				rightAdj := adjNeeded - leftAdj
+				result = strings.Repeat(" ", leftAdj) + result + strings.Repeat(" ", rightAdj)
+			} else {
+				result += adjStr
+			}
+		} else {
+			result = twfn.TruncateString(result, targetWidth)
+		}
+		m.debug("Markdown formatCell Corrected: target_w=%d, result='%s', new_w=%d", targetWidth, result, twfn.DisplayWidth(result))
+	}
+
+	m.debug("Markdown formatCell: content='%s', width=%d, align=%s, paddingL='%s', paddingR='%s' -> '%s' (target %d)",
+		content, width, align, padding.Left, padding.Right, result, targetWidth)
+	return result
 }
 
-// Header renders the table header section with Markdown formatting.
-func (m *Markdown) Header(w io.Writer, headers [][]string, ctx Formatting) {
+// formatSeparator generates a Markdown separator (e.g., `---`, `:--`, `:-:`) with alignment indicators.
+func (m *Markdown) formatSeparator(width int, align tw.Align) string {
+	targetWidth := twfn.Max(3, width)
+	leftColon := align == tw.AlignLeft || align == tw.AlignCenter
+	rightColon := align == tw.AlignRight || align == tw.AlignCenter
+
+	numDashes := targetWidth
+	if leftColon {
+		numDashes--
+	}
+	if rightColon {
+		numDashes--
+	}
+	if numDashes < 1 {
+		numDashes = 1
+	}
+
+	var sb strings.Builder
+	if leftColon {
+		sb.WriteRune(':')
+	}
+	sb.WriteString(strings.Repeat("-", numDashes))
+	if rightColon {
+		sb.WriteRune(':')
+	}
+
+	currentLen := sb.Len()
+	if currentLen < targetWidth {
+		sb.WriteString(strings.Repeat("-", targetWidth-currentLen))
+	} else if currentLen > targetWidth {
+		m.debug("Markdown formatSeparator: WARNING final length %d > target %d for '%s'", currentLen, targetWidth, sb.String())
+	}
+
+	result := sb.String()
+	m.debug("Markdown formatSeparator: width=%d, align=%s -> '%s'", width, align, result)
+	return result
+}
+
+// renderMarkdownLine renders a single Markdown line (header, row, footer, or separator) with pipes and alignment.
+func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatting, isHeaderSep bool) {
+	numCols := 0
+	if len(ctx.Row.Widths) > 0 {
+		maxKey := -1
+		for k := range ctx.Row.Widths {
+			if k > maxKey {
+				maxKey = k
+			}
+		}
+		numCols = maxKey + 1
+	} else if len(ctx.Row.Current) > 0 {
+		maxKey := -1
+		for k := range ctx.Row.Current {
+			if k > maxKey {
+				maxKey = k
+			}
+		}
+		numCols = maxKey + 1
+	} else if len(line) > 0 && !isHeaderSep {
+		numCols = len(line)
+	}
+
+	if numCols == 0 && !isHeaderSep {
+		m.debug("renderMarkdownLine: Skipping line with zero columns.")
+		return
+	}
+
+	var output strings.Builder
+	prefix := m.config.Symbols.Column()
+	if m.config.Borders.Left == tw.Off {
+		prefix = ""
+	}
+	suffix := m.config.Symbols.Column()
+	if m.config.Borders.Right == tw.Off {
+		suffix = ""
+	}
+	separator := m.config.Symbols.Column()
+	output.WriteString(prefix)
+
+	colIndex := 0
+	separatorWidth := twfn.DisplayWidth(separator)
+
+	for colIndex < numCols {
+		// Fetch cell context
+		cellCtx, ok := ctx.Row.Current[colIndex]
+		defaultPadding := tw.Padding{Left: " ", Right: " "}
+		if !ok {
+			defaultAlign := tw.AlignLeft
+			if ctx.Row.Position == tw.Header && !isHeaderSep {
+				defaultAlign = tw.AlignCenter
+			}
+			if ctx.Row.Position == tw.Footer {
+				defaultAlign = tw.AlignRight
+			}
+			cellCtx = tw.CellContext{
+				Data: "", Align: defaultAlign, Padding: defaultPadding,
+				Width: ctx.Row.Widths.Get(colIndex), Merge: tw.MergeState{},
+			}
+		} else if cellCtx.Padding == (tw.Padding{}) {
+			cellCtx.Padding = defaultPadding
+		}
+
+		// Add separator
+		isContinuation := ok && cellCtx.Merge.Horizontal.Present && !cellCtx.Merge.Horizontal.Start
+		if colIndex > 0 && !isContinuation {
+			output.WriteString(separator)
+			m.debug("renderMarkdownLine: Added separator '%s' before col %d", separator, colIndex)
+		} else if colIndex > 0 {
+			m.debug("renderMarkdownLine: Skipped separator before col %d due to HMerge continuation", colIndex)
+		}
+
+		// Calculate width and span
+		span := 1
+		align := cellCtx.Align
+		if align == tw.AlignNone || align == "" {
+			if ctx.Row.Position == tw.Header && !isHeaderSep {
+				align = tw.AlignCenter
+			} else if ctx.Row.Position == tw.Footer {
+				align = tw.AlignRight
+			} else {
+				align = tw.AlignLeft
+			}
+			m.debug("renderMarkdownLine: Col %d using renderer default align '%s'", colIndex, align)
+		}
+
+		visualWidth := 0
+		isHMergeStart := ok && cellCtx.Merge.Horizontal.Present && cellCtx.Merge.Horizontal.Start
+		if isHMergeStart {
+			span = cellCtx.Merge.Horizontal.Span
+			totalWidth := 0
+			for k := 0; k < span && colIndex+k < numCols; k++ {
+				colWidth := ctx.NormalizedWidths.Get(colIndex + k)
+				if colWidth < 0 {
+					colWidth = 0
+				}
+				totalWidth += colWidth
+				if k > 0 && separatorWidth > 0 {
+					totalWidth += separatorWidth
+				}
+			}
+			visualWidth = totalWidth
+			m.debug("renderMarkdownLine: HMerge col %d, span %d, calculated visualWidth %d from normalized widths", colIndex, span, visualWidth)
+		} else {
+			visualWidth = ctx.Row.Widths.Get(colIndex)
+			m.debug("renderMarkdownLine: Regular col %d, visualWidth %d", colIndex, visualWidth)
+		}
+		if visualWidth < 0 {
+			visualWidth = 0
+		}
+
+		// Render segment
+		if isContinuation {
+			m.debug("renderMarkdownLine: Skipping col %d rendering (part of HMerge)", colIndex)
+		} else {
+			var formattedSegment string
+			if isHeaderSep {
+				headerAlign := tw.AlignCenter
+				if headerCellCtx, headerOK := ctx.Row.Previous[colIndex]; headerOK {
+					headerAlign = headerCellCtx.Align
+					if headerAlign == tw.AlignNone || headerAlign == "" {
+						headerAlign = tw.AlignCenter
+					}
+				}
+				formattedSegment = m.formatSeparator(visualWidth, headerAlign)
+			} else {
+				content := ""
+				if colIndex < len(line) {
+					content = line[colIndex]
+				}
+				formattedSegment = m.formatCell(content, visualWidth, align, cellCtx.Padding)
+			}
+			output.WriteString(formattedSegment)
+			m.debug("renderMarkdownLine: Wrote segment for col %d (span %d, visualWidth %d): '%s'", colIndex, span, visualWidth, formattedSegment)
+		}
+
+		colIndex += span
+	}
+
+	output.WriteString(suffix)
+	output.WriteString(tw.NewLine)
+	fmt.Fprint(w, output.String())
+	m.debug("renderMarkdownLine: Final rendered line: %s", strings.TrimSuffix(output.String(), tw.NewLine))
+}
+
+// Header renders the Markdown table header and its separator line.
+func (m *Markdown) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
 	if len(headers) == 0 || len(headers[0]) == 0 {
 		m.debug("Header: No headers to render")
 		return
 	}
+	m.debug("Rendering header with %d lines, widths=%v, current=%v, next=%v",
+		len(headers), ctx.Row.Widths, ctx.Row.Current, ctx.Row.Next)
 
-	m.debug("Rendering header with %d lines, widths=%v", len(headers), ctx.Row.Widths)
-	numCols := len(ctx.Row.Current)
-	headerLine := headers[0]
+	// Render header content
+	m.renderMarkdownLine(w, headers[0], ctx, false)
 
-	// Render header row
-	cells := make([]string, numCols)
-	for i := 0; i < numCols; i++ {
-		content := ""
-		if i < len(headerLine) {
-			content = headerLine[i]
-		}
-		cellCtx, ok := ctx.Row.Current[i]
-		if !ok {
-			align := tw.AlignLeft
-			if ctx.Row.Position == tw.Header {
-				align = tw.AlignCenter
-			}
-			cellCtx = CellContext{
-				Data:    content,
-				Align:   align,
-				Padding: tw.Padding{Left: " ", Right: " "},
-				Width:   ctx.Row.Widths.Get(i),
-			}
-		}
-		if cellCtx.Merge.Horizontal.Present && !cellCtx.Merge.Horizontal.Start {
-			cells[i] = ""
-			continue
-		}
-		width := ctx.Row.Widths.Get(i)
-		if colMaxWidth, ok := ctx.Row.ColMaxWidths[i]; ok && colMaxWidth > 0 && colMaxWidth < width {
-			width = colMaxWidth
-		}
-		cells[i] = m.formatCell(content, width, cellCtx.Align, cellCtx.Padding)
-	}
-	prefix := m.config.Symbols.HeaderLeft()
-	suffix := m.config.Symbols.HeaderRight()
-	fmt.Fprintf(w, "%s%s%s%s", prefix, strings.Join(cells, m.config.Symbols.HeaderMid()), suffix, tw.NewLine)
-
-	// Render separator row
+	// Render separator if enabled
 	if m.config.Settings.Lines.ShowHeaderLine.Enabled() {
-		separators := make([]string, numCols)
-		for i := 0; i < numCols; {
-			cellCtx, ok := ctx.Row.Current[i]
-			width := ctx.Row.Widths.Get(i)
-			if ok && cellCtx.Merge.Horizontal.Present && cellCtx.Merge.Horizontal.Start {
-				span := cellCtx.Merge.Horizontal.Span
-				totalWidth := width
-				for j := 1; j < span && i+j < numCols; j++ {
-					totalWidth += ctx.Row.Widths.Get(i + j)
-					if m.config.Settings.Separators.BetweenColumns.Enabled() {
-						totalWidth += twfn.DisplayWidth(m.config.Symbols.Column())
-					}
-				}
-				separators[i] = m.formatSeparator(totalWidth, cellCtx.Align)
-				for j := 1; j < span && i+j < numCols; j++ {
-					separators[i+j] = ""
-				}
-				i += span
-			} else {
-				separators[i] = m.formatSeparator(width, cellCtx.Align)
-				i++
-			}
-		}
-		fmt.Fprintf(w, "%s%s%s%s", prefix, strings.Join(separators, m.config.Symbols.HeaderMid()), suffix, tw.NewLine)
+		sepCtx := ctx
+		sepCtx.Row.Widths = ctx.Row.Widths
+		sepCtx.Row.Current = ctx.Row.Current
+		sepCtx.Row.Previous = ctx.Row.Current
+		sepCtx.IsSubRow = true
+		m.renderMarkdownLine(w, nil, sepCtx, true)
 	}
 }
 
-// formatSeparator generates a Markdown separator string based on alignment and width.
-func (m *Markdown) formatSeparator(width int, align tw.Align) string {
-	if width <= 0 {
-		return "---"
-	}
-	// Ensure minimum width for separator (at least 3 dashes)
-	if width < 3 {
-		width = 3
-	}
-	switch align {
-	case tw.AlignCenter:
-		return ":" + strings.Repeat("-", width-2) + ":"
-	case tw.AlignRight:
-		return strings.Repeat("-", width-1) + ":"
-	default: // Left or default
-		return ":" + strings.Repeat("-", width-1)
-	}
+// Row renders a Markdown table data row.
+func (m *Markdown) Row(w io.Writer, row []string, ctx tw.Formatting) {
+	m.debug("Rendering row with data=%v, widths=%v, previous=%v, current=%v, next=%v",
+		row, ctx.Row.Widths, ctx.Row.Previous, ctx.Row.Current, ctx.Row.Next)
+	m.renderMarkdownLine(w, row, ctx, false)
 }
 
-// Row renders a table row with Markdown formatting.
-func (m *Markdown) Row(w io.Writer, row []string, ctx Formatting) {
-	if len(row) == 0 {
-		m.debug("Row: No data to render")
-		return
-	}
-
-	m.debug("Rendering row with data=%v, widths=%v", row, ctx.Row.Widths)
-	numCols := len(ctx.Row.Current)
-	cells := make([]string, numCols)
-	for i := 0; i < numCols; i++ {
-		content := ""
-		if i < len(row) {
-			content = row[i]
-		}
-		cellCtx, ok := ctx.Row.Current[i]
-		if !ok {
-			cellCtx = CellContext{
-				Data:    content,
-				Align:   tw.AlignLeft,
-				Padding: tw.Padding{Left: " ", Right: " "},
-				Width:   ctx.Row.Widths.Get(i),
-			}
-		}
-		if cellCtx.Merge.Horizontal.Present && !cellCtx.Merge.Horizontal.Start {
-			cells[i] = ""
-			continue
-		}
-		width := ctx.Row.Widths.Get(i)
-		if colMaxWidth, ok := ctx.Row.ColMaxWidths[i]; ok && colMaxWidth > 0 && colMaxWidth < width {
-			width = colMaxWidth
-		}
-		cells[i] = m.formatCell(content, width, cellCtx.Align, cellCtx.Padding)
-	}
-	prefix := m.config.Symbols.MidLeft()
-	suffix := m.config.Symbols.MidRight()
-	fmt.Fprintf(w, "%s%s%s%s", prefix, strings.Join(cells, m.config.Symbols.Column()), suffix, tw.NewLine)
-}
-
-// Footer renders the table footer section with Markdown formatting.
-func (m *Markdown) Footer(w io.Writer, footers [][]string, ctx Formatting) {
+// Footer renders the Markdown table footer.
+func (m *Markdown) Footer(w io.Writer, footers [][]string, ctx tw.Formatting) {
 	if len(footers) == 0 || len(footers[0]) == 0 {
 		m.debug("Footer: No footers to render")
 		return
 	}
-
-	m.debug("Rendering footer with %d lines, widths=%v", len(footers), ctx.Row.Widths)
-	numCols := len(ctx.Row.Current)
-	footerLine := footers[0]
-	cells := make([]string, numCols)
-	for i := 0; i < numCols; i++ {
-		content := ""
-		if i < len(footerLine) {
-			content = footerLine[i]
-		}
-		cellCtx, ok := ctx.Row.Current[i]
-		if !ok {
-			cellCtx = CellContext{
-				Data:    content,
-				Align:   tw.AlignRight,
-				Padding: tw.Padding{Left: " ", Right: " "},
-				Width:   ctx.Row.Widths.Get(i),
-			}
-		}
-		if cellCtx.Merge.Horizontal.Present && !cellCtx.Merge.Horizontal.Start {
-			cells[i] = ""
-			continue
-		}
-		width := ctx.Row.Widths.Get(i)
-		if colMaxWidth, ok := ctx.Row.ColMaxWidths[i]; ok && colMaxWidth > 0 && colMaxWidth < width {
-			width = colMaxWidth
-		}
-		cells[i] = m.formatCell(content, width, cellCtx.Align, cellCtx.Padding)
-	}
-	prefix := m.config.Symbols.MidLeft()
-	suffix := m.config.Symbols.MidRight()
-	fmt.Fprintf(w, "%s%s%s%s", prefix, strings.Join(cells, m.config.Symbols.Column()), suffix, tw.NewLine)
+	m.debug("Rendering footer with %d lines, widths=%v, previous=%v, current=%v, next=%v",
+		len(footers), ctx.Row.Widths, ctx.Row.Previous, ctx.Row.Current, ctx.Row.Next)
+	m.renderMarkdownLine(w, footers[0], ctx, false)
 }
 
-// Line renders a separator line (not used in Markdown tables).
-func (m *Markdown) Line(w io.Writer, ctx Formatting) {
-	m.debug("Line: Markdown tables do not render separator lines")
-	// Markdown tables do not use additional separator lines beyond header separator
+// Line is a no-op for Markdown, as only the header separator is rendered (handled by Header).
+func (m *Markdown) Line(w io.Writer, ctx tw.Formatting) {
+	m.debug("Line: Generic Line call received (pos: %s, loc: %s). Markdown ignores these.", ctx.Row.Position, ctx.Row.Location)
 }
 
-// Reset clears any internal state (no-op for Markdown).
+// Reset clears the renderer's internal state, including debug traces.
 func (m *Markdown) Reset() {
 	m.trace = nil
 	m.debug("Reset: Cleared debug trace")

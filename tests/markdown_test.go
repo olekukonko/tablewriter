@@ -35,8 +35,8 @@ func TestMarkdownBasicTable(t *testing.T) {
 func TestMarkdownNoBorders(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewMarkdown(renderer.DefaultConfig{
-			Borders: renderer.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
+		tablewriter.WithRenderer(renderer.NewMarkdown(tw.RendererConfig{
+			Borders: tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
 		})),
 	)
 	table.SetHeader([]string{"Name", "Age", "City"})
@@ -65,11 +65,12 @@ func TestMarkdownUnicode(t *testing.T) {
 	table.Render()
 
 	expected := `
-| NAME  | AGE |   CITY   |
-|:-----:|:---:|:--------:|
-| Bøb   | 30  | Tōkyō    |
-| José  | 28  | México   |
-| 张三   | 35  | 北京     |
+        | NAME | AGE |  CITY  |
+        |:----:|:---:|:------:|
+        | Bøb  | 30  | Tōkyō  |
+        | José | 28  | México |
+        | 张三 | 35  | 北京   |
+
 `
 	visualCheck(t, "MarkdownUnicode", buf.String(), expected)
 }
@@ -123,12 +124,12 @@ func TestMarkdownLongValues(t *testing.T) {
 	table.Render()
 
 	expected := `
-| NO  |    DESCRIPTION     |  NOTE  |
-|:---:|:------------------:|:------:|
-| 1   | This is a very     | Short  |
-|     | long description   |        |
-|     | that should wrap   |        |
-| 2   | Short desc         | Another note |
+		| NO |   DESCRIPTION    |     NOTE     |
+		|:--:|:----------------:|:------------:|
+		| 1  | This is a very   | Short        |
+		|    | long description |              |
+		|    | that should wrap |              |
+		| 2  | Short desc       | Another note |
 `
 	visualCheck(t, "MarkdownLongValues", buf.String(), expected)
 }
@@ -157,10 +158,10 @@ func TestMarkdownCustomPadding(t *testing.T) {
 	table.Render()
 
 	expected := `
-| *NAME* | *AGE* |  *CITY*  |
-|:------:|:-----:|:--------:|
-| >Alice< | >25<  | >New York< |
-| >Bob<   | >30<  | >Boston<   |
+        |*NAME**|*AGE*|***CITY***|
+        |:-----:|:---:|:--------:|
+        |>Alice<|>25<<|>New York<|
+        |>Bob<<<|>30<<|>Boston<<<|
 `
 	visualCheck(t, "MarkdownCustomPadding", buf.String(), expected)
 }
@@ -188,9 +189,9 @@ func TestMarkdownHorizontalMerge(t *testing.T) {
 	table.Render()
 
 	expected := `
-| MERGED |      | NORMAL |
-|:------:|:----:|:------:|
-| Same   |      | Unique |
+|     MERGED      | NORMAL |
+|:---------------:|:------:|
+| Same            | Unique |
 `
 	visualCheck(t, "MarkdownHorizontalMerge", buf.String(), expected)
 }
@@ -230,7 +231,7 @@ func TestMarkdownWithFooter(t *testing.T) {
 |:-----:|:---:|:--------:|
 | Alice | 25  | New York |
 | Bob   | 30  | Boston   |
-| Total |  2  |          |
+| Total |   2 |          |
 `
 	visualCheck(t, "MarkdownWithFooter", buf.String(), expected)
 }
