@@ -17,9 +17,9 @@ func TestVerticalMerge(t *testing.T) {
 			},
 			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignRight},
 		},
-	}), tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
-		Settings: renderer.Settings{
-			Separators: renderer.Separators{
+	}), tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+		Settings: tw.Settings{
+			Separators: tw.Separators{
 				BetweenRows: tw.Off,
 			},
 		},
@@ -59,9 +59,9 @@ func TestHorizontalMerge(t *testing.T) {
 			},
 			ColumnAligns: []tw.Align{tw.AlignCenter, tw.AlignCenter, tw.AlignCenter, tw.AlignCenter},
 		},
-	}), tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
-		Settings: renderer.Settings{
-			Separators: renderer.Separators{
+	}), tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+		Settings: tw.Settings{
+			Separators: tw.Separators{
 				BetweenRows: tw.Off,
 			},
 		},
@@ -112,10 +112,10 @@ func TestHorizontalMergeEachLine(t *testing.T) {
 			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft},
 		},
 	}),
-		tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
 			// Symbols: tw.NewSymbols(tw.StyleMerger),
-			Settings: renderer.Settings{
-				Separators: renderer.Separators{
+			Settings: tw.Settings{
+				Separators: tw.Separators{
 					BetweenRows: tw.On,
 				},
 			},
@@ -161,10 +161,10 @@ func TestHorizontalMergeEachLineCenter(t *testing.T) {
 			},
 		},
 	}),
-		tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
 			// Symbols: tw.NewSymbols(tw.StyleMerger),
-			Settings: renderer.Settings{
-				Separators: renderer.Separators{
+			Settings: tw.Settings{
+				Separators: tw.Separators{
 					BetweenRows: tw.On,
 				},
 			},
@@ -214,9 +214,9 @@ func TestHorizontalMergeAlignFooter(t *testing.T) {
 			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft},
 		},
 	}),
-		tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
-			Settings: renderer.Settings{
-				Separators: renderer.Separators{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+			Settings: tw.Settings{
+				Separators: tw.Separators{
 					BetweenRows: tw.On,
 				},
 			},
@@ -259,10 +259,10 @@ func TestVerticalMergeLines(t *testing.T) {
 			},
 			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignRight},
 		},
-	}), tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+	}), tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
 		// Symbols: tw.NewSymbols(tw.StyleMerger),
-		Settings: renderer.Settings{
-			Separators: renderer.Separators{
+		Settings: tw.Settings{
+			Separators: tw.Separators{
 				BetweenRows: tw.On,
 			},
 		},
@@ -312,9 +312,9 @@ func TestMergeBoth(t *testing.T) {
 		},
 	}
 
-	r := renderer.NewDefault(renderer.DefaultConfig{
-		Settings: renderer.Settings{
-			Separators: renderer.Separators{
+	r := renderer.NewBlueprint(tw.RendererConfig{
+		Settings: tw.Settings{
+			Separators: tw.Separators{
 				BetweenRows: tw.On,
 			},
 		},
@@ -395,10 +395,10 @@ func TestMergeHierarchical(t *testing.T) {
 			},
 		},
 	}),
-		tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
 			Symbols: tw.NewSymbols(tw.StyleASCII),
-			Settings: renderer.Settings{
-				Separators: renderer.Separators{
+			Settings: tw.Settings{
+				Separators: tw.Separators{
 					BetweenRows: tw.On,
 				},
 			},
@@ -441,10 +441,10 @@ func TestMergeHierarchicalUnicode(t *testing.T) {
 			},
 		},
 	}),
-		tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
 			// Symbols: tw.NewSymbols(tw.StyleRounded),
-			Settings: renderer.Settings{
-				Separators: renderer.Separators{
+			Settings: tw.Settings{
+				Separators: tw.Separators{
 					BetweenRows: tw.On,
 				},
 			},
@@ -495,10 +495,10 @@ func TestMergeWithPadding(t *testing.T) {
 			},
 			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft},
 		},
-	}), tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+	}), tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
 		//Symbols: tw.NewSymbols(tw.StyleASCII),
-		Settings: renderer.Settings{
-			Separators: renderer.Separators{
+		Settings: tw.Settings{
+			Separators: tw.Separators{
 				BetweenRows: tw.On,
 			},
 		},

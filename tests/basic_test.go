@@ -45,8 +45,8 @@ func TestBasicTableDefaultBorder(t *testing.T) {
 	t.Run("all-off", func(t *testing.T) {
 		buf.Reset()
 		table := tablewriter.NewTable(&buf,
-			tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
-				Borders: renderer.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
+			tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+				Borders: tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
 			})),
 		)
 
@@ -69,8 +69,8 @@ func TestBasicTableDefaultBorder(t *testing.T) {
 	t.Run("top-on", func(t *testing.T) {
 		buf.Reset()
 		table := tablewriter.NewTable(&buf,
-			tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
-				Borders: renderer.Border{Left: tw.Off, Right: tw.Off, Top: tw.On, Bottom: tw.Off},
+			tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+				Borders: tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.On, Bottom: tw.Off},
 			})),
 		)
 
@@ -94,8 +94,8 @@ func TestBasicTableDefaultBorder(t *testing.T) {
 	t.Run("mix", func(t *testing.T) {
 		buf.Reset()
 		table := tablewriter.NewTable(&buf,
-			tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
-				Borders: renderer.Border{Left: tw.Off, Right: tw.On, Top: tw.On, Bottom: tw.On},
+			tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+				Borders: tw.Border{Left: tw.Off, Right: tw.On, Top: tw.On, Bottom: tw.On},
 			})),
 		)
 
@@ -127,8 +127,8 @@ func TestUnicodeWithoutHeader(t *testing.T) {
 
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
-			Borders: renderer.Border{Left: tw.On, Right: tw.On, Top: tw.Off, Bottom: tw.Off},
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+			Borders: tw.Border{Left: tw.On, Right: tw.On, Top: tw.Off, Bottom: tw.Off},
 		})),
 	)
 	table.SetHeader([]string{"Name", "Age", "City"})
@@ -175,7 +175,7 @@ func TestUnicodeWithoutHeader(t *testing.T) {
 func TestBasicTableASCII(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
 			Symbols: tw.NewSymbols(tw.StyleASCII),
 		})),
 	)
@@ -198,7 +198,7 @@ func TestBasicTableASCII(t *testing.T) {
 func TestBasicTableUnicodeRounded(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
 			Symbols: tw.NewSymbols(tw.StyleRounded),
 		})),
 	)
@@ -221,7 +221,7 @@ func TestBasicTableUnicodeRounded(t *testing.T) {
 func TestBasicTableUnicodeDouble(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
 			Symbols: tw.NewSymbols(tw.StyleDouble),
 		})),
 	)
@@ -251,13 +251,13 @@ func TestSeparator(t *testing.T) {
 	t.Run("horizontal - enabled", func(t *testing.T) {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf,
-			tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
-				Settings: renderer.Settings{
-					Separators: renderer.Separators{
+			tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+				Settings: tw.Settings{
+					Separators: tw.Separators{
 						BetweenColumns: tw.On,
 						BetweenRows:    tw.On,
 					},
-					Lines: renderer.Lines{
+					Lines: tw.Lines{
 						ShowHeaderLine: tw.On,
 					},
 				},
@@ -284,13 +284,13 @@ func TestSeparator(t *testing.T) {
 	t.Run("horizontal - disabled", func(t *testing.T) {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf,
-			tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
-				Settings: renderer.Settings{
-					Separators: renderer.Separators{
+			tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+				Settings: tw.Settings{
+					Separators: tw.Separators{
 						BetweenColumns: tw.On,
 						BetweenRows:    tw.Off,
 					},
-					Lines: renderer.Lines{
+					Lines: tw.Lines{
 						ShowHeaderLine: tw.On,
 					},
 				},
@@ -315,13 +315,13 @@ func TestSeparator(t *testing.T) {
 	t.Run("vertical - enabled", func(t *testing.T) {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf,
-			tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
-				Settings: renderer.Settings{
-					Separators: renderer.Separators{
+			tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+				Settings: tw.Settings{
+					Separators: tw.Separators{
 						BetweenColumns: tw.On,
 						BetweenRows:    tw.Off,
 					},
-					Lines: renderer.Lines{
+					Lines: tw.Lines{
 						ShowHeaderLine: tw.On,
 					},
 				},
@@ -346,13 +346,13 @@ func TestSeparator(t *testing.T) {
 	t.Run("vertical - disabled", func(t *testing.T) {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf,
-			tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
-				Settings: renderer.Settings{
-					Separators: renderer.Separators{
+			tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+				Settings: tw.Settings{
+					Separators: tw.Separators{
 						BetweenColumns: tw.Off,
 						BetweenRows:    tw.Off,
 					},
-					Lines: renderer.Lines{
+					Lines: tw.Lines{
 						ShowHeaderLine: tw.On,
 					},
 				},

@@ -3,6 +3,7 @@ package tests
 import (
 	"bytes"
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
 	"testing"
 )
@@ -96,86 +97,103 @@ func TestFilterMasking(t *testing.T) {
 	}
 }
 
-//func TestMasterClass(t *testing.T) {
-//	var buf bytes.Buffer
-//
-//	littleConfig := tablewriter.Config{
-//		MaxWidth: 30,
-//		Row: tablewriter.CellConfig{
-//			Formatting: tablewriter.CellFormatting{
-//				Alignment: tw.AlignCenter,
-//			},
-//			Padding: tablewriter.CellPadding{
-//				Global: tw.Padding{Left: tw.Skip, Right: tw.Skip, Top: tw.Skip, Bottom: tw.Skip},
-//			},
-//		},
-//	}
-//
-//	bigConfig := tablewriter.Config{
-//		MaxWidth: 50,
-//		Header: tablewriter.CellConfig{Formatting: tablewriter.CellFormatting{
-//			AutoWrap: tw.WrapTruncate,
-//		}},
-//	}
-//
-//	little := func(s string) string {
-//		var b bytes.Buffer
-//		table := tablewriter.NewTable(&b,
-//			tablewriter.WithConfig(littleConfig),
-//			tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
-//				Borders: renderer.BorderNone,
-//				Settings: renderer.Settings{
-//					Separators: renderer.Separators{
-//						ShowHeader:     tw.Off,
-//						ShowFooter:     tw.Off,
-//						BetweenRows:    tw.Off,
-//						BetweenColumns: tw.Off,
-//					},
-//					Lines: renderer.Lines{
-//						ShowTop:        tw.Off,
-//						ShowBottom:     tw.Off,
-//						ShowHeaderLine: tw.Off,
-//						ShowFooterLine: tw.Off,
-//					},
-//				},
-//				Debug: false,
-//			})),
-//		)
-//		table.Append([]string{s, s})
-//		table.Append([]string{s, s})
-//		table.Render()
-//
-//		return b.String()
-//	}
-//
-//	table := tablewriter.NewTable(&buf,
-//		tablewriter.WithConfig(bigConfig),
-//		tablewriter.WithRenderer(renderer.NewDefault(renderer.DefaultConfig{
-//			//Borders: renderer.BorderNone,
-//			Settings: renderer.Settings{
-//				Separators: renderer.Separators{
-//					ShowHeader:     tw.Off,
-//					ShowFooter:     tw.Off,
-//					BetweenRows:    tw.Off,
-//					BetweenColumns: tw.Off,
-//				},
-//				Lines: renderer.Lines{
-//					ShowTop:        tw.Off,
-//					ShowBottom:     tw.Off,
-//					ShowHeaderLine: tw.Off,
-//					ShowFooterLine: tw.Off,
-//				},
-//			},
-//			Debug: false,
-//		})),
-//	)
-//	table.Append([]string{little("A"), little("B")})
-//	table.Append([]string{little("C"), little("D")})
-//	table.Render()
-//
-//	expected := `
-//
-//`
-//	visualCheck(t, "BasicTableRendering", buf.String(), expected)
-//
-//}
+func TestMasterClass(t *testing.T) {
+	var buf bytes.Buffer
+
+	littleConfig := tablewriter.Config{
+		MaxWidth: 30,
+		Row: tablewriter.CellConfig{
+			Formatting: tablewriter.CellFormatting{
+				Alignment: tw.AlignCenter,
+			},
+			Padding: tablewriter.CellPadding{
+				Global: tw.Padding{Left: tw.Skip, Right: tw.Skip, Top: tw.Skip, Bottom: tw.Skip},
+			},
+		},
+	}
+
+	bigConfig := tablewriter.Config{
+		MaxWidth: 50,
+		Header: tablewriter.CellConfig{Formatting: tablewriter.CellFormatting{
+			AutoWrap: tw.WrapTruncate,
+		}},
+		Row: tablewriter.CellConfig{
+			Formatting: tablewriter.CellFormatting{
+				Alignment: tw.AlignCenter,
+			},
+			Padding: tablewriter.CellPadding{
+				Global: tw.Padding{Left: tw.Skip, Right: tw.Skip, Top: tw.Skip, Bottom: tw.Skip},
+			},
+		},
+	}
+
+	little := func(s string) string {
+		var b bytes.Buffer
+		table := tablewriter.NewTable(&b,
+			tablewriter.WithConfig(littleConfig),
+			tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+				Borders: tw.BorderNone,
+				Settings: tw.Settings{
+					Separators: tw.Separators{
+						ShowHeader:     tw.Off,
+						ShowFooter:     tw.Off,
+						BetweenRows:    tw.On,
+						BetweenColumns: tw.Off,
+					},
+					Lines: tw.Lines{
+						ShowTop:        tw.Off,
+						ShowBottom:     tw.Off,
+						ShowHeaderLine: tw.Off,
+						ShowFooterLine: tw.On,
+					},
+				},
+				Debug: false,
+			})),
+		)
+		table.Append([]string{s, s})
+		table.Append([]string{s, s})
+		table.Render()
+
+		return b.String()
+	}
+
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithConfig(bigConfig),
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+			Borders: tw.BorderNone,
+			Settings: tw.Settings{
+				Separators: tw.Separators{
+					ShowHeader:     tw.Off,
+					ShowFooter:     tw.Off,
+					BetweenRows:    tw.Off,
+					BetweenColumns: tw.On,
+				},
+				Lines: tw.Lines{
+					ShowTop:        tw.Off,
+					ShowBottom:     tw.Off,
+					ShowHeaderLine: tw.Off,
+					ShowFooterLine: tw.Off,
+				},
+			},
+			Debug: false,
+		})),
+	)
+	table.Append([]string{little("A"), little("B")})
+	table.Append([]string{little("C"), little("D")})
+	table.Render()
+
+	expected := `
+          A A   │  B B   
+         ────── │ ────── 
+          A A   │  B B   
+         ────── │ ────── 
+                │        
+          C C   │  D D   
+         ────── │ ────── 
+          C C   │  D D   
+         ────── │ ────── 
+                │
+`
+	visualCheck(t, "Master Class", buf.String(), expected)
+
+}
