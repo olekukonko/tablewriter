@@ -639,6 +639,16 @@ func WithDebug(debug bool) Option {
 	return func(t *Table) { t.config.Debug = debug }
 }
 
+// WithAutoHide enables or disables the automatic hiding of columns
+// where all data rows have empty content. The check ignores headers and footers.
+func WithAutoHide(hide bool) Option {
+	return func(t *Table) {
+		t.config.AutoHide = hide
+		// Optionally add a debug log here if needed:
+		// t.debug("Option applied: AutoHide set to %v", hide)
+	}
+}
+
 // WithHeaderAlignment sets the header alignment directly.
 func WithHeaderAlignment(align tw.Align) Option {
 	return func(t *Table) { t.config.Header.Formatting.Alignment = align }

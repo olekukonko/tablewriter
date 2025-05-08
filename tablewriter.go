@@ -20,6 +20,7 @@ type Config struct {
 	Row      tw.CellConfig // Configuration for the row section
 	Footer   tw.CellConfig // Configuration for the footer section
 	Debug    bool          // Enables debug logging when true
+	AutoHide bool
 }
 
 // Table represents a table instance with content and rendering capabilities.
@@ -51,6 +52,9 @@ type renderContext struct {
 	widths         map[tw.Position]tw.Mapper[int, int]   // Widths per section
 	debug          func(format string, a ...interface{}) // Debug logging function
 	footerPrepared bool                                  // Tracks if footer is prepared
+
+	emptyColumns    []bool // Tracks which original columns are empty (true if empty)
+	visibleColCount int    // Count of columns that are NOT empty
 }
 
 // mergeContext holds state related to cell merging.
@@ -184,6 +188,10 @@ func (t *Table) Renderer() tw.Renderer {
 func (t *Table) Debug() []string {
 	t.debug("Debug trace requested, returning %d entries", len(t.trace))
 	return append(t.trace, t.renderer.Debug()...)
+}
+
+func (t *Table) Config() Config {
+	return t.config
 }
 
 // render generates the table output using the configured renderer, handling headers, rows, footers, and cleanup.
@@ -1002,43 +1010,52 @@ func (t *Table) buildCellContexts(ctx *renderContext, mctx *mergeContext, hctx *
 	cells := make(map[int]tw.CellContext)
 	var merges map[int]tw.MergeState
 
+	// Determine the correct merge map based on the current position
 	switch hctx.position {
 	case tw.Header:
 		merges = mctx.headerMerges
 	case tw.Row:
-		if hctx.rowIdx >= 0 && hctx.rowIdx < len(mctx.rowMerges) {
+		// Safety check for row index bounds
+		if hctx.rowIdx >= 0 && hctx.rowIdx < len(mctx.rowMerges) && mctx.rowMerges[hctx.rowIdx] != nil {
 			merges = mctx.rowMerges[hctx.rowIdx]
 		} else {
-			merges = make(map[int]tw.MergeState)
-			t.debug("Warning: Invalid row index %d in buildCellContexts for row merges", hctx.rowIdx)
+			merges = make(map[int]tw.MergeState) // Use empty if out of bounds or nil
+			t.debug("Warning: Invalid row index %d or nil merges in buildCellContexts", hctx.rowIdx)
 		}
 	case tw.Footer:
 		merges = mctx.footerMerges
 	default:
-		merges = make(map[int]tw.MergeState)
+		merges = make(map[int]tw.MergeState) // Default to empty map for unknown position
 		t.debug("Warning: Invalid position '%s' in buildCellContexts", hctx.position)
 	}
 
+	// Ensure merges map is not nil
 	if merges == nil {
 		merges = make(map[int]tw.MergeState)
-		t.debug("Warning: merges map was nil in buildCellContexts, using empty map")
+		t.debug("Warning: merges map was nil in buildCellContexts after switch, using empty map")
 	}
 
+	// Build CellContext for each column
 	for j := 0; j < ctx.numCols; j++ {
-		mergeState := merges[j]
+		mergeState := merges[j] // Get merge state for the column
 		cellData := ""
 		if j < len(hctx.line) {
-			cellData = hctx.line[j]
+			cellData = hctx.line[j] // Get data if available
 		}
+
+		// Get the potentially adjusted width for this column and position
+		finalColWidth := ctx.widths[hctx.position].Get(j)
+
 		cells[j] = tw.CellContext{
 			Data:    cellData,
-			Align:   aligns[j],
-			Padding: padding[j],
-			Width:   ctx.widths[hctx.position].Get(j),
+			Align:   aligns[j],     // Use provided aligns map
+			Padding: padding[j],    // Use provided padding map
+			Width:   finalColWidth, // Use the FINAL adjusted width
 			Merge:   mergeState,
 		}
 	}
 
+	// Build contexts for adjacent cells (they also need adjusted widths)
 	prevCells := t.buildAdjacentCells(ctx, mctx, hctx, -1)
 	nextCells := t.buildAdjacentCells(ctx, mctx, hctx, +1)
 
@@ -1055,33 +1072,28 @@ func (t *Table) buildAdjacentCells(ctx *renderContext, mctx *mergeContext, hctx 
 	var adjLine []string
 	var adjMerges map[int]tw.MergeState
 	found := false
-	adjPosition := hctx.position
+	adjPosition := hctx.position // Assume adjacent line is in the same section initially
 
 	switch hctx.position {
 	case tw.Header:
 		targetLineIdx := hctx.lineIdx + direction
-		if direction < 0 {
-			if targetLineIdx < 0 {
-				return nil
-			}
+		if direction < 0 { // Previous
+			if targetLineIdx >= 0 && targetLineIdx < len(ctx.headerLines) {
+				adjLine = ctx.headerLines[targetLineIdx]
+				adjMerges = mctx.headerMerges
+				found = true
+			} // If targetLineIdx < 0, there's no previous line (return nil later)
+		} else { // Next
 			if targetLineIdx < len(ctx.headerLines) {
 				adjLine = ctx.headerLines[targetLineIdx]
 				adjMerges = mctx.headerMerges
 				found = true
-			}
-		} else {
-			if targetLineIdx < len(ctx.headerLines) {
-				adjLine = ctx.headerLines[targetLineIdx]
-				adjMerges = mctx.headerMerges
+			} else if len(ctx.rowLines) > 0 && len(ctx.rowLines[0]) > 0 && len(mctx.rowMerges) > 0 { // Transition to first row
+				adjLine = ctx.rowLines[0][0]
+				adjMerges = mctx.rowMerges[0]
+				adjPosition = tw.Row
 				found = true
-			} else if len(ctx.rowLines) > 0 {
-				if len(mctx.rowMerges) > 0 && len(ctx.rowLines[0]) > 0 {
-					adjLine = ctx.rowLines[0][0]
-					adjMerges = mctx.rowMerges[0]
-					adjPosition = tw.Row
-					found = true
-				}
-			} else if len(ctx.footerLines) > 0 {
+			} else if len(ctx.footerLines) > 0 { // Transition to footer (if no rows)
 				adjLine = ctx.footerLines[0]
 				adjMerges = mctx.footerMerges
 				adjPosition = tw.Footer
@@ -1090,50 +1102,48 @@ func (t *Table) buildAdjacentCells(ctx *renderContext, mctx *mergeContext, hctx 
 		}
 	case tw.Row:
 		targetLineIdx := hctx.lineIdx + direction
-		if hctx.rowIdx < 0 || hctx.rowIdx >= len(ctx.rowLines) {
+		// Safety check row index
+		if hctx.rowIdx < 0 || hctx.rowIdx >= len(ctx.rowLines) || hctx.rowIdx >= len(mctx.rowMerges) {
 			t.debug("Warning: Invalid row index %d in buildAdjacentCells", hctx.rowIdx)
-			return nil
+			return nil // Cannot determine adjacent safely
 		}
 		currentRowLines := ctx.rowLines[hctx.rowIdx]
-		if hctx.rowIdx >= len(mctx.rowMerges) {
-			t.debug("Warning: rowMerges index %d out of bounds", hctx.rowIdx)
-			return nil
-		}
 		currentMerges := mctx.rowMerges[hctx.rowIdx]
 
-		if direction < 0 {
-			if targetLineIdx >= 0 && targetLineIdx < len(currentRowLines) {
+		if direction < 0 { // Previous
+			if targetLineIdx >= 0 && targetLineIdx < len(currentRowLines) { // Previous line within the same logical row
 				adjLine = currentRowLines[targetLineIdx]
 				adjMerges = currentMerges
 				found = true
-			} else if targetLineIdx < 0 {
+			} else if targetLineIdx < 0 { // Need previous logical row or header
 				targetRowIdx := hctx.rowIdx - 1
-				if targetRowIdx >= 0 && targetRowIdx < len(ctx.rowLines) && targetRowIdx < len(mctx.rowMerges) {
+				if targetRowIdx >= 0 && targetRowIdx < len(ctx.rowLines) && targetRowIdx < len(mctx.rowMerges) { // Previous logical row exists
 					prevRowLines := ctx.rowLines[targetRowIdx]
-					if len(prevRowLines) > 0 {
-						adjLine = prevRowLines[len(prevRowLines)-1]
+					if len(prevRowLines) > 0 { // If prev row has lines
+						adjLine = prevRowLines[len(prevRowLines)-1] // Last line of prev row
 						adjMerges = mctx.rowMerges[targetRowIdx]
 						found = true
-					}
-				} else if len(ctx.headerLines) > 0 {
+					} // If prev row is empty, keep searching upwards? Assume transitions handled by header check.
+				} else if len(ctx.headerLines) > 0 { // Transition to last header line
 					adjLine = ctx.headerLines[len(ctx.headerLines)-1]
 					adjMerges = mctx.headerMerges
 					adjPosition = tw.Header
 					found = true
 				}
 			}
-		} else {
-			if targetLineIdx >= 0 && targetLineIdx < len(currentRowLines) {
+		} else { // Next
+			if targetLineIdx >= 0 && targetLineIdx < len(currentRowLines) { // Next line within the same logical row
 				adjLine = currentRowLines[targetLineIdx]
 				adjMerges = currentMerges
 				found = true
-			} else if targetLineIdx >= len(currentRowLines) {
+			} else if targetLineIdx >= len(currentRowLines) { // Need next logical row or footer
 				targetRowIdx := hctx.rowIdx + 1
+				// Check if next logical row exists and has lines
 				if targetRowIdx < len(ctx.rowLines) && targetRowIdx < len(mctx.rowMerges) && len(ctx.rowLines[targetRowIdx]) > 0 {
-					adjLine = ctx.rowLines[targetRowIdx][0]
+					adjLine = ctx.rowLines[targetRowIdx][0] // First line of next row
 					adjMerges = mctx.rowMerges[targetRowIdx]
 					found = true
-				} else if len(ctx.footerLines) > 0 {
+				} else if len(ctx.footerLines) > 0 { // Transition to first footer line
 					adjLine = ctx.footerLines[0]
 					adjMerges = mctx.footerMerges
 					adjPosition = tw.Footer
@@ -1143,12 +1153,12 @@ func (t *Table) buildAdjacentCells(ctx *renderContext, mctx *mergeContext, hctx 
 		}
 	case tw.Footer:
 		targetLineIdx := hctx.lineIdx + direction
-		if direction < 0 {
+		if direction < 0 { // Previous
 			if targetLineIdx >= 0 && targetLineIdx < len(ctx.footerLines) {
 				adjLine = ctx.footerLines[targetLineIdx]
 				adjMerges = mctx.footerMerges
 				found = true
-			} else if targetLineIdx < 0 {
+			} else if targetLineIdx < 0 { // Transition to last row or last header
 				if len(ctx.rowLines) > 0 {
 					lastRowIdx := len(ctx.rowLines) - 1
 					if lastRowIdx < len(mctx.rowMerges) && len(ctx.rowLines[lastRowIdx]) > 0 {
@@ -1158,39 +1168,48 @@ func (t *Table) buildAdjacentCells(ctx *renderContext, mctx *mergeContext, hctx 
 						adjPosition = tw.Row
 						found = true
 					}
-				} else if len(ctx.headerLines) > 0 {
+				} else if len(ctx.headerLines) > 0 { // Fallback to header if no rows
 					adjLine = ctx.headerLines[len(ctx.headerLines)-1]
 					adjMerges = mctx.headerMerges
 					adjPosition = tw.Header
 					found = true
 				}
 			}
-		} else {
+		} else { // Next
 			if targetLineIdx >= 0 && targetLineIdx < len(ctx.footerLines) {
 				adjLine = ctx.footerLines[targetLineIdx]
 				adjMerges = mctx.footerMerges
 				found = true
-			}
+			} // If targetLineIdx >= len(ctx.footerLines), there is no next line (return nil later)
 		}
 	}
 
 	if !found {
-		return nil
+		return nil // No adjacent line exists
 	}
 
+	// Ensure adjMerges is not nil (safety)
 	if adjMerges == nil {
 		adjMerges = make(map[int]tw.MergeState)
-		t.debug("Warning: adjMerges was nil despite found=true")
+		t.debug("Warning: adjMerges was nil in buildAdjacentCells despite found=true")
 	}
 
+	// Pad the adjacent line to the full original column count
 	paddedAdjLine := padLine(adjLine, ctx.numCols)
+
+	// Build CellContext for each column using the *adjusted* widths
 	for j := 0; j < ctx.numCols; j++ {
-		mergeState := adjMerges[j]
+		mergeState := adjMerges[j] // Get merge state for the column in the adjacent line
 		cellData := paddedAdjLine[j]
+
+		// Get the potentially adjusted width for the *adjacent cell's* position and column
+		finalAdjColWidth := ctx.widths[adjPosition].Get(j)
+
 		adjCells[j] = tw.CellContext{
 			Data:  cellData,
 			Merge: mergeState,
-			Width: ctx.widths[adjPosition].Get(j),
+			Width: finalAdjColWidth, // Use the FINAL adjusted width for the adjacent cell
+			// Align and Padding are not typically needed for context, only Width and Merge
 		}
 	}
 	return adjCells
@@ -1239,20 +1258,23 @@ func defaultConfig() Config {
 				Global: defaultPadding,
 			},
 		},
-		Debug: true,
+		Debug:    true,
+		AutoHide: false,
 	}
 }
 
 // prepareContexts initializes rendering and merge contexts for the table.
 func (t *Table) prepareContexts() (*renderContext, *mergeContext, error) {
+	// Determine original number of columns FIRST
+	numOriginalCols := t.maxColumns()
+	t.debug("prepareContexts: Original number of columns: %d", numOriginalCols)
+
+	// Initialize renderContext
 	ctx := &renderContext{
-		table:       t,
-		renderer:    t.renderer,
-		cfg:         t.renderer.Config(),
-		numCols:     t.maxColumns(),
-		headerLines: t.headers,
-		rowLines:    t.rows,
-		footerLines: t.footers,
+		table:    t,
+		renderer: t.renderer,
+		cfg:      t.renderer.Config(),
+		numCols:  numOriginalCols, // Store original count initially
 		widths: map[tw.Position]tw.Mapper[int, int]{
 			tw.Header: tw.NewMapper[int, int](),
 			tw.Row:    tw.NewMapper[int, int](),
@@ -1260,8 +1282,13 @@ func (t *Table) prepareContexts() (*renderContext, *mergeContext, error) {
 		},
 		debug: t.debug,
 	}
-	normalizedWidths := tw.NewMapper[int, int]()
 
+	// Detect empty columns based on t.rows and t.config.AutoHide
+	isEmpty, visibleCount := t.getEmptyColumnInfo(numOriginalCols)
+	ctx.emptyColumns = isEmpty
+	ctx.visibleColCount = visibleCount
+
+	// Initialize merge context
 	mctx := &mergeContext{
 		headerMerges: make(map[int]tw.MergeState),
 		rowMerges:    make([]map[int]tw.MergeState, len(t.rows)),
@@ -1272,15 +1299,25 @@ func (t *Table) prepareContexts() (*renderContext, *mergeContext, error) {
 		mctx.rowMerges[i] = make(map[int]tw.MergeState)
 	}
 
+	// Prepare content (needed for width calculation)
+	// Assign internal data to context for processing
+	ctx.headerLines = t.headers
+	ctx.rowLines = t.rows
+	ctx.footerLines = t.footers
+
+	// Calculate initial widths based on ALL content (original columns)
 	if err := t.calculateAndNormalizeWidths(ctx); err != nil {
+		t.debug("Error during initial width calculation: %v", err)
 		return nil, nil, err
 	}
-	for i := 0; i < ctx.numCols; i++ {
-		normalizedWidths.Set(i, ctx.widths[tw.Row].Get(i))
-	}
-	ctx.debug("Stored Normalized widths: %v", normalizedWidths)
+	t.debug("Initial normalized widths (before hiding): H=%v, R=%v, F=%v",
+		ctx.widths[tw.Header], ctx.widths[tw.Row], ctx.widths[tw.Footer])
 
-	ctx.headerLines, mctx.headerMerges, _ = t.prepareWithMerges(ctx.headerLines, t.config.Header, tw.Header)
+	// Prepare merges based on original content structure and column count
+	preparedHeaderLines, headerMerges, _ := t.prepareWithMerges(ctx.headerLines, t.config.Header, tw.Header)
+	ctx.headerLines = preparedHeaderLines // Update ctx with processed lines
+	mctx.headerMerges = headerMerges
+
 	processedRowLines := make([][][]string, len(ctx.rowLines))
 	for i, row := range ctx.rowLines {
 		if mctx.rowMerges[i] == nil {
@@ -1288,10 +1325,12 @@ func (t *Table) prepareContexts() (*renderContext, *mergeContext, error) {
 		}
 		processedRowLines[i], mctx.rowMerges[i], _ = t.prepareWithMerges(row, t.config.Row, tw.Row)
 	}
-	ctx.rowLines = processedRowLines
+	ctx.rowLines = processedRowLines // Update ctx with processed lines
 
+	// Apply H-Merge Widths based on calculated merges (modifies ctx.widths)
 	t.applyHorizontalMergeWidths(tw.Header, ctx, mctx.headerMerges)
 
+	// Apply V/H Merges (modifies mctx.rowMerges)
 	if t.config.Row.Formatting.MergeMode&tw.MergeVertical != 0 {
 		t.applyVerticalMerges(ctx, mctx)
 	}
@@ -1299,9 +1338,38 @@ func (t *Table) prepareContexts() (*renderContext, *mergeContext, error) {
 		t.applyHierarchicalMerges(ctx, mctx)
 	}
 
+	// Prepare Footer (updates ctx.footerLines, mctx.footerMerges, ctx.widths[tw.Footer])
 	t.prepareFooter(ctx, mctx)
+	t.debug("Footer prepared. Widths before hiding: H=%v, R=%v, F=%v",
+		ctx.widths[tw.Header], ctx.widths[tw.Row], ctx.widths[tw.Footer])
 
-	t.debug("prepareContexts completed.")
+	// --- Step 3 Logic: Adjust widths for hidden columns ---
+	if t.config.AutoHide {
+		t.debug("Applying AutoHide: Adjusting widths for empty columns.")
+		if ctx.emptyColumns == nil {
+			t.debug("Warning: ctx.emptyColumns is nil during width adjustment.")
+		} else if len(ctx.emptyColumns) != ctx.numCols {
+			t.debug("Warning: Length mismatch between emptyColumns (%d) and numCols (%d). Skipping adjustment.", len(ctx.emptyColumns), ctx.numCols)
+		} else {
+			for colIdx := 0; colIdx < ctx.numCols; colIdx++ {
+				// Check the flag determined purely by t.rows content
+				if ctx.emptyColumns[colIdx] {
+					// If the data rows designated this column as empty, zero out its width everywhere
+					t.debug("AutoHide: Hiding column %d by setting width to 0.", colIdx)
+					ctx.widths[tw.Header].Set(colIdx, 0)
+					ctx.widths[tw.Row].Set(colIdx, 0) // Affects normalized widths used by renderers
+					ctx.widths[tw.Footer].Set(colIdx, 0)
+				}
+			}
+			t.debug("Widths after AutoHide adjustment: H=%v, R=%v, F=%v",
+				ctx.widths[tw.Header], ctx.widths[tw.Row], ctx.widths[tw.Footer])
+		}
+	} else {
+		t.debug("AutoHide is disabled, skipping width adjustment.")
+	}
+	// --- End Step 3 Logic ---
+
+	t.debug("prepareContexts completed all stages.")
 	return ctx, mctx, nil
 }
 
@@ -2298,8 +2366,10 @@ func (t *Table) buildPadding(padding tw.CellPadding) map[int]tw.Padding {
 	for i := 0; i < numCols; i++ {
 		if i < len(padding.PerColumn) && padding.PerColumn[i] != (tw.Padding{}) {
 			colPadding[i] = padding.PerColumn[i]
+			t.debug("Col %d: Using per-column padding: %+v", i, padding.PerColumn[i])
 		} else {
 			colPadding[i] = padding.Global
+			t.debug("Col %d: Using global padding: %+v", i, padding.Global)
 		}
 	}
 	t.debug("Padding built: %v", colPadding)
@@ -2374,15 +2444,50 @@ func (t *Table) determineLocation(lineIdx, totalLines int, topPad, bottomPad str
 func (t *Table) updateWidths(row []string, widths tw.Mapper[int, int], padding tw.CellPadding) {
 	t.debug("Updating widths for row: %v", row)
 	for i, cell := range row {
-		padLeftWidth := twfn.DisplayWidth(padding.Global.Left)
-		padRightWidth := twfn.DisplayWidth(padding.Global.Right)
+		// Determine effective padding for this column
+		colPad := padding.Global // Start with global
 		if i < len(padding.PerColumn) && padding.PerColumn[i] != (tw.Padding{}) {
-			padLeftWidth = twfn.DisplayWidth(padding.PerColumn[i].Left)
-			padRightWidth = twfn.DisplayWidth(padding.PerColumn[i].Right)
+			// Use per-column padding ONLY if it's explicitly set (not the zero value)
+			colPad = padding.PerColumn[i]
+			t.debug("  Col %d: Using per-column padding: L:'%s' R:'%s'", i, colPad.Left, colPad.Right)
+		} else {
+			t.debug("  Col %d: Using global padding: L:'%s' R:'%s'", i, padding.Global.Left, padding.Global.Right)
 		}
-		totalWidth := twfn.DisplayWidth(strings.TrimSpace(cell)) + padLeftWidth + padRightWidth
-		if current := widths.Get(i); totalWidth > current {
+
+		// Calculate display widths OF THE ACTUAL PADDING CHARACTERS specified
+		// DisplayWidth("") correctly returns 0.
+		padLeftWidth := twfn.DisplayWidth(colPad.Left)
+		padRightWidth := twfn.DisplayWidth(colPad.Right)
+
+		// Calculate content width - assume trimming for width calculation consistency
+		contentWidth := twfn.DisplayWidth(strings.TrimSpace(cell))
+
+		// Total width required for this cell including padding space
+		totalWidth := contentWidth + padLeftWidth + padRightWidth
+
+		// Ensure minimum width IS the calculated padding width, even if content is empty.
+		// The minimum space required is just the space for the padding characters themselves.
+		minRequiredPaddingWidth := padLeftWidth + padRightWidth
+		if contentWidth == 0 && totalWidth < minRequiredPaddingWidth {
+			// If content is empty, the width must be AT LEAST the padding width.
+			t.debug("  Col %d: Empty content, ensuring width >= padding width (%d). Setting totalWidth to %d.", i, minRequiredPaddingWidth, minRequiredPaddingWidth)
+			totalWidth = minRequiredPaddingWidth
+		}
+
+		// A cell should visually occupy at least 1 unit if it exists, even if content
+		// and padding are empty/zero-width. This prevents columns from collapsing entirely.
+		if totalWidth < 1 {
+			t.debug("  Col %d: Calculated totalWidth is zero, setting minimum width to 1.", i)
+			totalWidth = 1
+		}
+
+		// Update the map if this cell requires more width than previously recorded
+		currentMax, _ := widths.OK(i) // Get current max width for this column
+		if totalWidth > currentMax {
 			widths.Set(i, totalWidth)
+			t.debug("  Col %d: Updated width from %d to %d (content:%d + padL:%d + padR:%d) for cell '%s'", i, currentMax, totalWidth, contentWidth, padLeftWidth, padRightWidth, cell)
+		} else {
+			t.debug("  Col %d: Width %d not greater than current max %d for cell '%s'", i, totalWidth, currentMax, cell)
 		}
 	}
 }
@@ -2406,6 +2511,67 @@ func (t *Table) hasFooterElements() bool {
 	hasTopPadding := t.config.Footer.Padding.Global.Top != tw.Empty
 	hasBottomPaddingConfig := t.config.Footer.Padding.Global.Bottom != tw.Empty || t.hasPerColumnBottomPadding()
 	return hasContent || hasTopPadding || hasBottomPaddingConfig
+}
+
+// getEmptyColumnInfo checks data rows (t.rows) to determine which columns
+// contain only empty or whitespace content. It ignores headers and footers.
+// It returns a boolean slice where true indicates an empty column,
+// and the count of non-empty (visible) columns.
+func (t *Table) getEmptyColumnInfo(numOriginalCols int) (isEmpty []bool, visibleColCount int) {
+	// Initialize tracker: assume all columns are empty initially.
+	isEmpty = make([]bool, numOriginalCols)
+	for i := range isEmpty {
+		isEmpty[i] = true
+	}
+
+	if !t.config.AutoHide {
+		// If feature is disabled, consider all columns non-empty
+		t.debug("getEmptyColumnInfo: AutoHide disabled, marking all %d columns as visible.", numOriginalCols)
+		for i := range isEmpty {
+			isEmpty[i] = false
+		}
+		visibleColCount = numOriginalCols
+		return isEmpty, visibleColCount
+	}
+
+	t.debug("getEmptyColumnInfo: Checking %d rows for %d columns...", len(t.rows), numOriginalCols)
+
+	// Iterate through actual row data (t.rows)
+	// Structure: [logical_row_idx][visual_line_idx][cell_idx]
+	for rowIdx, logicalRow := range t.rows {
+		for lineIdx, visualLine := range logicalRow {
+			// Process each cell in the visual line
+			for colIdx, cellContent := range visualLine {
+				// Important: Only check columns within the original bounds
+				if colIdx >= numOriginalCols {
+					continue // Should not happen if data is consistent, but safe check
+				}
+
+				// If a column is already marked as not empty, skip further checks for it
+				if !isEmpty[colIdx] {
+					continue
+				}
+
+				// Check if the cell content is non-whitespace
+				if strings.TrimSpace(cellContent) != "" {
+					// Found content, mark this column as not empty
+					isEmpty[colIdx] = false
+					t.debug("getEmptyColumnInfo: Found content in row %d, line %d, col %d ('%s'). Marked as not empty.", rowIdx, lineIdx, colIdx, cellContent)
+				}
+			}
+		}
+	}
+
+	// Count visible columns
+	visibleColCount = 0
+	for _, empty := range isEmpty {
+		if !empty {
+			visibleColCount++
+		}
+	}
+
+	t.debug("getEmptyColumnInfo: Detection complete. isEmpty: %v, visibleColCount: %d", isEmpty, visibleColCount)
+	return isEmpty, visibleColCount
 }
 
 // padLine pads a line to the specified number of columns with empty strings.

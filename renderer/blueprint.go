@@ -124,11 +124,24 @@ func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 	}
 
 	for colIndex < numCols {
+		// Skip columns with zero width unless they are part of a horizontal merge start
+		visualWidth := ctx.Row.Widths.Get(colIndex)
+		cellCtx, ok := ctx.Row.Current[colIndex]
+		isHMergeStart := ok && cellCtx.Merge.Horizontal.Present && cellCtx.Merge.Horizontal.Start
+		if visualWidth == 0 && !isHMergeStart {
+			f.debug("renderLine: Skipping col %d (zero width, not HMerge start)", colIndex)
+			colIndex++
+			continue
+		}
+
 		// Add separator if applicable
 		shouldAddSeparator := false
 		if colIndex > 0 && f.config.Settings.Separators.BetweenColumns.Enabled() {
-			cellCtx, ok := ctx.Row.Current[colIndex]
-			if !ok || !(cellCtx.Merge.Horizontal.Present && !cellCtx.Merge.Horizontal.Start) {
+			// Only add separator if the previous column was visible or part of a merge
+			prevWidth := ctx.Row.Widths.Get(colIndex - 1)
+			prevCellCtx, prevOk := ctx.Row.Current[colIndex-1]
+			prevIsHMergeEnd := prevOk && prevCellCtx.Merge.Horizontal.Present && prevCellCtx.Merge.Horizontal.End
+			if (prevWidth > 0 || prevIsHMergeEnd) && (!ok || !(cellCtx.Merge.Horizontal.Present && !cellCtx.Merge.Horizontal.Start)) {
 				shouldAddSeparator = true
 			}
 		}
@@ -136,17 +149,11 @@ func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 			output.WriteString(columnSeparator)
 			f.debug("renderLine: Added separator '%s' before col %d", columnSeparator, colIndex)
 		} else if colIndex > 0 {
-			f.debug("renderLine: Skipped separator before col %d due to HMerge continuation", colIndex)
+			f.debug("renderLine: Skipped separator before col %d due to zero-width prev col or HMerge continuation", colIndex)
 		}
 
-		// Fetch cell context
-		cellCtx, ok := ctx.Row.Current[colIndex]
-
 		// Calculate width and span
-		visualWidth := 0
-		isHMergeStart := ok && cellCtx.Merge.Horizontal.Present && cellCtx.Merge.Horizontal.Start
 		span := 1
-
 		if isHMergeStart {
 			span = cellCtx.Merge.Horizontal.Span
 			if ctx.Row.Position == tw.Row {
@@ -157,7 +164,7 @@ func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 						normWidth = 0
 					}
 					dynamicTotalWidth += normWidth
-					if k > 0 && separatorDisplayWidth > 0 {
+					if k > 0 && separatorDisplayWidth > 0 && ctx.NormalizedWidths.Get(colIndex+k) > 0 {
 						dynamicTotalWidth += separatorDisplayWidth
 					}
 				}
@@ -253,7 +260,10 @@ func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 		colIndex += span
 	}
 
-	output.WriteString(suffix)
+	// Only append suffix if there was at least one visible column
+	if output.Len() > len(prefix) || f.config.Borders.Right.Enabled() {
+		output.WriteString(suffix)
+	}
 	output.WriteString(tw.NewLine)
 	fmt.Fprint(w, output.String())
 	f.debug("renderLine: Final rendered line: %s", strings.TrimSuffix(output.String(), tw.NewLine))
@@ -267,102 +277,132 @@ func (f *Blueprint) formatCell(content string, width int, padding tw.Padding, al
 
 	f.debug("Formatting cell: content='%s', width=%d, align=%s, padding={L:'%s' R:'%s'}",
 		content, width, align, padding.Left, padding.Right)
+
+	// Trim whitespace if enabled
 	if f.config.Settings.TrimWhitespace.Enabled() {
 		content = strings.TrimSpace(content)
 		f.debug("Trimmed content: '%s'", content)
 	}
 
+	// Calculate content width
 	runeWidth := twfn.DisplayWidth(content)
-	padLeftWidth := twfn.DisplayWidth(padding.Left)
-	padRightWidth := twfn.DisplayWidth(padding.Right)
-	totalPaddingWidth := padLeftWidth + padRightWidth
 
-	availableContentWidth := width - totalPaddingWidth
+	// Get padding characters
+	leftPadChar := padding.Left
+	rightPadChar := padding.Right
+	if leftPadChar == "" {
+		leftPadChar = " "
+	}
+	if rightPadChar == "" {
+		rightPadChar = " "
+	}
+
+	// Calculate display widths of padding characters
+	padLeftWidth := twfn.DisplayWidth(leftPadChar)
+	padRightWidth := twfn.DisplayWidth(rightPadChar)
+
+	// Calculate available content width
+	availableContentWidth := width - padLeftWidth - padRightWidth
 	if availableContentWidth < 0 {
 		availableContentWidth = 0
 	}
 	f.debug("Available content width: %d", availableContentWidth)
 
+	// Truncate content if necessary
 	if runeWidth > availableContentWidth {
 		content = twfn.TruncateString(content, availableContentWidth)
 		runeWidth = twfn.DisplayWidth(content)
 		f.debug("Truncated content to fit %d: '%s' (new width %d)", availableContentWidth, content, runeWidth)
 	}
 
-	remainingSpace := width - runeWidth - totalPaddingWidth
-	if remainingSpace < 0 {
-		remainingSpace = 0
+	// Calculate total padding needed
+	totalPaddingWidth := width - runeWidth
+	if totalPaddingWidth < 0 {
+		totalPaddingWidth = 0
 	}
-	f.debug("Remaining space for alignment padding: %d", remainingSpace)
-
-	leftPadChar := padding.Left
-	rightPadChar := padding.Right
-	if leftPadChar == "" {
-		leftPadChar = tw.Space
-	}
-	if rightPadChar == "" {
-		rightPadChar = tw.Space
-	}
-	leftPadCharWidth := twfn.DisplayWidth(leftPadChar)
-	if leftPadCharWidth <= 0 {
-		leftPadCharWidth = 1
-	}
-	rightPadCharWidth := twfn.DisplayWidth(rightPadChar)
-	if rightPadCharWidth <= 0 {
-		rightPadCharWidth = 1
-	}
+	f.debug("Total padding width: %d", totalPaddingWidth)
 
 	var result strings.Builder
-	var leftSpaces, rightSpaces int
+	var leftPaddingWidth, rightPaddingWidth int
 
+	// Apply alignment
 	switch align {
 	case tw.AlignLeft:
-		leftSpaces = padLeftWidth
-		rightSpaces = width - runeWidth - leftSpaces
+		result.WriteString(leftPadChar)
+		result.WriteString(content)
+		rightPaddingWidth = totalPaddingWidth - padLeftWidth
+		if rightPaddingWidth > 0 {
+			result.WriteString(strings.Repeat(rightPadChar, rightPaddingWidth/padRightWidth))
+			leftover := rightPaddingWidth % padRightWidth
+			if leftover > 0 {
+				result.WriteString(strings.Repeat(" ", leftover))
+				f.debug("Added %d leftover spaces for right padding", leftover)
+			}
+			f.debug("Applied right padding: '%s' for %d width", rightPadChar, rightPaddingWidth)
+		}
 	case tw.AlignRight:
-		rightSpaces = padRightWidth
-		leftSpaces = width - runeWidth - rightSpaces
+		leftPaddingWidth = totalPaddingWidth - padRightWidth
+		if leftPaddingWidth > 0 {
+			result.WriteString(strings.Repeat(leftPadChar, leftPaddingWidth/padLeftWidth))
+			leftover := leftPaddingWidth % padLeftWidth
+			if leftover > 0 {
+				result.WriteString(strings.Repeat(" ", leftover))
+				f.debug("Added %d leftover spaces for left padding", leftover)
+			}
+			f.debug("Applied left padding: '%s' for %d width", leftPadChar, leftPaddingWidth)
+		}
+		result.WriteString(content)
+		result.WriteString(rightPadChar)
 	case tw.AlignCenter:
-		leftSpaces = padLeftWidth + remainingSpace/2
-		rightSpaces = width - runeWidth - leftSpaces
+		leftPaddingWidth = (totalPaddingWidth-padLeftWidth-padRightWidth)/2 + padLeftWidth
+		rightPaddingWidth = totalPaddingWidth - leftPaddingWidth
+		if leftPaddingWidth > padLeftWidth {
+			result.WriteString(strings.Repeat(leftPadChar, (leftPaddingWidth-padLeftWidth)/padLeftWidth))
+			leftover := (leftPaddingWidth - padLeftWidth) % padLeftWidth
+			if leftover > 0 {
+				result.WriteString(strings.Repeat(" ", leftover))
+				f.debug("Added %d leftover spaces for left centering", leftover)
+			}
+			f.debug("Applied left centering padding: '%s' for %d width", leftPadChar, leftPaddingWidth-padLeftWidth)
+		}
+		result.WriteString(leftPadChar)
+		result.WriteString(content)
+		result.WriteString(rightPadChar)
+		if rightPaddingWidth > padRightWidth {
+			result.WriteString(strings.Repeat(rightPadChar, (rightPaddingWidth-padRightWidth)/padRightWidth))
+			leftover := (rightPaddingWidth - padRightWidth) % padRightWidth
+			if leftover > 0 {
+				result.WriteString(strings.Repeat(" ", leftover))
+				f.debug("Added %d leftover spaces for right centering", leftover)
+			}
+			f.debug("Applied right centering padding: '%s' for %d width", rightPadChar, rightPaddingWidth-padRightWidth)
+		}
 	default:
-		leftSpaces = padLeftWidth
-		rightSpaces = width - runeWidth - leftSpaces
-	}
-
-	if leftSpaces < 0 {
-		leftSpaces = 0
-	}
-	if rightSpaces < 0 {
-		rightSpaces = 0
-	}
-
-	if leftPadCharWidth > 0 {
-		leftRepeat := leftSpaces / leftPadCharWidth
-		result.WriteString(strings.Repeat(leftPadChar, leftRepeat))
-		result.WriteString(strings.Repeat(" ", leftSpaces%leftPadCharWidth))
-	} else {
-		result.WriteString(strings.Repeat(" ", leftSpaces))
-	}
-
-	result.WriteString(content)
-
-	if rightPadCharWidth > 0 {
-		rightRepeat := rightSpaces / rightPadCharWidth
-		result.WriteString(strings.Repeat(rightPadChar, rightRepeat))
-		result.WriteString(strings.Repeat(" ", rightSpaces%rightPadCharWidth))
-	} else {
-		result.WriteString(strings.Repeat(" ", rightSpaces))
+		// Default to left alignment
+		result.WriteString(leftPadChar)
+		result.WriteString(content)
+		rightPaddingWidth = totalPaddingWidth - padLeftWidth
+		if rightPaddingWidth > 0 {
+			result.WriteString(strings.Repeat(rightPadChar, rightPaddingWidth/padRightWidth))
+			leftover := rightPaddingWidth % padRightWidth
+			if leftover > 0 {
+				result.WriteString(strings.Repeat(" ", leftover))
+				f.debug("Added %d leftover spaces for right padding", leftover)
+			}
+			f.debug("Applied right padding: '%s' for %d width", rightPadChar, rightPaddingWidth)
+		}
 	}
 
 	output := result.String()
 	finalWidth := twfn.DisplayWidth(output)
 	if finalWidth > width {
 		output = twfn.TruncateString(output, width)
-		f.debug("formatCell: Final check truncated output to width %d", width)
+		f.debug("formatCell: Truncated output to width %d", width)
 	} else if finalWidth < width {
-		output += strings.Repeat(" ", width-finalWidth)
-		f.debug("formatCell: Final check added %d spaces to meet width %d", width-finalWidth, width)
+		// Add minimal spaces to meet exact width
+		result.WriteString(strings.Repeat(" ", width-finalWidth))
+		output = result.String()
+		f.debug("formatCell: Added %d spaces to meet width %d", width-finalWidth, width)
 	}
 
 	if f.config.Debug && twfn.DisplayWidth(output) != width {
@@ -415,18 +455,27 @@ func (f *Blueprint) Line(w io.Writer, ctx tw.Formatting) {
 	}
 
 	totalWidth := 0
+	visibleColIndices := make([]int, 0)
 	for i, colIdx := range sortedKeys {
-		totalWidth += ctx.Row.Widths[colIdx]
-		if i > 0 && f.config.Settings.Separators.BetweenColumns.Enabled() {
-			totalWidth += twfn.DisplayWidth(jr.sym.Column())
+		colWidth := ctx.Row.Widths.Get(colIdx)
+		if colWidth > 0 {
+			visibleColIndices = append(visibleColIndices, colIdx)
+			totalWidth += colWidth
+			if i > 0 && f.config.Settings.Separators.BetweenColumns.Enabled() {
+				prevColIdx := sortedKeys[i-1]
+				prevColWidth := ctx.Row.Widths.Get(prevColIdx)
+				if prevColWidth > 0 {
+					totalWidth += twfn.DisplayWidth(jr.sym.Column())
+				}
+			}
 		}
 	}
 
-	f.debug("Line: sortedKeys=%v, Widths=%v", sortedKeys, ctx.Row.Widths)
-	for keyIndex, currentColIdx := range sortedKeys {
+	f.debug("Line: sortedKeys=%v, Widths=%v, visibleColIndices=%v", sortedKeys, ctx.Row.Widths, visibleColIndices)
+	for keyIndex, currentColIdx := range visibleColIndices {
 		jr.colIdx = currentColIdx
 		segment := jr.GetSegment()
-		colWidth := ctx.Row.Widths[currentColIdx]
+		colWidth := ctx.Row.Widths.Get(currentColIdx)
 		f.debug("Line: colIdx=%d, segment='%s', width=%d", currentColIdx, segment, colWidth)
 		if segment == "" {
 			line.WriteString(strings.Repeat(" ", colWidth))
@@ -438,17 +487,17 @@ func (f *Blueprint) Line(w io.Writer, ctx tw.Formatting) {
 			line.WriteString(strings.Repeat(segment, repeat))
 		}
 
-		isLast := keyIndex == len(sortedKeys)-1
+		isLast := keyIndex == len(visibleColIndices)-1
 		if !isLast && f.config.Settings.Separators.BetweenColumns.Enabled() {
-			nextColIdx := sortedKeys[keyIndex+1]
+			nextColIdx := visibleColIndices[keyIndex+1]
 			junction := jr.RenderJunction(currentColIdx, nextColIdx)
 			f.debug("Line: Junction between %d and %d: '%s'", currentColIdx, nextColIdx, junction)
 			line.WriteString(junction)
 		}
 	}
 
-	if f.config.Borders.Right.Enabled() {
-		lastIdx := sortedKeys[len(sortedKeys)-1]
+	if f.config.Borders.Right.Enabled() && len(visibleColIndices) > 0 {
+		lastIdx := visibleColIndices[len(visibleColIndices)-1]
 		line.WriteString(jr.RenderRight(lastIdx))
 		actualWidth := twfn.DisplayWidth(line.String()) - twfn.DisplayWidth(jr.RenderLeft()) - twfn.DisplayWidth(jr.RenderRight(lastIdx))
 		if actualWidth > totalWidth {
