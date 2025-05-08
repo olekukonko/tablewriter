@@ -146,32 +146,6 @@ func TestUnicodeWithoutHeader(t *testing.T) {
 	visualCheck(t, "UnicodeWithoutHeader", buf.String(), expected)
 }
 
-//func TestUnicodeTableDefault(t *testing.T) {
-//	var buf bytes.Buffer
-//
-//	table := tablewriter.NewTable(&buf)
-//	table.Header([]string{"Name", "Age", "City"})
-//	table.Append([]string{"Alice", "25", "New York"})
-//	table.Append([]string{"Bøb", "30", "Tōkyō"})    // Contains ø and ō
-//	table.Append([]string{"José", "28", "México"}) // Contains é and accented e (e + combining acute)
-//	table.Append([]string{"张三", "35", "北京"})        // Chinese characters
-//	table.Append([]string{"अनु", "40", "मुंबई"})    // Devanagari script
-//	table.Render()
-//
-//	expected := `
-//	┌───────┬─────┬──────────┐
-//	│ NAME  │ AGE │   CITY   │
-//	├───────┼─────┼──────────┤
-//	│ Alice │ 25  │ New York │
-//	│ Bøb   │ 30  │ Tōkyō    │
-//	│ José  │ 28  │ México   │
-//	│ 张三   │ 35  │ 北京     │
-//	│ अनु    │ 40  │ मुंबई      │
-//	└───────┴─────┴──────────┘
-//`
-//	visualCheck(t, "UnicodeTableRendering", buf.String(), expected)
-//}
-
 func TestBasicTableASCII(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
@@ -393,12 +367,12 @@ func TestLongHeaders(t *testing.T) {
 		table.Render()
 
 		expected := `
-        ┌───────┬─────┬──────────────────────────────┐
-        │ NAME  │ AGE │ THIS IS A VERY LONG HEADER … │
-        ├───────┼─────┼──────────────────────────────┤
-        │ Alice │ 25  │ New York                     │
-        │ Bob   │ 30  │ Boston                       │
-        └───────┴─────┴──────────────────────────────┘
+            ┌───────┬─────┬─────────────────────────────┐
+            │ NAME  │ AGE │ THIS IS A VERY LONG HEADER… │
+            ├───────┼─────┼─────────────────────────────┤
+            │ Alice │ 25  │ New York                    │
+            │ Bob   │ 30  │ Boston                      │
+            └───────┴─────┴─────────────────────────────┘
 `
 		visualCheck(t, "BasicTableRendering", buf.String(), expected)
 	})

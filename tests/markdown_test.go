@@ -95,10 +95,10 @@ func TestMarkdownLongHeaders(t *testing.T) {
 	table.Render()
 
 	expected := `
-| NAME  | AGE | VERY LONG HEADER … |
-|:-----:|:---:|:------------------:|
-| Alice | 25  | New York           |
-| Bob   | 30  | Boston             |
+        | NAME  | AGE | VERY LONG HEADER… |
+        |:-----:|:---:|:-----------------:|
+        | Alice | 25  | New York          |
+        | Bob   | 30  | Boston            |
 `
 	visualCheck(t, "MarkdownLongHeaders", buf.String(), expected)
 }
