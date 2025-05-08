@@ -1,7 +1,6 @@
 package tablewriter
 
 import (
-	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
 	"io"
 )
@@ -621,7 +620,7 @@ func WithFooter(footers []string) Option {
 }
 
 // WithRenderer sets a custom renderer for the table.
-func WithRenderer(f renderer.Renderer) Option {
+func WithRenderer(f tw.Renderer) Option {
 	return func(t *Table) { t.renderer = f }
 }
 
