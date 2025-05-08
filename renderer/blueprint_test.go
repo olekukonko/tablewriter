@@ -8,22 +8,22 @@ import (
 func TestDefaultConfigMerging(t *testing.T) {
 	tests := []struct {
 		name     string
-		config   DefaultConfig
-		expected DefaultConfig
+		config   tw.RendererConfig
+		expected tw.RendererConfig
 	}{
 		{
 			name:   "EmptyConfig",
-			config: DefaultConfig{},
-			expected: DefaultConfig{
-				Borders: Border{Left: tw.On, Right: tw.On, Top: tw.On, Bottom: tw.On},
-				Settings: Settings{
-					Separators: Separators{
+			config: tw.RendererConfig{},
+			expected: tw.RendererConfig{
+				Borders: tw.Border{Left: tw.On, Right: tw.On, Top: tw.On, Bottom: tw.On},
+				Settings: tw.Settings{
+					Separators: tw.Separators{
 						ShowHeader:     tw.On,
 						ShowFooter:     tw.On,
 						BetweenRows:    tw.Off,
 						BetweenColumns: tw.On,
 					},
-					Lines: Lines{
+					Lines: tw.Lines{
 						ShowTop:        tw.On,
 						ShowBottom:     tw.On,
 						ShowHeaderLine: tw.On,
@@ -37,19 +37,19 @@ func TestDefaultConfigMerging(t *testing.T) {
 		},
 		{
 			name: "PartialBorders",
-			config: DefaultConfig{
-				Borders: Border{Top: tw.Off},
+			config: tw.RendererConfig{
+				Borders: tw.Border{Top: tw.Off},
 			},
-			expected: DefaultConfig{
-				Borders: Border{Left: tw.On, Right: tw.On, Top: tw.Off, Bottom: tw.On},
-				Settings: Settings{
-					Separators: Separators{
+			expected: tw.RendererConfig{
+				Borders: tw.Border{Left: tw.On, Right: tw.On, Top: tw.Off, Bottom: tw.On},
+				Settings: tw.Settings{
+					Separators: tw.Separators{
 						ShowHeader:     tw.On,
 						ShowFooter:     tw.On,
 						BetweenRows:    tw.Off,
 						BetweenColumns: tw.On,
 					},
-					Lines: Lines{
+					Lines: tw.Lines{
 						ShowTop:        tw.On,
 						ShowBottom:     tw.On,
 						ShowHeaderLine: tw.On,
@@ -63,21 +63,21 @@ func TestDefaultConfigMerging(t *testing.T) {
 		},
 		{
 			name: "PartialSettingsLines",
-			config: DefaultConfig{
-				Settings: Settings{
-					Lines: Lines{ShowFooterLine: tw.Off},
+			config: tw.RendererConfig{
+				Settings: tw.Settings{
+					Lines: tw.Lines{ShowFooterLine: tw.Off},
 				},
 			},
-			expected: DefaultConfig{
-				Borders: Border{Left: tw.On, Right: tw.On, Top: tw.On, Bottom: tw.On},
-				Settings: Settings{
-					Separators: Separators{
+			expected: tw.RendererConfig{
+				Borders: tw.Border{Left: tw.On, Right: tw.On, Top: tw.On, Bottom: tw.On},
+				Settings: tw.Settings{
+					Separators: tw.Separators{
 						ShowHeader:     tw.On,
 						ShowFooter:     tw.On,
 						BetweenRows:    tw.Off,
 						BetweenColumns: tw.On,
 					},
-					Lines: Lines{
+					Lines: tw.Lines{
 						ShowTop:        tw.On,
 						ShowBottom:     tw.On,
 						ShowHeaderLine: tw.On,
@@ -93,7 +93,7 @@ func TestDefaultConfigMerging(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := NewDefault(tt.config)
+			r := NewBlueprint(tt.config)
 			got := r.Config()
 
 			// Compare Borders
