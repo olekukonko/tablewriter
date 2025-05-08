@@ -29,9 +29,9 @@ func CompileANSIFilter() *regexp.Regexp {
 	var regESC = "\x1b" // ASCII escape character
 	var regBEL = "\x07" // ASCII bell character
 
-	var regST = "(" + regESC + "\\\\" + "|" + regBEL + ")"              // ANSI string terminator
-	var regCSI = regESC + "\\[" + "[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]" // Control codes
-	var regOSC = regESC + "\\]" + ".*?" + regST                         // OSC codes like hyperlinks
+	var regST = "(" + regexp.QuoteMeta(regESC+"\\") + "|" + regexp.QuoteMeta(regBEL) + ")" // ANSI string terminator
+	var regCSI = regexp.QuoteMeta(regESC+"[") + "[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]"      // Control codes
+	var regOSC = regexp.QuoteMeta(regESC+"]") + ".*?" + regST                              // OSC codes like hyperlinks
 
 	return regexp.MustCompile("(" + regCSI + "|" + regOSC + ")")
 }
@@ -42,42 +42,106 @@ func DisplayWidth(str string) int {
 	return runewidth.StringWidth(ansi.ReplaceAllLiteralString(str, ""))
 }
 
-// TruncateString shortens a string to a max width while preserving ANSI color codes.
-// An optional suffix (like "...") can be appended to indicate truncation.
+// TruncateString shortens a string to a max display width while attempting to preserve ANSI color codes.
+// An optional suffix (like "...") can be appended if truncation occurs.
 func TruncateString(s string, maxWidth int, suffix ...string) string {
 	if maxWidth <= 0 {
 		return ""
 	}
 
-	stripped := ansi.ReplaceAllLiteralString(s, "")
-	if runewidth.StringWidth(stripped) <= maxWidth {
-		return s
+	suffixStr := strings.Join(suffix, " ")
+	suffixDisplayWidth := 0
+	if len(suffixStr) > 0 {
+		// Calculate display width of suffix (stripped of its own ANSI, if any)
+		suffixDisplayWidth = runewidth.StringWidth(ansi.ReplaceAllLiteralString(suffixStr, ""))
 	}
 
-	var buf bytes.Buffer
-	var currentWidth int
-	ansiEnabled := false
+	// If the original string (content part + suffix) already fits, no complex truncation needed.
+	// We must use the original 's' for the return if no truncation of 's' content is needed,
+	// to preserve its ANSI codes.
+	strippedS := ansi.ReplaceAllLiteralString(s, "")
+	if runewidth.StringWidth(strippedS)+suffixDisplayWidth <= maxWidth {
+		// Check if 's' itself contains ANSI that might affect this simple concatenation.
+		// If s is identical to strippedS, no internal ANSI. Otherwise, ANSI needs care.
+		// This condition is simplified; a perfect check is harder.
+		// For now, assume if stripped fits, original + suffix is okay.
+		return s + suffixStr
+	}
 
-	for _, r := range s {
-		if r == '\x1b' {
-			ansiEnabled = true
+	// Handle cases where maxWidth is too small for the suffix alone.
+	if maxWidth < suffixDisplayWidth {
+		// Not enough space even for the suffix.
+		// Try to return a truncated version of 's' (without suffix) if anything from 's' can fit.
+		// This recursive call is stripped of suffix to avoid infinite loop.
+		return TruncateString(s, maxWidth) // Recurse without suffix
+	}
+	if maxWidth == suffixDisplayWidth { // Exactly enough space for the suffix, no space for content.
+		if runewidth.StringWidth(strippedS) > 0 { // If there was content, it's fully truncated.
+			return suffixStr // Return original suffix (with potential ANSI)
 		}
-		buf.WriteRune(r)
+		return "" // No content, and only space for suffix implies empty result if suffix is also empty.
+	}
 
-		if !ansiEnabled {
-			currentWidth += runewidth.RuneWidth(r)
-			if currentWidth >= maxWidth {
-				break
+	// Max display width available for the content part of 's'.
+	targetContentDisplayWidth := maxWidth - suffixDisplayWidth
+
+	var contentBuf bytes.Buffer        // Buffer for the (potentially truncated) content part of 's'
+	var currentContentDisplayWidth int // Accumulated display width of content in contentBuf
+	var ansiSeqBuf bytes.Buffer        // Temporary buffer for an ongoing ANSI sequence
+	inAnsiSequence := false            // Flag indicating if current runes are part of an ANSI sequence
+
+	for _, r := range s { // Iterate over runes of the original string 's'
+		if r == '\x1b' { // Start of an ANSI escape sequence
+			if inAnsiSequence { // Unexpected: new ESC while already in a sequence; flush old one
+				contentBuf.Write(ansiSeqBuf.Bytes())
+				ansiSeqBuf.Reset()
 			}
-		}
-
-		if ansiEnabled && r == 'm' {
-			ansiEnabled = false
+			inAnsiSequence = true
+			ansiSeqBuf.WriteRune(r)
+		} else if inAnsiSequence {
+			ansiSeqBuf.WriteRune(r)
+			// Basic ANSI sequence termination detection (e.g., 'm' for SGR)
+			// A more robust parser would be needed for all ANSI types (CSI, OSC, etc.)
+			if r == 'm' || (ansiSeqBuf.Len() > 2 && ansiSeqBuf.Bytes()[1] == '[' && r >= '@' && r <= '~') { // Common SGR/CSI terminators
+				inAnsiSequence = false
+				contentBuf.Write(ansiSeqBuf.Bytes()) // Append complete ANSI sequence to content
+				ansiSeqBuf.Reset()
+			} else if ansiSeqBuf.Len() > 128 { // Safety break for very long or malformed ANSI sequences
+				inAnsiSequence = false               // Assume it's ended or corrupted
+				contentBuf.Write(ansiSeqBuf.Bytes()) // Append what was collected
+				ansiSeqBuf.Reset()
+			}
+		} else { // Not an ANSI escape character, i.e., a displayable character
+			runeDisplayWidth := runewidth.RuneWidth(r)
+			if currentContentDisplayWidth+runeDisplayWidth > targetContentDisplayWidth {
+				// Adding this rune would make the content part exceed its allocated display width
+				break // So, stop *before* adding this rune to contentBuf
+			}
+			contentBuf.WriteRune(r)
+			currentContentDisplayWidth += runeDisplayWidth
 		}
 	}
 
-	buf.WriteString(strings.Join(suffix, " "))
-	return buf.String()
+	// If an ANSI sequence was unterminated at the end of string processing (e.g., string ended mid-sequence)
+	if ansiSeqBuf.Len() > 0 {
+		contentBuf.Write(ansiSeqBuf.Bytes()) // Append the partial ANSI sequence
+	}
+
+	finalContent := contentBuf.String()
+
+	// Append suffix only if the original string's content was actually truncated
+	// or if a suffix is provided and is meant to be appended regardless (e.g. not empty).
+	// Compare width of generated content part with original content (stripped for fair comparison).
+	if runewidth.StringWidth(ansi.ReplaceAllLiteralString(finalContent, "")) < runewidth.StringWidth(strippedS) {
+		// Actual truncation of visible characters occurred.
+		return finalContent + suffixStr
+	} else if len(suffixStr) > 0 && len(finalContent) > 0 { // No truncation but suffix exists and content exists
+		return finalContent + suffixStr
+	} else if len(suffixStr) > 0 && len(strippedS) == 0 { // Original string was empty, only suffix applies
+		return suffixStr
+	}
+
+	return finalContent // Return content (possibly with its ANSI)
 }
 
 //
