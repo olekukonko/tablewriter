@@ -1,33 +1,87 @@
-# Table Writer for Go
+Here’s a polished version of your introduction with improved clarity, structure, and consistency:
 
-[![ci](https://github.com/olekukonko/tablewriter/workflows/ci/badge.svg?branch=master)](https://github.com/olekukonko/tablewriter/actions?query=workflow%3Aci)
-[![Total views](https://img.shields.io/sourcegraph/rrc/github.com/olekukonko/tablewriter.svg)](https://sourcegraph.com/github.com/olekukonko/tablewriter)
+---
+
+# TableWriter for Go
+
+[![CI](https://github.com/olekukonko/tablewriter/workflows/ci/badge.svg?branch=master)](https://github.com/olekukonko/tablewriter/actions?query=workflow%3Aci)
 [![GoDoc](https://godoc.org/github.com/olekukonko/tablewriter?status.svg)](https://godoc.org/github.com/olekukonko/tablewriter)
+[![Latest Release](https://img.shields.io/github/v/release/olekukonko/tablewriter)](https://github.com/olekukonko/tablewriter/releases)
 
-`tablewriter` is a powerful Go library for generating formatted text-based tables, supporting ASCII, HTML, Markdown, and colorized outputs. It is ideal for command-line tools, logs, or web applications. The `prototype` branch (targeting `v0.2.0`) introduces modern features like generics, streaming, and advanced cell merging.
+`tablewriter` is a Go library for generating **rich text-based tables** with support for multiple output formats, including ASCII, Unicode, Markdown, HTML, and colorized terminals. Perfect for CLI tools, logs, and web applications.
 
-> **Note**: For legacy support (stable `v0.0.5`), refer to [README_LEGACY.md](README_LEGACY.md). This README documents the `main` branch.
+### Key Features
+- **Multi-format rendering**: ASCII, Unicode, Markdown, HTML, ANSI-colored
+- **Advanced styling**: Cell merging, alignment, padding, borders
+- **Flexible input**: CSV, structs, slices, or streaming data
+- **High performance**: Minimal allocations, buffer reuse
+- **Modern features**: Generics support, hierarchical merging, real-time streaming
 
-## Features
+---
 
-- **Multiple Renderers**: ASCII, Unicode, Markdown, HTML, or colorized outputs.
-- **Flexible Configuration**: Customize alignment, padding, wrapping, borders, and separators.
-- **Cell Merging**: Horizontal, vertical, and hierarchical merging for compact layouts.
-- **Multiline Cells**: Automatic wrapping or truncation of multiline content.
-- **CSV Input**: Create tables from CSV files or `io.Reader` streams.
-- **Streaming Support**: Render large datasets row-by-row with `TableStream`.
-- **Colorized Output**: Apply ANSI colors to headers, rows, footers, and borders.
-- **Struct Input**: Render tables from structs using custom stringer functions.
-- **io.Writer Support**: Write to `os.Stdout`, files, or `strings.Builder`.
-- **Content Filtering**: Mask sensitive data (e.g., emails, passwords).
+### Installation
 
-## Installation
-
+#### Stable Version (v0.0.5)
+For production use with guaranteed compatibility:
 ```bash
-go get github.com/olekukonko/tablewriter
+go get github.com/olekukonko/tablewriter@v0.0.5
 ```
 
-## Usage
+#### Latest Development Version
+For experimental features (prototype branch):
+```bash
+go get github.com/olekukonko/tablewriter@latest
+```
+
+> **Version Guidance**
+> - Production: Use `v0.0.5` (stable)
+> - New Features: Use `@latest` (includes generics, streaming APIs)
+> - Legacy Docs: See [README_LEGACY.md](README_LEGACY.md)
+
+---
+
+### Why TableWriter?
+- **CLI Ready**: Instant compatibility with terminal outputs
+- **Database Friendly**: Native support for `sql.Null*` types
+- **Secure**: Auto-escaping for HTML/Markdown
+- **Extensible**: Custom renderers and formatters
+
+---
+
+### Quick Example
+```go
+package main
+
+import (
+	"github.com/olekukonko/tablewriter"
+	"os"
+)
+
+func main() {
+	data := [][]string{
+		{"Package", "Version", "Status"},
+		{"tablewriter", "v0.0.5", "legacy"},
+		{"tablewriter", "v1.0.0", "latest"},
+	}
+
+	table := tablewriter.NewWriter(os.Stdout)
+	table.Header(data[0])
+	table.Bulk(data[1:])
+	table.Render()
+}
+```
+**Output**:
+```
+┌─────────────┬─────────┬────────┐
+│   PACKAGE   │ VERSION │ STATUS │
+├─────────────┼─────────┼────────┤
+│ tablewriter │ v0.0.5  │ legacy │
+│ tablewriter │ v1.0.0  │ latest │
+└─────────────┴─────────┴────────┘
+```
+
+
+## Detailed Usage
 
 Create a table with `NewTable` or `NewWriter`, configure it using options or a `Config` struct, add data with `Append` or `Bulk`, and render to an `io.Writer`. Use renderers like `Blueprint` (ASCII), `HTML`, `Markdown`, `Colorized`, or `Ocean` (streaming).
 
