@@ -58,13 +58,13 @@ func process(r io.Reader) {
 	}
 
 	// Define border configurations
-	on := renderer.Border{
+	on := tw.Border{
 		Left:   tw.On,
 		Right:  tw.On,
 		Top:    tw.On,
 		Bottom: tw.On,
 	}
-	off := renderer.Border{
+	off := tw.Border{
 		Left:   tw.Off,
 		Right:  tw.Off,
 		Top:    tw.Off,
@@ -78,16 +78,16 @@ func process(r io.Reader) {
 	}
 
 	// Configure renderer with default symbols and settings
-	renderConfig := renderer.DefaultConfig{
+	renderConfig := tw.RendererConfig{
 		Borders: b,
-		Settings: renderer.Settings{
-			Separators: renderer.Separators{
+		Settings: tw.Settings{
+			Separators: tw.Separators{
 				ShowHeader:     tw.On,
 				ShowFooter:     tw.On,
 				BetweenRows:    tw.Off,
 				BetweenColumns: tw.On,
 			},
-			Lines: renderer.Lines{
+			Lines: tw.Lines{
 				ShowTop:        tw.On,
 				ShowBottom:     tw.On,
 				ShowHeaderLine: tw.On,
@@ -105,7 +105,7 @@ func process(r io.Reader) {
 		tablewriter.WithHeaderConfig(getHeaderConfig()),
 		tablewriter.WithRowConfig(getRowConfig()),
 		tablewriter.WithFooterConfig(getFooterConfig()),
-		tablewriter.WithRenderer(renderer.NewDefault(renderConfig)),
+		tablewriter.WithRenderer(renderer.NewBlueprint(renderConfig)),
 	)
 
 	// Read and process CSV data
