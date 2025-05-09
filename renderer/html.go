@@ -3,6 +3,7 @@ package renderer
 import (
 	"errors"
 	"fmt"
+	"github.com/olekukonko/ll"
 	"html"
 	"io"
 	"strings"
@@ -33,6 +34,7 @@ type HTML struct {
 	tbodyStarted bool        // Tracks if <tbody> tag is open
 	tfootStarted bool        // Tracks if <tfoot> tag is open
 	vMergeTrack  map[int]int // Tracks vertical merge spans by column index
+	logger       *ll.Logger
 }
 
 // NewHTML initializes an HTML renderer with the given writer, debug setting, and optional configuration.
@@ -68,13 +70,17 @@ func NewHTML(w io.Writer, debug bool, configs ...HTMLConfig) *HTML {
 	}
 }
 
+func (h *HTML) Logger(logger *ll.Logger) {
+	h.logger = logger
+}
+
 // Config returns a RendererConfig representation of the current configuration.
 func (h *HTML) Config() tw.RendererConfig {
 	return tw.RendererConfig{
-		Borders:  tw.BorderNone,
-		Symbols:  tw.NewSymbols(tw.StyleNone),
-		Settings: tw.Settings{},
-		Debug:    h.debug,
+		Borders:   tw.BorderNone,
+		Symbols:   tw.NewSymbols(tw.StyleNone),
+		Settings:  tw.Settings{},
+		Streaming: false,
 	}
 }
 

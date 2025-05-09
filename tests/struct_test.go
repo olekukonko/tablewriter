@@ -133,8 +133,6 @@ func TestStructTableWithDB(t *testing.T) {
 
 	// Visual check
 	if !visualCheck(t, "StructTableWithDB", buf.String(), expected) {
-		for _, v := range table.Debug() {
-			t.Errorf("Debug log: %s", v)
-		}
+		t.Log(table.Debug())
 	}
 }

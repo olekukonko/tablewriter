@@ -44,9 +44,7 @@ func TestVerticalMerge(t *testing.T) {
 `
 
 	if !visualCheck(t, "VerticalMerge", buf.String(), expected) {
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 
@@ -91,9 +89,7 @@ func TestHorizontalMerge(t *testing.T) {
 `
 
 	if !visualCheck(t, "TestHorizontalMerge", buf.String(), expected) {
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 
@@ -145,9 +141,7 @@ func TestHorizontalMergeEachLine(t *testing.T) {
 `
 	check := visualCheck(t, "HorizontalMergeEachLine", buf.String(), expected)
 	if !check {
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 
@@ -193,9 +187,7 @@ func TestHorizontalMergeEachLineCenter(t *testing.T) {
 `
 	check := visualCheck(t, "HorizontalMergeEachLineCenter", buf.String(), expected)
 	if !check {
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 
@@ -244,9 +236,7 @@ func TestHorizontalMergeAlignFooter(t *testing.T) {
 `
 	check := visualCheck(t, "HorizontalMergeAlignFooter", buf.String(), expected)
 	if !check {
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 
@@ -289,9 +279,7 @@ func TestVerticalMergeLines(t *testing.T) {
 `
 
 	if !visualCheck(t, "VerticalMergeLines", buf.String(), expected) {
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 
@@ -346,9 +334,7 @@ func TestMergeBoth(t *testing.T) {
 `
 		check := visualCheck(t, "TestMergeBoth-mixed-1", buf.String(), expected)
 		if !check {
-			for _, v := range table.Debug() {
-				t.Error(v)
-			}
+			t.Log(table.Debug())
 		}
 
 	})
@@ -378,9 +364,7 @@ func TestMergeBoth(t *testing.T) {
 		`
 		check := visualCheck(t, "TestMergeBoth-mixed-2", buf.String(), expected)
 		if !check {
-			for _, v := range table.Debug() {
-				t.Error(v)
-			}
+			t.Log(table.Debug())
 		}
 
 	})
@@ -426,9 +410,7 @@ func TestMergeHierarchical(t *testing.T) {
 `
 	check := visualCheck(t, "MergeHierarchical", buf.String(), expected)
 	if !check {
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 
@@ -472,9 +454,7 @@ func TestMergeHierarchicalUnicode(t *testing.T) {
 `
 	check := visualCheck(t, "MergeHierarchicalUnicode", buf.String(), expected)
 	if !check {
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 

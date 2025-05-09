@@ -1,6 +1,7 @@
 package renderer
 
 import (
+	"github.com/olekukonko/ll"
 	"github.com/olekukonko/tablewriter/tw"
 )
 
@@ -13,14 +14,14 @@ type Junction struct {
 	debug         func(format string, a ...interface{}) // Debug logging function
 	borderTint    Tint                                  // Colors for border symbols
 	separatorTint Tint                                  // Colors for separator symbols
+	logger        *ll.Logger
 }
 
 type JunctionContext struct {
 	Symbols       tw.Symbols
 	Ctx           tw.Formatting
 	ColIdx        int
-	Debugging     bool
-	Debug         func(format string, a ...interface{})
+	Logger        *ll.Logger
 	BorderTint    Tint
 	SeparatorTint Tint
 }
@@ -28,15 +29,11 @@ type JunctionContext struct {
 // NewJunction initializes a Junction with the given symbols, context, and tints.
 // If debug is nil, a no-op debug function is used.
 func NewJunction(ctx JunctionContext) *Junction {
-	if ctx.Debug == nil {
-		ctx.Debug = func(format string, a ...interface{}) {}
-	}
 	return &Junction{
 		sym:           ctx.Symbols,
 		ctx:           ctx.Ctx,
 		colIdx:        ctx.ColIdx,
-		debugging:     ctx.Debugging,
-		debug:         ctx.Debug,
+		logger:        ctx.Logger,
 		borderTint:    ctx.BorderTint,
 		separatorTint: ctx.SeparatorTint,
 	}

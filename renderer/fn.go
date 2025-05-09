@@ -6,8 +6,8 @@ import (
 	"github.com/olekukonko/tablewriter/tw"
 )
 
-// defaultOptions returns a default RendererConfig for ASCII table rendering with borders and light symbols.
-func defaultOptions() tw.RendererConfig {
+// defaultBlueprint returns a default RendererConfig for ASCII table rendering with borders and light symbols.
+func defaultBlueprint() tw.RendererConfig {
 	return tw.RendererConfig{
 		Borders: tw.Border{
 			Left:   tw.On,
@@ -31,7 +31,8 @@ func defaultOptions() tw.RendererConfig {
 			TrimWhitespace: tw.On,
 			CompactMode:    tw.Off,
 		},
-		Symbols: tw.NewSymbols(tw.StyleLight),
+		Symbols:   tw.NewSymbols(tw.StyleLight),
+		Streaming: true,
 	}
 }
 
@@ -76,7 +77,6 @@ func defaultColorized() ColorizedConfig {
 			BG: Colors{color.BgBlack},
 		},
 		Symbols: tw.NewSymbols(tw.StyleLight),
-		Debug:   false,
 	}
 }
 

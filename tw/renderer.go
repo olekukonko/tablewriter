@@ -1,6 +1,7 @@
 package tw
 
 import (
+	"github.com/olekukonko/ll"
 	"io"
 )
 
@@ -12,27 +13,28 @@ type Renderer interface {
 	Row(w io.Writer, row []string, ctx Formatting)          // Renders a single row
 	Footer(w io.Writer, footers [][]string, ctx Formatting) // Renders table footer
 	Line(w io.Writer, ctx Formatting)                       // Renders separator line
-	Debug() []string                                        // Returns debug trace
 	Config() RendererConfig                                 // Returns renderer config
 	Close(w io.Writer) error
+	Logger(logger *ll.Logger) // send logger to renderers
 }
 
 // RendererConfig holds the configuration for the default renderer.
 type RendererConfig struct {
-	Borders  Border   // Border visibility settings
-	Symbols  Symbols  // Symbols used for table drawing
-	Settings Settings // Rendering behavior settings
-	Debug    bool     // Enables debug mode
+	Borders   Border   // Border visibility settings
+	Symbols   Symbols  // Symbols used for table drawing
+	Settings  Settings // Rendering behavior settings
+	Streaming bool
 }
 
 // Formatting encapsulates the complete formatting context for a table row.
 // It provides all necessary information to render a row correctly within the table structure.
 type Formatting struct {
-	Row              RowContext // Detailed configuration for the row and its cells
-	Level            Level      // Hierarchical level (Header, Body, Footer) affecting line drawing
-	HasFooter        bool       // Indicates if the table includes a footer section
-	IsSubRow         bool       // Marks this as a continuation or padding line in multi-line rows
-	Debug            bool       // Enables debug logging when true
+	Row       RowContext // Detailed configuration for the row and its cells
+	Level     Level      // Hierarchical level (Header, Body, Footer) affecting line drawing
+	HasFooter bool       // Indicates if the table includes a footer section
+	IsSubRow  bool       // Marks this as a continuation or padding line in multi-line rows
+	//todo remove
+	Debug            bool // Enables debug logging when true
 	NormalizedWidths Mapper[int, int]
 }
 
@@ -69,7 +71,7 @@ type RowContext struct {
 	Previous     map[int]CellContext // Cells from the row above; nil if none
 	Next         map[int]CellContext // Cells from the row below; nil if none
 	Widths       Mapper[int, int]    // Computed widths for each column
-	ColMaxWidths map[int]int         // Maximum allowed width per column
+	ColMaxWidths CellWidth           // Maximum allowed width per column
 }
 
 func (r RowContext) GetCell(col int) CellContext {
@@ -110,3 +112,8 @@ type Border struct {
 
 // BorderNone defines a border configuration with all sides disabled.
 var BorderNone = Border{Left: Off, Right: Off, Top: Off, Bottom: Off}
+
+type StreamConfig struct {
+	Enable bool
+	Widths CellWidth // Cell/column widths
+}

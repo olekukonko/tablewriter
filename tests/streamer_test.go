@@ -1,188 +1,272 @@
-// tests/streamer_test.go
 package tests
 
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"testing"
-	"time" // Added for slow test
-
 	"github.com/olekukonko/tablewriter"
-	"github.com/olekukonko/tablewriter/streamer"
+	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
+	"strings"
+	"testing"
+	"time"
+	"unicode"
 )
 
-// Helper function (remains the same)
-func createOceanStreamTable(t *testing.T, w io.Writer, cfg streamer.OceanConfig, debug bool) (*tablewriter.TableStream, *streamer.Ocean) {
+// createStreamTable creates a TableStream with the  renderer for testing.
+func createStreamTable(t *testing.T, w *bytes.Buffer, opts ...tablewriter.Option) *tablewriter.Table {
 	t.Helper()
-	oceanRenderer, err := streamer.NewOcean(w, debug, cfg)
+	opts = append(opts, tablewriter.WithRenderer(renderer.NewBlueprint()))
+	return tablewriter.NewTable(w, opts...)
+}
+
+func TestStreamTableDefault(t *testing.T) {
+	var buf bytes.Buffer
+
+	t.Run("disabled", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf, tablewriter.WithStreaming(tw.StreamConfig{Enable: false}))
+
+		//err := table.Start()
+		//if err != nil {
+		//	t.Fatalf("Start failed: %v", err)
+		//}
+
+		table.Header([]string{"Name", "Age", "City"})
+		table.Append([]string{"Alice", "25", "New York"})
+		table.Append([]string{"Bob", "30", "Boston"})
+
+		//err = table.Close()
+		//if err != nil {
+		//	t.Fatalf("End failed: %v", err)
+		//}
+
+		table.Render()
+		expected := `
+	┌───────┬─────┬──────────┐
+	│ NAME  │ AGE │   CITY   │
+	├───────┼─────┼──────────┤
+	│ Alice │ 25  │ New York │
+	│ Bob   │ 30  │ Boston   │
+	└───────┴─────┴──────────┘
+`
+		debug := visualCheck(t, "BasicTableRendering", buf.String(), expected)
+		if !debug {
+			t.Error(table.Debug().String())
+		}
+	})
+
+	t.Run("enabled", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf, tablewriter.WithStreaming(tw.StreamConfig{Enable: true}), tablewriter.WithDebug(false))
+
+		err := table.Start()
+		if err != nil {
+			t.Fatalf("Start failed: %v", err)
+		}
+
+		table.Header([]string{"Name", "Age", "City"})
+		table.Append([]string{"Alice", "25", "New York"})
+		table.Append([]string{"Bob", "30", "Boston"})
+
+		err = table.Close()
+		if err != nil {
+			t.Fatalf("End failed: %v", err)
+		}
+
+		expected := `
+		┌────────┬────────┬────────┐
+		│  NAME  │  AGE   │  CITY  │
+		├────────┼────────┼────────┤
+		│ Alice  │ 25     │ New    │
+		│        │        │ York   │
+		│ Bob    │ 30     │ Boston │
+		└────────┴────────┴────────┘
+`
+		debug := visualCheck(t, "BasicTableRendering", buf.String(), expected)
+		if !debug {
+			t.Error(table.Debug().String())
+		}
+	})
+
+}
+
+// TestStreamBasic tests basic streaming table rendering with header, rows, and footer.
+func TestStreamBasic(t *testing.T) {
+	var buf bytes.Buffer
+
+	t.Run("TestStreamBasic", func(t *testing.T) {
+		buf.Reset()
+		st := createStreamTable(t, &buf,
+			tablewriter.WithConfig(tablewriter.Config{
+				Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
+				Row:    tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}},
+				Footer: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}}}),
+			tablewriter.WithDebug(false),
+			tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
+		)
+
+		err := st.Start()
+		if err != nil {
+			t.Fatalf("Start failed: %v", err)
+		}
+		st.Header([]string{"Name", "Age", "City"})
+		st.Append([]string{"Alice", "25", "New York"})
+		st.Append([]string{"Bob", "30", "Boston"})
+		st.Footer([]string{"Total", "55", "*"})
+		err = st.Close()
+		if err != nil {
+			t.Fatalf("End failed: %v", err)
+		}
+
+		// Widths: Name(5)+2=7, Age(3)+2=5, City(8)+2=10
+		expected := `
+		┌────────┬────────┬────────┐
+		│  NAME  │  AGE   │  CITY  │
+		├────────┼────────┼────────┤
+		│ Alice  │ 25     │ New    │
+		│        │        │ York   │
+		│ Bob    │ 30     │ Boston │
+		├────────┼────────┼────────┤
+		│ Total  │ 55     │ *      │
+		└────────┴────────┴────────┘
+`
+		if !visualCheck(t, "StreamBasic", buf.String(), expected) {
+			fmt.Println(st.Debug())
+			t.Fail()
+		}
+
+	})
+
+	t.Run("TestStreamBasicGlobal", func(t *testing.T) {
+		buf.Reset()
+		st := createStreamTable(t, &buf,
+			tablewriter.WithConfig(tablewriter.Config{
+				Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
+				Row:    tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}},
+				Footer: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignRight}}}),
+			tablewriter.WithDebug(false),
+			tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
+		)
+
+		err := st.Start()
+		if err != nil {
+			t.Fatalf("Start failed: %v", err)
+		}
+		st.Header([]string{"Name", "Age", "City"})
+		st.Append([]string{"Alice", "25", "New York"})
+		st.Append([]string{"Bob", "30", "Boston"})
+		st.Footer([]string{"Total", "55", "*"})
+
+		err = st.Close()
+		if err != nil {
+			t.Fatalf("End failed: %v", err)
+		}
+
+		// Widths: Name(5)+2=7, Age(3)+2=5, City(8)+2=10
+		expected := `
+		┌────────┬────────┬────────┐
+		│  NAME  │  AGE   │  CITY  │
+		├────────┼────────┼────────┤
+		│ Alice  │ 25     │ New    │
+		│        │        │ York   │
+		│ Bob    │ 30     │ Boston │
+		├────────┼────────┼────────┤
+		│  Total │     55 │      * │
+		└────────┴────────┴────────┘
+`
+		if !visualCheck(t, "StreamBasic", buf.String(), expected) {
+			fmt.Println(st.Debug())
+			t.Fail()
+		}
+
+	})
+
+}
+
+// TestStreamWithFooterAlign tests streaming table with footer and custom alignments.
+func TestStreamWithFooterAlign(t *testing.T) {
+	var buf bytes.Buffer
+	st := createStreamTable(t, &buf, tablewriter.WithConfig(tablewriter.Config{
+		Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
+		Row: tw.CellConfig{
+			Formatting:   tw.CellFormatting{Alignment: tw.AlignLeft},
+			ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignCenter, tw.AlignRight},
+		},
+		Footer: tw.CellConfig{
+			Formatting:   tw.CellFormatting{Alignment: tw.AlignRight},
+			ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignCenter, tw.AlignRight},
+		},
+	}),
+		tablewriter.WithDebug(false),
+		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}))
+
+	err := st.Start()
 	if err != nil {
-		t.Fatalf("Failed to create Ocean renderer: %v", err)
+		t.Fatalf("Start failed: %v", err)
 	}
-	st, err := tablewriter.NewStreamTable(w, oceanRenderer)
+	st.Header([]string{"Item", "Qty", "Price"})   // Widths: 4+2=6, 3+2=5, 5+2=7
+	st.Append([]string{"Item 1", "2", "1000.00"}) // Needs: 6+2=8, 1+2=3, 7+2=9
+	st.Append([]string{"Item 2", "10", "25.50"})  // Needs: 6+2=8, 2+2=4, 5+2=7
+	st.Footer([]string{"", "Total", "1025.50"})   // Needs: 0+2=2, 5+2=7, 7+2=9
+	err = st.Close()
 	if err != nil {
-		t.Fatalf("Failed to create TableStream: %v", err)
+		t.Fatalf("End failed: %v", err)
 	}
-	return st, oceanRenderer
-}
 
-// TestOceanStreamBasic (Passed before, should still pass)
-func TestOceanStreamBasic(t *testing.T) {
-	var buf bytes.Buffer
-	// Using ColumnWidths consistent with the previous expected output
-	cfg := streamer.OceanConfig{
-		ColumnWidths:   []int{9, 7, 12}, // Adjusted widths for default padding " "
-		ShowHeaderLine: true,
-	}
-	st, rendererInstance := createOceanStreamTable(t, &buf, cfg, false)
-
-	st.Start()
-	st.Header([]string{"Name", "Age", "City"})  // Content: 4, 3, 4. Avail: 7, 5, 10. Fits.
-	st.Row([]string{"Alice", "25", "New York"}) // Content: 5, 2, 8. Avail: 7, 5, 10. Fits.
-	st.Row([]string{"Bob", "30", "Boston"})     // Content: 3, 2, 6. Avail: 7, 5, 10. Fits.
-	st.End()
-
+	// Max widths: [8, 7, 9]
 	expected := `
-        ┌─────────┬───────┬────────────┐
-        │  Name   │  Age  │    City    │
-        ├─────────┼───────┼────────────┤
-        │ Alice   │ 25    │ New York   │
-        │ Bob     │ 30    │ Boston     │
-        └─────────┴───────┴────────────┘
+		┌────────┬────────┬─────────┐
+		│  ITEM  │  QTY   │  PRICE  │
+		├────────┼────────┼─────────┤
+		│ Item 1 │   2    │ 1000.00 │
+		│ Item 2 │   10   │   25.50 │
+		├────────┼────────┼─────────┤
+		│        │ Total  │ 1025.50 │
+		└────────┴────────┴─────────┘
 `
-	if !visualCheck(t, "OceanStreamBasic", buf.String(), expected) {
+	if !visualCheck(t, "StreamWithFooterAlign", buf.String(), expected) {
 		fmt.Println("--- DEBUG LOG ---")
-		for _, msg := range rendererInstance.Debug() {
-			fmt.Println(msg)
-		}
+		fmt.Println(st.Debug().String())
 		t.Fail()
 	}
 }
 
-// TestOceanStreamNoHeaderASCII (Fixing widths and expected)
-func TestOceanStreamNoHeaderASCII(t *testing.T) {
+// TestStreamNoHeaderASCII tests streaming table without header using ASCII symbols.
+func TestStreamNoHeaderASCII(t *testing.T) {
 	var buf bytes.Buffer
-	// Let's use widths that allow the content + default padding " "
-	// "Regular" (7) needs 1+7+1=9
-	// "line" (4) needs 1+4+1=6
-	// "1" (1) needs 1+1+1=3
-	// "Thick" (5) needs 1+5+1=7 (use 9)
-	// "thick" (5) needs 1+5+1=7 (use 7)
-	// "2" (1) needs 1+1+1=3 (use 3)
-	// Choose max: [9, 7, 3]
-	cfg := streamer.OceanConfig{
-		ColumnWidths: []int{9, 7, 3},
-		Symbols:      tw.NewSymbols(tw.StyleASCII),
-		Borders:      tw.Border{Left: tw.On, Right: tw.On, Top: tw.On, Bottom: tw.On},
-		RowAlign:     tw.AlignLeft, // Explicit for clarity
+	st := tablewriter.NewTable(&buf,
+		tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}}}),
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{Symbols: tw.NewSymbols(tw.StyleASCII)})),
+		tablewriter.WithDebug(true),
+		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
+	)
+	err := st.Start()
+	if err != nil {
+		t.Fatalf("Start failed: %v", err)
 	}
-	st, _ := createOceanStreamTable(t, &buf, cfg, false)
+	st.Append([]string{"Regular", "line", "1"}) // Widths: 7+2=9, 4+2=6, 1+2=3
+	st.Append([]string{"Thick", "thick", "2"})
 
-	st.Start()
-	st.Row([]string{"Regular", "line", "1"}) // Fits: 7<=7, 4<=5, 1<=1
-	st.Row([]string{"Thick", "thick", "2"})  // Fits: 5<=7, 5<=5, 1<=1
-	st.End()
-
-	// Expected with widths [9, 7, 3] and left align
-	expected := `
-+---------+-------+---+
-| Regular | line  | 1 |
-| Thick   | thick | 2 |
-+---------+-------+---+
-`
-	visualCheck(t, "OceanStreamNoHeaderASCII", buf.String(), expected)
-}
-
-// TestOceanStreamWithFooterAlign (Fixing widths and expected)
-func TestOceanStreamWithFooterAlign(t *testing.T) {
-	var buf bytes.Buffer
-	// Header: ITEM(4) QTY(3) PRICE(5). Center Align. Widths needed: 6, 5, 7
-	// Row 1: Item 1(6) 2(1) 1000.00(7). Align L,C,R. Widths needed: 8, 3, 9
-	// Row 2: Item 2(6) 10(2) 25.50(5). Align L,C,R. Widths needed: 8, 4, 7
-	// Footer: ""(-) Total(5) 1025.50(7). Align L,C,R. Widths needed: 2, 7, 9
-	// Max widths needed: [8, 7, 9]
-	cfg := streamer.OceanConfig{
-		ColumnWidths:   []int{8, 7, 9},
-		ColumnAligns:   []tw.Align{tw.AlignLeft, tw.AlignCenter, tw.AlignRight}, // Specific column aligns
-		HeaderAlign:    tw.AlignCenter,                                          // Default for Header
-		FooterAlign:    tw.AlignRight,                                           // Default for Footer (but ColumnAligns overrides)
-		ShowHeaderLine: true,
-		ShowFooterLine: true,
+	err = st.Close()
+	if err != nil {
+		t.Fatalf("End failed: %v", err)
 	}
-	st, rendererInstance := createOceanStreamTable(t, &buf, cfg, false)
 
-	st.Start()
-	st.Header([]string{"Item", "Qty", "Price"})
-	st.Row([]string{"Item 1", "2", "1000.00"})
-	st.Row([]string{"Item 2", "10", "25.50"})
-	st.Footer([]string{"", "Total", "1025.50"})
-	st.End()
-
-	// Expected with widths [8, 7, 9] and alignments L, C, R
 	expected := `
-        ┌────────┬───────┬─────────┐
-        │ Item   │  Qty  │   Price │
-        ├────────┼───────┼─────────┤
-        │ Item 1 │   2   │ 1000.00 │
-        │ Item 2 │  10   │   25.50 │
-        ├────────┼───────┼─────────┤
-        │        │ Total │ 1025.50 │
-        └────────┴───────┴─────────┘
+	+-----------+--------+--------+
+	| Regular   | line   | 1      |
+	| Thick     | thick  | 2      |
+	+-----------+--------+--------+
 `
-	if !visualCheck(t, "OceanStreamWithFooterAlign", buf.String(), expected) {
-		fmt.Println("--- DEBUG LOG ---")
-		for _, msg := range rendererInstance.Debug() {
-			fmt.Println(msg)
-		}
+	if !visualCheck(t, "StreamNoHeaderASCII", buf.String(), expected) {
+		fmt.Println(st.Debug().String())
 		t.Fail()
 	}
 }
 
-// TestOceanStreamTruncation (Fixing widths and expected)
-func TestOceanStreamTruncation(t *testing.T) {
-	var buf bytes.Buffer
-	// Choose widths: ID(4), Desc(15), Status(6) -> Default padding " "
-	// Avail content: 2, 13, 4
-	cfg := streamer.OceanConfig{
-		ColumnWidths:   []int{4, 15, 8}, // Increased status width slightly
-		ShowHeaderLine: true,
-		HeaderAlign:    tw.AlignCenter,
-		RowAlign:       tw.AlignLeft,
-	}
-	st, rendererInstance := createOceanStreamTable(t, &buf, cfg, false)
-
-	st.Start()
-	st.Header([]string{"ID", "Description", "Status"})                  // Fits: 2<=2, 11<=13, 6<=6
-	st.Row([]string{"1", "This description is quite long", "OK"})       // Truncate: 1<=2, 30 > 13 -> "This descript…"(13), 2<=6
-	st.Row([]string{"2", "Short desc", "DONE"})                         // Fits: 1<=2, 10<=13, 4<=6
-	st.Row([]string{"3", "Another long one needing truncation", "ERR"}) // Truncate: 1<=2, 35 > 13 -> "Another long …"(13), 3<=6
-	st.End()
-
-	// Expected with widths [4, 15, 8]
-	expected := `
-        ┌────┬───────────────┬────────┐
-        │ ID │  Description  │ Status │
-        ├────┼───────────────┼────────┤
-        │ 1  │ This descrip… │ OK     │
-        │ 2  │ Short desc    │ DONE   │
-        │ 3  │ Another long… │ ERR    │
-        └────┴───────────────┴────────┘
-`
-	if !visualCheck(t, "OceanStreamTruncation", buf.String(), expected) {
-		fmt.Println("--- DEBUG LOG ---")
-		for _, msg := range rendererInstance.Debug() {
-			fmt.Println(msg)
-		}
-		t.Fail()
-	}
-}
-
-// TestOceanStreamBorders (Fixing widths and expected)
-func TestOceanStreamBorders(t *testing.T) {
+func TestBorders(t *testing.T) {
 	data := [][]string{{"A", "B"}, {"C", "D"}}
-	// Use width 3 => content avail 1. 'A', 'B', 'C', 'D' fit.
-	widths := []int{3, 3}
+	//widths := map[int]int{0: 3, 1: 3} // Content (1) + padding (1+1) = 3
 
 	tests := []struct {
 		name     string
@@ -190,39 +274,44 @@ func TestOceanStreamBorders(t *testing.T) {
 		expected string
 	}{
 		{
-			"All Off",
-			tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
-			` A │ B 
- C │ D 
-`, // Space for default padding around A, B, C, D
+			name:    "All Off",
+			borders: tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
+			expected: `
+A │ B
+C │ D
+`,
 		},
 		{
-			"No Left/Right",
-			tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.On, Bottom: tw.On},
-			`───┬───
- A │ B 
- C │ D 
+			name:    "No Left/Right",
+			borders: tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.On, Bottom: tw.On},
+			expected: `
+───┬───
+A │ B
+C │ D
 ───┴───
 `,
 		},
 		{
-			"No Top/Bottom",
-			tw.Border{Left: tw.On, Right: tw.On, Top: tw.Off, Bottom: tw.Off},
-			`│ A │ B │
+			name:    "No Top/Bottom",
+			borders: tw.Border{Left: tw.On, Right: tw.On, Top: tw.Off, Bottom: tw.Off},
+			expected: `
+│ A │ B │
 │ C │ D │
 `,
 		},
 		{
-			"Only Left",
-			tw.Border{Left: tw.On, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
-			`│ A │ B 
-│ C │ D 
+			name:    "Only Left",
+			borders: tw.Border{Left: tw.On, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
+			expected: `
+│ A │ B
+│ C │ D
 `,
 		},
 		{
-			"Default (All On in Ocean's default)",
-			tw.Border{},
-			`┌───┬───┐
+			name:    "Default",
+			borders: tw.Border{Left: tw.On, Right: tw.On, Top: tw.On, Bottom: tw.On},
+			expected: `
+┌───┬───┐
 │ A │ B │
 │ C │ D │
 └───┴───┘
@@ -233,328 +322,364 @@ func TestOceanStreamBorders(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			cfg := streamer.OceanConfig{
-				ColumnWidths: widths,
-				RowAlign:     tw.AlignLeft,
-			}
-			if tt.name != "Default (All On in Ocean's default)" {
-				cfg.Borders = tt.borders
-			}
-			st, rendererInstance := createOceanStreamTable(t, &buf, cfg, false)
 
-			st.Start()
-			st.Row(data[0])
-			st.Row(data[1])
-			st.End()
+			r := renderer.NewBlueprint(
+				tw.RendererConfig{
+					Borders: tt.borders,
+				},
+			)
+			st := tablewriter.NewTable(&buf,
+				tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}}}),
+				tablewriter.WithRenderer(r),
+				tablewriter.WithDebug(true),
+			)
 
-			if !visualCheck(t, "OceanStreamBorders_"+tt.name, buf.String(), tt.expected) {
+			st.Append(data[0])
+			st.Append(data[1])
+			err := st.Render()
+			if err != nil {
+				t.Fatalf("End failed: %v", err)
+			}
+
+			if !visualCheck(t, "StreamBorders_"+tt.name, buf.String(), tt.expected) {
 				fmt.Printf("--- DEBUG LOG for %s ---\n", tt.name)
-				for _, msg := range rendererInstance.Debug() {
-					fmt.Println(msg)
-				}
+				fmt.Println(st.Debug().String())
 				t.Fail()
 			}
 		})
 	}
 }
 
-// TestOceanStreamCustomPadding (Fixing widths and expected)
-func TestOceanStreamCustomPadding(t *testing.T) {
+// TestStreamTruncation tests streaming table with long content truncation.
+func TestStreamTruncation(t *testing.T) {
 	var buf bytes.Buffer
-	// Padding L=">>"(2), R="<<"(2). Total pad=4.
-	// Let's target width 7 for the cell. Avail content = 7-2-2 = 3.
-	// Header "Head1"(5) > 3. Truncate. avail(3) >= suffix(1). Truncate to 3-1=2. "He"+... = "He…" (width 3).
-	// Row "R1C1"(4) > 3. Truncate. avail(3) >= suffix(1). Truncate to 3-1=2. "R1"+... = "R1…" (width 3).
-	cfg := streamer.OceanConfig{
-		ColumnWidths:   []int{7, 7},
-		Padding:        tw.Padding{Left: ">>", Right: "<<"},
-		ShowHeaderLine: true,
-		HeaderAlign:    tw.AlignCenter,
-		RowAlign:       tw.AlignLeft,
+	st := createStreamTable(t, &buf,
+		tablewriter.WithConfig(
+			tablewriter.Config{
+				Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
+				Row: tw.CellConfig{
+					Formatting: tw.CellFormatting{Alignment: tw.AlignLeft, AutoWrap: tw.WrapTruncate, MaxWidth: 13},
+				},
+				Stream: tw.StreamConfig{
+					Enable: true,
+					Widths: tw.CellWidth{
+						PerColumn: map[int]int{0: 4, 1: 15, 2: 8},
+					},
+				},
+			}))
+
+	err := st.Start()
+	if err != nil {
+		t.Fatalf("Start failed: %v", err)
 	}
-	st, rendererInstance := createOceanStreamTable(t, &buf, cfg, false)
+	st.Header([]string{"ID", "Description", "Status"})                     // Fits: 2<=4, 11<=15, 6<=8
+	st.Append([]string{"1", "This description is quite long", "OK"})       // Truncates: 1<=4, 30>15 -> "This descript…", 2<=8
+	st.Append([]string{"2", "Short desc", "DONE"})                         // Fits: 1<=4, 10<=15, 4<=8
+	st.Append([]string{"3", "Another long one needing truncation", "ERR"}) // Truncates: 1<=4, 35>15 -> "Another long …", 3<=8
+	err = st.Close()
+	if err != nil {
+		t.Fatalf("End failed: %v", err)
+	}
 
-	st.Start()
-	st.Header([]string{"Head1", "Head2"})
-	st.Row([]string{"R1C1", "R1C2"})
-	st.End()
+	// Widths: [4, 15, 8]
+	expected := `
+        ┌────┬───────────────┬────────┐
+        │ ID │  DESCRIPTION  │ STATUS │
+        ├────┼───────────────┼────────┤
+        │ 1  │ This descri…  │ OK     │
+        │ 2  │ Short desc    │ DONE   │
+        │ 3  │ Another lon…  │ ERR    │
+        └────┴───────────────┴────────┘
+`
+	if !visualCheck(t, "StreamTruncation", buf.String(), expected) {
+		fmt.Println("--- DEBUG LOG ---")
+		fmt.Println(st.Debug().String())
+		t.Fail()
+	}
+}
 
-	// Expected cell content: "He…" and "R1…"
-	// Final cell string: ">>" + "He…" + "<<" = ">>He…<<" (width 2+3+2=7)
-	// Final cell string: ">>" + "R1…" + "<<" = ">>R1…<<" (width 2+3+2=7)
+// TestStreamCustomPadding tests streaming table with custom padding.
+func TestStreamCustomPadding(t *testing.T) {
+	var buf bytes.Buffer
+	st := createStreamTable(t, &buf, tablewriter.WithConfig(tablewriter.Config{
+		Header: tw.CellConfig{
+			Padding: tw.CellPadding{Global: tw.Padding{Left: ">>", Right: "<<"}},
+		},
+		Row: tw.CellConfig{
+			Padding: tw.CellPadding{Global: tw.Padding{Left: ">>", Right: "<<"}},
+		},
+		Stream: tw.StreamConfig{
+			Enable: true,
+			Widths: tw.CellWidth{
+				PerColumn: map[int]int{0: 7, 1: 7},
+			},
+		},
+	}),
+		tablewriter.WithDebug(true))
+
+	err := st.Start()
+	if err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+	st.Header([]string{"Head1", "Head2"}) // Truncates: 5>3 -> "He…"
+	st.Append([]string{"R1C1", "R1C2"})   // Truncates: 4>3 -> "R1…"
+	err = st.Close()
+	if err != nil {
+		t.Fatalf("End failed: %v", err)
+	}
+
 	expected := `
         ┌───────┬───────┐
-        │>>He…<<│>>He…<<│
+        │>>H…<< │>>H…<< │
         ├───────┼───────┤
-        │>>R1…<<│>>R1…<<│
+        │>>R1C<<│>>R1C<<│
         └───────┴───────┘
 `
-	if !visualCheck(t, "OceanStreamCustomPadding", buf.String(), expected) {
+	if !visualCheck(t, "StreamCustomPadding", buf.String(), expected) {
 		fmt.Println("--- DEBUG LOG ---")
-		for _, msg := range rendererInstance.Debug() { // Use rendererInstance
-			fmt.Println(msg)
-		}
+		fmt.Println(st.Debug().String())
 		t.Fail()
 	}
 }
 
-// TestOceanStreamErrors (Should pass as is, no expected output changes needed)
-func TestOceanStreamErrors(t *testing.T) {
+// TestStreamEmptyCells tests streaming table with empty and sparse cells.
+func TestStreamEmptyCells(t *testing.T) {
 	var buf bytes.Buffer
+	st := createStreamTable(t, &buf, tablewriter.WithConfig(tablewriter.Config{
+		Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
+		Row:    tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}},
+		Stream: tw.StreamConfig{
+			Enable: true,
+			Widths: tw.CellWidth{
+				Global: 20,
+			}},
+	}),
+		tablewriter.WithDebug(true))
 
-	t.Run("NewOcean No ColumnWidths", func(t *testing.T) {
-		_, err := streamer.NewOcean(&buf, false, streamer.OceanConfig{})
-		if err == nil {
-			t.Error("Expected error for missing ColumnWidths, got nil")
-		} else {
-			t.Logf("Got expected error: %v", err)
-		}
-	})
-
-	t.Run("NewOcean Invalid ColumnWidth (zero)", func(t *testing.T) {
-		_, err := streamer.NewOcean(&buf, false, streamer.OceanConfig{ColumnWidths: []int{5, 0}})
-		if err == nil {
-			t.Error("Expected error for zero ColumnWidth, got nil")
-		} else {
-			// The message should reflect the padding check now
-			t.Logf("Got expected error: %v", err)
-		}
-	})
-
-	t.Run("NewOcean Invalid ColumnWidth (too small for padding)", func(t *testing.T) {
-		_, err := streamer.NewOcean(&buf, false, streamer.OceanConfig{
-			ColumnWidths: []int{5, 1},
-			Padding:      tw.Padding{Left: " ", Right: " "},
-		})
-		if err == nil {
-			t.Error("Expected error for too small ColumnWidth with padding, got nil")
-		} else {
-			t.Logf("Got expected error: %v", err)
-		}
-	})
-
-	t.Run("NewOcean Mismatched ColumnAligns", func(t *testing.T) {
-		_, err := streamer.NewOcean(&buf, false, streamer.OceanConfig{
-			ColumnWidths: []int{5, 5},
-			ColumnAligns: []tw.Align{tw.AlignLeft},
-		})
-		if err == nil {
-			t.Error("Expected error for mismatched ColumnAligns length, got nil")
-		} else {
-			t.Logf("Got expected error: %v", err)
-		}
-	})
-
-	t.Run("NewStreamTable Nil Renderer", func(t *testing.T) {
-		_, err := tablewriter.NewStreamTable(&buf, nil)
-		if err == nil {
-			t.Error("Expected error for nil renderer, got nil")
-		} else {
-			t.Logf("Got expected error: %v", err)
-		}
-	})
-
-	t.Run("NewStreamTable Nil Writer", func(t *testing.T) {
-		dummyOceanWriter := &bytes.Buffer{}
-		oceanCfg := streamer.OceanConfig{ColumnWidths: []int{10}}
-		r, _ := streamer.NewOcean(dummyOceanWriter, false, oceanCfg)
-		_, err := tablewriter.NewStreamTable(nil, r)
-		if err == nil {
-			t.Error("Expected error for nil writer, got nil")
-		} else {
-			t.Logf("Got expected error: %v", err)
-		}
-	})
-
-	t.Run("TableStream Call Before Start", func(t *testing.T) {
-		var streamBuf bytes.Buffer
-		oceanCfg := streamer.OceanConfig{ColumnWidths: []int{10}}
-		oceanRenderer, _ := streamer.NewOcean(&streamBuf, false, oceanCfg)
-		st, _ := tablewriter.NewStreamTable(&streamBuf, oceanRenderer)
-
-		err := st.Header([]string{"H"})
-		if err == nil {
-			t.Error("Expected error calling Header before Start, got nil")
-		} else {
-			t.Logf("Got expected Header error: %v", err)
-		}
-		err = st.Row([]string{"R"})
-		if err == nil {
-			t.Error("Expected error calling Row before Start, got nil")
-		} else {
-			t.Logf("Got expected Row error: %v", err)
-		}
-		err = st.Footer([]string{"F"})
-		if err == nil {
-			t.Error("Expected error calling Footer before Start, got nil")
-		} else {
-			t.Logf("Got expected Footer error: %v", err)
-		}
-		err = st.End()
-		if err == nil {
-			t.Error("Expected error calling End before Start, got nil")
-		} else {
-			t.Logf("Got expected End error: %v", err)
-		}
-	})
-}
-
-// TestOceanStreamEmptyCells (Fixing widths and expected)
-func TestOceanStreamEmptyCells(t *testing.T) {
-	var buf bytes.Buffer
-	// Choose widths [5, 6, 5]. Avail content [3, 4, 3]
-	cfg := streamer.OceanConfig{
-		ColumnWidths:   []int{5, 6, 5},
-		ShowHeaderLine: true,
-		HeaderAlign:    tw.AlignCenter,
-		RowAlign:       tw.AlignLeft,
+	err := st.Start()
+	if err != nil {
+		t.Fatalf("Start failed: %v", err)
 	}
-	st, rendererInstance := createOceanStreamTable(t, &buf, cfg, false)
+	st.Header([]string{"H1", "", "H3"})     // Widths: 2+2=4, 0+2=2->3, 2+2=4
+	st.Append([]string{"", "R1C2", ""})     // Needs: 0+2=2, 4+2=6, 0+2=2
+	st.Append([]string{"R2C1", "", "R2C3"}) // Needs: 4+2=6, 0+2=2, 4+2=6
+	st.Append([]string{"", "", ""})         // Needs: 0+2=2, 0+2=2, 0+2=2
+	err = st.Close()
+	if err != nil {
+		t.Fatalf("End failed: %v", err)
+	}
 
-	st.Start()
-	st.Header([]string{"H1", "", "H3"})  // Fits: 2<=3, 0<=4, 2<=3
-	st.Row([]string{"", "R1C2", ""})     // Fits: 0<=3, 4<=4, 0<=3
-	st.Row([]string{"R2C1", "", "R2C3"}) // Fits: 4>3 ->"R2…", 0<=4, 4>3 ->"R2…"
-	st.Row([]string{"", "", ""})         // Fits: 0<=3, 0<=4, 0<=3
-	st.End()
-
-	// Expected with widths [5, 6, 5]
+	// Max widths: [6, 6, 6]
 	expected := `
-┌─────┬──────┬─────┐
-│ H1  │      │ H3  │
-├─────┼──────┼─────┤
-│     │ R1C2 │     │
-│ R2… │      │ R2… │
-│     │      │     │
-└─────┴──────┴─────┘
+		┌──────┬──────┬──────┐
+		│ H 1  │      │ H 3  │
+		├──────┼──────┼──────┤
+		│      │ R1C2 │      │
+		│ R2C1 │      │ R2C3 │
+		│      │      │      │
+		└──────┴──────┴──────┘
 `
-	if !visualCheck(t, "OceanStreamEmptyCells", buf.String(), expected) {
+	if !visualCheck(t, "StreamEmptyCells", buf.String(), expected) {
 		fmt.Println("--- DEBUG LOG ---")
-		for _, msg := range rendererInstance.Debug() {
-			fmt.Println(msg)
-		}
+		fmt.Println(st.Debug().String())
 		t.Fail()
 	}
 }
 
-// TestOceanStreamOnlyHeader (Fixing widths and expected)
-func TestOceanStreamOnlyHeader(t *testing.T) {
+// TestStreamOnlyHeader tests streaming table with only a header.
+func TestStreamOnlyHeader(t *testing.T) {
 	var buf bytes.Buffer
-	// Widths [9, 9]. Avail content [7, 7]
-	cfg := streamer.OceanConfig{
-		ColumnWidths:   []int{9, 9},
-		ShowHeaderLine: true,
-		HeaderAlign:    tw.AlignCenter,
+	st := createStreamTable(t, &buf, tablewriter.WithConfig(tablewriter.Config{
+		Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
+	}),
+		tablewriter.WithDebug(true),
+		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}))
+
+	err := st.Start()
+	if err != nil {
+		t.Fatalf("Start failed: %v", err)
 	}
-	st, _ := createOceanStreamTable(t, &buf, cfg, false)
+	st.Header([]string{"Header1", "Header2"}) // Widths: 7+2=9, 7+2=9
+	err = st.Close()
+	if err != nil {
+		t.Fatalf("End failed: %v", err)
+	}
 
-	st.Start()
-	st.Header([]string{"Header1", "Header2"}) // Fits: 7<=7
-	st.End()
-
-	// Expected with widths [9, 9]
 	expected := `
-┌─────────┬─────────┐
-│ Header1 │ Header2 │
-├─────────┼─────────┤
-└─────────┴─────────┘
+        ┌───────────┬───────────┐
+        │ HEADER 1  │ HEADER 2  │
+        └───────────┴───────────┘
 `
-	visualCheck(t, "OceanStreamOnlyHeader", buf.String(), expected)
+	if !visualCheck(t, "StreamOnlyHeader", buf.String(), expected) {
+		fmt.Println("--- DEBUG LOG ---")
+		fmt.Println(st.Debug().String())
+		t.Fail()
+	}
 }
 
-// TestOceanStreamOnlyHeaderNoHeaderLine (Fixing widths and expected)
-func TestOceanStreamOnlyHeaderNoHeaderLine(t *testing.T) {
+// TestStreamOnlyHeaderNoHeaderLine tests streaming table with only a header and no header line.
+func TestStreamOnlyHeaderNoHeaderLine(t *testing.T) {
 	var buf bytes.Buffer
-	// Widths [9, 9]. Avail content [7, 7]
-	cfg := streamer.OceanConfig{
-		ColumnWidths:   []int{9, 9},
-		ShowHeaderLine: false,
-		HeaderAlign:    tw.AlignCenter,
+	st := createStreamTable(t, &buf, tablewriter.WithConfig(tablewriter.Config{
+		Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
+	}),
+		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
+	)
+
+	err := st.Start()
+	if err != nil {
+		t.Fatalf("Start failed: %v", err)
 	}
-	st, _ := createOceanStreamTable(t, &buf, cfg, false)
+	st.Header([]string{"Header1", "Header2"}) // Fits: 7<=9, 7<=9
+	err = st.Close()
+	if err != nil {
+		t.Fatalf("End failed: %v", err)
+	}
 
-	st.Start()
-	st.Header([]string{"Header1", "Header2"}) // Fits: 7<=7
-	st.End()
-
-	// Expected with widths [9, 9]
 	expected := `
-┌─────────┬─────────┐
-│ Header1 │ Header2 │
-└─────────┴─────────┘
+        ┌───────────┬───────────┐
+        │ HEADER 1  │ HEADER 2  │
+        └───────────┴───────────┘
 `
-	visualCheck(t, "OceanStreamOnlyHeaderNoHeaderLine", buf.String(), expected)
+	if !visualCheck(t, "StreamOnlyHeaderNoHeaderLine", buf.String(), expected) {
+		fmt.Println("--- DEBUG LOG ---")
+		fmt.Println(st.Debug().String())
+		t.Fail()
+	}
 }
 
-// TestOceanStreamSlowOutput (No expected output changes needed, just observation)
-func TestOceanStreamSlowOutput(t *testing.T) {
+// TestStreamSlowOutput tests streaming table with incremental output and delays.
+func TestStreamSlowOutput(t *testing.T) {
 	var buf bytes.Buffer
-	// Using widths that should fit the content comfortably
-	cfg := streamer.OceanConfig{
-		ColumnWidths:   []int{15, 15},
-		ShowHeaderLine: true,
-		HeaderAlign:    tw.AlignCenter,
-		RowAlign:       tw.AlignLeft,
-	}
-	st, rendererInstance := createOceanStreamTable(t, &buf, cfg, false)
-
-	fmt.Println("Starting slow stream test...") // User prompt
+	st := createStreamTable(t, &buf, tablewriter.WithConfig(tablewriter.Config{
+		Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
+		Row:    tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}},
+	}),
+		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
+	)
 
 	err := st.Start()
 	if err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
 	fmt.Println("Output after Start():")
-	fmt.Print(buf.String()) // Print incremental output
+	fmt.Print(buf.String())
 	buf.Reset()
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
-	err = st.Header([]string{"Event", "Timestamp"})
-	if err != nil {
-		t.Fatalf("Header failed: %v", err)
-	}
+	st.Header([]string{"Event", "Timestamp"}) // Widths: 5+2=7, 9+2=11
 	fmt.Println("\nOutput after Header():")
 	fmt.Print(buf.String())
 	buf.Reset()
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	for i := 1; i <= 3; i++ {
-		err = st.Row([]string{fmt.Sprintf("Data Row %d", i), time.Now().Format("15:04:05.000")})
+		err = st.Append([]string{fmt.Sprintf("Data Row %d", i), time.Now().Format("15:04:05.000")})
 		if err != nil {
 			t.Fatalf("Row %d failed: %v", i, err)
 		}
 		fmt.Printf("\nOutput after Row %d:\n", i)
 		fmt.Print(buf.String())
 		buf.Reset()
-		time.Sleep(1 * time.Second)
+		time.Sleep(100 * time.Millisecond)
 	}
 
-	err = st.End()
+	err = st.Close()
 	if err != nil {
 		t.Fatalf("End failed: %v", err)
 	}
 	fmt.Println("\nOutput after End():")
-	fmt.Print(buf.String()) // Print final part
-
-	fmt.Println("\n--- Full Output (Conceptual) ---") // Explain full output not captured incrementally
-
-	// Conceptual check if needed - build the expected structure manually
-	// var finalBuf bytes.Buffer
-	// stFinal, _ := createOceanStreamTable(t, &finalBuf, cfg, false)
-	// stFinal.Start()
-	// stFinal.Header([]string{"Event", "Timestamp"})
-	// stFinal.Row([]string{"Data Row 1", "HH:MM:SS.mmm"})
-	// stFinal.Row([]string{"Data Row 2", "HH:MM:SS.mmm"})
-	// stFinal.Row([]string{"Data Row 3", "HH:MM:SS.mmm"})
-	// stFinal.End()
-	// expectedFull := `...`
-	// visualCheck(t, "OceanStreamSlowOutput Full", finalBuf.String(), expectedFull) // Would fail on timestamps
+	fmt.Print(buf.String())
 
 	t.Log("Slow stream test completed. Observe terminal output.")
-	if len(rendererInstance.Debug()) > 0 {
+	if st.Logger().Len() > 0 {
 		fmt.Println("--- DEBUG LOG ---")
-		for _, msg := range rendererInstance.Debug() {
-			fmt.Println(msg)
-		}
+		fmt.Println(st.Debug().String())
 	}
+}
+
+type Name struct {
+	First string
+	Last  string
+}
+
+// this will be ignored since  Format() is present
+func (n Name) String() string {
+	return fmt.Sprintf("%s %s", n.First, n.Last)
+}
+
+// Note: Format() overrides String() if both exist.
+func (n Name) Format() string {
+	return fmt.Sprintf("%s %s", n.clean(n.First), n.clean(n.Last))
+}
+
+// clean ensures the first letter is capitalized and the rest are lowercase
+func (n Name) clean(s string) string {
+	s = strings.TrimSpace(strings.ToLower(s))
+	words := strings.Fields(s)
+	s = strings.Join(words, "")
+
+	if s == "" {
+		return s
+	}
+	// Capitalize the first letter
+	runes := []rune(s)
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
+}
+
+type Age int
+
+// Age int will be ignore and string will be used
+func (a Age) String() string {
+	return fmt.Sprintf("%d yrs", a)
+}
+
+func TestStreamFormating(t *testing.T) {
+	var buf bytes.Buffer
+
+	st := createStreamTable(t, &buf,
+		tablewriter.WithConfig(tablewriter.Config{
+			Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
+			Row:    tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}},
+			Footer: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}}}),
+		tablewriter.WithDebug(true),
+		tablewriter.WithStreaming(tw.StreamConfig{
+			Enable: true,
+			Widths: tw.CellWidth{PerColumn: map[int]int{0: 12, 1: 8, 2: 10}},
+		}),
+	)
+
+	err := st.Start()
+	if err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+
+	data := [][]any{
+		{Name{"Al  i  CE", " Ma  SK"}, Age(25), "New York"},
+		{Name{"bOb", "mar   le   y"}, Age(30), "Boston"},
+	}
+
+	st.Header([]string{"Name", "Age", "City"})
+	st.Bulk(data)
+
+	err = st.Close()
+	if err != nil {
+		t.Fatalf("End failed: %v", err)
+	}
+
+	// Widths: Name(5)+2=7, Age(3)+2=5, City(8)+2=10
+	expected := `
+		┌────────────┬────────┬──────────┐
+		│    NAME    │  AGE   │   CITY   │
+		├────────────┼────────┼──────────┤
+		│ Alice Mask │ 25 yrs │ New York │
+		│ Bob Marley │ 30 yrs │ Boston   │
+		└────────────┴────────┴──────────┘
+`
+	if !visualCheck(t, "StreamBasic", buf.String(), expected) {
+		fmt.Println(st.Debug())
+		t.Fail()
+	}
+
 }

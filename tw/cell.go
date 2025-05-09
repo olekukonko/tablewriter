@@ -35,5 +35,10 @@ type CellConfig struct {
 	Callbacks    CellCallbacks  // Callback functions (unused)
 	Filter       CellFilter     // Function to filter cell content (renamed from Filter Filter)
 	ColumnAligns []Align        // Per-column alignment overrides
-	ColMaxWidths map[int]int    // Per-column maximum width overrides
+	ColMaxWidths CellWidth      // Per-column maximum width overrides
+}
+
+type CellWidth struct {
+	Global    int
+	PerColumn Mapper[int, int]
 }

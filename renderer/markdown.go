@@ -2,6 +2,7 @@ package renderer
 
 import (
 	"fmt"
+	"github.com/olekukonko/ll"
 	"io"
 	"strings"
 
@@ -12,13 +13,13 @@ import (
 // Markdown renders tables in Markdown format with customizable settings.
 type Markdown struct {
 	config tw.RendererConfig // Rendering configuration
-	trace  []string          // Debug trace messages
+	logger *ll.Logger        // Debug trace messages
 }
 
 // NewMarkdown initializes a Markdown renderer with defaults tailored for Markdown (e.g., pipes, header separator).
 // Only the first config is used if multiple are provided.
 func NewMarkdown(configs ...tw.RendererConfig) *Markdown {
-	cfg := defaultOptions()
+	cfg := defaultBlueprint()
 	// Configure Markdown-specific defaults
 	cfg.Symbols = tw.NewSymbols(tw.StyleMarkdown)
 	cfg.Borders = tw.Border{Left: tw.On, Right: tw.On, Top: tw.Off, Bottom: tw.Off}
@@ -53,26 +54,16 @@ func mergeMarkdownConfig(defaults, overrides tw.RendererConfig) tw.RendererConfi
 	defaults.Settings.Lines.ShowHeaderLine = tw.On
 	defaults.Settings.Separators.BetweenColumns = tw.On
 	defaults.Settings.TrimWhitespace = tw.On
-	defaults.Debug = overrides.Debug
 	return defaults
+}
+
+func (m *Markdown) Logger(logger *ll.Logger) {
+	m.logger = logger
 }
 
 // Config returns the renderer's current configuration.
 func (m *Markdown) Config() tw.RendererConfig {
 	return m.config
-}
-
-// debug logs a message to the trace if debugging is enabled.
-func (m *Markdown) debug(format string, a ...interface{}) {
-	if m.config.Debug {
-		msg := fmt.Sprintf(format, a...)
-		m.trace = append(m.trace, fmt.Sprintf("[MARKDOWN] %s", msg))
-	}
-}
-
-// Debug returns the accumulated debug trace messages.
-func (m *Markdown) Debug() []string {
-	return m.trace
 }
 
 // formatCell formats a Markdown cell's content with padding and alignment, ensuring at least 3 characters wide.
@@ -137,7 +128,7 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 	// Adjust width if needed
 	finalWidth := twfn.DisplayWidth(result)
 	if finalWidth != targetWidth {
-		m.debug("Markdown formatCell MISMATCH: content='%s', target_w=%d, paddingL='%s', paddingR='%s', align=%s -> result='%s', result_w=%d",
+		m.logger.Debug("Markdown formatCell MISMATCH: content='%s', target_w=%d, paddingL='%s', paddingR='%s', align=%s -> result='%s', result_w=%d",
 			content, targetWidth, padding.Left, padding.Right, align, result, finalWidth)
 		adjNeeded := targetWidth - finalWidth
 		if adjNeeded > 0 {
@@ -154,10 +145,10 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 		} else {
 			result = twfn.TruncateString(result, targetWidth)
 		}
-		m.debug("Markdown formatCell Corrected: target_w=%d, result='%s', new_w=%d", targetWidth, result, twfn.DisplayWidth(result))
+		m.logger.Debug("Markdown formatCell Corrected: target_w=%d, result='%s', new_w=%d", targetWidth, result, twfn.DisplayWidth(result))
 	}
 
-	m.debug("Markdown formatCell: content='%s', width=%d, align=%s, paddingL='%s', paddingR='%s' -> '%s' (target %d)",
+	m.logger.Debug("Markdown formatCell: content='%s', width=%d, align=%s, paddingL='%s', paddingR='%s' -> '%s' (target %d)",
 		content, width, align, padding.Left, padding.Right, result, targetWidth)
 	return result
 }
@@ -192,11 +183,11 @@ func (m *Markdown) formatSeparator(width int, align tw.Align) string {
 	if currentLen < targetWidth {
 		sb.WriteString(strings.Repeat("-", targetWidth-currentLen))
 	} else if currentLen > targetWidth {
-		m.debug("Markdown formatSeparator: WARNING final length %d > target %d for '%s'", currentLen, targetWidth, sb.String())
+		m.logger.Debug("Markdown formatSeparator: WARNING final length %d > target %d for '%s'", currentLen, targetWidth, sb.String())
 	}
 
 	result := sb.String()
-	m.debug("Markdown formatSeparator: width=%d, align=%s -> '%s'", width, align, result)
+	m.logger.Debug("Markdown formatSeparator: width=%d, align=%s -> '%s'", width, align, result)
 	return result
 }
 
@@ -224,7 +215,7 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 	}
 
 	if numCols == 0 && !isHeaderSep {
-		m.debug("renderMarkdownLine: Skipping line with zero columns.")
+		m.logger.Debug("renderMarkdownLine: Skipping line with zero columns.")
 		return
 	}
 
@@ -267,9 +258,9 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 		isContinuation := ok && cellCtx.Merge.Horizontal.Present && !cellCtx.Merge.Horizontal.Start
 		if colIndex > 0 && !isContinuation {
 			output.WriteString(separator)
-			m.debug("renderMarkdownLine: Added separator '%s' before col %d", separator, colIndex)
+			m.logger.Debug("renderMarkdownLine: Added separator '%s' before col %d", separator, colIndex)
 		} else if colIndex > 0 {
-			m.debug("renderMarkdownLine: Skipped separator before col %d due to HMerge continuation", colIndex)
+			m.logger.Debug("renderMarkdownLine: Skipped separator before col %d due to HMerge continuation", colIndex)
 		}
 
 		// Calculate width and span
@@ -283,7 +274,7 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 			} else {
 				align = tw.AlignLeft
 			}
-			m.debug("renderMarkdownLine: Col %d using renderer default align '%s'", colIndex, align)
+			m.logger.Debug("renderMarkdownLine: Col %d using renderer default align '%s'", colIndex, align)
 		}
 
 		visualWidth := 0
@@ -302,10 +293,10 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 				}
 			}
 			visualWidth = totalWidth
-			m.debug("renderMarkdownLine: HMerge col %d, span %d, calculated visualWidth %d from normalized widths", colIndex, span, visualWidth)
+			m.logger.Debug("renderMarkdownLine: HMerge col %d, span %d, calculated visualWidth %d from normalized widths", colIndex, span, visualWidth)
 		} else {
 			visualWidth = ctx.Row.Widths.Get(colIndex)
-			m.debug("renderMarkdownLine: Regular col %d, visualWidth %d", colIndex, visualWidth)
+			m.logger.Debug("renderMarkdownLine: Regular col %d, visualWidth %d", colIndex, visualWidth)
 		}
 		if visualWidth < 0 {
 			visualWidth = 0
@@ -313,7 +304,7 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 
 		// Render segment
 		if isContinuation {
-			m.debug("renderMarkdownLine: Skipping col %d rendering (part of HMerge)", colIndex)
+			m.logger.Debug("renderMarkdownLine: Skipping col %d rendering (part of HMerge)", colIndex)
 		} else {
 			var formattedSegment string
 			if isHeaderSep {
@@ -333,7 +324,7 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 				formattedSegment = m.formatCell(content, visualWidth, align, cellCtx.Padding)
 			}
 			output.WriteString(formattedSegment)
-			m.debug("renderMarkdownLine: Wrote segment for col %d (span %d, visualWidth %d): '%s'", colIndex, span, visualWidth, formattedSegment)
+			m.logger.Debug("renderMarkdownLine: Wrote segment for col %d (span %d, visualWidth %d): '%s'", colIndex, span, visualWidth, formattedSegment)
 		}
 
 		colIndex += span
@@ -342,16 +333,16 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 	output.WriteString(suffix)
 	output.WriteString(tw.NewLine)
 	fmt.Fprint(w, output.String())
-	m.debug("renderMarkdownLine: Final rendered line: %s", strings.TrimSuffix(output.String(), tw.NewLine))
+	m.logger.Debug("renderMarkdownLine: Final rendered line: %s", strings.TrimSuffix(output.String(), tw.NewLine))
 }
 
 // Header renders the Markdown table header and its separator line.
 func (m *Markdown) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
 	if len(headers) == 0 || len(headers[0]) == 0 {
-		m.debug("Header: No headers to render")
+		m.logger.Debug("Header: No headers to render")
 		return
 	}
-	m.debug("Rendering header with %d lines, widths=%v, current=%v, next=%v",
+	m.logger.Debug("Rendering header with %d lines, widths=%v, current=%v, next=%v",
 		len(headers), ctx.Row.Widths, ctx.Row.Current, ctx.Row.Next)
 
 	// Render header content
@@ -370,7 +361,7 @@ func (m *Markdown) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
 
 // Row renders a Markdown table data row.
 func (m *Markdown) Row(w io.Writer, row []string, ctx tw.Formatting) {
-	m.debug("Rendering row with data=%v, widths=%v, previous=%v, current=%v, next=%v",
+	m.logger.Debug("Rendering row with data=%v, widths=%v, previous=%v, current=%v, next=%v",
 		row, ctx.Row.Widths, ctx.Row.Previous, ctx.Row.Current, ctx.Row.Next)
 	m.renderMarkdownLine(w, row, ctx, false)
 }
@@ -378,31 +369,30 @@ func (m *Markdown) Row(w io.Writer, row []string, ctx tw.Formatting) {
 // Footer renders the Markdown table footer.
 func (m *Markdown) Footer(w io.Writer, footers [][]string, ctx tw.Formatting) {
 	if len(footers) == 0 || len(footers[0]) == 0 {
-		m.debug("Footer: No footers to render")
+		m.logger.Debug("Footer: No footers to render")
 		return
 	}
-	m.debug("Rendering footer with %d lines, widths=%v, previous=%v, current=%v, next=%v",
+	m.logger.Debug("Rendering footer with %d lines, widths=%v, previous=%v, current=%v, next=%v",
 		len(footers), ctx.Row.Widths, ctx.Row.Previous, ctx.Row.Current, ctx.Row.Next)
 	m.renderMarkdownLine(w, footers[0], ctx, false)
 }
 
 // Line is a no-op for Markdown, as only the header separator is rendered (handled by Header).
 func (m *Markdown) Line(w io.Writer, ctx tw.Formatting) {
-	m.debug("Line: Generic Line call received (pos: %s, loc: %s). Markdown ignores these.", ctx.Row.Position, ctx.Row.Location)
+	m.logger.Debug("Line: Generic Line call received (pos: %s, loc: %s). Markdown ignores these.", ctx.Row.Position, ctx.Row.Location)
 }
 
 // Reset clears the renderer's internal state, including debug traces.
 func (m *Markdown) Reset() {
-	m.trace = nil
-	m.debug("Reset: Cleared debug trace")
+	m.logger.Info("Reset: Cleared debug trace")
 }
 
 func (m *Markdown) Start(w io.Writer) error {
-	m.debug("Markdown.Start() called (no-op).")
+	m.logger.Warn("Markdown.Start() called (no-op).")
 	return nil
 }
 
 func (m *Markdown) Close(w io.Writer) error {
-	m.debug("Markdown.Close() called (no-op).")
+	m.logger.Warn("Markdown.Close() called (no-op).")
 	return nil
 }

@@ -5,6 +5,8 @@ package tw
 const (
 	Fail    = -1 // Operation failed
 	Success = 1  // Operation succeeded
+
+	DefaultMinlColumnWidth = 8
 )
 
 const (
@@ -32,10 +34,6 @@ const (
 	AlignLeft    Align = "left"    // Left-aligned text
 	AlignDefault       = AlignLeft // Left-aligned text
 )
-
-// Position Type and Constants
-// Position defines where formatting applies in the table
-type Position string
 
 const (
 	Header Position = "header" // Table header section
@@ -86,11 +84,3 @@ const (
 	CharEllipsis = "…" // Ellipsis character for truncation
 	CharBreak    = "↩" // Break character for wrapping
 )
-
-// Filter defines a function type for processing cell content.
-// It takes a slice of strings and returns a processed slice.
-type Filter func([]string) []string
-
-type Formatter interface {
-	Format() string
-}

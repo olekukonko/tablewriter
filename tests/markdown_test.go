@@ -26,9 +26,7 @@ func TestMarkdownBasicTable(t *testing.T) {
 | Bob   | 30  | Boston   |
 `
 	if !visualCheck(t, "MarkdownBasicTable", buf.String(), expected) {
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 

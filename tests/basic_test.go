@@ -2,6 +2,7 @@ package tests
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
@@ -27,9 +28,7 @@ func TestBasicTableDefault(t *testing.T) {
 `
 	debug := visualCheck(t, "BasicTableRendering", buf.String(), expected)
 	if !debug {
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 
@@ -358,9 +357,10 @@ func TestLongHeaders(t *testing.T) {
 			Header: tw.CellConfig{Formatting: tw.CellFormatting{
 				AutoWrap: tw.WrapTruncate,
 			}},
+			Debug: true,
 		}
 		buf.Reset()
-		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c))
+		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c), tablewriter.WithDebug(true))
 		table.Header([]string{"Name", "Age", "This is a very long header, let see if this will be properly wrapped"})
 		table.Append([]string{"Alice", "25", "New York"})
 		table.Append([]string{"Bob", "30", "Boston"})
@@ -374,7 +374,10 @@ func TestLongHeaders(t *testing.T) {
             │ Bob   │ 30  │ Boston                      │
             └───────┴─────┴─────────────────────────────┘
 `
-		visualCheck(t, "BasicTableRendering", buf.String(), expected)
+		if !visualCheck(t, "BasicTableRendering", buf.String(), expected) {
+			t.Log(table.Debug())
+		}
+
 	})
 
 	t.Run("long-headers-no-truncate", func(t *testing.T) {
@@ -402,7 +405,10 @@ func TestLongHeaders(t *testing.T) {
         │ Bob   │ 30  │ Boston                     │
         └───────┴─────┴────────────────────────────┘
 `
-		visualCheck(t, "LongHeaders", buf.String(), expected)
+		if !visualCheck(t, "LongHeaders", buf.String(), expected) {
+			t.Log(table.Debug())
+		}
+
 	})
 }
 
@@ -473,9 +479,7 @@ func TestLongValues(t *testing.T) {
 
 `
 	if !visualCheck(t, "LongValues", buf.String(), expected) {
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 
@@ -589,4 +593,93 @@ func TestTableWithCustomPadding(t *testing.T) {
         └─────────┴─────────────────────────┴──────┘
 `
 	visualCheck(t, "TableWithCustomPadding", buf.String(), expected)
+}
+
+func TestStreamBorders(t *testing.T) {
+	data := [][]string{{"A", "B"}, {"C", "D"}}
+	widths := map[int]int{0: 3, 1: 3} // Content (1) + padding (1+1) = 3
+
+	tests := []struct {
+		name     string
+		borders  tw.Border
+		expected string
+	}{
+		{
+			name:    "All Off",
+			borders: tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
+			expected: `
+A │ B
+C │ D
+`,
+		},
+		{
+			name:    "No Left/Right",
+			borders: tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.On, Bottom: tw.On},
+			expected: `
+───┬───
+A │ B
+C │ D
+───┴───
+`,
+		},
+		{
+			name:    "No Top/Bottom",
+			borders: tw.Border{Left: tw.On, Right: tw.On, Top: tw.Off, Bottom: tw.Off},
+			expected: `
+│ A │ B │
+│ C │ D │
+`,
+		},
+		{
+			name:    "Only Left",
+			borders: tw.Border{Left: tw.On, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
+			expected: `
+│ A │ B
+│ C │ D
+`,
+		},
+		{
+			name:    "Default",
+			borders: tw.Border{Left: tw.On, Right: tw.On, Top: tw.On, Bottom: tw.On},
+			expected: `
+┌───┬───┐
+│ A │ B │
+│ C │ D │
+└───┴───┘
+`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			r := renderer.NewBlueprint(
+				tw.RendererConfig{
+					Borders: tt.borders,
+				},
+			)
+			st := tablewriter.NewTable(&buf,
+				tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}}}),
+				tablewriter.WithRenderer(r),
+				tablewriter.WithDebug(true),
+				tablewriter.WithStreaming(tw.StreamConfig{Enable: true, Widths: tw.CellWidth{PerColumn: widths}}),
+			)
+			err := st.Start()
+			if err != nil {
+				t.Fatalf("Start failed: %v", err)
+			}
+			st.Append(data[0])
+			st.Append(data[1])
+			err = st.Close()
+			if err != nil {
+				t.Fatalf("End failed: %v", err)
+			}
+
+			if !visualCheck(t, "StreamBorders_"+tt.name, buf.String(), tt.expected) {
+				fmt.Printf("--- DEBUG LOG for %s ---\n", tt.name)
+				fmt.Println(st.Debug().String())
+				t.Fail()
+			}
+		})
+	}
 }

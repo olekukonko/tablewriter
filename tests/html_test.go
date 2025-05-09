@@ -31,9 +31,7 @@ func TestHTMLBasicTable(t *testing.T) {
 </tbody>
 </table>`
 	if !visualCheckHTML(t, "HTMLBasicTable", buf.String(), expected) {
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 
@@ -72,9 +70,7 @@ func TestHTMLWithFooterAndAlignment(t *testing.T) {
 </tfoot>
 </table>`
 	if !visualCheckHTML(t, "HTMLWithFooterAndAlignment", buf.String(), expected) {
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 
@@ -101,9 +97,7 @@ func TestHTMLEscaping(t *testing.T) {
 `
 	if !visualCheckHTML(t, "HTMLEscaping_Default", buf.String(), expectedEscaped) {
 		t.Log("--- Debug Log for HTMLEscaping_Default ---")
-		for _, v := range table.Debug() {
-			t.Log(v)
-		}
+		t.Log(table.Debug())
 	}
 
 	// Test case 2: EscapeContent = false
@@ -126,9 +120,7 @@ func TestHTMLEscaping(t *testing.T) {
 </table>`
 	if !visualCheckHTML(t, "HTMLEscaping_Disabled", buf.String(), expectedUnescaped) {
 		t.Log("--- Debug Log for HTMLEscaping_Disabled ---")
-		for _, v := range tableNoEscape.Debug() {
-			t.Log(v)
-		}
+		t.Log(table.Debug())
 	}
 }
 
@@ -151,9 +143,7 @@ func TestHTMLMultiLine(t *testing.T) {
 </table>`
 	if !visualCheckHTML(t, "HTMLMultiLine_Default", buf.String(), expected) {
 		t.Logf("MultiLine Default Output: %s", buf.String())
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 
 	// Test case 2: With AddLinesTag (no effect due to newline pre-splitting)
@@ -173,9 +163,7 @@ func TestHTMLMultiLine(t *testing.T) {
 </table>`
 	if !visualCheckHTML(t, "HTMLMultiLine_LinesTag", buf.String(), expectedLinesTag) {
 		t.Logf("MultiLine LinesTag Output: %s", buf.String())
-		for _, v := range tableLinesTag.Debug() {
-			t.Error(v)
-		}
+		t.Log(table.Debug())
 	}
 }
 
@@ -210,9 +198,7 @@ func TestHTMLHorizontalMerge(t *testing.T) {
 </tfoot>
 </table>`
 	if !visualCheckHTML(t, "HTMLHorizontalMerge", buf.String(), expected) {
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 
@@ -249,9 +235,7 @@ func TestHTMLVerticalMerge(t *testing.T) {
 </tbody>
 </table>`
 	if !visualCheckHTML(t, "HTMLVerticalMerge", buf.String(), expected) {
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 
@@ -287,9 +271,7 @@ func TestHTMLCombinedMerge(t *testing.T) {
 </table>`
 	if !visualCheckHTML(t, "HTMLCombinedMerge", buf.String(), expected) {
 		t.Logf("Combined Merge Output: %s", buf.String())
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 
@@ -328,9 +310,7 @@ func TestHTMLHierarchicalMerge(t *testing.T) {
 </tbody>
 </table>`
 	if !visualCheckHTML(t, "HTMLHierarchicalMerge", buf.String(), expected) {
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 
@@ -348,9 +328,7 @@ func TestHTMLEmptyTable(t *testing.T) {
 </table>`
 	if !visualCheckHTML(t, "HTMLEmptyTable", buf.String(), expected) {
 		t.Logf("Empty table output: '%s'", buf.String())
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 
 	// Test case 2: Header-only table
@@ -368,9 +346,7 @@ func TestHTMLEmptyTable(t *testing.T) {
 </thead>
 </table>`
 	if !visualCheckHTML(t, "HTMLEmptyTable_HeaderOnly", buf.String(), expectedHeaderOnly) {
-		for _, v := range tableHeaderOnly.Debug() {
-			t.Error(v)
-		}
+		t.Log(table.Debug())
 	}
 }
 
@@ -406,9 +382,7 @@ func TestHTMLCSSClasses(t *testing.T) {
 </tfoot>
 </table>`
 	if !visualCheckHTML(t, "HTMLCSSClasses", buf.String(), expected) {
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 

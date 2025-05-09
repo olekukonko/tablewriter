@@ -147,7 +147,6 @@ func TestMasterClass(t *testing.T) {
 						ShowFooterLine: tw.On,
 					},
 				},
-				Debug: false,
 			})),
 		)
 		table.Append([]string{s, s})
@@ -175,7 +174,6 @@ func TestMasterClass(t *testing.T) {
 					ShowFooterLine: tw.Off,
 				},
 			},
-			Debug: false,
 		})),
 	)
 	table.Append([]string{little("A"), little("B")})
@@ -273,7 +271,7 @@ func TestAutoHideFeature(t *testing.T) {
 		// Use visualCheck, expect it might fail initially if Blueprint isn't perfect yet
 		if !visualCheck(t, "AutoHide_HideWhenEmpty", buf.String(), expected) {
 			t.Log("Output for HideWhenEmpty was not as expected (might be OK if Blueprint needs more fixes):")
-			t.Log(buf.String())
+			t.Error(buf.String())
 			// Log debug info if helpful
 			// for _, v := range table.Debug() {
 			// 	t.Log(v)
@@ -395,9 +393,7 @@ func TestEmojiTable(t *testing.T) {
 
 `
 	if !visualCheck(t, "EmojiTable", buf.String(), expected) {
-		for _, v := range table.Debug() {
-			t.Error(v)
-		}
+		t.Error(table.Debug().String())
 	}
 }
 

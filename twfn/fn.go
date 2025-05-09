@@ -345,3 +345,45 @@ func MapKeys[K comparable, V any](m map[K]V) []K {
 	}
 	return keys
 }
+
+// BreakPoint finds the rune index in 's' where the display width first exceeds 'limit'.
+// If the entire string fits within 'limit', it returns the number of runes (len(s)).
+// It aims to avoid breaking within a multi-column rune if possible, but for simple Break mode,
+// it might break mid-rune if necessary to meet the width constraint strictly.
+// It should handle multi-width characters correctly using DisplayWidth.
+func BreakPoint(s string, limit int) int {
+	if limit <= 0 {
+		return 0 // Cannot fit anything
+	}
+	if s == "" {
+		return 0
+	}
+
+	currentWidth := 0
+	runeCount := 0
+	for _, r := range s {
+		runeWidth := DisplayWidth(string(r)) // Assuming DisplayWidth works for single runes
+		if currentWidth+runeWidth > limit {
+			// Breaking here would exceed the limit. The breakpoint is *before* this rune.
+			// If currentWidth is already >= limit, the break point is the start (0)
+			if currentWidth == 0 {
+				// The very first rune exceeds the limit. BreakPoint is 0, or 1 if we allow breaking 1 char.
+				// For WrapBreak, let's allow breaking after 1 char if 0 chars don't fit.
+				if runeWidth > limit && limit > 0 {
+					return 1 // Break after the first character if it's wider than limit but limit > 0
+				}
+				return 0 // Should not happen if runeWidth > limit and limit > 0
+			}
+			return runeCount // Breakpoint is before the current rune
+		}
+		currentWidth += runeWidth
+		runeCount++
+	}
+
+	// If the loop finishes, the entire string fits within the limit.
+	return runeCount // Breakpoint is after the last rune (end of string)
+}
+
+func RuneCount(s string) int {
+	return utf8.RuneCountInString(s)
+}

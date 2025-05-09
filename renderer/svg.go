@@ -2,6 +2,7 @@ package renderer
 
 import (
 	"fmt"
+	"github.com/olekukonko/ll"
 	"html"
 	"io"
 	"strings"
@@ -49,6 +50,7 @@ type SVG struct {
 	dataRowCounter      int
 	vMergeTrack         map[int]int // Tracks vertical merge spans
 	numVisualRowsDrawn  int
+	logger              *ll.Logger
 }
 
 const (
@@ -364,9 +366,9 @@ func (s *SVG) Close(w io.Writer) error {
 // Returns a RendererConfig with border and debug settings.
 func (s *SVG) Config() tw.RendererConfig {
 	return tw.RendererConfig{
-		Borders:  tw.Border{Left: tw.On, Right: tw.On, Top: tw.On, Bottom: tw.On},
-		Settings: tw.Settings{TrimWhitespace: tw.On},
-		Debug:    s.config.Debug,
+		Borders:   tw.Border{Left: tw.On, Right: tw.On, Top: tw.On, Bottom: tw.On},
+		Settings:  tw.Settings{TrimWhitespace: tw.On},
+		Streaming: false,
 	}
 }
 
@@ -660,6 +662,10 @@ func (s *SVG) Reset() {
 func (s *SVG) Row(w io.Writer, rowLine []string, ctx tw.Formatting) {
 	s.debug("Buffering row line, IsSubRow: %v", ctx.IsSubRow)
 	s.storeVisualLine(sectionTypeRow, rowLine, ctx)
+}
+
+func (s *SVG) Logger(logger *ll.Logger) {
+	s.logger = logger
 }
 
 // Start initializes SVG rendering.
