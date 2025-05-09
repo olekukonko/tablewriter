@@ -13,6 +13,7 @@ import (
 	"io"
 	"reflect"
 	"strings"
+	"sync"
 )
 
 // Table represents a table instance with content and rendering capabilities.
@@ -42,6 +43,11 @@ type Table struct {
 	lastRenderedPosition    tw.Position                   // Position (Header/Row/Footer/Separator) of the last line rendered (for Previous context in streaming)
 	streamNumCols           int                           // The derived number of columns in streaming mode
 	streamRowCounter        int                           // Counter for rows rendered in streaming mode (0-indexed logical rows)
+
+	// cache
+	stringerCache        map[reflect.Type]reflect.Value // Cache for stringer reflection
+	stringerCacheMu      sync.RWMutex                   // Mutex for thread-safe cache access
+	stringerCacheEnabled bool                           // Flag to enable/disable caching
 }
 
 // renderContext holds the core state for rendering the table.
@@ -109,6 +115,10 @@ func NewTable(w io.Writer, opts ...Option) *Table {
 		lastRenderedPosition:   "",
 		streamNumCols:          0,
 		streamRowCounter:       0,
+
+		//  Cache
+		stringerCache:        make(map[reflect.Type]reflect.Value),
+		stringerCacheEnabled: true, // Disabled by default
 	}
 
 	// add logger
@@ -790,37 +800,13 @@ func (t *Table) buildAdjacentCells(ctx *renderContext, mctx *mergeContext, hctx 
 // Parameter config provides alignment settings for the section.
 // Returns a map of column indices to alignment settings.
 func (t *Table) buildAligns(config tw.CellConfig) map[int]tw.Align {
-	numColsToUse := 0
-	if t.config.Stream.Enable && t.hasPrinted { // Are we in active streaming mode?
-		numColsToUse = t.streamNumCols // Use the fixed stream column count
-	} else {
-		numColsToUse = t.maxColumns() // Batch mode: use max from all data
-	}
-
-	// CORRECTED DEBUG LOG for buildAligns
-	t.logger.Debug("buildAligns: ENTERING. isStreamingAndPrinted=%v, streamNumCols=%d, maxColsBatch=%d. USING numColsToUse=%d. SectionDefaultAlign: '%s', ColumnAligns: %v",
-		(t.config.Stream.Enable && t.hasPrinted),
-		t.streamNumCols,
-		func() int {
-			if !(t.config.Stream.Enable && t.hasPrinted) {
-				return t.maxColumns()
-			} else {
-				return 0
-			}
-		}(), // Only log maxColumns if actually used
-		numColsToUse,
-		config.Formatting.Alignment,
-		config.ColumnAligns)
-
+	numColsToUse := t.getNumColsToUse()
 	colAlignsResult := make(map[int]tw.Align)
-	for i := 0; i < numColsToUse; i++ { // Use numColsToUse
-		currentAlign := config.Formatting.Alignment // Start with section's default alignment
-		if i < len(config.ColumnAligns) {           // Check if there's a per-column override
+	for i := 0; i < numColsToUse; i++ {
+		currentAlign := config.Formatting.Alignment
+		if i < len(config.ColumnAligns) {
 			colSpecificAlign := config.ColumnAligns[i]
-			if colSpecificAlign != "" { // If a specific alignment is set (not empty string which might be tw.Skip)
-				// And also ensure it's not the "none" string if "none" means fallback (though "none" is a valid Align type)
-				// The original logic just checked for non-empty. Let's stick to that for now.
-				// If colSpecificAlign is "none", it will be used. If it's "", section default is used.
+			if colSpecificAlign != tw.Empty && colSpecificAlign != tw.Skip {
 				currentAlign = colSpecificAlign
 			}
 		}
@@ -890,21 +876,7 @@ func (t *Table) buildCellContexts(ctx *renderContext, mctx *mergeContext, hctx *
 // Parameter padding provides padding settings for the section.
 // Returns a map of column indices to padding settings.
 func (t *Table) buildPadding(padding tw.CellPadding) map[int]tw.Padding {
-	numColsToUse := 0
-	if t.config.Stream.Enable && t.hasPrinted {
-		numColsToUse = t.streamNumCols
-	} else {
-		numColsToUse = t.maxColumns()
-	}
-	t.logger.Debug("buildPadding: ENTERING. isStreamingAndPrinted=%v, streamNumCols=%d, maxColsBatch=%d. USING numColsToUse=%d. GlobalDefault: %+v",
-		(t.config.Stream.Enable && t.hasPrinted), t.streamNumCols, func() int {
-			if !(t.config.Stream.Enable && t.hasPrinted) {
-				return t.maxColumns()
-			} else {
-				return 0
-			}
-		}(), numColsToUse, padding.Global)
-
+	numColsToUse := t.getNumColsToUse()
 	colPadding := make(map[int]tw.Padding)
 	for i := 0; i < numColsToUse; i++ {
 		if i < len(padding.PerColumn) && padding.PerColumn[i] != (tw.Padding{}) {
@@ -1147,6 +1119,16 @@ func (t *Table) getColMaxWidths(position tw.Position) tw.CellWidth {
 	default:
 		return tw.CellWidth{}
 	}
+}
+
+func (t *Table) getNumColsToUse() int {
+	if t.config.Stream.Enable && t.hasPrinted {
+		t.logger.Debug("getNumColsToUse: Using streamNumCols: %d", t.streamNumCols)
+		return t.streamNumCols
+	}
+	numCols := t.maxColumns()
+	t.logger.Debug("getNumColsToUse: Using maxColumns: %d", numCols)
+	return numCols
 }
 
 // getEmptyColumnInfo identifies empty columns in row data.
@@ -1881,9 +1863,6 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 
 	f := ctx.renderer
 	cfg := ctx.cfg
-	colAligns := t.buildAligns(t.config.Footer)
-	colPadding := t.buildPadding(t.config.Footer.Padding)
-	hctx := &helperContext{position: tw.Footer}
 
 	hasContent := len(ctx.footerLines) > 0
 	hasTopPadding := t.config.Footer.Padding.Global.Top != tw.Empty
@@ -1960,6 +1939,12 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 
 	ctx.logger.Debug("Rendering footer section (has elements)")
 	hasContentAbove := len(ctx.rowLines) > 0 || len(ctx.headerLines) > 0
+	colAligns := t.buildAligns(t.config.Footer)
+	colPadding := t.buildPadding(t.config.Footer.Padding)
+	hctx := &helperContext{position: tw.Footer}
+	// Declare paddingLineContentForContext with a default value
+	paddingLineContentForContext := make([]string, ctx.numCols)
+
 	if hasContentAbove && cfg.Settings.Lines.ShowFooterLine.Enabled() && !hasTopPadding && len(ctx.footerLines) > 0 {
 		ctx.logger.Debug("Rendering footer separator line")
 		var lastLineAboveCtx *helperContext
@@ -2039,56 +2024,16 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 	}
 
 	if hasTopPadding {
-		topPadChar := t.config.Footer.Padding.Global.Top
-		topPaddingLineContent := make([]string, ctx.numCols)
-		topPadWidth := twfn.DisplayWidth(topPadChar)
-		if topPadWidth < 1 {
-			topPadWidth = 1
-		}
-		ctx.logger.Debug("Constructing Footer Global Top Padding line content")
-		for j := 0; j < ctx.numCols; j++ {
-			colWd := ctx.widths[tw.Footer].Get(j)
-			mergeState := tw.MergeState{}
-			if mctx.footerMerges != nil {
-				mergeState = mctx.footerMerges[j]
-			}
-			if mergeState.Horizontal.Present && !mergeState.Horizontal.Start {
-				topPaddingLineContent[j] = ""
-				continue
-			}
-			repeatCount := 0
-			if colWd > 0 && topPadWidth > 0 {
-				repeatCount = colWd / topPadWidth
-			}
-			if colWd > 0 && repeatCount < 1 {
-				repeatCount = 1
-			}
-			if colWd == 0 {
-				repeatCount = 0
-			}
-			rawPaddingContent := strings.Repeat(topPadChar, repeatCount)
-			currentWd := twfn.DisplayWidth(rawPaddingContent)
-			if currentWd < colWd {
-				rawPaddingContent += strings.Repeat(" ", colWd-currentWd)
-			}
-			if currentWd > colWd && colWd > 0 {
-				rawPaddingContent = twfn.TruncateString(rawPaddingContent, colWd)
-			}
-			if colWd == 0 {
-				rawPaddingContent = ""
-			}
-			topPaddingLineContent[j] = rawPaddingContent
-		}
 		hctx.rowIdx = 0
 		hctx.lineIdx = -1
-		hctx.line = topPaddingLineContent
 		if !(hasContentAbove && cfg.Settings.Lines.ShowFooterLine.Enabled()) {
 			hctx.location = tw.LocationFirst
 		} else {
 			hctx.location = tw.LocationMiddle
 		}
+		hctx.line = t.buildPaddingLineContents(t.config.Footer.Padding.Global.Top, ctx.widths[tw.Footer], ctx.numCols, mctx.footerMerges)
 		ctx.logger.Debug("Calling renderPadding for Footer Top Padding line: %v (loc: %v)", hctx.line, hctx.location)
-		if err := t.renderPadding(ctx, mctx, hctx, topPadChar); err != nil {
+		if err := t.renderPadding(ctx, mctx, hctx, t.config.Footer.Padding.Global.Top); err != nil {
 			return err
 		}
 	}
@@ -2117,7 +2062,6 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 		lastRenderedLineIdx = i
 	}
 
-	var paddingLineContentForContext []string
 	if hasBottomPaddingConfig {
 		paddingLineContentForContext = make([]string, ctx.numCols)
 		formattedPaddingCells := make([]string, ctx.numCols)
@@ -2127,7 +2071,9 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 			colWd := ctx.widths[tw.Footer].Get(j)
 			mergeState := tw.MergeState{}
 			if mctx.footerMerges != nil {
-				mergeState = mctx.footerMerges[j]
+				if state, ok := mctx.footerMerges[j]; ok {
+					mergeState = state
+				}
 			}
 			if mergeState.Horizontal.Present && !mergeState.Horizontal.Start {
 				paddingLineContentForContext[j] = ""
@@ -2233,9 +2179,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 		} else if lastRenderedLineIdx == -1 {
 			hctx.rowIdx = 0
 			hctx.lineIdx = -1
-			if hctx.line == nil {
-				hctx.line = make([]string, ctx.numCols)
-			}
+			hctx.line = paddingLineContentForContext
 			hctx.location = tw.LocationEnd
 			ctx.logger.Debug("Setting border context based on top padding line")
 		} else {
@@ -2260,8 +2204,6 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 			IsSubRow: false,
 			Debug:    t.config.Debug,
 		})
-	} else {
-		ctx.logger.Debug("Skipping final table bottom border rendering (disabled or not applicable)")
 	}
 
 	return nil
@@ -2304,14 +2246,7 @@ func (t *Table) renderHeader(ctx *renderContext, mctx *mergeContext) error {
 
 	if t.config.Header.Padding.Global.Top != tw.Empty {
 		hctx.location = tw.LocationFirst
-		hctx.line = make([]string, ctx.numCols)
-		for j := 0; j < ctx.numCols; j++ {
-			repeatCount := ctx.widths[tw.Header].Get(j) / twfn.DisplayWidth(t.config.Header.Padding.Global.Top)
-			if repeatCount < 1 {
-				repeatCount = 1
-			}
-			hctx.line[j] = strings.Repeat(t.config.Header.Padding.Global.Top, repeatCount)
-		}
+		hctx.line = t.buildPaddingLineContents(t.config.Header.Padding.Global.Top, ctx.widths[tw.Header], ctx.numCols, mctx.headerMerges)
 		if err := t.renderPadding(ctx, mctx, hctx, t.config.Header.Padding.Global.Top); err != nil {
 			return err
 		}
@@ -2341,14 +2276,7 @@ func (t *Table) renderHeader(ctx *renderContext, mctx *mergeContext) error {
 
 	if t.config.Header.Padding.Global.Bottom != tw.Empty {
 		hctx.location = tw.LocationEnd
-		hctx.line = make([]string, ctx.numCols)
-		for j := 0; j < ctx.numCols; j++ {
-			repeatCount := ctx.widths[tw.Header].Get(j) / twfn.DisplayWidth(t.config.Header.Padding.Global.Bottom)
-			if repeatCount < 1 {
-				repeatCount = 1
-			}
-			hctx.line[j] = strings.Repeat(t.config.Header.Padding.Global.Bottom, repeatCount)
-		}
+		hctx.line = t.buildPaddingLineContents(t.config.Header.Padding.Global.Bottom, ctx.widths[tw.Header], ctx.numCols, mctx.headerMerges)
 		if err := t.renderPadding(ctx, mctx, hctx, t.config.Header.Padding.Global.Bottom); err != nil {
 			return err
 		}
@@ -2510,51 +2438,9 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 			} else {
 				hctx.location = tw.LocationMiddle
 			}
-
-			topPadChar := t.config.Row.Padding.Global.Top
-			topPaddingLineContent := make([]string, ctx.numCols)
-			topPadWidth := twfn.DisplayWidth(topPadChar)
-			if topPadWidth < 1 {
-				topPadWidth = 1
-			}
-
-			for j := 0; j < ctx.numCols; j++ {
-				colWd := ctx.widths[tw.Row].Get(j)
-				mergeState := tw.MergeState{}
-				if i < len(mctx.rowMerges) && mctx.rowMerges[i] != nil {
-					mergeState = mctx.rowMerges[i][j]
-				}
-				if mergeState.Horizontal.Present && !mergeState.Horizontal.Start {
-					topPaddingLineContent[j] = ""
-					continue
-				}
-				repeatCount := 0
-				if colWd > 0 && topPadWidth > 0 {
-					repeatCount = colWd / topPadWidth
-				}
-				if colWd > 0 && repeatCount < 1 {
-					repeatCount = 1
-				}
-				if colWd == 0 {
-					repeatCount = 0
-				}
-				rawPaddingContent := strings.Repeat(topPadChar, repeatCount)
-				currentWd := twfn.DisplayWidth(rawPaddingContent)
-				if currentWd < colWd {
-					rawPaddingContent += strings.Repeat(" ", colWd-currentWd)
-				}
-				if currentWd > colWd && colWd > 0 {
-					rawPaddingContent = twfn.TruncateString(rawPaddingContent, colWd)
-				}
-				if colWd == 0 {
-					rawPaddingContent = ""
-				}
-				topPaddingLineContent[j] = rawPaddingContent
-			}
-			hctx.line = topPaddingLineContent
-
+			hctx.line = t.buildPaddingLineContents(t.config.Row.Padding.Global.Top, ctx.widths[tw.Row], ctx.numCols, mctx.rowMerges[i])
 			ctx.logger.Debug("Calling renderPadding for Row Top Padding (row %d): %v (loc: %v)", i, hctx.line, hctx.location)
-			if err := t.renderPadding(ctx, mctx, hctx, topPadChar); err != nil {
+			if err := t.renderPadding(ctx, mctx, hctx, t.config.Row.Padding.Global.Top); err != nil {
 				return err
 			}
 		}
@@ -2654,133 +2540,15 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 			} else {
 				hctx.location = tw.LocationMiddle
 			}
-
-			bottomPadChar := t.config.Row.Padding.Global.Bottom
-			bottomPaddingLineContent := make([]string, ctx.numCols)
-			bottomPadWidth := twfn.DisplayWidth(bottomPadChar)
-			if bottomPadWidth < 1 {
-				bottomPadWidth = 1
-			}
-
-			for j := 0; j < ctx.numCols; j++ {
-				colWd := ctx.widths[tw.Row].Get(j)
-				mergeState := tw.MergeState{}
-				if i < len(mctx.rowMerges) && mctx.rowMerges[i] != nil {
-					mergeState = mctx.rowMerges[i][j]
-				}
-				if mergeState.Horizontal.Present && !mergeState.Horizontal.Start {
-					bottomPaddingLineContent[j] = ""
-					continue
-				}
-				repeatCount := 0
-				if colWd > 0 && bottomPadWidth > 0 {
-					repeatCount = colWd / bottomPadWidth
-				}
-				if colWd > 0 && repeatCount < 1 {
-					repeatCount = 1
-				}
-				if colWd == 0 {
-					repeatCount = 0
-				}
-				rawPaddingContent := strings.Repeat(bottomPadChar, repeatCount)
-				currentWd := twfn.DisplayWidth(rawPaddingContent)
-				if currentWd < colWd {
-					rawPaddingContent += strings.Repeat(" ", colWd-currentWd)
-				}
-				if currentWd > colWd && colWd > 0 {
-					rawPaddingContent = twfn.TruncateString(rawPaddingContent, colWd)
-				}
-				if colWd == 0 {
-					rawPaddingContent = ""
-				}
-				bottomPaddingLineContent[j] = rawPaddingContent
-			}
-			hctx.line = bottomPaddingLineContent
-
+			hctx.line = t.buildPaddingLineContents(t.config.Row.Padding.Global.Bottom, ctx.widths[tw.Row], ctx.numCols, mctx.rowMerges[i])
 			ctx.logger.Debug("Calling renderPadding for Row Bottom Padding (row %d): %v (loc: %v)", i, hctx.line, hctx.location)
-			if err := t.renderPadding(ctx, mctx, hctx, bottomPadChar); err != nil {
+			if err := t.renderPadding(ctx, mctx, hctx, t.config.Row.Padding.Global.Bottom); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
 }
-
-// toStringLines converts a row to string lines for table inclusion.
-// Parameters include row data and config for formatting rules.
-// Returns a slice of string slices and an error if conversion fails.
-//func (t *Table) toStringLines(row interface{}, config tw.CellConfig) ([][]string, error) {
-//	t.logger.Debug("Converting row to string lines: %v (type: %T)", row, row)
-//	var cells []string
-//
-//	switch v := row.(type) {
-//	case []string:
-//		cells = v
-//		t.logger.Debug("Row is already []string")
-//	case []any:
-//		t.logger.Debug("Row is []any, converting elements")
-//		cells = make([]string, len(v))
-//		for i, element := range v {
-//			cells[i] = t.elementToString(element)
-//		}
-//	default:
-//		if t.stringer != nil {
-//			t.logger.Debug("Attempting conversion using custom stringer for type %T", row)
-//			rv := reflect.ValueOf(t.stringer)
-//			if rv.Kind() != reflect.Func || rv.Type().NumIn() != 1 || rv.Type().NumOut() != 1 {
-//				err := errors.Newf("stringer must be a func(T) []string, got %T", t.stringer)
-//				t.logger.Debug("Stringer format error: %v", err)
-//				return nil, err
-//			}
-//			inType := rv.Type().In(0)
-//			rowType := reflect.TypeOf(row)
-//			if !rowType.AssignableTo(inType) {
-//				err := errors.Newf("cannot assign row type %T to stringer input type %s", row, inType)
-//				t.logger.Debug("Stringer type mismatch error: %v", err)
-//				return nil, err
-//			}
-//
-//			in := []reflect.Value{reflect.ValueOf(row)}
-//			out := rv.Call(in)
-//
-//			if len(out) != 1 || out[0].Kind() != reflect.Slice || out[0].Type().Elem().Kind() != reflect.String {
-//				err := errors.Newf("stringer must return []string, got %T", out[0].Interface())
-//				t.logger.Debug("Stringer return error: %v", err)
-//				return nil, err
-//			}
-//			cells = out[0].Interface().([]string)
-//			t.logger.Debug("Converted row using stringer: %v", cells)
-//		} else {
-//			err := errors.Newf("cannot convert row type %T to []string; provide a stringer via WithStringer", row)
-//			t.logger.Debug("Conversion error: %v", err)
-//			return nil, err
-//		}
-//	}
-//
-//	if config.Filter.Global != nil {
-//		t.logger.Debug("Applying global filter to cells: %v", cells)
-//		cells = config.Filter.Global(cells)
-//		t.logger.Debug("Cells after global filter: %v", cells)
-//	}
-//
-//	if len(config.Filter.PerColumn) > 0 {
-//		t.logger.Debug("Applying per-column filters to cells")
-//		numFilters := len(config.Filter.PerColumn)
-//		for i, cell := range cells {
-//			if i < numFilters && config.Filter.PerColumn[i] != nil {
-//				originalCell := cell
-//				cells[i] = config.Filter.PerColumn[i](cell)
-//				if cells[i] != originalCell {
-//					t.logger.Debug("  Col %d filter applied: '%s' -> '%s'", i, originalCell, cells[i])
-//				}
-//			}
-//		}
-//	}
-//
-//	result := t.prepareContent(cells, config)
-//	t.logger.Debug("Prepared content lines: %v", result)
-//	return result, nil
-//}
 
 // updateWidths updates the width map based on cell content and padding.
 // Parameters include row content, widths map, and padding configuration.
