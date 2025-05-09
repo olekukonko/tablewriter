@@ -3,8 +3,9 @@ package tests
 import (
 	"bytes"
 	"encoding/xml"
-	"fmt"
+	"math"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -38,85 +39,161 @@ func defaultSVGConfigForTests(debug bool) renderer.SVGConfig {
 	}
 }
 
-// formatSVG formats an SVG string with indentation.
-// Parameter svg is the input SVG string.
-// Returns the formatted SVG or an error if formatting fails.
-func formatSVG(svg string) (string, error) {
-	svg = strings.TrimSpace(svg)
-	svg = regexp.MustCompile(`>\s+<`).ReplaceAllString(svg, "><")
-	decoder := xml.NewDecoder(strings.NewReader(svg))
-	var buf bytes.Buffer
-	encoder := xml.NewEncoder(&buf)
-	encoder.Indent("", "  ")
-	for {
-		token, err := decoder.Token()
-		if err != nil {
-			if err.Error() == "EOF" {
-				break
-			}
-			return "", fmt.Errorf("decoder error: %w", err)
-		}
-		if err := encoder.EncodeToken(token); err != nil {
-			return "", fmt.Errorf("encoder error: %w", err)
-		}
-	}
-	if err := encoder.Flush(); err != nil {
-		return "", fmt.Errorf("flush error: %w", err)
-	}
-	formatted := buf.String()
-	if !strings.HasSuffix(formatted, "\n") {
-		formatted += "\n"
-	}
-	return formatted, nil
+// xmlNode represents a node in the XML tree for structural comparison
+type xmlNode struct {
+	XMLName xml.Name
+	Attrs   []xml.Attr `xml:",any,attr"`
+	Content string     `xml:",chardata"`
+	Nodes   []xmlNode  `xml:",any"`
 }
 
-// normalizeSVG normalizes SVG for robust comparison.
-// Parameter s is the input SVG string.
-// Returns the normalized SVG string.
+// normalizeSVG performs lightweight normalization for fast comparison
 func normalizeSVG(s string) string {
 	s = strings.TrimSpace(s)
+
+	// Remove comments
 	s = regexp.MustCompile(`<!--.*?-->`).ReplaceAllString(s, "")
-	s = regexp.MustCompile(`\s*\n\s*`).ReplaceAllString(s, "")
+
+	// Normalize whitespace
 	s = regexp.MustCompile(`\s+`).ReplaceAllString(s, " ")
 	s = regexp.MustCompile(`>\s+<`).ReplaceAllString(s, "><")
+
+	// Normalize self-closing tags
 	s = regexp.MustCompile(`\s*/>`).ReplaceAllString(s, "/>")
-	s = regexp.MustCompile(`\s*=\s*`).ReplaceAllString(s, "=")
-	s = regexp.MustCompile(`"\s*`).ReplaceAllString(s, "\"")
-	s = regexp.MustCompile(`\s*"`).ReplaceAllString(s, "\"")
-	s = strings.ReplaceAll(s, " />", "/>")
-	s = strings.ReplaceAll(s, "px", "")
-	s = regexp.MustCompile(`(\d)\.00`).ReplaceAllString(s, "$1")
-	s = regexp.MustCompile(`(\d)\.0`).ReplaceAllString(s, "$1")
-	s = regexp.MustCompile(`0\.50`).ReplaceAllString(s, "0.5")
-	s = regexp.MustCompile(`(\d{1,})\.([1-9])0`).ReplaceAllString(s, "$1.$2")
-	s = regexp.MustCompile(`(\d{1,})\.([0-9]{1,2})0`).ReplaceAllString(s, "$1.$2")
+
+	// Normalize numeric values (1.0 -> 1, 0.500 -> 0.5)
+	s = regexp.MustCompile(`(\d+)\.0([^0-9])`).ReplaceAllString(s, "$1$2")
+	s = regexp.MustCompile(`(\d+\.\d+)0([^0-9])`).ReplaceAllString(s, "$1$2")
+	s = regexp.MustCompile(`\.0([^0-9])`).ReplaceAllString(s, "$1")
+
 	return s
 }
 
-// visualCheckSVG compares actual and expected SVG outputs.
-// Parameters include t for testing, testName, and SVG strings.
-// Returns true if SVGs match, false otherwise, logging differences.
+// visualCheckSVG is the main comparison function
 func visualCheckSVG(t *testing.T, testName, actual, expected string) bool {
 	t.Helper()
+
+	// First try normalized string comparison
 	normActual := normalizeSVG(actual)
 	normExpected := normalizeSVG(expected)
-	if normActual != normExpected {
-		t.Errorf("%s: SVG output mismatch.", testName)
-		formatExpected, errExp := formatSVG(normExpected)
-		if errExp != nil {
-			t.Logf("Error formatting EXPECTED SVG: %v", errExp)
-			formatExpected = normExpected
-		}
-		formatActual, errAct := formatSVG(normActual)
-		if errAct != nil {
-			t.Logf("Error formatting ACTUAL SVG: %v", errAct)
-			formatActual = normActual
-		}
-		t.Logf("--- EXPECTED (Formatted) ---\n%s", formatExpected)
-		t.Logf("--- ACTUAL (Formatted) ---\n%s", formatActual)
+
+	if normActual == normExpected {
+		return true
+	}
+
+	// If strings differ, try structural comparison
+	ok, err := compareSVGStructure(normActual, normExpected)
+	if err != nil {
+		t.Logf("Structural comparison failed: %v", err)
+	} else if ok {
+		return true
+	}
+
+	// Both comparisons failed - show formatted diff
+	t.Errorf("%s: SVG output mismatch", testName)
+	showFormattedDiff(t, normActual, normExpected)
+	return false
+}
+
+// compareSVGStructure does structural XML comparison
+func compareSVGStructure(actual, expected string) (bool, error) {
+	var actualNode, expectedNode xmlNode
+
+	if err := xml.Unmarshal([]byte(actual), &actualNode); err != nil {
+		return false, err
+	}
+	if err := xml.Unmarshal([]byte(expected), &expectedNode); err != nil {
+		return false, err
+	}
+
+	return compareXMLNodes(actualNode, expectedNode), nil
+}
+
+// compareXMLNodes recursively compares XML nodes
+func compareXMLNodes(a, b xmlNode) bool {
+	if a.XMLName != b.XMLName {
 		return false
 	}
+
+	// Compare attributes
+	if len(a.Attrs) != len(b.Attrs) {
+		return false
+	}
+
+	attrMap := make(map[xml.Name]string)
+	for _, attr := range a.Attrs {
+		attrMap[attr.Name] = attr.Value
+	}
+
+	for _, attr := range b.Attrs {
+		aVal, ok := attrMap[attr.Name]
+		if !ok {
+			return false
+		}
+
+		if isNumericAttribute(attr.Name.Local) {
+			if !compareFloatStrings(aVal, attr.Value) {
+				return false
+			}
+		} else if aVal != attr.Value {
+			return false
+		}
+	}
+
+	// Compare content
+	if strings.TrimSpace(a.Content) != strings.TrimSpace(b.Content) {
+		return false
+	}
+
+	// Compare children
+	if len(a.Nodes) != len(b.Nodes) {
+		return false
+	}
+
+	for i := range a.Nodes {
+		if !compareXMLNodes(a.Nodes[i], b.Nodes[i]) {
+			return false
+		}
+	}
+
 	return true
+}
+
+// Helper functions
+func isNumericAttribute(name string) bool {
+	numericAttrs := map[string]bool{
+		"x": true, "y": true, "width": true, "height": true,
+		"x1": true, "y1": true, "x2": true, "y2": true,
+		"font-size": true, "stroke-width": true,
+	}
+	return numericAttrs[name]
+}
+
+func compareFloatStrings(a, b string) bool {
+	f1, err1 := strconv.ParseFloat(a, 64)
+	f2, err2 := strconv.ParseFloat(b, 64)
+
+	if err1 != nil || err2 != nil {
+		return a == b
+	}
+
+	const epsilon = 0.0001
+	return math.Abs(f1-f2) < epsilon
+}
+
+func showFormattedDiff(t *testing.T, actual, expected string) {
+	format := func(s string) string {
+		var buf bytes.Buffer
+		enc := xml.NewEncoder(&buf)
+		enc.Indent("", "  ")
+		if err := enc.Encode(xml.NewDecoder(strings.NewReader(s))); err != nil {
+			return s
+		}
+		return buf.String()
+	}
+
+	t.Logf("--- EXPECTED (Formatted) ---\n%s", format(expected))
+	t.Logf("--- ACTUAL (Formatted) ---\n%s", format(actual))
 }
 
 // TestSVGBasicTable tests rendering a basic SVG table.
@@ -254,67 +331,16 @@ func TestSVGVerticalMerge(t *testing.T) {
 	}
 }
 
-// TestSVGColumnAlignmentOverride tests SVG with column alignment overrides.
-// Parameter t is the testing context.
-// No return value; skips test as work in progress.
-func TestSVGColumnAlignmentOverride(t *testing.T) {
-	t.Skip("work in progress")
-	var buf bytes.Buffer
-	svgCfg := defaultSVGConfigForTests(false)
-	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewSVG(svgCfg)),
-		tablewriter.WithHeaderConfig(tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}}),
-		tablewriter.WithRowConfig(tw.CellConfig{
-			ColumnAligns: []tw.Align{tw.AlignRight, tw.AlignCenter, tw.AlignLeft},
-		}),
-	)
-	table.Header([]string{"H1", "H2", "H3"})
-	table.Append([]string{"R1C1", "R1C2", "R1C3"})
-	table.Render()
-	expected := `<svg xmlns="http://www.w3.org/2000/svg"width="94"height="39"font-family="Arial"font-size="10"><style>text { stroke: none; }</style><rect x="1"y="1"width="30"height="18"fill="#DDD"/><text x="16"y="10"fill="#000"text-anchor="middle"dominant-baseline="middle">H 1</text><rect x="32"y="1"width="30"height="18"fill="#DDD"/><text x="47"y="10"fill="#000"text-anchor="middle"dominant-baseline="middle">H 2</text><rect x="63"y="1"width="30"height="18"fill="#DDD"/><text x="78"y="10"fill="#000"text-anchor="middle"dominant-baseline="middle">H 3</text><rect x="1"y="20"width="30"height="18"fill="#FFF"/><text x="28"y="29"fill="#000"text-anchor="end"dominant-baseline="middle">R1C1</text><rect x="32"y="20"width="30"height="18"fill="#FFF"/><text x="47"y="29"fill="#000"text-anchor="middle"dominant-baseline="middle">R1C2</text><rect x="63"y="20"width="30"height="18"fill="#FFF"/><text x="66"y="29"fill="#000"text-anchor="start"dominant-baseline="middle">R1C3</text><g class="table-borders"stroke="black"stroke-width="1"stroke-linecap="square"><line x1="0.5"y1="0.5"x2="93.5"y2="0.5"/><line x1="0.5"y1="19.5"x2="93.5"y2="19.5"/><line x1="0.5"y1="38.5"x2="93.5"y2="38.5"/><line x1="0.5"y1="0.5"x2="0.5"y2="38.5"/><line x1="31.5"y1="0.5"x2="31.5"y2="38.5"/><line x1="62.5"y1="0.5"x2="62.5"y2="38.5"/><line x1="93.5"y1="0.5"x2="93.5"y2="38.5"/></g></svg>`
-	if !visualCheckSVG(t, "SVGColumnAlignmentOverride", buf.String(), expected) {
-		for _, v := range table.Renderer().Debug() {
-			t.Log(v)
-		}
-	}
-}
-
-// TestSVGHorizontalMerge tests SVG with horizontal merging.
-// Parameter t is the testing context.
-// No return value; skips test due to merge issue.
-func TestSVGHorizontalMerge(t *testing.T) {
-	t.Skip("Skipping test until we can fix the merge issue")
-	var buf bytes.Buffer
-	svgCfg := defaultSVGConfigForTests(false)
-	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewSVG(svgCfg)),
-		tablewriter.WithConfig(tablewriter.Config{
-			Header: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal, Alignment: tw.AlignCenter}},
-			Row:    tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal, Alignment: tw.AlignLeft}},
-		}),
-	)
-	table.Header([]string{"A", "Merged Header", "Merged Header"})
-	table.Append([]string{"Data 1", "Data 2", "Data 2"})
-	table.Render()
-	expected := `<svg xmlns="http://www.w3.org/2000/svg"width="150"height="39"font-family="Arial"font-size="10"><style>text { stroke: none; }</style><rect x="1"y="1"width="42"height="18"fill="#DDD"/><text x="22"y="10"fill="#000"text-anchor="middle"dominant-baseline="middle">A</text><rect x="44"y="1"width="105"height="18"fill="#DDD"/><text x="96.5"y="10"fill="#000"text-anchor="middle"dominant-baseline="middle">MERGED HEADER</text><rect x="1"y="20"width="42"height="18"fill="#FFF"/><text x="4"y="29"fill="#000"text-anchor="start"dominant-baseline="middle">Data 1</text><rect x="44"y="20"width="105"height="18"fill="#FFF"/><text x="47"y="29"fill="#000"text-anchor="start"dominant-baseline="middle">Data 2</text><g class="table-borders"stroke="black"stroke-width="1"stroke-linecap="square"><line x1="0.5"y1="0.5"x2="149.5"y2="0.5"/><line x1="0.5"y1="19.5"x2="149.5"y2="19.5"/><line x1="0.5"y1="38.5"x2="149.5"y2="38.5"/><line x1="0.5"y1="0.5"x2="0.5"y2="38.5"/><line x1="43.5"y1="0.5"x2="43.5"y2="38.5"/><line x1="128.5"y1="0.5"x2="128.5"y2="38.5"/><line x1="149.5"y1="0.5"x2="149.5"y2="38.5"/></g></svg>`
-	if !visualCheckSVG(t, "SVGHorizontalMerge", buf.String(), expected) {
-		for _, v := range table.Renderer().Debug() {
-			t.Log(v)
-		}
-	}
-}
-
 // TestSVGWithFooterAndAlignment tests SVG with footer and alignments.
 // Parameter t is the testing context.
 // No return value; skips test as experimental.
 func TestSVGWithFooterAndAlignment(t *testing.T) {
-	t.Skip("work in progress ... still experimental")
 	var buf bytes.Buffer
 	svgCfg := defaultSVGConfigForTests(false)
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewSVG(svgCfg)),
 		tablewriter.WithHeaderConfig(tw.CellConfig{
-			Formatting: tw.CellFormatting{Alignment: tw.AlignCenter},
+			Formatting: tw.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: true},
 		}),
 		tablewriter.WithRowConfig(tw.CellConfig{
 			ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignRight, tw.AlignCenter},
@@ -328,9 +354,60 @@ func TestSVGWithFooterAndAlignment(t *testing.T) {
 	table.Append([]string{"Banana", "12", "0.35"})
 	table.Footer([]string{"", "Total", "7.20"})
 	table.Render()
-	expected := `<svg xmlns="http://www.w3.org/2000/svg"width="118"height="77"font-family="Arial"font-size="10"><style>text { stroke: none; }</style><rect x="1"y="1"width="42"height="18"fill="#DDD"/><text x="22"y="10"fill="#000"text-anchor="middle"dominant-baseline="middle">ITEM</text><rect x="44"y="1"width="36"height="18"fill="#DDD"/><text x="62"y="10"fill="#000"text-anchor="middle"dominant-baseline="middle">QTY</text><rect x="81"y="1"width="36"height="18"fill="#DDD"/><text x="99"y="10"fill="#000"text-anchor="middle"dominant-baseline="middle">PRICE</text><rect x="1"y="20"width="42"height="18"fill="#FFF"/><text x="4"y="29"fill="#000"text-anchor="start"dominant-baseline="middle">Apple</text><rect x="44"y="20"width="36"height="18"fill="#FFF"/><text x="77"y="29"fill="#000"text-anchor="end"dominant-baseline="middle">5</text><rect x="81"y="20"width="36"height="18"fill="#FFF"/><text x="99"y="29"fill="#000"text-anchor="middle"dominant-baseline="middle">1.20</text><rect x="1"y="39"width="42"height="18"fill="#EEE"/><text x="4"y="48"fill="#000"text-anchor="start"dominant-baseline="middle">Banana</text><rect x="44"y="39"width="36"height="18"fill="#EEE"/><text x="77"y="48"fill="#000"text-anchor="end"dominant-baseline="middle">12</text><rect x="81"y="39"width="36"height="18"fill="#EEE"/><text x="99"y="48"fill="#000"text-anchor="middle"dominant-baseline="middle">0.35</text><rect x="1"y="58"width="42"height="18"fill="#DDD"/><text x="39"y="67"fill="#000"text-anchor="end"dominant-baseline="middle"></text><rect x="44"y="58"width="36"height="18"fill="#DDD"/><text x="77"y="67"fill="#000"text-anchor="end"dominant-baseline="middle">Total</text><rect x="81"y="58"width="36"height="18"fill="#DDD"/><text x="114"y="67"fill="#000"text-anchor="end"dominant-baseline="middle">7.20</text><g class="table-borders"stroke="black"stroke-width="1"stroke-linecap="square"><line x1="0.5"y1="0.5"x2="117.5"y2="0.5"/><line x1="0.5"y1="19.5"x2="117.5"y2="19.5"/><line x1="0.5"y1="38.5"x2="117.5"y2="38.5"/><line x1="0.5"y1="57.5"x2="117.5"y2="57.5"/><line x1="0.5"y1="76.5"x2="117.5"y2="76.5"/><line x1="0.5"y1="0.5"x2="0.5"y2="76.5"/><line x1="43.5"y1="0.5"x2="43.5"y2="76.5"/><line x1="80.5"y1="0.5"x2="80.5"y2="76.5"/><line x1="117.5"y1="0.5"x2="117.5"y2="76.5"/></g></svg>`
+	expected := `<svg xmlns="http://www.w3.org/2000/svg"width="118"height="77"font-family="Arial"font-size="10"><style>text { stroke: none; }</style><rect x="1"y="1"width="42"height="18"fill="#DDD"/><text x="22"y="10"fill="#000"text-anchor="middle"dominant-baseline="middle">ITEM</text><rect x="44"y="1"width="36"height="18"fill="#DDD"/><text x="62"y="10"fill="#000"text-anchor="middle"dominant-baseline="middle">QTY</text><rect x="81"y="1"width="36"height="18"fill="#DDD"/><text x="99"y="10"fill="#000"text-anchor="middle"dominant-baseline="middle">PRICE</text><rect x="1"y="20"width="42"height="18"fill="#FFF"/><text x="4"y="29"fill="#000"text-anchor="start"dominant-baseline="middle">Apple</text><rect x="44"y="20"width="36"height="18"fill="#FFF"/><text x="77"y="29"fill="#000"text-anchor="end"dominant-baseline="middle">5</text><rect x="81"y="20"width="36"height="18"fill="#FFF"/><text x="99"y="29"fill="#000"text-anchor="middle"dominant-baseline="middle">1.20</text><rect x="1"y="39"width="42"height="18"fill="#EEE"/><text x="4"y="48"fill="#000"text-anchor="start"dominant-baseline="middle">Banana</text><rect x="44"y="39"width="36"height="18"fill="#EEE"/><text x="77"y="48"fill="#000"text-anchor="end"dominant-baseline="middle">12</text><rect x="81"y="39"width="36"height="18"fill="#EEE"/><text x="99"y="48"fill="#000"text-anchor="middle"dominant-baseline="middle">0.35</text><rect x="1"y="58"width="42"height="18"fill="#DDD"/><text x="40" y="67"fill="#000"text-anchor="end"dominant-baseline="middle"></text><rect x="44"y="58"width="36"height="18"fill="#DDD"/><text x="77"y="67"fill="#000"text-anchor="end"dominant-baseline="middle">Total</text><rect x="81"y="58"width="36"height="18"fill="#DDD"/><text x="114"y="67"fill="#000"text-anchor="end"dominant-baseline="middle">7.20</text><g class="table-borders"stroke="black"stroke-width="1"stroke-linecap="square"><line x1="0.5"y1="0.5"x2="117.5"y2="0.5"/><line x1="0.5"y1="19.5"x2="117.5"y2="19.5"/><line x1="0.5"y1="38.5"x2="117.5"y2="38.5"/><line x1="0.5"y1="57.5"x2="117.5"y2="57.5"/><line x1="0.5"y1="76.5"x2="117.5"y2="76.5"/><line x1="0.5"y1="0.5"x2="0.5"y2="76.5"/><line x1="43.5"y1="0.5"x2="43.5"y2="76.5"/><line x1="80.5"y1="0.5"x2="80.5"y2="76.5"/><line x1="117.5"y1="0.5"x2="117.5"y2="76.5"/></g></svg>`
 	if !visualCheckSVG(t, "SVGWithFooterAndAlignment", buf.String(), expected) {
 		t.Log("--- Debug Log for SVGWithFooterAndAlignment ---")
+		for _, v := range table.Renderer().Debug() {
+			t.Log(v)
+		}
+	}
+}
+
+// TestSVGColumnAlignmentOverride tests SVG with column alignment overrides.
+// Parameter t is the testing context.
+// No return value;
+func TestSVGColumnAlignmentOverride(t *testing.T) {
+	var buf bytes.Buffer
+	svgCfg := defaultSVGConfigForTests(false)
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithRenderer(renderer.NewSVG(svgCfg)),
+		tablewriter.WithHeaderConfig(tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}}),
+		tablewriter.WithRowConfig(tw.CellConfig{
+			ColumnAligns: []tw.Align{tw.AlignRight, tw.AlignCenter, tw.AlignLeft},
+		}),
+	)
+	table.Header([]string{"H1", "H2", "H3"})
+	table.Append([]string{"R1C1", "R1C2", "R1C3"})
+	table.Render()
+	expected := `<svg xmlns="http://www.w3.org/2000/svg"width="94"height="39"font-family="Arial"font-size="10"><style>text { stroke: none; }</style><rect x="1"y="1"width="30"height="18"fill="#DDD"/><text x="16"y="10"fill="#000"text-anchor="middle"dominant-baseline="middle">H1</text><rect x="32"y="1"width="30"height="18"fill="#DDD"/><text x="47"y="10"fill="#000"text-anchor="middle"dominant-baseline="middle">H2</text><rect x="63"y="1"width="30"height="18"fill="#DDD"/><text x="78"y="10"fill="#000"text-anchor="middle"dominant-baseline="middle">H3</text><rect x="1"y="20"width="30"height="18"fill="#FFF"/><text x="28"y="29"fill="#000"text-anchor="end"dominant-baseline="middle">R1C1</text><rect x="32"y="20"width="30"height="18"fill="#FFF"/><text x="47"y="29"fill="#000"text-anchor="middle"dominant-baseline="middle">R1C2</text><rect x="63"y="20"width="30"height="18"fill="#FFF"/><text x="66"y="29"fill="#000"text-anchor="start"dominant-baseline="middle">R1C3</text><g class="table-borders"stroke="black"stroke-width="1"stroke-linecap="square"><line x1="0.5"y1="0.5"x2="93.5"y2="0.5"/><line x1="0.5"y1="19.5"x2="93.5"y2="19.5"/><line x1="0.5"y1="38.5"x2="93.5"y2="38.5"/><line x1="0.5"y1="0.5"x2="0.5"y2="38.5"/><line x1="31.5"y1="0.5"x2="31.5"y2="38.5"/><line x1="62.5"y1="0.5"x2="62.5"y2="38.5"/><line x1="93.5"y1="0.5"x2="93.5"y2="38.5"/></g></svg>`
+	if !visualCheckSVG(t, "SVGColumnAlignmentOverride", buf.String(), expected) {
+		for _, v := range table.Renderer().Debug() {
+			t.Log(v)
+		}
+	}
+}
+
+// TestSVGHorizontalMerge tests SVG with horizontal merging.
+// Parameter t is the testing context.
+// No return value;
+func TestSVGHorizontalMerge(t *testing.T) {
+	var buf bytes.Buffer
+	svgCfg := defaultSVGConfigForTests(false)
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithRenderer(renderer.NewSVG(svgCfg)),
+		tablewriter.WithConfig(tablewriter.Config{
+			Header: tw.CellConfig{
+				Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal, Alignment: tw.AlignCenter},
+			},
+			Row: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal, Alignment: tw.AlignLeft}},
+		}),
+	)
+	table.Header([]string{"A", "Merged Header", "Merged Header"})
+	table.Append([]string{"Data 1", "Data 2", "Data 2"})
+	table.Render()
+	expected := `<svg xmlns="http://www.w3.org/2000/svg" width="135" height="39" font-family="Arial" font-size="10"><style>text { stroke: none; }</style><rect x="1" y="1" width="42" height="18" fill="#DDD"/><text x="22" y="10" fill="#000" text-anchor="middle" dominant-baseline="middle">A</text><rect x="44" y="1" width="91" height="18" fill="#DDD"/><text x="89.5" y="10" fill="#000" text-anchor="middle" dominant-baseline="middle">MERGED HEADER</text><rect x="1" y="20" width="42" height="18" fill="#FFF"/><text x="4" y="29" fill="#000" text-anchor="start" dominant-baseline="middle">Data 1</text><rect x="44" y="20" width="91" height="18" fill="#FFF"/><text x="47" y="29" fill="#000" text-anchor="start" dominant-baseline="middle">Data 2</text><g class="table-borders" stroke="black" stroke-width="1" stroke-linecap="square"><line x1="0.5" y1="0.5" x2="134.5" y2="0.5"/><line x1="0.5" y1="19.5" x2="134.5" y2="19.5"/><line x1="0.5" y1="38.5" x2="134.5" y2="38.5"/><line x1="0.5" y1="0.5" x2="0.5" y2="38.5"/><line x1="43.5" y1="0.5" x2="43.5" y2="38.5"/><line x1="134.5" y1="0.5" x2="134.5" y2="38.5"/></g></svg>`
+	if !visualCheckSVG(t, "SVGHorizontalMerge", buf.String(), expected) {
+		t.Log("--- Debug Log for SVGHorizontalMerge ---")
 		for _, v := range table.Renderer().Debug() {
 			t.Log(v)
 		}

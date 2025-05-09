@@ -30,11 +30,11 @@ type SVGConfig struct {
 	MinColWidth             float64 // Minimum column width
 	RenderTWConfigOverrides bool    // Override SVG alignments with tablewriter
 	Debug                   bool    // Enable debug logging
+	ScaleFactor             float64 // Scaling factor for SVG
 }
 
 // SVG implements tw.Renderer for SVG output.
 // Manages SVG element generation and merge tracking.
-// Work in progress: refining merge rendering accuracy.
 type SVG struct {
 	config SVGConfig
 	trace  []string
@@ -77,6 +77,7 @@ func NewSVG(configs ...SVGConfig) *SVG {
 		FooterColor:             "black",
 		ApproxCharWidthFactor:   0.6,
 		MinColWidth:             30.0,
+		ScaleFactor:             1.0,
 		RenderTWConfigOverrides: true,
 		Debug:                   false,
 	}
@@ -144,25 +145,32 @@ func NewSVG(configs ...SVGConfig) *SVG {
 
 // calculateAllColumnWidths computes column widths based on content and merges.
 // Uses content length and merge spans; handles horizontal merges by distributing width.
-// Work in progress: may need refinement for complex merge scenarios.
 func (s *SVG) calculateAllColumnWidths() {
 	s.debug("Calculating column widths")
 	tempMaxCols := 0
 	for sectionIdx := 0; sectionIdx < 3; sectionIdx++ {
 		for lineIdx, lineCtx := range s.allVisualLineCtx[sectionIdx] {
 			if lineCtx.Row.Current != nil {
-				for colIdx, cellCtx := range lineCtx.Row.Current {
-					currentMaxReach := colIdx + 1
+				visualColCount := 0
+				for colIdx := 0; colIdx < len(lineCtx.Row.Current); {
+					cellCtx := lineCtx.Row.Current[colIdx]
+					if cellCtx.Merge.Horizontal.Present && !cellCtx.Merge.Horizontal.Start {
+						colIdx++ // Skip non-start merged cells
+						continue
+					}
+					visualColCount++
+					span := 1
 					if cellCtx.Merge.Horizontal.Present && cellCtx.Merge.Horizontal.Start {
-						span := cellCtx.Merge.Horizontal.Span
+						span = cellCtx.Merge.Horizontal.Span
 						if span <= 0 {
 							span = 1
 						}
-						currentMaxReach = colIdx + span
 					}
-					if currentMaxReach > tempMaxCols {
-						tempMaxCols = currentMaxReach
-					}
+					colIdx += span
+				}
+				s.debug("Section %d, line %d: Visual columns = %d", sectionIdx, lineIdx, visualColCount)
+				if visualColCount > tempMaxCols {
+					tempMaxCols = visualColCount
 				}
 			} else if lineIdx < len(s.allVisualLineData[sectionIdx]) {
 				if rawDataLen := len(s.allVisualLineData[sectionIdx][lineIdx]); rawDataLen > tempMaxCols {
@@ -181,6 +189,14 @@ func (s *SVG) calculateAllColumnWidths() {
 	for i := range s.calculatedColWidths {
 		s.calculatedColWidths[i] = s.config.MinColWidth
 	}
+
+	// Structure to track max width for each merge group
+	type mergeKey struct {
+		startCol int
+		span     int
+	}
+	maxMergeWidths := make(map[mergeKey]float64)
+
 	processSectionForWidth := func(sectionIdx int) {
 		for lineIdx, visualLineData := range s.allVisualLineData[sectionIdx] {
 			if lineIdx >= len(s.allVisualLineCtx[sectionIdx]) {
@@ -217,16 +233,20 @@ func (s *SVG) calculateAllColumnWidths() {
 						s.calculatedColWidths[currentTableCol] = contentAndPaddingWidth
 					}
 				} else {
-					currentSpannedContentWidth := 0.0
-					colsInSpan := 0
-					for i := 0; i < hSpan && (currentTableCol+i) < s.maxCols; i++ {
-						currentSpannedContentWidth += s.calculatedColWidths[currentTableCol+i]
-						colsInSpan++
+					totalMergedWidth := contentAndPaddingWidth + (float64(hSpan-1) * s.config.Padding * 2)
+					if totalMergedWidth < s.config.MinColWidth*float64(hSpan) {
+						totalMergedWidth = s.config.MinColWidth * float64(hSpan)
 					}
-					if contentAndPaddingWidth > currentSpannedContentWidth && currentTableCol < len(s.calculatedColWidths) {
-						neededExtra := contentAndPaddingWidth - currentSpannedContentWidth
-						s.calculatedColWidths[currentTableCol] += neededExtra
-						s.debug("Horizontal merge at col %d, span %d: Added %.2f width", currentTableCol, hSpan, neededExtra)
+					if currentTableCol < len(s.calculatedColWidths) {
+						key := mergeKey{currentTableCol, hSpan}
+						if currentWidth, ok := maxMergeWidths[key]; ok {
+							if totalMergedWidth > currentWidth {
+								maxMergeWidths[key] = totalMergedWidth
+							}
+						} else {
+							maxMergeWidths[key] = totalMergedWidth
+						}
+						s.debug("Horizontal merge at col %d, span %d: Total width %.2f", currentTableCol, hSpan, totalMergedWidth)
 					}
 				}
 				currentTableCol += hSpan
@@ -237,8 +257,17 @@ func (s *SVG) calculateAllColumnWidths() {
 	processSectionForWidth(sectionTypeHeader)
 	processSectionForWidth(sectionTypeRow)
 	processSectionForWidth(sectionTypeFooter)
+
+	// Apply maximum widths for merged cells
+	for key, width := range maxMergeWidths {
+		s.calculatedColWidths[key.startCol] = width
+		for i := 1; i < key.span && (key.startCol+i) < len(s.calculatedColWidths); i++ {
+			s.calculatedColWidths[key.startCol+i] = 0
+		}
+	}
+
 	for i := range s.calculatedColWidths {
-		if s.calculatedColWidths[i] < s.config.MinColWidth {
+		if s.calculatedColWidths[i] < s.config.MinColWidth && s.calculatedColWidths[i] != 0 {
 			s.calculatedColWidths[i] = s.config.MinColWidth
 		}
 	}
@@ -281,7 +310,7 @@ func (s *SVG) Close(w io.Writer) error {
 			totalHeight = s.config.StrokeWidth * 2
 		}
 	}
-	fmt.Fprintf(w, `<svg xmlns="http://www.w3.org/2000/svg" width="%.2f" height="%.2f" font-family="%s" font-size="%.2fpx">`,
+	fmt.Fprintf(w, `<svg xmlns="http://www.w3.org/2000/svg" width="%.2f" height="%.2f" font-family="%s" font-size="%.2f">`,
 		totalWidth, totalHeight, html.EscapeString(s.config.FontFamily), s.config.FontSize)
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "<style>text { stroke: none; }</style>")
@@ -299,7 +328,10 @@ func (s *SVG) Close(w io.Writer) error {
 			borderRowsToDraw = 1
 		}
 		lineStartX := s.config.StrokeWidth / 2.0
-		lineEndX := totalWidth - s.config.StrokeWidth/2.0
+		lineEndX := s.config.StrokeWidth / 2.0
+		for _, width := range s.calculatedColWidths {
+			lineEndX += width + s.config.StrokeWidth
+		}
 		for i := 0; i <= borderRowsToDraw; i++ {
 			fmt.Fprintf(w, `    <line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" />%s`,
 				lineStartX, yPos, lineEndX, yPos, "\n")
@@ -310,13 +342,13 @@ func (s *SVG) Close(w io.Writer) error {
 		xPos := s.config.StrokeWidth / 2.0
 		borderLineStartY := s.config.StrokeWidth / 2.0
 		borderLineEndY := totalHeight - (s.config.StrokeWidth / 2.0)
-		for i := 0; i <= s.maxCols; i++ {
+		for visualColIdx := 0; visualColIdx <= s.maxCols; visualColIdx++ {
 			fmt.Fprintf(w, `    <line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" />%s`,
 				xPos, borderLineStartY, xPos, borderLineEndY, "\n")
-			if i < s.maxCols {
+			if visualColIdx < s.maxCols {
 				colWidth := s.config.MinColWidth
-				if i < len(s.calculatedColWidths) && s.calculatedColWidths[i] > 0 {
-					colWidth = s.calculatedColWidths[i]
+				if visualColIdx < len(s.calculatedColWidths) && s.calculatedColWidths[visualColIdx] > 0 {
+					colWidth = s.calculatedColWidths[visualColIdx]
 				}
 				xPos += colWidth + s.config.StrokeWidth
 			}
@@ -389,7 +421,7 @@ func (s *SVG) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
 	s.debug("Buffering %d header lines", len(headers))
 	for i, line := range headers {
 		currentCtx := ctx
-		currentCtx.IsSubRow = (i > 0)
+		currentCtx.IsSubRow = i > 0
 		s.storeVisualLine(sectionTypeHeader, line, currentCtx)
 	}
 }
@@ -445,7 +477,7 @@ func (s *SVG) renderBufferedData() {
 
 // renderVisualLine renders a single visual line as SVG elements.
 // Parameters include lineData (cell content), ctx (formatting), and position (section type).
-// No return value; handles horizontal and vertical merges. Work in progress: merge alignment.
+// No return value; handles horizontal and vertical merges.
 func (s *SVG) renderVisualLine(visualLineData []string, ctx tw.Formatting, position tw.Position) {
 	if s.maxCols == 0 || len(s.calculatedColWidths) == 0 {
 		s.debug("Skipping line rendering: maxCols=%d, widths=%d", s.maxCols, len(s.calculatedColWidths))
@@ -574,6 +606,9 @@ func (s *SVG) renderVisualLine(visualLineData []string, ctx tw.Formatting, posit
 				s.vMergeTrack[tableColIdx+hs] = vSpan
 			}
 			s.debug("Vertical merge at col %d, span %d, height %.2f", tableColIdx, vSpan, rectHeight)
+		} else if remainingVSpan, isMerging := s.vMergeTrack[tableColIdx]; isMerging && remainingVSpan > 1 {
+			rectHeight = singleVisualRowHeight
+			textToRender = ""
 		}
 		fmt.Fprintf(&s.svgElements, `  <rect x="%.2f" y="%.2f" width="%.2f" height="%.2f" fill="%s"/>%s`,
 			currentX, s.currentY, rectWidth, rectHeight, html.EscapeString(bgColor), "\n")
@@ -585,7 +620,7 @@ func (s *SVG) renderVisualLine(visualLineData []string, ctx tw.Formatting, posit
 		}
 		textX := currentX + s.config.Padding
 		if cellTextAnchor == "middle" {
-			textX = currentX + rectWidth/2.0
+			textX = currentX + s.config.Padding + (rectWidth-2*s.config.Padding)/2.0
 		} else if cellTextAnchor == "end" {
 			textX = currentX + rectWidth - s.config.Padding
 		}
