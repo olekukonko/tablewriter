@@ -575,154 +575,6 @@ func (t *Table) streamRenderHeader(headers []string) error {
 	return nil
 }
 
-// buildStreamCellContexts creates CellContext objects for a given line in streaming mode.
-// It determines the Location based on line index within the processed block and overall stream state.
-// It constructs Current, Previous, and Next cell contexts using stream widths and lastRenderedState.
-// Parameters:
-// - position: The section being processed (Header, Row, Footer).
-// - rowIdx: The row index within its section (always 0 for Header/Footer, the row number for Row).
-// - lineIdx: The line index within the processed lines for this specific row/header/footer block.
-// - processedLines: All multi-lines for the current row/header/footer block.
-// - sectionMerges: The merge states for the entire section (map[int]tw.MergeState for Header/Footer, map[int]tw.MergeState for the specific row in Row).
-// - sectionConfig: The CellConfig for this section (Header, Row, Footer).
-// Returns a renderMergeResponse struct containing Current, Previous, Next cells and the determined Location.
-func (t *Table) buildStreamCellContexts(
-	position tw.Position,
-	rowIdx int, // Relevant for Row position
-	lineIdx int, // Index within the processedLines slice for this block
-	processedLines [][]string,
-	sectionMerges map[int]tw.MergeState, // Merges for this section/row block
-	sectionConfig tw.CellConfig, // Config for this section (Used for padding/aligns lookup)
-) renderMergeResponse {
-
-	resp := renderMergeResponse{
-		cells:        make(map[int]tw.CellContext),
-		prevCells:    nil,                             // Default to nil
-		nextCells:    nil,                             // Default to nil
-		cellsContent: make([]string, t.streamNumCols), // Initialize cellsContent
-	}
-
-	if t.streamWidths == nil || t.streamWidths.Len() == 0 || t.streamNumCols == 0 {
-		t.logger.Warn("buildStreamCellContexts: streamWidths is not set or streamNumCols is 0. Cannot build cell contexts.")
-		resp.location = tw.LocationMiddle // Default location
-		return resp                       // Return empty contexts
-	}
-
-	// Ensure the line exists and is padded to streamNumCols
-	currentLineContent := make([]string, t.streamNumCols)
-	if lineIdx >= 0 && lineIdx < len(processedLines) {
-		currentLineContent = padLine(processedLines[lineIdx], t.streamNumCols)
-	} else {
-		t.logger.Warn("buildStreamCellContexts: lineIdx %d out of bounds for processedLines (len %d) at position %s, rowIdx %d. Building empty line context.", lineIdx, len(processedLines), position, rowIdx)
-		// Populate with empty strings if out of bounds
-		for j := range currentLineContent {
-			currentLineContent[j] = tw.Empty
-		}
-	}
-	resp.cellsContent = currentLineContent // Store the padded line content
-
-	// Build Current Cells Context
-	colAligns := t.buildAligns(sectionConfig)           // Build aligns based on section config
-	colPadding := t.buildPadding(sectionConfig.Padding) // Build padding based on section config
-
-	for j := 0; j < t.streamNumCols; j++ {
-		cellData := currentLineContent[j]
-		finalColWidth := t.streamWidths.Get(j) // Use stream width
-
-		mergeState := tw.MergeState{}
-		if sectionMerges != nil {
-			if state, ok := sectionMerges[j]; ok {
-				mergeState = state
-			}
-		}
-		// Vertical/Hierarchical merges are ignored in streaming.
-		// Horizontal merge state comes directly from sectionMerges (detected on raw data).
-
-		resp.cells[j] = tw.CellContext{
-			Data:    cellData,
-			Align:   colAligns[j],
-			Padding: colPadding[j],
-			Width:   finalColWidth,
-			Merge:   mergeState, // Use the merge state from sectionMerges for this column
-		}
-	}
-
-	// Determine Previous Cells Context using t.lastRenderedState
-	if t.lastRenderedLineContent != nil && t.lastRenderedPosition.Validate() == nil {
-		resp.prevCells = make(map[int]tw.CellContext)
-		paddedPrevLine := padLine(t.lastRenderedLineContent, t.streamNumCols)
-		for j := 0; j < t.streamNumCols; j++ {
-			prevMergeState := tw.MergeState{}
-			if t.lastRenderedMergeState != nil {
-				if state, ok := t.lastRenderedMergeState[j]; ok {
-					prevMergeState = state
-				}
-			}
-			resp.prevCells[j] = tw.CellContext{
-				Data:  paddedPrevLine[j],
-				Width: t.streamWidths.Get(j), // Use stream width for context width
-				Merge: prevMergeState,
-			}
-		}
-	}
-
-	// Determine Next Cells Context within the current block
-	totalLinesInBlock := len(processedLines)
-	if lineIdx < totalLinesInBlock-1 {
-		// Next line is within the current processed block (e.g., next line in multi-line header or row)
-		resp.nextCells = make(map[int]tw.CellContext)
-		nextLineContent := padLine(processedLines[lineIdx+1], t.streamNumCols)
-		for j := 0; j < t.streamNumCols; j++ {
-			nextMergeState := tw.MergeState{}
-			// For the next line within the same block, use the same sectionMerges map
-			if sectionMerges != nil {
-				if state, ok := sectionMerges[j]; ok {
-					nextMergeState = state
-				}
-			}
-			resp.nextCells[j] = tw.CellContext{
-				Data:  nextLineContent[j],
-				Width: t.streamWidths.Get(j), // Use stream width for context width
-				Merge: nextMergeState,
-			}
-		}
-	}
-	// If it's the last line of the block, resp.nextCells remains nil by default.
-	// Determining the *actual* next line outside the block is handled by the caller (streamRenderHeader, streamAppendRow, Close).
-
-	// Determine Location for this line relative to the *rendering sequence*
-	// LocationFirst if: This is the first line of this block (lineIdx == 0) AND the previously rendered element was NOT from the same Position.
-	// LocationMiddle otherwise.
-	// LocationEnd will be handled for the very last line of the entire stream (in Close or last Append).
-
-	currentRenderingLocation := tw.LocationMiddle // Default
-
-	// Is this the very first content line of this section being rendered?
-	isFirstLineOfBlock := (lineIdx == 0)
-
-	// Is the previously rendered element from the same section?
-	// If t.lastRenderedPosition is different or invalid, this is the start of a new section block.
-	if isFirstLineOfBlock && (t.lastRenderedLineContent == nil || t.lastRenderedPosition != position) {
-		currentRenderingLocation = tw.LocationFirst
-	} else {
-		currentRenderingLocation = tw.LocationMiddle
-	}
-
-	resp.location = currentRenderingLocation
-	t.logger.Debug("buildStreamCellContexts: Position %s, Row %d, Line %d/%d. Location: %v. Prev Pos: %v. Has Prev: %v.",
-		position, rowIdx, lineIdx, totalLinesInBlock, resp.location, t.lastRenderedPosition, t.lastRenderedLineContent != nil)
-
-	return resp
-}
-
-// streamAppendRow processes and renders a single row in streaming mode.
-// It calculates/uses fixed stream widths, processes content, renders separators and lines,
-// and updates streaming state.
-// It assumes Start() has already been called and t.hasPrinted is true.
-// streamAppendRow processes and renders a single row in streaming mode.
-// It calculates/uses fixed stream widths, processes content, renders separators and lines,
-// and updates streaming state.
-// It assumes Start() has already been called and t.hasPrinted is true.
 // streamAppendRow processes and renders a single row in streaming mode.
 // It calculates/uses fixed stream widths, processes content, renders separators and lines,
 // and updates streaming state.
@@ -1094,58 +946,6 @@ func (t *Table) renderStreamBottomBorder() error {
 	return nil
 }
 
-// lastRenderedMergeStateToCellContexts converts the stored last rendered line content
-// and its merge states into a map of CellContext, suitable for providing
-// context (e.g., "Current" or "Previous") to the renderer.
-// It uses the fixed streamWidths.
-func (t *Table) lastRenderedMergeStateToCellContexts(
-	lineContent []string,
-	lineMergeStates map[int]tw.MergeState,
-) map[int]tw.CellContext {
-
-	cells := make(map[int]tw.CellContext)
-	if t.streamWidths == nil || t.streamWidths.Len() == 0 || t.streamNumCols == 0 {
-		t.logger.Warn("lastRenderedMergeStateToCellContexts: streamWidths not set or streamNumCols is 0. Returning empty cell contexts.")
-		return cells
-	}
-
-	// Ensure lineContent is padded to streamNumCols if it's not nil
-	var paddedLineContent []string
-	if lineContent != nil {
-		paddedLineContent = padLine(lineContent, t.streamNumCols)
-	} else {
-		// If lineContent is nil (e.g. after a separator), create an empty padded line
-		paddedLineContent = make([]string, t.streamNumCols)
-		for i := range paddedLineContent {
-			paddedLineContent[i] = tw.Empty
-		}
-	}
-
-	for j := 0; j < t.streamNumCols; j++ {
-		cellData := paddedLineContent[j]
-		colWidth := t.streamWidths.Get(j)
-		mergeState := tw.MergeState{} // Default to no merge
-
-		if lineMergeStates != nil {
-			if state, ok := lineMergeStates[j]; ok {
-				mergeState = state
-			}
-		}
-
-		// For context purposes (like Previous or Current for a border line),
-		// Align and Padding are often less critical than Data, Width, and Merge.
-		// We can use default/empty Align and Padding here.
-		cells[j] = tw.CellContext{
-			Data:    cellData,
-			Align:   tw.AlignDefault, // Or tw.AlignNone if preferred for context-only cells
-			Padding: tw.Padding{},    // Empty padding
-			Width:   colWidth,
-			Merge:   mergeState,
-		}
-	}
-	return cells
-}
-
 // streamRenderFooter renders the stored footer lines in streaming mode.
 // It's called by Close(). It renders the Row/Footer separator line first.
 func (t *Table) streamRenderFooter(processedFooterLines [][]string) error {
@@ -1333,4 +1133,196 @@ func (t *Table) streamStoreFooter(footers []string) error {
 	}
 
 	return nil
+}
+
+// buildStreamCellContexts creates CellContext objects for a given line in streaming mode.
+// It determines the Location based on line index within the processed block and overall stream state.
+// It constructs Current, Previous, and Next cell contexts using stream widths and lastRenderedState.
+// Parameters:
+// - position: The section being processed (Header, Row, Footer).
+// - rowIdx: The row index within its section (always 0 for Header/Footer, the row number for Row).
+// - lineIdx: The line index within the processed lines for this specific row/header/footer block.
+// - processedLines: All multi-lines for the current row/header/footer block.
+// - sectionMerges: The merge states for the entire section (map[int]tw.MergeState for Header/Footer, map[int]tw.MergeState for the specific row in Row).
+// - sectionConfig: The CellConfig for this section (Header, Row, Footer).
+// Returns a renderMergeResponse struct containing Current, Previous, Next cells and the determined Location.
+func (t *Table) buildStreamCellContexts(
+	position tw.Position,
+	rowIdx int, // Relevant for Row position
+	lineIdx int, // Index within the processedLines slice for this block
+	processedLines [][]string,
+	sectionMerges map[int]tw.MergeState, // Merges for this section/row block
+	sectionConfig tw.CellConfig, // Config for this section (Used for padding/aligns lookup)
+) renderMergeResponse {
+
+	resp := renderMergeResponse{
+		cells:        make(map[int]tw.CellContext),
+		prevCells:    nil,                             // Default to nil
+		nextCells:    nil,                             // Default to nil
+		cellsContent: make([]string, t.streamNumCols), // Initialize cellsContent
+	}
+
+	if t.streamWidths == nil || t.streamWidths.Len() == 0 || t.streamNumCols == 0 {
+		t.logger.Warn("buildStreamCellContexts: streamWidths is not set or streamNumCols is 0. Cannot build cell contexts.")
+		resp.location = tw.LocationMiddle // Default location
+		return resp                       // Return empty contexts
+	}
+
+	// Ensure the line exists and is padded to streamNumCols
+	currentLineContent := make([]string, t.streamNumCols)
+	if lineIdx >= 0 && lineIdx < len(processedLines) {
+		currentLineContent = padLine(processedLines[lineIdx], t.streamNumCols)
+	} else {
+		t.logger.Warn("buildStreamCellContexts: lineIdx %d out of bounds for processedLines (len %d) at position %s, rowIdx %d. Building empty line context.", lineIdx, len(processedLines), position, rowIdx)
+		// Populate with empty strings if out of bounds
+		for j := range currentLineContent {
+			currentLineContent[j] = tw.Empty
+		}
+	}
+	resp.cellsContent = currentLineContent // Store the padded line content
+
+	// Build Current Cells Context
+	colAligns := t.buildAligns(sectionConfig)           // Build aligns based on section config
+	colPadding := t.buildPadding(sectionConfig.Padding) // Build padding based on section config
+
+	for j := 0; j < t.streamNumCols; j++ {
+		cellData := currentLineContent[j]
+		finalColWidth := t.streamWidths.Get(j) // Use stream width
+
+		mergeState := tw.MergeState{}
+		if sectionMerges != nil {
+			if state, ok := sectionMerges[j]; ok {
+				mergeState = state
+			}
+		}
+		// Vertical/Hierarchical merges are ignored in streaming.
+		// Horizontal merge state comes directly from sectionMerges (detected on raw data).
+
+		resp.cells[j] = tw.CellContext{
+			Data:    cellData,
+			Align:   colAligns[j],
+			Padding: colPadding[j],
+			Width:   finalColWidth,
+			Merge:   mergeState, // Use the merge state from sectionMerges for this column
+		}
+	}
+
+	// Determine Previous Cells Context using t.lastRenderedState
+	if t.lastRenderedLineContent != nil && t.lastRenderedPosition.Validate() == nil {
+		resp.prevCells = make(map[int]tw.CellContext)
+		paddedPrevLine := padLine(t.lastRenderedLineContent, t.streamNumCols)
+		for j := 0; j < t.streamNumCols; j++ {
+			prevMergeState := tw.MergeState{}
+			if t.lastRenderedMergeState != nil {
+				if state, ok := t.lastRenderedMergeState[j]; ok {
+					prevMergeState = state
+				}
+			}
+			resp.prevCells[j] = tw.CellContext{
+				Data:  paddedPrevLine[j],
+				Width: t.streamWidths.Get(j), // Use stream width for context width
+				Merge: prevMergeState,
+			}
+		}
+	}
+
+	// Determine Next Cells Context within the current block
+	totalLinesInBlock := len(processedLines)
+	if lineIdx < totalLinesInBlock-1 {
+		// Next line is within the current processed block (e.g., next line in multi-line header or row)
+		resp.nextCells = make(map[int]tw.CellContext)
+		nextLineContent := padLine(processedLines[lineIdx+1], t.streamNumCols)
+		for j := 0; j < t.streamNumCols; j++ {
+			nextMergeState := tw.MergeState{}
+			// For the next line within the same block, use the same sectionMerges map
+			if sectionMerges != nil {
+				if state, ok := sectionMerges[j]; ok {
+					nextMergeState = state
+				}
+			}
+			resp.nextCells[j] = tw.CellContext{
+				Data:  nextLineContent[j],
+				Width: t.streamWidths.Get(j), // Use stream width for context width
+				Merge: nextMergeState,
+			}
+		}
+	}
+	// If it's the last line of the block, resp.nextCells remains nil by default.
+	// Determining the *actual* next line outside the block is handled by the caller (streamRenderHeader, streamAppendRow, Close).
+
+	// Determine Location for this line relative to the *rendering sequence*
+	// LocationFirst if: This is the first line of this block (lineIdx == 0) AND the previously rendered element was NOT from the same Position.
+	// LocationMiddle otherwise.
+	// LocationEnd will be handled for the very last line of the entire stream (in Close or last Append).
+
+	currentRenderingLocation := tw.LocationMiddle // Default
+
+	// Is this the very first content line of this section being rendered?
+	isFirstLineOfBlock := (lineIdx == 0)
+
+	// Is the previously rendered element from the same section?
+	// If t.lastRenderedPosition is different or invalid, this is the start of a new section block.
+	if isFirstLineOfBlock && (t.lastRenderedLineContent == nil || t.lastRenderedPosition != position) {
+		currentRenderingLocation = tw.LocationFirst
+	} else {
+		currentRenderingLocation = tw.LocationMiddle
+	}
+
+	resp.location = currentRenderingLocation
+	t.logger.Debug("buildStreamCellContexts: Position %s, Row %d, Line %d/%d. Location: %v. Prev Pos: %v. Has Prev: %v.",
+		position, rowIdx, lineIdx, totalLinesInBlock, resp.location, t.lastRenderedPosition, t.lastRenderedLineContent != nil)
+
+	return resp
+}
+
+// lastRenderedMergeStateToCellContexts converts the stored last rendered line content
+// and its merge states into a map of CellContext, suitable for providing
+// context (e.g., "Current" or "Previous") to the renderer.
+// It uses the fixed streamWidths.
+func (t *Table) lastRenderedMergeStateToCellContexts(
+	lineContent []string,
+	lineMergeStates map[int]tw.MergeState,
+) map[int]tw.CellContext {
+
+	cells := make(map[int]tw.CellContext)
+	if t.streamWidths == nil || t.streamWidths.Len() == 0 || t.streamNumCols == 0 {
+		t.logger.Warn("lastRenderedMergeStateToCellContexts: streamWidths not set or streamNumCols is 0. Returning empty cell contexts.")
+		return cells
+	}
+
+	// Ensure lineContent is padded to streamNumCols if it's not nil
+	var paddedLineContent []string
+	if lineContent != nil {
+		paddedLineContent = padLine(lineContent, t.streamNumCols)
+	} else {
+		// If lineContent is nil (e.g. after a separator), create an empty padded line
+		paddedLineContent = make([]string, t.streamNumCols)
+		for i := range paddedLineContent {
+			paddedLineContent[i] = tw.Empty
+		}
+	}
+
+	for j := 0; j < t.streamNumCols; j++ {
+		cellData := paddedLineContent[j]
+		colWidth := t.streamWidths.Get(j)
+		mergeState := tw.MergeState{} // Default to no merge
+
+		if lineMergeStates != nil {
+			if state, ok := lineMergeStates[j]; ok {
+				mergeState = state
+			}
+		}
+
+		// For context purposes (like Previous or Current for a border line),
+		// Align and Padding are often less critical than Data, Width, and Merge.
+		// We can use default/empty Align and Padding here.
+		cells[j] = tw.CellContext{
+			Data:    cellData,
+			Align:   tw.AlignDefault, // Or tw.AlignNone if preferred for context-only cells
+			Padding: tw.Padding{},    // Empty padding
+			Width:   colWidth,
+			Merge:   mergeState,
+		}
+	}
+	return cells
 }

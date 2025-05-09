@@ -96,7 +96,6 @@ func process(r io.Reader) {
 			TrimWhitespace: tw.On,
 			CompactMode:    tw.Off,
 		},
-		Debug: false,
 	}
 
 	// Create table with configuration

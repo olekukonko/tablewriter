@@ -37,18 +37,20 @@ func (m Mapper[K, V]) OK(key K) (V, bool) {
 
 // Set sets the value for the specified key.
 // Does nothing if the map is nil.
-func (m Mapper[K, V]) Set(key K, value V) {
+func (m Mapper[K, V]) Set(key K, value V) Mapper[K, V] {
 	if m != nil {
 		m[key] = value
 	}
+	return m
 }
 
 // Delete removes the specified key from the map.
 // Does nothing if the key doesn't exist or the map is nil.
-func (m Mapper[K, V]) Delete(key K) {
+func (m Mapper[K, V]) Delete(key K) Mapper[K, V] {
 	if m != nil {
 		delete(m, key)
 	}
+	return m
 }
 
 // Has returns true if the key exists in the map, false otherwise.
