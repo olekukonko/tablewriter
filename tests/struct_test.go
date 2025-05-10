@@ -78,7 +78,7 @@ func TestStructTableWithDB(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithConfig(config),
-		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 			Symbols: tw.NewSymbols(tw.StyleRounded), // Use rounded Unicode style
 			Settings: tw.Settings{
 				Separators: tw.Separators{

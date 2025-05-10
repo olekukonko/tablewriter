@@ -7,18 +7,17 @@ import (
 	"strings"
 
 	"github.com/olekukonko/tablewriter/tw"
-	"github.com/olekukonko/tablewriter/twfn"
 )
 
 // Markdown renders tables in Markdown format with customizable settings.
 type Markdown struct {
-	config tw.RendererConfig // Rendering configuration
-	logger *ll.Logger        // Debug trace messages
+	config tw.Rendition // Rendering configuration
+	logger *ll.Logger   // Debug trace messages
 }
 
 // NewMarkdown initializes a Markdown renderer with defaults tailored for Markdown (e.g., pipes, header separator).
 // Only the first config is used if multiple are provided.
-func NewMarkdown(configs ...tw.RendererConfig) *Markdown {
+func NewMarkdown(configs ...tw.Rendition) *Markdown {
 	cfg := defaultBlueprint()
 	// Configure Markdown-specific defaults
 	cfg.Symbols = tw.NewSymbols(tw.StyleMarkdown)
@@ -29,7 +28,7 @@ func NewMarkdown(configs ...tw.RendererConfig) *Markdown {
 	cfg.Settings.Lines.ShowTop = tw.Off
 	cfg.Settings.Lines.ShowBottom = tw.Off
 	cfg.Settings.Lines.ShowFooterLine = tw.Off
-	cfg.Settings.TrimWhitespace = tw.On
+	// cfg.Settings.TrimWhitespace = tw.On
 
 	// Apply user overrides
 	if len(configs) > 0 {
@@ -39,7 +38,7 @@ func NewMarkdown(configs ...tw.RendererConfig) *Markdown {
 }
 
 // mergeMarkdownConfig combines user-provided config with Markdown defaults, enforcing Markdown-specific settings.
-func mergeMarkdownConfig(defaults, overrides tw.RendererConfig) tw.RendererConfig {
+func mergeMarkdownConfig(defaults, overrides tw.Rendition) tw.Rendition {
 	if overrides.Borders.Left != 0 {
 		defaults.Borders.Left = overrides.Borders.Left
 	}
@@ -53,25 +52,25 @@ func mergeMarkdownConfig(defaults, overrides tw.RendererConfig) tw.RendererConfi
 	// Enforce Markdown requirements
 	defaults.Settings.Lines.ShowHeaderLine = tw.On
 	defaults.Settings.Separators.BetweenColumns = tw.On
-	defaults.Settings.TrimWhitespace = tw.On
+	// defaults.Settings.TrimWhitespace = tw.On
 	return defaults
 }
 
 func (m *Markdown) Logger(logger *ll.Logger) {
-	m.logger = logger
+	m.logger = logger.Namespace("markdown")
 }
 
 // Config returns the renderer's current configuration.
-func (m *Markdown) Config() tw.RendererConfig {
+func (m *Markdown) Config() tw.Rendition {
 	return m.config
 }
 
 // formatCell formats a Markdown cell's content with padding and alignment, ensuring at least 3 characters wide.
 func (m *Markdown) formatCell(content string, width int, align tw.Align, padding tw.Padding) string {
-	if m.config.Settings.TrimWhitespace.Enabled() {
-		content = strings.TrimSpace(content)
-	}
-	contentVisualWidth := twfn.DisplayWidth(content)
+	//if m.config.Settings.TrimWhitespace.Enabled() {
+	//	content = strings.TrimSpace(content)
+	//}
+	contentVisualWidth := tw.DisplayWidth(content)
 
 	// Use specified padding characters or default to spaces
 	padLeftChar := padding.Left
@@ -84,10 +83,10 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 	}
 
 	// Calculate padding widths
-	padLeftCharWidth := twfn.DisplayWidth(padLeftChar)
-	padRightCharWidth := twfn.DisplayWidth(padRightChar)
-	minWidth := twfn.Max(3, contentVisualWidth+padLeftCharWidth+padRightCharWidth)
-	targetWidth := twfn.Max(width, minWidth)
+	padLeftCharWidth := tw.DisplayWidth(padLeftChar)
+	padRightCharWidth := tw.DisplayWidth(padRightChar)
+	minWidth := tw.Max(3, contentVisualWidth+padLeftCharWidth+padRightCharWidth)
+	targetWidth := tw.Max(width, minWidth)
 
 	// Calculate padding
 	totalPaddingNeeded := targetWidth - contentVisualWidth
@@ -98,7 +97,7 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 	var leftPadStr, rightPadStr string
 	switch align {
 	case tw.AlignRight:
-		leftPadCount := twfn.Max(0, totalPaddingNeeded-padRightCharWidth)
+		leftPadCount := tw.Max(0, totalPaddingNeeded-padRightCharWidth)
 		rightPadCount := totalPaddingNeeded - leftPadCount
 		leftPadStr = strings.Repeat(padLeftChar, leftPadCount)
 		rightPadStr = strings.Repeat(padRightChar, rightPadCount)
@@ -116,7 +115,7 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 		leftPadStr = strings.Repeat(padLeftChar, leftPadCount)
 		rightPadStr = strings.Repeat(padRightChar, rightPadCount)
 	default: // AlignLeft
-		rightPadCount := twfn.Max(0, totalPaddingNeeded-padLeftCharWidth)
+		rightPadCount := tw.Max(0, totalPaddingNeeded-padLeftCharWidth)
 		leftPadCount := totalPaddingNeeded - rightPadCount
 		leftPadStr = strings.Repeat(padLeftChar, leftPadCount)
 		rightPadStr = strings.Repeat(padRightChar, rightPadCount)
@@ -126,7 +125,7 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 	result := leftPadStr + content + rightPadStr
 
 	// Adjust width if needed
-	finalWidth := twfn.DisplayWidth(result)
+	finalWidth := tw.DisplayWidth(result)
 	if finalWidth != targetWidth {
 		m.logger.Debug("Markdown formatCell MISMATCH: content='%s', target_w=%d, paddingL='%s', paddingR='%s', align=%s -> result='%s', result_w=%d",
 			content, targetWidth, padding.Left, padding.Right, align, result, finalWidth)
@@ -143,9 +142,9 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 				result += adjStr
 			}
 		} else {
-			result = twfn.TruncateString(result, targetWidth)
+			result = tw.TruncateString(result, targetWidth)
 		}
-		m.logger.Debug("Markdown formatCell Corrected: target_w=%d, result='%s', new_w=%d", targetWidth, result, twfn.DisplayWidth(result))
+		m.logger.Debug("Markdown formatCell Corrected: target_w=%d, result='%s', new_w=%d", targetWidth, result, tw.DisplayWidth(result))
 	}
 
 	m.logger.Debug("Markdown formatCell: content='%s', width=%d, align=%s, paddingL='%s', paddingR='%s' -> '%s' (target %d)",
@@ -155,7 +154,7 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 
 // formatSeparator generates a Markdown separator (e.g., `---`, `:--`, `:-:`) with alignment indicators.
 func (m *Markdown) formatSeparator(width int, align tw.Align) string {
-	targetWidth := twfn.Max(3, width)
+	targetWidth := tw.Max(3, width)
 	leftColon := align == tw.AlignLeft || align == tw.AlignCenter
 	rightColon := align == tw.AlignRight || align == tw.AlignCenter
 
@@ -232,7 +231,7 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 	output.WriteString(prefix)
 
 	colIndex := 0
-	separatorWidth := twfn.DisplayWidth(separator)
+	separatorWidth := tw.DisplayWidth(separator)
 
 	for colIndex < numCols {
 		// Fetch cell context

@@ -363,11 +363,11 @@ func (s *SVG) Close(w io.Writer) error {
 
 // Config returns the renderer's configuration.
 // No parameters are required.
-// Returns a RendererConfig with border and debug settings.
-func (s *SVG) Config() tw.RendererConfig {
-	return tw.RendererConfig{
+// Returns a Rendition with border and debug settings.
+func (s *SVG) Config() tw.Rendition {
+	return tw.Rendition{
 		Borders:   tw.Border{Left: tw.On, Right: tw.On, Top: tw.On, Bottom: tw.On},
-		Settings:  tw.Settings{TrimWhitespace: tw.On},
+		Settings:  tw.Settings{},
 		Streaming: false,
 	}
 }
@@ -665,7 +665,7 @@ func (s *SVG) Row(w io.Writer, rowLine []string, ctx tw.Formatting) {
 }
 
 func (s *SVG) Logger(logger *ll.Logger) {
-	s.logger = logger
+	s.logger = logger.Namespace("svg")
 }
 
 // Start initializes SVG rendering.

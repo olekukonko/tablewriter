@@ -53,7 +53,7 @@ type Table struct {
 type renderContext struct {
 	table           *Table                                      // Reference to the table instance
 	renderer        tw.Renderer                                 // Renderer instance
-	cfg             tw.RendererConfig                           // Renderer configuration
+	cfg             tw.Rendition                                // Renderer configuration
 	numCols         int                                         // Total number of columns
 	headerLines     [][]string                                  // Processed header lines
 	rowLines        [][][]string                                // Processed row lines

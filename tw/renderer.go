@@ -13,13 +13,13 @@ type Renderer interface {
 	Row(w io.Writer, row []string, ctx Formatting)          // Renders a single row
 	Footer(w io.Writer, footers [][]string, ctx Formatting) // Renders table footer
 	Line(w io.Writer, ctx Formatting)                       // Renders separator line
-	Config() RendererConfig                                 // Returns renderer config
+	Config() Rendition                                      // Returns renderer config
 	Close(w io.Writer) error
 	Logger(logger *ll.Logger) // send logger to renderers
 }
 
-// RendererConfig holds the configuration for the default renderer.
-type RendererConfig struct {
+// Rendition holds the configuration for the default renderer.
+type Rendition struct {
 	Borders   Border   // Border visibility settings
 	Symbols   Symbols  // Symbols used for table drawing
 	Settings  Settings // Rendering behavior settings
@@ -29,12 +29,10 @@ type RendererConfig struct {
 // Formatting encapsulates the complete formatting context for a table row.
 // It provides all necessary information to render a row correctly within the table structure.
 type Formatting struct {
-	Row       RowContext // Detailed configuration for the row and its cells
-	Level     Level      // Hierarchical level (Header, Body, Footer) affecting line drawing
-	HasFooter bool       // Indicates if the table includes a footer section
-	IsSubRow  bool       // Marks this as a continuation or padding line in multi-line rows
-	//todo remove
-	Debug            bool // Enables debug logging when true
+	Row              RowContext // Detailed configuration for the row and its cells
+	Level            Level      // Hierarchical level (Header, Body, Footer) affecting line drawing
+	HasFooter        bool       // Indicates if the table includes a footer section
+	IsSubRow         bool       // Marks this as a continuation or padding line in multi-line rows
 	NormalizedWidths Mapper[int, int]
 }
 
@@ -96,10 +94,10 @@ type Lines struct {
 
 // Settings holds configuration preferences for rendering behavior.
 type Settings struct {
-	Separators     Separators // Separator visibility settings
-	Lines          Lines      // Line visibility settings
-	TrimWhitespace State      // Trims whitespace from cell content if enabled
-	CompactMode    State      // Reserved for future compact rendering (unused)
+	Separators Separators // Separator visibility settings
+	Lines      Lines      // Line visibility settings
+	//TrimWhitespace State      // Trims whitespace from cell content if enabled
+	CompactMode State // Reserved for future compact rendering (unused)
 }
 
 // Border defines the visibility states of table borders.

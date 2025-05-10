@@ -1,6 +1,7 @@
-package renderer
+package tests
 
 import (
+	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
 	"testing"
 )
@@ -8,13 +9,13 @@ import (
 func TestDefaultConfigMerging(t *testing.T) {
 	tests := []struct {
 		name     string
-		config   tw.RendererConfig
-		expected tw.RendererConfig
+		config   tw.Rendition
+		expected tw.Rendition
 	}{
 		{
 			name:   "EmptyConfig",
-			config: tw.RendererConfig{},
-			expected: tw.RendererConfig{
+			config: tw.Rendition{},
+			expected: tw.Rendition{
 				Borders: tw.Border{Left: tw.On, Right: tw.On, Top: tw.On, Bottom: tw.On},
 				Settings: tw.Settings{
 					Separators: tw.Separators{
@@ -29,18 +30,18 @@ func TestDefaultConfigMerging(t *testing.T) {
 						ShowHeaderLine: tw.On,
 						ShowFooterLine: tw.On,
 					},
-					TrimWhitespace: tw.On,
-					CompactMode:    tw.Off,
+					// TrimWhitespace: tw.On,
+					CompactMode: tw.Off,
 				},
 				Symbols: tw.NewSymbols(tw.StyleLight),
 			},
 		},
 		{
 			name: "PartialBorders",
-			config: tw.RendererConfig{
+			config: tw.Rendition{
 				Borders: tw.Border{Top: tw.Off},
 			},
-			expected: tw.RendererConfig{
+			expected: tw.Rendition{
 				Borders: tw.Border{Left: tw.On, Right: tw.On, Top: tw.Off, Bottom: tw.On},
 				Settings: tw.Settings{
 					Separators: tw.Separators{
@@ -55,20 +56,20 @@ func TestDefaultConfigMerging(t *testing.T) {
 						ShowHeaderLine: tw.On,
 						ShowFooterLine: tw.On,
 					},
-					TrimWhitespace: tw.On,
-					CompactMode:    tw.Off,
+					// TrimWhitespace: tw.On,
+					CompactMode: tw.Off,
 				},
 				Symbols: tw.NewSymbols(tw.StyleLight),
 			},
 		},
 		{
 			name: "PartialSettingsLines",
-			config: tw.RendererConfig{
+			config: tw.Rendition{
 				Settings: tw.Settings{
 					Lines: tw.Lines{ShowFooterLine: tw.Off},
 				},
 			},
-			expected: tw.RendererConfig{
+			expected: tw.Rendition{
 				Borders: tw.Border{Left: tw.On, Right: tw.On, Top: tw.On, Bottom: tw.On},
 				Settings: tw.Settings{
 					Separators: tw.Separators{
@@ -83,8 +84,8 @@ func TestDefaultConfigMerging(t *testing.T) {
 						ShowHeaderLine: tw.On,
 						ShowFooterLine: tw.Off,
 					},
-					TrimWhitespace: tw.On,
-					CompactMode:    tw.Off,
+					// TrimWhitespace: tw.On,
+					CompactMode: tw.Off,
 				},
 				Symbols: tw.NewSymbols(tw.StyleLight),
 			},
@@ -93,7 +94,7 @@ func TestDefaultConfigMerging(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := NewBlueprint(tt.config)
+			r := renderer.NewBlueprint(tt.config)
 			got := r.Config()
 
 			// Compare Borders

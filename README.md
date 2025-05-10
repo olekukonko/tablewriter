@@ -115,7 +115,7 @@ func main() {
 	}
 
 	table := tablewriter.NewTable(os.Stdout)
-	table.Header([]string{"Name", "Age", "City"})
+	table.Header("Name", "Age", "City")
 	table.Bulk(data)
 	table.Render()
 }
@@ -338,7 +338,6 @@ package main
 
 import (
 	"github.com/olekukonko/tablewriter"
-	"github.com/olekukonko/tablewriter/streamer"
 	"github.com/olekukonko/tablewriter/tw"
 	"log"
 	"os"
@@ -346,33 +345,17 @@ import (
 )
 
 func main() {
-	// Configure Ocean streamer with fixed widths
-	oceanCfg := streamer.OceanConfig{
-		ColumnWidths:   []int{4, 15, 8}, // ID: 4, Desc: 15, Status: 8
-		ColumnAligns:   []tw.Align{tw.AlignCenter, tw.AlignLeft, tw.AlignRight},
-		HeaderAlign:    tw.AlignCenter,
-		FooterAlign:    tw.AlignRight,
-		ShowHeaderLine: true,
-		ShowFooterLine: true,
-	}
-
-	// Create streamer
-	oceanRenderer, err := streamer.NewOcean(os.Stdout, false, oceanCfg)
-	if err != nil {
-		log.Fatalf("Failed to create renderer: %v", err)
-	}
-	tableStream, err := tablewriter.NewStreamTable(os.Stdout, oceanRenderer)
-	if err != nil {
-		log.Fatalf("Failed to create TableStream: %v", err)
-	}
+	table := tablewriter.NewTable(os.Stdout, tablewriter.WithStreaming(tw.StreamConfig{Enable: true}))
 
 	// Start streaming
-	if err := tableStream.Start(); err != nil {
+	if err := table.Start(); err != nil {
 		log.Fatalf("Start failed: %v", err)
 	}
 
+	defer table.Close()
+
 	// Stream header
-	tableStream.Header([]string{"ID", "Description", "Status"})
+	table.Header([]string{"ID", "Description", "Status"})
 
 	// Stream rows with simulated delay
 	data := [][]string{
@@ -380,35 +363,32 @@ func main() {
 		{"2", "Short desc", "DONE"},
 		{"3", "Another long description here", "ERROR"},
 	}
-	for i, row := range data {
-		if err := tableStream.Row(row); err != nil {
-			log.Fatalf("Row %d failed: %v", i+1, err)
-		}
+	for _, row := range data {
+		table.Append(row)
 		time.Sleep(500 * time.Millisecond) // Simulate real-time data feed
 	}
 
 	// Stream footer
-	tableStream.Footer([]string{"", "Total", "3"})
-
-	// End streaming
-	if err := tableStream.End(); err != nil {
-		log.Fatalf("End failed: %v", err)
-	}
+	table.Footer([]string{"", "Total", "3"})
 }
 ```
 
 **Output** (appears incrementally):
 
 ```
-┌────┬───────────────┬────────┐
-│ ID │  DESCRIPTION  │ STATUS │
-├────┼───────────────┼────────┤
-│ 1  │ This descri…  │     OK │
-│ 2  │ Short desc    │   DONE │
-│ 3  │ Another lon…  │  ERROR │
-├────┼───────────────┼────────┤
-│    │         Total │      3 │
-└────┴───────────────┴────────┘
+┌────────┬───────────────┬──────────┐
+│   ID   │  DESCRIPTION  │  STATUS  │
+├────────┼───────────────┼──────────┤
+│ 1      │ This          │ OK       │
+│        │ description   │          │
+│        │ is too long   │          │
+│ 2      │ Short desc    │ DONE     │
+│ 3      │ Another long  │ ERROR    │
+│        │ description   │          │
+│        │ here          │          │
+├────────┼───────────────┼──────────┤
+│        │         Total │        3 │
+└────────┴───────────────┴──────────┘
 ```
 
 **Note**: Long descriptions are truncated with `…` due to fixed column widths. The output appears row-by-row, simulating a real-time feed.

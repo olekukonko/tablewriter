@@ -33,7 +33,7 @@ func TestMarkdownBasicTable(t *testing.T) {
 func TestMarkdownNoBorders(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewMarkdown(tw.RendererConfig{
+		tablewriter.WithRenderer(renderer.NewMarkdown(tw.Rendition{
 			Borders: tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
 		})),
 	)

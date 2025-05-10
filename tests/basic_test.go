@@ -44,7 +44,7 @@ func TestBasicTableDefaultBorder(t *testing.T) {
 	t.Run("all-off", func(t *testing.T) {
 		buf.Reset()
 		table := tablewriter.NewTable(&buf,
-			tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+			tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 				Borders: tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
 			})),
 		)
@@ -68,7 +68,7 @@ func TestBasicTableDefaultBorder(t *testing.T) {
 	t.Run("top-on", func(t *testing.T) {
 		buf.Reset()
 		table := tablewriter.NewTable(&buf,
-			tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+			tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 				Borders: tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.On, Bottom: tw.Off},
 			})),
 		)
@@ -93,7 +93,7 @@ func TestBasicTableDefaultBorder(t *testing.T) {
 	t.Run("mix", func(t *testing.T) {
 		buf.Reset()
 		table := tablewriter.NewTable(&buf,
-			tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+			tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 				Borders: tw.Border{Left: tw.Off, Right: tw.On, Top: tw.On, Bottom: tw.On},
 			})),
 		)
@@ -126,7 +126,7 @@ func TestUnicodeWithoutHeader(t *testing.T) {
 
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 			Borders: tw.Border{Left: tw.On, Right: tw.On, Top: tw.Off, Bottom: tw.Off},
 		})),
 	)
@@ -148,7 +148,7 @@ func TestUnicodeWithoutHeader(t *testing.T) {
 func TestBasicTableASCII(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 			Symbols: tw.NewSymbols(tw.StyleASCII),
 		})),
 	)
@@ -171,7 +171,7 @@ func TestBasicTableASCII(t *testing.T) {
 func TestBasicTableUnicodeRounded(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 			Symbols: tw.NewSymbols(tw.StyleRounded),
 		})),
 	)
@@ -194,7 +194,7 @@ func TestBasicTableUnicodeRounded(t *testing.T) {
 func TestBasicTableUnicodeDouble(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 			Symbols: tw.NewSymbols(tw.StyleDouble),
 		})),
 	)
@@ -224,7 +224,7 @@ func TestSeparator(t *testing.T) {
 	t.Run("horizontal - enabled", func(t *testing.T) {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf,
-			tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+			tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 				Settings: tw.Settings{
 					Separators: tw.Separators{
 						BetweenColumns: tw.On,
@@ -257,7 +257,7 @@ func TestSeparator(t *testing.T) {
 	t.Run("horizontal - disabled", func(t *testing.T) {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf,
-			tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+			tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 				Settings: tw.Settings{
 					Separators: tw.Separators{
 						BetweenColumns: tw.On,
@@ -288,7 +288,7 @@ func TestSeparator(t *testing.T) {
 	t.Run("vertical - enabled", func(t *testing.T) {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf,
-			tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+			tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 				Settings: tw.Settings{
 					Separators: tw.Separators{
 						BetweenColumns: tw.On,
@@ -319,7 +319,7 @@ func TestSeparator(t *testing.T) {
 	t.Run("vertical - disabled", func(t *testing.T) {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf,
-			tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+			tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 				Settings: tw.Settings{
 					Separators: tw.Separators{
 						BetweenColumns: tw.Off,
@@ -654,7 +654,7 @@ C │ D
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			r := renderer.NewBlueprint(
-				tw.RendererConfig{
+				tw.Rendition{
 					Borders: tt.borders,
 				},
 			)

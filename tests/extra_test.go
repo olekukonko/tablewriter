@@ -131,7 +131,7 @@ func TestMasterClass(t *testing.T) {
 		var b bytes.Buffer
 		table := tablewriter.NewTable(&b,
 			tablewriter.WithConfig(littleConfig),
-			tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+			tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 				Borders: tw.BorderNone,
 				Settings: tw.Settings{
 					Separators: tw.Separators{
@@ -158,7 +158,7 @@ func TestMasterClass(t *testing.T) {
 
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithConfig(bigConfig),
-		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 			Borders: tw.BorderNone,
 			Settings: tw.Settings{
 				Separators: tw.Separators{
@@ -202,26 +202,8 @@ func TestConfigAutoHideDefault(t *testing.T) {
 
 	// Use the new exported Config() method
 	cfg := table.Config()
-	if cfg.AutoHide != false {
+	if cfg.Behavior.AutoHide.Enabled() {
 		t.Errorf("Expected AutoHide default to be false, got true")
-	}
-}
-
-func TestConfigWithAutoHideOption(t *testing.T) {
-	var buf bytes.Buffer
-
-	// Test setting to true
-	tableTrue := tablewriter.NewTable(&buf, tablewriter.WithAutoHide(true))
-	cfgTrue := tableTrue.Config()
-	if cfgTrue.AutoHide != true {
-		t.Errorf("Expected WithAutoHide(true) to set flag to true, got false")
-	}
-
-	// Test setting back to false
-	tableFalse := tablewriter.NewTable(&buf, tablewriter.WithAutoHide(false))
-	cfgFalse := tableFalse.Config()
-	if cfgFalse.AutoHide != false {
-		t.Errorf("Expected WithAutoHide(false) to set flag to false, got true")
 	}
 }
 
@@ -239,7 +221,7 @@ func TestAutoHideFeature(t *testing.T) {
 	t.Run("HideWhenEmpty", func(t *testing.T) {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf,
-			tablewriter.WithAutoHide(true), // Enable the feature
+			tablewriter.WithAutoHide(tw.On), // Enable the feature
 			tablewriter.WithDebug(true),
 		)
 		table.Header([]string{"Name", "Sign", "Rating"}) // Header IS included
@@ -283,7 +265,7 @@ func TestAutoHideFeature(t *testing.T) {
 	t.Run("ShowWhenNotEmpty", func(t *testing.T) {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf,
-			tablewriter.WithAutoHide(true), // Feature enabled
+			tablewriter.WithAutoHide(tw.On), // Feature enabled
 			// tablewriter.WithRenderer(renderer.NewBlueprint()),
 		)
 		table.Header([]string{"Name", "Sign", "Rating"})
@@ -321,7 +303,7 @@ func TestAutoHideFeature(t *testing.T) {
 	t.Run("DisabledShowsEmpty", func(t *testing.T) {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf,
-			tablewriter.WithAutoHide(false), // Feature explicitly disabled
+			tablewriter.WithAutoHide(tw.Off), // Feature explicitly disabled
 			// tablewriter.WithRenderer(renderer.NewBlueprint()),
 		)
 		table.Header([]string{"Name", "Sign", "Rating"})
@@ -422,4 +404,55 @@ func TestUnicodeTableDefault(t *testing.T) {
 
 `
 	visualCheck(t, "UnicodeTableRendering", buf.String(), expected)
+}
+
+func TestSpaces(t *testing.T) {
+	var buf bytes.Buffer
+	var data = [][]string{
+		{"No", "Age", "    City"},
+		{"    1", "25", "New York"},
+		{"2", "30", "x"},
+		{"       3", "28", "     Lagos"},
+	}
+	t.Run("Trim", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf, tablewriter.WithDebug(true), tablewriter.WithTrimSpace(tw.On))
+		table.Header(data[0])
+		table.Bulk(data[1:])
+		table.Render()
+
+		expected := `
+           ┌────┬─────┬──────────┐
+           │ NO │ AGE │   CITY   │
+           ├────┼─────┼──────────┤
+           │ 1  │ 25  │ New York │
+           │ 2  │ 30  │ x        │
+           │ 3  │ 28  │ Lagos    │
+           └────┴─────┴──────────┘
+`
+		if !visualCheck(t, "UnicodeTableRendering", buf.String(), expected) {
+			t.Log(table.Debug())
+		}
+	})
+
+	t.Run("NoTrim", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf, tablewriter.WithTrimSpace(tw.Off))
+		table.Header(data[0])
+		table.Bulk(data[1:])
+		table.Render()
+
+		expected := `
+       ┌──────────┬─────┬────────────┐
+       │    NO    │ AGE │    CITY    │
+       ├──────────┼─────┼────────────┤
+       │     1    │ 25  │ New York   │
+       │ 2        │ 30  │ x          │
+       │        3 │ 28  │      Lagos │
+       └──────────┴─────┴────────────┘
+
+`
+		visualCheck(t, "UnicodeTableRendering", buf.String(), expected)
+	})
+
 }

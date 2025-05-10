@@ -1,5 +1,10 @@
 package tw
 
+import (
+	"fmt"
+	"sort"
+)
+
 // KeyValuePair represents a single key-value pair from a Mapper.
 type KeyValuePair[K comparable, V any] struct {
 	Key   K
@@ -84,6 +89,15 @@ func (m Mapper[K, V]) Keys() []K {
 	return keys
 }
 
+func (m Mapper[K, V]) Clear() {
+	if m == nil {
+		return
+	}
+	for k := range m {
+		delete(m, k)
+	}
+}
+
 // Values returns a slice containing all values in the map.
 // Returns nil if the map is nil or empty.
 func (m Mapper[K, V]) Values() []V {
@@ -152,4 +166,55 @@ func (m Mapper[K, V]) Slicer() Slicer[KeyValuePair[K, V]] {
 		result = append(result, KeyValuePair[K, V]{Key: k, Value: v})
 	}
 	return result
+}
+
+func (m Mapper[K, V]) SortedKeys() []K {
+	keys := make([]K, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+
+	sort.Slice(keys, func(i, j int) bool {
+		a, b := any(keys[i]), any(keys[j])
+
+		switch va := a.(type) {
+		case int:
+			if vb, ok := b.(int); ok {
+				return va < vb
+			}
+		case int32:
+			if vb, ok := b.(int32); ok {
+				return va < vb
+			}
+		case int64:
+			if vb, ok := b.(int64); ok {
+				return va < vb
+			}
+		case uint:
+			if vb, ok := b.(uint); ok {
+				return va < vb
+			}
+		case uint64:
+			if vb, ok := b.(uint64); ok {
+				return va < vb
+			}
+		case float32:
+			if vb, ok := b.(float32); ok {
+				return va < vb
+			}
+		case float64:
+			if vb, ok := b.(float64); ok {
+				return va < vb
+			}
+		case string:
+			if vb, ok := b.(string); ok {
+				return va < vb
+			}
+		}
+
+		// fallback to string comparison
+		return fmt.Sprintf("%v", a) < fmt.Sprintf("%v", b)
+	})
+
+	return keys
 }

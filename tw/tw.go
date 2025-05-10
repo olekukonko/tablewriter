@@ -23,8 +23,6 @@ const (
 	Off State = Fail    // Feature is disabled
 )
 
-type Align string
-
 // Table Alignment Constants
 // Defines text alignment options for table content
 const (
@@ -41,16 +39,11 @@ const (
 	Footer Position = "footer" // Table footer section
 )
 
-// Level indicates the vertical position of a line in the table
-type Level int
-
 const (
 	LevelHeader Level = iota // Topmost line position
 	LevelBody                // LevelBody line position
 	LevelFooter              // LevelFooter line position
 )
-
-type Location string
 
 const (
 	LocationFirst  Location = "first"  // Topmost line position

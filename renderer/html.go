@@ -74,9 +74,9 @@ func (h *HTML) Logger(logger *ll.Logger) {
 	h.logger = logger
 }
 
-// Config returns a RendererConfig representation of the current configuration.
-func (h *HTML) Config() tw.RendererConfig {
-	return tw.RendererConfig{
+// Config returns a Rendition representation of the current configuration.
+func (h *HTML) Config() tw.Rendition {
+	return tw.Rendition{
 		Borders:   tw.BorderNone,
 		Symbols:   tw.NewSymbols(tw.StyleNone),
 		Settings:  tw.Settings{},

@@ -78,7 +78,7 @@ func process(r io.Reader) {
 	}
 
 	// Configure renderer with default symbols and settings
-	renderConfig := tw.RendererConfig{
+	renderConfig := tw.Rendition{
 		Borders: b,
 		Settings: tw.Settings{
 			Separators: tw.Separators{
@@ -93,8 +93,7 @@ func process(r io.Reader) {
 				ShowHeaderLine: tw.On,
 				ShowFooterLine: tw.On,
 			},
-			TrimWhitespace: tw.On,
-			CompactMode:    tw.Off,
+			CompactMode: tw.Off,
 		},
 	}
 

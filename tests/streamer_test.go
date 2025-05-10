@@ -236,7 +236,7 @@ func TestStreamNoHeaderASCII(t *testing.T) {
 	var buf bytes.Buffer
 	st := tablewriter.NewTable(&buf,
 		tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}}}),
-		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{Symbols: tw.NewSymbols(tw.StyleASCII)})),
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{Symbols: tw.NewSymbols(tw.StyleASCII)})),
 		tablewriter.WithDebug(true),
 		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
 	)
@@ -324,7 +324,7 @@ C │ D
 			var buf bytes.Buffer
 
 			r := renderer.NewBlueprint(
-				tw.RendererConfig{
+				tw.Rendition{
 					Borders: tt.borders,
 				},
 			)

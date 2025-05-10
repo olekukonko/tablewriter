@@ -52,6 +52,7 @@ const (
 	StyleMarkdown
 	StyleGraphical
 	StyleMerger
+	StyleDefault
 )
 
 // String returns the string representation of a border style
@@ -78,7 +79,7 @@ func NewSymbols(style BorderStyle) Symbols {
 	switch style {
 	case StyleASCII:
 		return &SymbolASCII{}
-	case StyleLight:
+	case StyleLight, StyleDefault:
 		return &SymbolUnicode{
 			row:    "─",
 			column: "│",

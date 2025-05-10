@@ -7,13 +7,12 @@ import (
 
 // Junction handles rendering of table junction points (corners, intersections) with color support.
 type Junction struct {
-	sym           tw.Symbols                            // Symbols used for rendering junctions and lines
-	ctx           tw.Formatting                         // Current table formatting context
-	colIdx        int                                   // Index of the column being processed
-	debugging     bool                                  // Enables debug logging
-	debug         func(format string, a ...interface{}) // Debug logging function
-	borderTint    Tint                                  // Colors for border symbols
-	separatorTint Tint                                  // Colors for separator symbols
+	sym           tw.Symbols    // Symbols used for rendering junctions and lines
+	ctx           tw.Formatting // Current table formatting context
+	colIdx        int           // Index of the column being processed
+	debugging     bool          // Enables debug logging
+	borderTint    Tint          // Colors for border symbols
+	separatorTint Tint          // Colors for separator symbols
 	logger        *ll.Logger
 }
 
@@ -33,16 +32,9 @@ func NewJunction(ctx JunctionContext) *Junction {
 		sym:           ctx.Symbols,
 		ctx:           ctx.Ctx,
 		colIdx:        ctx.ColIdx,
-		logger:        ctx.Logger,
+		logger:        ctx.Logger.Namespace("junction"),
 		borderTint:    ctx.BorderTint,
 		separatorTint: ctx.SeparatorTint,
-	}
-}
-
-// log records a debug message prefixed with [COLORED_JUNCTION] if debugging is enabled.
-func (jr *Junction) log(format string, a ...interface{}) {
-	if jr.debugging {
-		jr.debug("[COLORED_JUNCTION] "+format, a...)
 	}
 }
 
@@ -63,12 +55,12 @@ func (jr *Junction) GetSegment() string {
 		(currentMerge.Hierarchical.Present && nextMerge.Hierarchical.Present && !currentMerge.Hierarchical.End && !nextMerge.Hierarchical.Start)
 
 	if vPassThruStrict {
-		jr.log("GetSegment col %d: VPassThruStrict=%v -> Empty segment", jr.colIdx, vPassThruStrict)
+		jr.logger.Debug("GetSegment col %d: VPassThruStrict=%v -> Empty segment", jr.colIdx, vPassThruStrict)
 		return ""
 	}
 	symbol := jr.sym.Row()
 	coloredSymbol := jr.borderTint.Apply(symbol)
-	jr.log("GetSegment col %d: VPassThruStrict=%v -> Colored row symbol '%s'", jr.colIdx, vPassThruStrict, coloredSymbol)
+	jr.logger.Debug("GetSegment col %d: VPassThruStrict=%v -> Colored row symbol '%s'", jr.colIdx, vPassThruStrict, coloredSymbol)
 	return coloredSymbol
 }
 
@@ -77,7 +69,7 @@ func (jr *Junction) RenderLeft() string {
 	mergeAbove := jr.getMergeState(jr.ctx.Row.Current, 0)
 	mergeBelow := jr.getMergeState(jr.ctx.Row.Next, 0)
 
-	jr.log("RenderLeft: Level=%v, Location=%v, Previous=%v", jr.ctx.Level, jr.ctx.Row.Location, jr.ctx.Row.Previous)
+	jr.logger.Debug("RenderLeft: Level=%v, Location=%v, Previous=%v", jr.ctx.Level, jr.ctx.Row.Location, jr.ctx.Row.Previous)
 
 	isTopBorder := (jr.ctx.Level == tw.LevelHeader && jr.ctx.Row.Location == tw.LocationFirst) ||
 		(jr.ctx.Level == tw.LevelBody && jr.ctx.Row.Location == tw.LocationFirst && jr.ctx.Row.Previous == nil)
@@ -106,7 +98,7 @@ func (jr *Junction) RenderLeft() string {
 
 // RenderRight selects and colors the rightmost junction symbol for the row line based on position, merges, and last column index.
 func (jr *Junction) RenderRight(lastColIdx int) string {
-	jr.log("RenderRight: lastColIdx=%d, Level=%v, Location=%v, Previous=%v", lastColIdx, jr.ctx.Level, jr.ctx.Row.Location, jr.ctx.Row.Previous)
+	jr.logger.Debug("RenderRight: lastColIdx=%d, Level=%v, Location=%v, Previous=%v", lastColIdx, jr.ctx.Level, jr.ctx.Row.Location, jr.ctx.Row.Previous)
 
 	if lastColIdx < 0 {
 		switch jr.ctx.Level {
@@ -224,17 +216,17 @@ func (jr *Junction) RenderJunction(leftColIdx, rightColIdx int) string {
 		}
 		if mergeCurrentL.Horizontal.Present {
 			if !mergeCurrentL.Horizontal.End && mergeCurrentR.Horizontal.Present && !mergeCurrentR.Horizontal.End {
-				jr.log("Footer separator: H-merge continues from col %d to %d (mid-span), using BottomMid", leftColIdx, rightColIdx)
+				jr.logger.Debug("Footer separator: H-merge continues from col %d to %d (mid-span), using BottomMid", leftColIdx, rightColIdx)
 				symbol := jr.sym.BottomMid()
 				return jr.borderTint.Apply(symbol)
 			}
 			if !mergeCurrentL.Horizontal.End && mergeCurrentR.Horizontal.Present && mergeCurrentR.Horizontal.End {
-				jr.log("Footer separator: H-merge ends at col %d, using BottomMid", rightColIdx)
+				jr.logger.Debug("Footer separator: H-merge ends at col %d, using BottomMid", rightColIdx)
 				symbol := jr.sym.BottomMid()
 				return jr.borderTint.Apply(symbol)
 			}
 			if mergeCurrentL.Horizontal.End && !mergeCurrentR.Horizontal.Present {
-				jr.log("Footer separator: H-merge ends at col %d, next col %d not merged, using Center", leftColIdx, rightColIdx)
+				jr.logger.Debug("Footer separator: H-merge ends at col %d, next col %d not merged, using Center", leftColIdx, rightColIdx)
 				symbol := jr.sym.Center()
 				return jr.borderTint.Apply(symbol)
 			}
