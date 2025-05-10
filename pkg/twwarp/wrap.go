@@ -5,7 +5,7 @@
 // This module is a Table Writer  API for the Go Programming Language.
 // The protocols were written in pure Go and works on windows and unix systems
 
-package tablewriter
+package twwarp
 
 import (
 	"math"
@@ -28,7 +28,7 @@ func WrapString(s string, lim int) ([]string, int) {
 	if s == sp {
 		return []string{sp}, lim
 	}
-	words := splitWords(s)
+	words := SplitWords(s)
 	if len(words) == 0 {
 		return []string{""}, lim
 	}
@@ -46,7 +46,7 @@ func WrapString(s string, lim int) ([]string, int) {
 	return lines, lim
 }
 
-func splitWords(s string) []string {
+func SplitWords(s string) []string {
 	words := make([]string, 0, len(s)/5)
 	var wordBegin int
 	wordPending := false
