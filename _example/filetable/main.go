@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/tw"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -18,7 +19,7 @@ const (
 )
 
 func main() {
-	table := tablewriter.NewTable(os.Stdout, tablewriter.WithTrimSpace(false))
+	table := tablewriter.NewTable(os.Stdout, tablewriter.WithTrimSpace(tw.Off))
 	table.Header([]string{"Tree", "Size", "Permissions", "Modified"})
 	err := filepath.WalkDir(baseDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

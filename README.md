@@ -22,13 +22,13 @@ Here’s a polished version of your introduction with improved clarity, structur
 ### Installation
 
 #### Legacy Version (v0.0.5)
-For production use with guaranteed compatibility:
+For use with legacy applications:
 ```bash
 go get github.com/olekukonko/tablewriter@v0.0.5
 ```
 
 #### Latest  Version
-With some breaking changes:
+The latest version (API Change)
 ```bash
 go get github.com/olekukonko/tablewriter@latest
 ```
