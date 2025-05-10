@@ -6,9 +6,9 @@ import (
 	"github.com/olekukonko/errors"
 	"github.com/olekukonko/ll"
 	"github.com/olekukonko/ll/lh"
+	"github.com/olekukonko/tablewriter/pkg/twwarp"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
-	"github.com/olekukonko/tablewriter/twfn"
 	"io"
 	"reflect"
 	"strings"
@@ -51,19 +51,18 @@ type Table struct {
 
 // renderContext holds the core state for rendering the table.
 type renderContext struct {
-	table       *Table                              // Reference to the table instance
-	renderer    tw.Renderer                         // Renderer instance
-	cfg         tw.RendererConfig                   // Renderer configuration
-	numCols     int                                 // Total number of columns
-	headerLines [][]string                          // Processed header lines
-	rowLines    [][][]string                        // Processed row lines
-	footerLines [][]string                          // Processed footer lines
-	widths      map[tw.Position]tw.Mapper[int, int] // Widths per section
-	//debug           func(format string, a ...interface{}) // Debug logging function
-	footerPrepared  bool       // Tracks if footer is prepared
-	emptyColumns    []bool     // Tracks which original columns are empty (true if empty)
-	visibleColCount int        // Count of columns that are NOT empty
-	logger          *ll.Logger // Debug trace log
+	table           *Table                                      // Reference to the table instance
+	renderer        tw.Renderer                                 // Renderer instance
+	cfg             tw.RendererConfig                           // Renderer configuration
+	numCols         int                                         // Total number of columns
+	headerLines     [][]string                                  // Processed header lines
+	rowLines        [][][]string                                // Processed row lines
+	footerLines     [][]string                                  // Processed footer lines
+	widths          tw.Mapper[tw.Position, tw.Mapper[int, int]] // Widths per section
+	footerPrepared  bool                                        // Tracks if footer is prepared
+	emptyColumns    []bool                                      // Tracks which original columns are empty (true if empty)
+	visibleColCount int                                         // Count of columns that are NOT empty
+	logger          *ll.Logger                                  // Debug trace log
 }
 
 // mergeContext holds state related to cell merging.
@@ -134,15 +133,12 @@ func NewTable(w io.Writer, opts ...Option) *Table {
 	return t
 }
 
-// ---- Public Methods ----
-
 // Append adds rows to the table, supporting various input types.
 // Parameter rows accepts one or more rows, with stringer for custom types.
 // Returns an error if any row fails to append.
 func (t *Table) Append(rows ...interface{}) error {
 	t.ensureInitialized() // Ensure initialized regardless of mode
 
-	// --- ADDED STREAMING LOGIC START ---
 	// Check if streaming is enabled and started
 	if t.config.Stream.Enable && t.hasPrinted {
 		t.logger.Debug("Append() called in streaming mode with %d rows", len(rows))
@@ -158,7 +154,6 @@ func (t *Table) Append(rows ...interface{}) error {
 		t.logger.Debug("Append() completed in streaming mode, %d rows processed.", len(rows))
 		return nil // Exit the function after handling streaming
 	}
-	// --- ADDED STREAMING LOGIC END ---
 
 	// Existing batch rendering logic:
 	t.logger.Debug("Starting batch Append operation with %d rows", len(rows))
@@ -267,56 +262,6 @@ func (t *Table) Footer(elements ...any) {
 		}())
 }
 
-func (t *Table) Header(elements ...any) {
-	t.ensureInitialized()
-	t.logger.Debug("Header() method called with raw variadic elements: %v (len %d). Streaming: %v, Started: %v",
-		elements, len(elements), t.config.Stream.Enable, t.hasPrinted)
-
-	if t.config.Stream.Enable && t.hasPrinted {
-		// --- Streaming Path ---
-		actualCellsToProcess := t.processVariadicElements(elements)
-		headersAsStrings, err := t.rawCellsToStrings(actualCellsToProcess, t.config.Header)
-		if err != nil {
-			t.logger.Error("Header(): Failed to convert header elements to strings for streaming: %v", err)
-			headersAsStrings = []string{} // Use empty on error
-		}
-		errStream := t.streamRenderHeader(headersAsStrings) // streamRenderHeader handles padding to streamNumCols internally
-		if errStream != nil {
-			t.logger.Error("Error rendering streaming header: %v", errStream)
-		}
-		return
-	}
-
-	// --- Batch Path ---
-	actualCellsToProcess := t.processVariadicElements(elements)
-	t.logger.Debug("Header() (Batch): Effective cells to process: %v", actualCellsToProcess)
-
-	headersAsStrings, err := t.rawCellsToStrings(actualCellsToProcess, t.config.Header)
-	if err != nil {
-		t.logger.Error("Header() (Batch): Failed to convert to strings: %v", err)
-		t.headers = [][]string{} // Set to empty on error
-		return
-	}
-
-	// prepareContent uses t.config.Header for AutoFormat and MaxWidth constraints.
-	// It processes based on the number of columns in headersAsStrings.
-	preparedHeaderLines := t.prepareContent(headersAsStrings, t.config.Header)
-	t.headers = preparedHeaderLines // Store directly. Padding to t.maxColumns() will happen in prepareContexts.
-
-	t.logger.Debug("Header set (batch mode), lines stored: %d. First line if exists: %v",
-		len(t.headers), func() []string {
-			if len(t.headers) > 0 {
-				return t.headers[0]
-			} else {
-				return nil
-			}
-		}())
-}
-
-func (t *Table) Logger() *ll.Logger {
-	return t.logger
-}
-
 // Render triggers the table rendering process to the configured writer.
 // No parameters are required.
 // Returns an error if rendering fails.
@@ -324,15 +269,69 @@ func (t *Table) Render() error {
 	return t.render()
 }
 
-// Renderer retrieves the current renderer instance used by the table.
+// render generates the table output using the configured renderer.
 // No parameters are required.
-// Returns the tw.Renderer interface instance.
-func (t *Table) Renderer() tw.Renderer {
-	t.logger.Debug("Renderer requested")
-	return t.renderer
-}
+// Returns an error if rendering fails in any section.
+func (t *Table) render() error {
+	t.ensureInitialized() // This is needed in both modes, good place to keep it.
 
-// ---- Private Methods ----
+	// --- ADDED LOGIC START ---
+	// If streaming is enabled, this batch rendering path should not be used.
+	// The Start/Append/Close methods handle streaming.
+	if t.config.Stream.Enable {
+		t.logger.Warn("Internal render() method called when streaming is enabled. This indicates incorrect usage of Render() instead of Start/Append/Close.")
+		// It's safer to just return an error here, as the table state is likely not set up for batch.
+		return errors.New("internal batch render called in streaming mode")
+	}
+	// --- ADDED LOGIC END ---
+
+	// The rest of the original batch rendering logic follows:
+	ctx, mctx, err := t.prepareContexts() // This is batch-specific
+	if err != nil {
+		t.logger.Error("prepareContexts failed: %v", err)
+		return err
+	}
+
+	ctx.logger.Debug("Calling renderer Start()")
+	// In batch mode, renderer.Start is called here.
+	if err := ctx.renderer.Start(t.writer); err != nil {
+		ctx.logger.Debug("Renderer Start() error: %v", err)
+		return fmt.Errorf("renderer start failed: %w", err)
+	}
+
+	renderError := false
+	// Render sections (Header, Row, Footer) sequentially using batch context
+	for _, renderFn := range []func(*renderContext, *mergeContext) error{
+		t.renderHeader,
+		t.renderRow,
+		t.renderFooter,
+	} {
+		if err := renderFn(ctx, mctx); err != nil {
+			ctx.logger.Error("Renderer section error: %v", err)
+			renderError = true
+		}
+	}
+
+	ctx.logger.Debug("Calling renderer Close()")
+	// In batch mode, renderer.Close is called here.
+	closeErr := ctx.renderer.Close(t.writer)
+	if closeErr != nil {
+		ctx.logger.Error("Renderer Close() error: %v", closeErr)
+		if !renderError {
+			return fmt.Errorf("renderer close failed: %w", closeErr)
+		}
+	}
+
+	if renderError {
+		return errors.New("table rendering failed in one or more sections")
+	}
+
+	// This flag needs careful consideration with streaming.
+	// For now, it marks that rendering finished (batch mode).
+	t.hasPrinted = true
+	ctx.logger.Debug("Render completed")
+	return nil
+}
 
 // appendSingle adds a single row to the table's row data.
 // Parameter row is the data to append, converted via stringer if needed.
@@ -358,447 +357,11 @@ func (t *Table) appendSingle(row interface{}) error {
 	return nil
 }
 
-// applyHierarchicalMerges applies hierarchical merges to row content.
-// Parameters ctx and mctx hold rendering and merge state.
-// No return value.
-func (t *Table) applyHierarchicalMerges(ctx *renderContext, mctx *mergeContext) {
-	ctx.logger.Debug("Applying hierarchical merges (left-to-right vertical flow - snapshot comparison)")
-	if len(ctx.rowLines) <= 1 {
-		ctx.logger.Debug("Skipping hierarchical merges - less than 2 rows")
-		return
-	}
-	numCols := ctx.numCols
-
-	originalRowLines := make([][][]string, len(ctx.rowLines))
-	for i, row := range ctx.rowLines {
-		originalRowLines[i] = make([][]string, len(row))
-		for j, line := range row {
-			originalRowLines[i][j] = make([]string, len(line))
-			copy(originalRowLines[i][j], line)
-		}
-	}
-	ctx.logger.Debug("Created snapshot of original row data for hierarchical merge comparison.")
-
-	hMergeStartRow := make(map[int]int)
-
-	for r := 1; r < len(ctx.rowLines); r++ {
-		leftCellContinuedHierarchical := false
-
-		for c := 0; c < numCols; c++ {
-			if mctx.rowMerges[r] == nil {
-				mctx.rowMerges[r] = make(map[int]tw.MergeState)
-			}
-			if mctx.rowMerges[r-1] == nil {
-				mctx.rowMerges[r-1] = make(map[int]tw.MergeState)
-			}
-
-			canCompare := r > 0 &&
-				len(originalRowLines[r]) > 0 && len(originalRowLines[r][0]) > c &&
-				len(originalRowLines[r-1]) > 0 && len(originalRowLines[r-1][0]) > c
-
-			if !canCompare {
-				currentState := mctx.rowMerges[r][c]
-				currentState.Hierarchical = tw.MergeStateOption{}
-				mctx.rowMerges[r][c] = currentState
-				ctx.logger.Debug("HCompare Skipped: r=%d, c=%d - Insufficient data in snapshot", r, c)
-				leftCellContinuedHierarchical = false
-				continue
-			}
-
-			currentVal := strings.TrimSpace(originalRowLines[r][0][c])
-			aboveVal := strings.TrimSpace(originalRowLines[r-1][0][c])
-			currentState := mctx.rowMerges[r][c]
-			prevStateAbove := mctx.rowMerges[r-1][c]
-
-			valuesMatch := (currentVal == aboveVal && currentVal != "" && currentVal != "-")
-			hierarchyAllowed := (c == 0 || leftCellContinuedHierarchical)
-			shouldContinue := valuesMatch && hierarchyAllowed
-
-			ctx.logger.Debug("HCompare: r=%d, c=%d; current='%s', above='%s'; match=%v; leftCont=%v; shouldCont=%v",
-				r, c, currentVal, aboveVal, valuesMatch, leftCellContinuedHierarchical, shouldContinue)
-
-			if shouldContinue {
-				currentState.Hierarchical.Present = true
-				currentState.Hierarchical.Start = false
-
-				if prevStateAbove.Hierarchical.Present && !prevStateAbove.Hierarchical.End {
-					startRow, ok := hMergeStartRow[c]
-					if !ok {
-						ctx.logger.Debug("Hierarchical merge WARNING: Recovering lost start row at r=%d, c=%d. Assuming r-1 was start.", r, c)
-						startRow = r - 1
-						hMergeStartRow[c] = startRow
-						startState := mctx.rowMerges[startRow][c]
-						startState.Hierarchical.Present = true
-						startState.Hierarchical.Start = true
-						startState.Hierarchical.End = false
-						mctx.rowMerges[startRow][c] = startState
-					}
-					ctx.logger.Debug("Hierarchical merge CONTINUED row %d, col %d. Block previously started row %d", r, c, startRow)
-				} else {
-					startRow := r - 1
-					hMergeStartRow[c] = startRow
-					startState := mctx.rowMerges[startRow][c]
-					startState.Hierarchical.Present = true
-					startState.Hierarchical.Start = true
-					startState.Hierarchical.End = false
-					mctx.rowMerges[startRow][c] = startState
-					ctx.logger.Debug("Hierarchical merge START detected for block ending at or after row %d, col %d (started at row %d)", r, c, startRow)
-				}
-
-				for lineIdx := range ctx.rowLines[r] {
-					if c < len(ctx.rowLines[r][lineIdx]) {
-						ctx.rowLines[r][lineIdx][c] = tw.Empty
-					}
-				}
-
-				leftCellContinuedHierarchical = true
-			} else {
-				currentState.Hierarchical = tw.MergeStateOption{}
-
-				if startRow, ok := hMergeStartRow[c]; ok {
-					t.finalizeHierarchicalMergeBlock(ctx, mctx, c, startRow, r-1)
-					delete(hMergeStartRow, c)
-				}
-
-				leftCellContinuedHierarchical = false
-			}
-
-			mctx.rowMerges[r][c] = currentState
-		}
-	}
-
-	lastRowIdx := len(ctx.rowLines) - 1
-	if lastRowIdx >= 0 {
-		for c, startRow := range hMergeStartRow {
-			t.finalizeHierarchicalMergeBlock(ctx, mctx, c, startRow, lastRowIdx)
-		}
-	}
-	ctx.logger.Debug("Hierarchical merge processing completed")
-}
-
-// applyHorizontalMergeWidths adjusts column widths for horizontal merges.
-// Parameters include position, ctx for rendering, and mergeStates for merges.
-// No return value.
-func (t *Table) applyHorizontalMergeWidths(position tw.Position, ctx *renderContext, mergeStates map[int]tw.MergeState) {
-	if mergeStates == nil {
-		t.logger.Debug("applyHorizontalMergeWidths: Skipping %s - no merge states", position)
-		return
-	}
-	t.logger.Debug("applyHorizontalMergeWidths: Applying HMerge width recalc for %s", position)
-
-	numCols := ctx.numCols
-	targetWidthsMap := ctx.widths[position]
-	originalNormalizedWidths := tw.NewMapper[int, int]()
-	for i := 0; i < numCols; i++ {
-		originalNormalizedWidths.Set(i, targetWidthsMap.Get(i))
-	}
-
-	separatorWidth := 0
-	if t.renderer != nil {
-		rendererConfig := t.renderer.Config()
-		if rendererConfig.Settings.Separators.BetweenColumns.Enabled() {
-			separatorWidth = twfn.DisplayWidth(rendererConfig.Symbols.Column())
-		}
-	}
-
-	processedCols := make(map[int]bool)
-
-	for col := 0; col < numCols; col++ {
-		if processedCols[col] {
-			continue
-		}
-
-		state, exists := mergeStates[col]
-		if !exists {
-			continue
-		}
-
-		if state.Horizontal.Present && state.Horizontal.Start {
-			totalWidth := 0
-			span := state.Horizontal.Span
-			t.logger.Debug("  -> HMerge detected: startCol=%d, span=%d, separatorWidth=%d", col, span, separatorWidth)
-
-			for i := 0; i < span && (col+i) < numCols; i++ {
-				currentColIndex := col + i
-				normalizedWidth := originalNormalizedWidths.Get(currentColIndex)
-				totalWidth += normalizedWidth
-				t.logger.Debug("      -> col %d: adding normalized width %d", currentColIndex, normalizedWidth)
-
-				if i > 0 && separatorWidth > 0 {
-					totalWidth += separatorWidth
-					t.logger.Debug("      -> col %d: adding separator width %d", currentColIndex, separatorWidth)
-				}
-			}
-
-			targetWidthsMap.Set(col, totalWidth)
-			t.logger.Debug("  -> Set %s col %d width to %d (merged)", position, col, totalWidth)
-			processedCols[col] = true
-
-			for i := 1; i < span && (col+i) < numCols; i++ {
-				targetWidthsMap.Set(col+i, 0)
-				t.logger.Debug("  -> Set %s col %d width to 0 (part of merge)", position, col+i)
-				processedCols[col+i] = true
-			}
-		}
-	}
-	ctx.logger.Debug("applyHorizontalMergeWidths: Final widths for %s: %v", position, targetWidthsMap)
-}
-
-// applyVerticalMerges applies vertical merges to row content.
-// Parameters ctx and mctx hold rendering and merge state.
-// No return value.
-func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
-	ctx.logger.Debug("Applying vertical merges across %d rows", len(ctx.rowLines))
-	numCols := ctx.numCols
-
-	mergeStartRow := make(map[int]int)
-	mergeStartContent := make(map[int]string)
-
-	for i := 0; i < len(ctx.rowLines); i++ {
-		if i >= len(mctx.rowMerges) {
-			newRowMerges := make([]map[int]tw.MergeState, i+1)
-			copy(newRowMerges, mctx.rowMerges)
-			for k := len(mctx.rowMerges); k <= i; k++ {
-				newRowMerges[k] = make(map[int]tw.MergeState)
-			}
-			mctx.rowMerges = newRowMerges
-			ctx.logger.Debug("Extended rowMerges to index %d", i)
-		} else if mctx.rowMerges[i] == nil {
-			mctx.rowMerges[i] = make(map[int]tw.MergeState)
-		}
-
-		if len(ctx.rowLines[i]) == 0 {
-			continue
-		}
-		currentLineContent := ctx.rowLines[i][0]
-		paddedLine := padLine(currentLineContent, numCols)
-
-		for col := 0; col < numCols; col++ {
-			currentVal := strings.TrimSpace(paddedLine[col])
-			startRow, ongoingMerge := mergeStartRow[col]
-			startContent := mergeStartContent[col]
-			mergeState := mctx.rowMerges[i][col]
-
-			if ongoingMerge && currentVal == startContent && currentVal != "" {
-				mergeState.Vertical = tw.MergeStateOption{
-					Present: true,
-					Span:    0,
-					Start:   false,
-					End:     false,
-				}
-				mctx.rowMerges[i][col] = mergeState
-				for lineIdx := range ctx.rowLines[i] {
-					if col < len(ctx.rowLines[i][lineIdx]) {
-						ctx.rowLines[i][lineIdx][col] = tw.Empty
-					}
-				}
-				ctx.logger.Debug("Vertical merge continued at row %d, col %d", i, col)
-			} else {
-				if ongoingMerge {
-					endedRow := i - 1
-					if endedRow >= 0 && endedRow >= startRow {
-						startState := mctx.rowMerges[startRow][col]
-						startState.Vertical.Span = (endedRow - startRow) + 1
-						mctx.rowMerges[startRow][col] = startState
-
-						endState := mctx.rowMerges[endedRow][col]
-						endState.Vertical.End = true
-						endState.Vertical.Span = startState.Vertical.Span
-						mctx.rowMerges[endedRow][col] = endState
-						ctx.logger.Debug("Vertical merge ended at row %d, col %d, span %d", endedRow, col, startState.Vertical.Span)
-					}
-					delete(mergeStartRow, col)
-					delete(mergeStartContent, col)
-				}
-
-				if currentVal != "" {
-					mergeState.Vertical = tw.MergeStateOption{
-						Present: true,
-						Span:    1,
-						Start:   true,
-						End:     false,
-					}
-					mctx.rowMerges[i][col] = mergeState
-					mergeStartRow[col] = i
-					mergeStartContent[col] = currentVal
-					ctx.logger.Debug("Vertical merge started at row %d, col %d", i, col)
-				} else if !mergeState.Horizontal.Present {
-					mergeState.Vertical = tw.MergeStateOption{}
-					mctx.rowMerges[i][col] = mergeState
-				}
-			}
-		}
-	}
-
-	lastRowIdx := len(ctx.rowLines) - 1
-	if lastRowIdx >= 0 {
-		for col, startRow := range mergeStartRow {
-			startState := mctx.rowMerges[startRow][col]
-			finalSpan := (lastRowIdx - startRow) + 1
-			startState.Vertical.Span = finalSpan
-			mctx.rowMerges[startRow][col] = startState
-
-			endState := mctx.rowMerges[lastRowIdx][col]
-			endState.Vertical.Present = true
-			endState.Vertical.End = true
-			endState.Vertical.Span = finalSpan
-			if startRow != lastRowIdx {
-				endState.Vertical.Start = false
-			}
-			mctx.rowMerges[lastRowIdx][col] = endState
-			ctx.logger.Debug("Vertical merge finalized at row %d, col %d, span %d", lastRowIdx, col, finalSpan)
-		}
-	}
-	ctx.logger.Debug("Vertical merges completed")
-}
-
-// buildAdjacentCells constructs cell contexts for adjacent lines.
-// Parameters include ctx, mctx, hctx, and direction (-1 for prev, +1 for next).
-// Returns a map of column indices to CellContext for the adjacent line.
-func (t *Table) buildAdjacentCells(ctx *renderContext, mctx *mergeContext, hctx *helperContext, direction int) map[int]tw.CellContext {
-	adjCells := make(map[int]tw.CellContext)
-	var adjLine []string
-	var adjMerges map[int]tw.MergeState
-	found := false
-	adjPosition := hctx.position // Assume adjacent line is in the same section initially
-
-	switch hctx.position {
-	case tw.Header:
-		targetLineIdx := hctx.lineIdx + direction
-		if direction < 0 { // Previous
-			if targetLineIdx >= 0 && targetLineIdx < len(ctx.headerLines) {
-				adjLine = ctx.headerLines[targetLineIdx]
-				adjMerges = mctx.headerMerges
-				found = true
-			}
-		} else { // Next
-			if targetLineIdx < len(ctx.headerLines) {
-				adjLine = ctx.headerLines[targetLineIdx]
-				adjMerges = mctx.headerMerges
-				found = true
-			} else if len(ctx.rowLines) > 0 && len(ctx.rowLines[0]) > 0 && len(mctx.rowMerges) > 0 {
-				adjLine = ctx.rowLines[0][0]
-				adjMerges = mctx.rowMerges[0]
-				adjPosition = tw.Row
-				found = true
-			} else if len(ctx.footerLines) > 0 {
-				adjLine = ctx.footerLines[0]
-				adjMerges = mctx.footerMerges
-				adjPosition = tw.Footer
-				found = true
-			}
-		}
-	case tw.Row:
-		targetLineIdx := hctx.lineIdx + direction
-		if hctx.rowIdx < 0 || hctx.rowIdx >= len(ctx.rowLines) || hctx.rowIdx >= len(mctx.rowMerges) {
-			t.logger.Debug("Warning: Invalid row index %d in buildAdjacentCells", hctx.rowIdx)
-			return nil
-		}
-		currentRowLines := ctx.rowLines[hctx.rowIdx]
-		currentMerges := mctx.rowMerges[hctx.rowIdx]
-
-		if direction < 0 { // Previous
-			if targetLineIdx >= 0 && targetLineIdx < len(currentRowLines) {
-				adjLine = currentRowLines[targetLineIdx]
-				adjMerges = currentMerges
-				found = true
-			} else if targetLineIdx < 0 {
-				targetRowIdx := hctx.rowIdx - 1
-				if targetRowIdx >= 0 && targetRowIdx < len(ctx.rowLines) && targetRowIdx < len(mctx.rowMerges) {
-					prevRowLines := ctx.rowLines[targetRowIdx]
-					if len(prevRowLines) > 0 {
-						adjLine = prevRowLines[len(prevRowLines)-1]
-						adjMerges = mctx.rowMerges[targetRowIdx]
-						found = true
-					}
-				} else if len(ctx.headerLines) > 0 {
-					adjLine = ctx.headerLines[len(ctx.headerLines)-1]
-					adjMerges = mctx.headerMerges
-					adjPosition = tw.Header
-					found = true
-				}
-			}
-		} else { // Next
-			if targetLineIdx >= 0 && targetLineIdx < len(currentRowLines) {
-				adjLine = currentRowLines[targetLineIdx]
-				adjMerges = currentMerges
-				found = true
-			} else if targetLineIdx >= len(currentRowLines) {
-				targetRowIdx := hctx.rowIdx + 1
-				if targetRowIdx < len(ctx.rowLines) && targetRowIdx < len(mctx.rowMerges) && len(ctx.rowLines[targetRowIdx]) > 0 {
-					adjLine = ctx.rowLines[targetRowIdx][0]
-					adjMerges = mctx.rowMerges[targetRowIdx]
-					found = true
-				} else if len(ctx.footerLines) > 0 {
-					adjLine = ctx.footerLines[0]
-					adjMerges = mctx.footerMerges
-					adjPosition = tw.Footer
-					found = true
-				}
-			}
-		}
-	case tw.Footer:
-		targetLineIdx := hctx.lineIdx + direction
-		if direction < 0 { // Previous
-			if targetLineIdx >= 0 && targetLineIdx < len(ctx.footerLines) {
-				adjLine = ctx.footerLines[targetLineIdx]
-				adjMerges = mctx.footerMerges
-				found = true
-			} else if targetLineIdx < 0 {
-				if len(ctx.rowLines) > 0 {
-					lastRowIdx := len(ctx.rowLines) - 1
-					if lastRowIdx < len(mctx.rowMerges) && len(ctx.rowLines[lastRowIdx]) > 0 {
-						lastRowLines := ctx.rowLines[lastRowIdx]
-						adjLine = lastRowLines[len(lastRowLines)-1]
-						adjMerges = mctx.rowMerges[lastRowIdx]
-						adjPosition = tw.Row
-						found = true
-					}
-				} else if len(ctx.headerLines) > 0 {
-					adjLine = ctx.headerLines[len(ctx.headerLines)-1]
-					adjMerges = mctx.headerMerges
-					adjPosition = tw.Header
-					found = true
-				}
-			}
-		} else { // Next
-			if targetLineIdx >= 0 && targetLineIdx < len(ctx.footerLines) {
-				adjLine = ctx.footerLines[targetLineIdx]
-				adjMerges = mctx.footerMerges
-				found = true
-			}
-		}
-	}
-
-	if !found {
-		return nil
-	}
-
-	if adjMerges == nil {
-		adjMerges = make(map[int]tw.MergeState)
-		t.logger.Debug("Warning: adjMerges was nil in buildAdjacentCells despite found=true")
-	}
-
-	paddedAdjLine := padLine(adjLine, ctx.numCols)
-
-	for j := 0; j < ctx.numCols; j++ {
-		mergeState := adjMerges[j]
-		cellData := paddedAdjLine[j]
-		finalAdjColWidth := ctx.widths[adjPosition].Get(j)
-
-		adjCells[j] = tw.CellContext{
-			Data:  cellData,
-			Merge: mergeState,
-			Width: finalAdjColWidth,
-		}
-	}
-	return adjCells
-}
-
 // buildAligns constructs a map of column alignments from configuration.
 // Parameter config provides alignment settings for the section.
 // Returns a map of column indices to alignment settings.
 func (t *Table) buildAligns(config tw.CellConfig) map[int]tw.Align {
+	t.logger.Debug("buildAligns INPUT: config.Formatting.Alignment=%s, config.ColumnAligns=%v", config.Formatting.Alignment, config.ColumnAligns)
 	numColsToUse := t.getNumColsToUse()
 	colAlignsResult := make(map[int]tw.Align)
 	for i := 0; i < numColsToUse; i++ {
@@ -813,62 +376,6 @@ func (t *Table) buildAligns(config tw.CellConfig) map[int]tw.Align {
 	}
 	t.logger.Debug("Aligns built: %v (length %d)", colAlignsResult, len(colAlignsResult))
 	return colAlignsResult
-}
-
-// buildCellContexts creates CellContext objects for a given line.
-// Parameters include ctx, mctx, hctx, aligns, and padding for rendering.
-// Returns a renderMergeResponse with current, previous, and next cell contexts.
-func (t *Table) buildCellContexts(ctx *renderContext, mctx *mergeContext, hctx *helperContext, aligns map[int]tw.Align, padding map[int]tw.Padding) renderMergeResponse {
-	cells := make(map[int]tw.CellContext)
-	var merges map[int]tw.MergeState
-
-	switch hctx.position {
-	case tw.Header:
-		merges = mctx.headerMerges
-	case tw.Row:
-		if hctx.rowIdx >= 0 && hctx.rowIdx < len(mctx.rowMerges) && mctx.rowMerges[hctx.rowIdx] != nil {
-			merges = mctx.rowMerges[hctx.rowIdx]
-		} else {
-			merges = make(map[int]tw.MergeState)
-			t.logger.Debug("Warning: Invalid row index %d or nil merges in buildCellContexts", hctx.rowIdx)
-		}
-	case tw.Footer:
-		merges = mctx.footerMerges
-	default:
-		merges = make(map[int]tw.MergeState)
-		t.logger.Debug("Warning: Invalid position '%s' in buildCellContexts", hctx.position)
-	}
-
-	if merges == nil {
-		merges = make(map[int]tw.MergeState)
-		t.logger.Debug("Warning: merges map was nil in buildCellContexts after switch, using empty map")
-	}
-
-	for j := 0; j < ctx.numCols; j++ {
-		mergeState := merges[j]
-		cellData := ""
-		if j < len(hctx.line) {
-			cellData = hctx.line[j]
-		}
-		finalColWidth := ctx.widths[hctx.position].Get(j)
-
-		cells[j] = tw.CellContext{
-			Data:    cellData,
-			Align:   aligns[j],
-			Padding: padding[j],
-			Width:   finalColWidth,
-			Merge:   mergeState,
-		}
-	}
-
-	prevCells := t.buildAdjacentCells(ctx, mctx, hctx, -1)
-	nextCells := t.buildAdjacentCells(ctx, mctx, hctx, +1)
-
-	return renderMergeResponse{
-		cells:     cells,
-		prevCells: prevCells,
-		nextCells: nextCells,
-	}
 }
 
 // buildPadding constructs a map of column padding settings from configuration.
@@ -887,141 +394,6 @@ func (t *Table) buildPadding(padding tw.CellPadding) map[int]tw.Padding {
 	t.logger.Debug("Padding built: %v (length %d)", colPadding, len(colPadding))
 	return colPadding
 }
-
-// calculateAndNormalizeWidths computes and normalizes column widths.
-// Parameter ctx holds rendering state with width maps.
-// Returns an error if width calculation fails.
-func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
-	ctx.logger.Debug("Calculating and normalizing widths")
-
-	t.headerWidths = tw.NewMapper[int, int]()
-	t.rowWidths = tw.NewMapper[int, int]()
-	t.footerWidths = tw.NewMapper[int, int]()
-
-	for _, lines := range ctx.headerLines {
-		t.updateWidths(lines, t.headerWidths, t.config.Header.Padding)
-	}
-	ctx.logger.Debug("Initial Header widths: %v", t.headerWidths)
-	for _, row := range ctx.rowLines {
-		for _, line := range row {
-			t.updateWidths(line, t.rowWidths, t.config.Row.Padding)
-		}
-	}
-	ctx.logger.Debug("Initial Row widths: %v", t.rowWidths)
-	for _, lines := range ctx.footerLines {
-		t.updateWidths(lines, t.footerWidths, t.config.Footer.Padding)
-	}
-	ctx.logger.Debug("Initial Footer widths: %v", t.footerWidths)
-
-	ctx.logger.Debug("Normalizing widths for %d columns", ctx.numCols)
-	ctx.widths[tw.Header] = tw.NewMapper[int, int]()
-	ctx.widths[tw.Row] = tw.NewMapper[int, int]()
-	ctx.widths[tw.Footer] = tw.NewMapper[int, int]()
-
-	for i := 0; i < ctx.numCols; i++ {
-		maxWidth := 0
-		for _, w := range []tw.Mapper[int, int]{t.headerWidths, t.rowWidths, t.footerWidths} {
-			if wd := w.Get(i); wd > maxWidth {
-				maxWidth = wd
-			}
-		}
-		ctx.widths[tw.Header].Set(i, maxWidth)
-		ctx.widths[tw.Row].Set(i, maxWidth)
-		ctx.widths[tw.Footer].Set(i, maxWidth)
-	}
-	ctx.logger.Debug("Normalized widths: header=%v, row=%v, footer=%v", ctx.widths[tw.Header], ctx.widths[tw.Row], ctx.widths[tw.Footer])
-	return nil
-}
-
-// defaultConfig provides the default configuration for a table.
-// No parameters are required.
-// Returns a Config struct with default settings.
-
-// determineLocation determines the boundary location for a line.
-// Parameters include lineIdx, totalLines, topPad, and bottomPad.
-// Returns a tw.Location indicating First, Middle, or End.
-func (t *Table) determineLocation(lineIdx, totalLines int, topPad, bottomPad string) tw.Location {
-	if lineIdx == 0 && topPad == tw.Empty {
-		return tw.LocationFirst
-	}
-	if lineIdx == totalLines-1 && bottomPad == tw.Empty {
-		return tw.LocationEnd
-	}
-	return tw.LocationMiddle
-}
-
-// elementToString converts an element to its string representation.
-// Parameter element is the data to convert, supporting various types.
-// Returns the string representation of the element.
-//func (t *Table) elementToString(element interface{}) string {
-//	if element == nil {
-//		return ""
-//	}
-//
-//	if formatter, ok := element.(tw.Formatter); ok {
-//		return formatter.Format()
-//	}
-//
-//	if reader, ok := element.(io.Reader); ok {
-//		const maxReadSize = 512
-//		var buf strings.Builder
-//		_, err := io.CopyN(&buf, reader, maxReadSize)
-//		if err != nil && err != io.EOF {
-//			return fmt.Sprintf("[reader error: %v]", err)
-//		}
-//		if buf.Len() == maxReadSize {
-//			buf.WriteString("...")
-//		}
-//		return buf.String()
-//	}
-//
-//	switch v := element.(type) {
-//	case sql.NullString:
-//		if v.Valid {
-//			return v.String
-//		}
-//		return ""
-//	case sql.NullInt64:
-//		if v.Valid {
-//			return fmt.Sprintf("%d", v.Int64)
-//		}
-//		return ""
-//	case sql.NullFloat64:
-//		if v.Valid {
-//			return fmt.Sprintf("%f", v.Float64)
-//		}
-//		return ""
-//	case sql.NullBool:
-//		if v.Valid {
-//			return fmt.Sprintf("%t", v.Bool)
-//		}
-//		return ""
-//	case sql.NullTime:
-//		if v.Valid {
-//			return v.Time.String()
-//		}
-//		return ""
-//	}
-//
-//	if b, ok := element.([]byte); ok {
-//		return string(b)
-//	}
-//
-//	if err, ok := element.(error); ok {
-//		return err.Error()
-//	}
-//
-//	if stringer, ok := element.(fmt.Stringer); ok {
-//		return stringer.String()
-//	}
-//
-//	defer func() {
-//		if r := recover(); r != nil {
-//			return
-//		}
-//	}()
-//	return fmt.Sprintf("%v", element)
-//}
 
 // ensureInitialized initializes required fields before use.
 // No parameters are required.
@@ -1104,80 +476,6 @@ func (t *Table) finalizeHierarchicalMergeBlock(ctx *renderContext, mctx *mergeCo
 	}
 }
 
-// getColMaxWidths retrieves maximum column widths for a section.
-// Parameter position specifies the section (Header, Row, Footer).
-// Returns a map of column indices to maximum widths.
-func (t *Table) getColMaxWidths(position tw.Position) tw.CellWidth {
-	switch position {
-	case tw.Header:
-		return t.config.Header.ColMaxWidths
-	case tw.Row:
-		return t.config.Row.ColMaxWidths
-	case tw.Footer:
-		return t.config.Footer.ColMaxWidths
-	default:
-		return tw.CellWidth{}
-	}
-}
-
-func (t *Table) getNumColsToUse() int {
-	if t.config.Stream.Enable && t.hasPrinted {
-		t.logger.Debug("getNumColsToUse: Using streamNumCols: %d", t.streamNumCols)
-		return t.streamNumCols
-	}
-	numCols := t.maxColumns()
-	t.logger.Debug("getNumColsToUse: Using maxColumns: %d", numCols)
-	return numCols
-}
-
-// getEmptyColumnInfo identifies empty columns in row data.
-// Parameter numOriginalCols specifies the total column count.
-// Returns a boolean slice (true for empty) and visible column count.
-func (t *Table) getEmptyColumnInfo(numOriginalCols int) (isEmpty []bool, visibleColCount int) {
-	isEmpty = make([]bool, numOriginalCols)
-	for i := range isEmpty {
-		isEmpty[i] = true
-	}
-
-	if !t.config.AutoHide {
-		t.logger.Debug("getEmptyColumnInfo: AutoHide disabled, marking all %d columns as visible.", numOriginalCols)
-		for i := range isEmpty {
-			isEmpty[i] = false
-		}
-		visibleColCount = numOriginalCols
-		return isEmpty, visibleColCount
-	}
-
-	t.logger.Debug("getEmptyColumnInfo: Checking %d rows for %d columns...", len(t.rows), numOriginalCols)
-
-	for rowIdx, logicalRow := range t.rows {
-		for lineIdx, visualLine := range logicalRow {
-			for colIdx, cellContent := range visualLine {
-				if colIdx >= numOriginalCols {
-					continue
-				}
-				if !isEmpty[colIdx] {
-					continue
-				}
-				if strings.TrimSpace(cellContent) != "" {
-					isEmpty[colIdx] = false
-					t.logger.Debug("getEmptyColumnInfo: Found content in row %d, line %d, col %d ('%s'). Marked as not empty.", rowIdx, lineIdx, colIdx, cellContent)
-				}
-			}
-		}
-	}
-
-	visibleColCount = 0
-	for _, empty := range isEmpty {
-		if !empty {
-			visibleColCount++
-		}
-	}
-
-	t.logger.Debug("getEmptyColumnInfo: Detection complete. isEmpty: %v, visibleColCount: %d", isEmpty, visibleColCount)
-	return isEmpty, visibleColCount
-}
-
 // getLevel maps a position to its rendering level.
 // Parameter position specifies the section (Header, Row, Footer).
 // Returns the corresponding tw.Level (Header, Body, Footer).
@@ -1219,6 +517,71 @@ func (t *Table) hasPerColumnBottomPadding() bool {
 	return false
 }
 
+// Header sets the table's header content, padding to match column count.
+// Parameter elements is a slice of strings for header content.
+// No return value.
+// In streaming mode, this processes and renders the header immediately.
+func (t *Table) Header(elements ...any) {
+	t.ensureInitialized()
+	t.logger.Debug("Header() method called with raw variadic elements: %v (len %d). Streaming: %v, Started: %v",
+		elements, len(elements), t.config.Stream.Enable, t.hasPrinted)
+
+	if t.config.Stream.Enable && t.hasPrinted {
+		// --- Streaming Path ---
+		actualCellsToProcess := t.processVariadicElements(elements)
+		headersAsStrings, err := t.rawCellsToStrings(actualCellsToProcess, t.config.Header)
+		if err != nil {
+			t.logger.Error("Header(): Failed to convert header elements to strings for streaming: %v", err)
+			headersAsStrings = []string{} // Use empty on error
+		}
+		errStream := t.streamRenderHeader(headersAsStrings) // streamRenderHeader handles padding to streamNumCols internally
+		if errStream != nil {
+			t.logger.Error("Error rendering streaming header: %v", errStream)
+		}
+		return
+	}
+
+	// --- Batch Path ---
+	actualCellsToProcess := t.processVariadicElements(elements)
+	t.logger.Debug("Header() (Batch): Effective cells to process: %v", actualCellsToProcess)
+
+	headersAsStrings, err := t.rawCellsToStrings(actualCellsToProcess, t.config.Header)
+	if err != nil {
+		t.logger.Error("Header() (Batch): Failed to convert to strings: %v", err)
+		t.headers = [][]string{} // Set to empty on error
+		return
+	}
+
+	// prepareContent uses t.config.Header for AutoFormat and MaxWidth constraints.
+	// It processes based on the number of columns in headersAsStrings.
+	preparedHeaderLines := t.prepareContent(headersAsStrings, t.config.Header)
+	t.headers = preparedHeaderLines // Store directly. Padding to t.maxColumns() will happen in prepareContexts.
+
+	t.logger.Debug("Header set (batch mode), lines stored: %d. First line if exists: %v",
+		len(t.headers), func() []string {
+			if len(t.headers) > 0 {
+				return t.headers[0]
+			} else {
+				return nil
+			}
+		}())
+}
+
+// Logger retrieves the table's logger instance.
+// No parameters are required.
+// Returns the ll.Logger instance used for debug tracing.
+func (t *Table) Logger() *ll.Logger {
+	return t.logger
+}
+
+// Renderer retrieves the current renderer instance used by the table.
+// No parameters are required.
+// Returns the tw.Renderer interface instance.
+func (t *Table) Renderer() tw.Renderer {
+	t.logger.Debug("Renderer requested")
+	return t.renderer
+}
+
 // maxColumns calculates the maximum column count across sections.
 // No parameters are required.
 // Returns the highest number of columns found.
@@ -1239,68 +602,482 @@ func (t *Table) maxColumns() int {
 	return m
 }
 
-// render generates the table output using the configured renderer.
+// prepareContent processes cell content with formatting and wrapping.
+// Parameters include cells to process and config for formatting rules.
+// Returns a slice of string slices representing processed lines.
+func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string {
+	isStreaming := t.config.Stream.Enable && t.hasPrinted
+	t.logger.Debug("prepareContent: Processing cells=%v (streaming: %v)", cells, isStreaming)
+	initialInputCellCount := len(cells)
+	result := make([][]string, 0)
+
+	effectiveNumCols := initialInputCellCount
+	if isStreaming {
+		if t.streamNumCols > 0 {
+			effectiveNumCols = t.streamNumCols
+			t.logger.Debug("prepareContent: Streaming mode, using fixed streamNumCols: %d", effectiveNumCols)
+			if len(cells) != effectiveNumCols {
+				t.logger.Warn("prepareContent: Streaming mode, input cell count (%d) does not match streamNumCols (%d). Input cells will be padded/truncated.", len(cells), effectiveNumCols)
+				if len(cells) < effectiveNumCols {
+					paddedCells := make([]string, effectiveNumCols)
+					copy(paddedCells, cells)
+					for i := len(cells); i < effectiveNumCols; i++ {
+						paddedCells[i] = tw.Empty
+					}
+					cells = paddedCells
+				} else if len(cells) > effectiveNumCols {
+					cells = cells[:effectiveNumCols]
+				}
+			}
+		} else {
+			t.logger.Warn("prepareContent: Streaming mode enabled but streamNumCols is 0. Using input cell count %d. Stream widths may not be available.", effectiveNumCols)
+		}
+	}
+
+	for i := 0; i < effectiveNumCols; i++ {
+		cellContent := ""
+		if i < len(cells) {
+			cellContent = cells[i]
+		} else {
+			cellContent = tw.Empty
+		}
+
+		if t.config.Behavior.TrimSpace.Enabled() { // Access the global table config for TrimSpace behavior
+			cellContent = strings.TrimSpace(cellContent)
+		}
+
+		colPad := config.Padding.Global
+		if i < len(config.Padding.PerColumn) && config.Padding.PerColumn[i] != (tw.Padding{}) {
+			colPad = config.Padding.PerColumn[i]
+		}
+		padLeftWidth := tw.DisplayWidth(colPad.Left)
+		padRightWidth := tw.DisplayWidth(colPad.Right)
+
+		effectiveContentMaxWidth := t.calculateContentMaxWidth(i, config, padLeftWidth, padRightWidth, isStreaming)
+
+		if config.Formatting.AutoFormat {
+			cellContent = tw.Title(strings.Join(tw.SplitCamelCase(cellContent), tw.Space))
+		}
+
+		lines := strings.Split(cellContent, "\n")
+		finalLinesForCell := make([]string, 0)
+		for _, line := range lines {
+			if effectiveContentMaxWidth > 0 {
+				switch config.Formatting.AutoWrap {
+				case tw.WrapNormal:
+					wrapped, _ := twwarp.WrapString(line, effectiveContentMaxWidth)
+					finalLinesForCell = append(finalLinesForCell, wrapped...)
+				case tw.WrapTruncate:
+					if tw.DisplayWidth(line) > effectiveContentMaxWidth {
+						ellipsisWidth := tw.DisplayWidth(tw.CharEllipsis)
+						if effectiveContentMaxWidth >= ellipsisWidth {
+							finalLinesForCell = append(finalLinesForCell, tw.TruncateString(line, effectiveContentMaxWidth-ellipsisWidth, tw.CharEllipsis))
+						} else {
+							finalLinesForCell = append(finalLinesForCell, tw.TruncateString(line, effectiveContentMaxWidth, ""))
+						}
+					} else {
+						finalLinesForCell = append(finalLinesForCell, line)
+					}
+				case tw.WrapBreak:
+					wrapped := make([]string, 0)
+					currentLine := line
+					for tw.DisplayWidth(currentLine) > effectiveContentMaxWidth {
+						breakPoint := tw.BreakPoint(currentLine, effectiveContentMaxWidth)
+						if breakPoint <= 0 {
+							t.logger.Warn("prepareContent: WrapBreak - BreakPoint <= 0 for line '%s' at width %d. Attempting manual break.", currentLine, effectiveContentMaxWidth)
+							runes := []rune(currentLine)
+							actualBreakRuneCount := 0
+							tempWidth := 0
+							for charIdx, r := range currentLine {
+								runeStr := string(r)
+								rw := tw.DisplayWidth(runeStr)
+								if tempWidth+rw > effectiveContentMaxWidth && charIdx > 0 {
+									break
+								}
+								tempWidth += rw
+								actualBreakRuneCount = charIdx + 1
+								if tempWidth >= effectiveContentMaxWidth && charIdx == 0 {
+									break
+								}
+							}
+							if actualBreakRuneCount == 0 && len(runes) > 0 {
+								actualBreakRuneCount = 1
+							}
+
+							if actualBreakRuneCount > 0 && actualBreakRuneCount <= len(runes) {
+								wrapped = append(wrapped, string(runes[:actualBreakRuneCount])+tw.CharBreak)
+								currentLine = string(runes[actualBreakRuneCount:])
+							} else {
+								if tw.DisplayWidth(currentLine) > 0 {
+									wrapped = append(wrapped, currentLine)
+									currentLine = ""
+								}
+								break
+							}
+						} else {
+							runes := []rune(currentLine)
+							if breakPoint <= len(runes) {
+								wrapped = append(wrapped, string(runes[:breakPoint])+tw.CharBreak)
+								currentLine = string(runes[breakPoint:])
+							} else {
+								t.logger.Warn("prepareContent: WrapBreak - BreakPoint (%d) out of bounds for line runes (%d). Adding full line.", breakPoint, len(runes))
+								wrapped = append(wrapped, currentLine)
+								currentLine = ""
+								break
+							}
+						}
+					}
+					if tw.DisplayWidth(currentLine) > 0 {
+						wrapped = append(wrapped, currentLine)
+					}
+					if len(wrapped) == 0 && tw.DisplayWidth(line) > 0 && len(finalLinesForCell) == 0 {
+						finalLinesForCell = append(finalLinesForCell, line)
+					} else {
+						finalLinesForCell = append(finalLinesForCell, wrapped...)
+					}
+				default:
+					finalLinesForCell = append(finalLinesForCell, line)
+				}
+			} else {
+				finalLinesForCell = append(finalLinesForCell, line)
+			}
+		}
+
+		for len(result) < len(finalLinesForCell) {
+			newRow := make([]string, effectiveNumCols)
+			for j := range newRow {
+				newRow[j] = tw.Empty
+			}
+			result = append(result, newRow)
+		}
+
+		for j := 0; j < len(result); j++ {
+			cellLineContent := tw.Empty
+			if j < len(finalLinesForCell) {
+				cellLineContent = finalLinesForCell[j]
+			}
+			if i < len(result[j]) {
+				result[j][i] = cellLineContent
+			} else {
+				t.logger.Warn("prepareContent: Column index %d out of bounds (%d) during result matrix population.", i, len(result[j]))
+			}
+		}
+	}
+
+	t.logger.Debug("prepareContent: Content prepared, result %d lines.", len(result))
+	return result
+}
+
+// prepareContexts initializes rendering and merge contexts.
 // No parameters are required.
-// Returns an error if rendering fails in any section.
-func (t *Table) render() error {
-	t.ensureInitialized() // This is needed in both modes, good place to keep it.
+// Returns renderContext, mergeContext, and an error if initialization fails.
+func (t *Table) prepareContexts() (*renderContext, *mergeContext, error) {
+	numOriginalCols := t.maxColumns()
+	t.logger.Debug("prepareContexts: Original number of columns: %d", numOriginalCols)
 
-	// --- ADDED LOGIC START ---
-	// If streaming is enabled, this batch rendering path should not be used.
-	// The Start/Append/Close methods handle streaming.
-	if t.config.Stream.Enable {
-		t.logger.Warn("Internal render() method called when streaming is enabled. This indicates incorrect usage of Render() instead of Start/Append/Close.")
-		// It's safer to just return an error here, as the table state is likely not set up for batch.
-		return errors.New("internal batch render called in streaming mode")
-	}
-	// --- ADDED LOGIC END ---
-
-	// The rest of the original batch rendering logic follows:
-	ctx, mctx, err := t.prepareContexts() // This is batch-specific
-	if err != nil {
-		t.logger.Error("prepareContexts failed: %v", err)
-		return err
+	ctx := &renderContext{
+		table:    t,
+		renderer: t.renderer,
+		cfg:      t.renderer.Config(),
+		numCols:  numOriginalCols,
+		widths: map[tw.Position]tw.Mapper[int, int]{
+			tw.Header: tw.NewMapper[int, int](),
+			tw.Row:    tw.NewMapper[int, int](),
+			tw.Footer: tw.NewMapper[int, int](),
+		},
+		logger: t.logger,
 	}
 
-	ctx.logger.Debug("Calling renderer Start()")
-	// In batch mode, renderer.Start is called here.
-	if err := ctx.renderer.Start(t.writer); err != nil {
-		ctx.logger.Debug("Renderer Start() error: %v", err)
-		return fmt.Errorf("renderer start failed: %w", err)
+	isEmpty, visibleCount := t.getEmptyColumnInfo(numOriginalCols)
+	ctx.emptyColumns = isEmpty
+	ctx.visibleColCount = visibleCount
+
+	mctx := &mergeContext{
+		headerMerges: make(map[int]tw.MergeState),
+		rowMerges:    make([]map[int]tw.MergeState, len(t.rows)),
+		footerMerges: make(map[int]tw.MergeState),
+		horzMerges:   make(map[tw.Position]map[int]bool),
+	}
+	for i := range mctx.rowMerges {
+		mctx.rowMerges[i] = make(map[int]tw.MergeState)
 	}
 
-	renderError := false
-	// Render sections (Header, Row, Footer) sequentially using batch context
-	for _, renderFn := range []func(*renderContext, *mergeContext) error{
-		t.renderHeader,
-		t.renderRow,
-		t.renderFooter,
-	} {
-		if err := renderFn(ctx, mctx); err != nil {
-			ctx.logger.Error("Renderer section error: %v", err)
-			renderError = true
+	ctx.headerLines = t.headers
+	ctx.rowLines = t.rows
+	ctx.footerLines = t.footers
+
+	if err := t.calculateAndNormalizeWidths(ctx); err != nil {
+		t.logger.Debug("Error during initial width calculation: %v", err)
+		return nil, nil, err
+	}
+	t.logger.Debug("Initial normalized widths (before hiding): H=%v, R=%v, F=%v",
+		ctx.widths[tw.Header], ctx.widths[tw.Row], ctx.widths[tw.Footer])
+
+	preparedHeaderLines, headerMerges, _ := t.prepareWithMerges(ctx.headerLines, t.config.Header, tw.Header)
+	ctx.headerLines = preparedHeaderLines
+	mctx.headerMerges = headerMerges
+
+	processedRowLines := make([][][]string, len(ctx.rowLines))
+	for i, row := range ctx.rowLines {
+		if mctx.rowMerges[i] == nil {
+			mctx.rowMerges[i] = make(map[int]tw.MergeState)
+		}
+		processedRowLines[i], mctx.rowMerges[i], _ = t.prepareWithMerges(row, t.config.Row, tw.Row)
+	}
+	ctx.rowLines = processedRowLines
+
+	t.applyHorizontalMergeWidths(tw.Header, ctx, mctx.headerMerges)
+
+	if t.config.Row.Formatting.MergeMode&tw.MergeVertical != 0 {
+		t.applyVerticalMerges(ctx, mctx)
+	}
+	if t.config.Row.Formatting.MergeMode&tw.MergeHierarchical != 0 {
+		t.applyHierarchicalMerges(ctx, mctx)
+	}
+
+	t.prepareFooter(ctx, mctx)
+	t.logger.Debug("Footer prepared. Widths before hiding: H=%v, R=%v, F=%v",
+		ctx.widths[tw.Header], ctx.widths[tw.Row], ctx.widths[tw.Footer])
+
+	if t.config.Behavior.AutoHide.Enabled() {
+		t.logger.Debug("Applying AutoHide: Adjusting widths for empty columns.")
+		if ctx.emptyColumns == nil {
+			t.logger.Debug("Warning: ctx.emptyColumns is nil during width adjustment.")
+		} else if len(ctx.emptyColumns) != ctx.numCols {
+			t.logger.Debug("Warning: Length mismatch between emptyColumns (%d) and numCols (%d). Skipping adjustment.", len(ctx.emptyColumns), ctx.numCols)
+		} else {
+			for colIdx := 0; colIdx < ctx.numCols; colIdx++ {
+				if ctx.emptyColumns[colIdx] {
+					t.logger.Debug("AutoHide: Hiding column %d by setting width to 0.", colIdx)
+					ctx.widths[tw.Header].Set(colIdx, 0)
+					ctx.widths[tw.Row].Set(colIdx, 0)
+					ctx.widths[tw.Footer].Set(colIdx, 0)
+				}
+			}
+			t.logger.Debug("Widths after AutoHide adjustment: H=%v, R=%v, F=%v",
+				ctx.widths[tw.Header], ctx.widths[tw.Row], ctx.widths[tw.Footer])
+		}
+	} else {
+		t.logger.Debug("AutoHide is disabled, skipping width adjustment.")
+	}
+	t.logger.Debug("prepareContexts completed all stages.")
+	return ctx, mctx, nil
+}
+
+// prepareFooter processes footer content and applies merges.
+// Parameters ctx and mctx hold rendering and merge state.
+// No return value.
+func (t *Table) prepareFooter(ctx *renderContext, mctx *mergeContext) {
+	if len(t.footers) == 0 {
+		ctx.logger.Debug("Skipping footer preparation - no footer data")
+		if ctx.widths[tw.Footer] == nil {
+			ctx.widths[tw.Footer] = tw.NewMapper[int, int]()
+		}
+		numCols := ctx.numCols
+		for i := 0; i < numCols; i++ {
+			ctx.widths[tw.Footer].Set(i, ctx.widths[tw.Row].Get(i))
+		}
+		t.logger.Debug("Initialized empty footer widths based on row widths: %v", ctx.widths[tw.Footer])
+		ctx.footerPrepared = true
+		return
+	}
+
+	t.logger.Debug("Preparing footer with merge mode: %d", t.config.Footer.Formatting.MergeMode)
+	preparedLines, mergeStates, _ := t.prepareWithMerges(t.footers, t.config.Footer, tw.Footer)
+	t.footers = preparedLines
+	mctx.footerMerges = mergeStates
+	ctx.footerLines = t.footers
+	t.logger.Debug("Base footer widths (normalized from rows/header): %v", ctx.widths[tw.Footer])
+	t.applyHorizontalMergeWidths(tw.Footer, ctx, mctx.footerMerges)
+	ctx.footerPrepared = true
+	t.logger.Debug("Footer preparation completed. Final footer widths: %v", ctx.widths[tw.Footer])
+}
+
+// prepareWithMerges processes content and detects horizontal merges.
+// Parameters include content, config, and position (Header, Row, Footer).
+// Returns processed lines, merge states, and horizontal merge map.
+func (t *Table) prepareWithMerges(content [][]string, config tw.CellConfig, position tw.Position) ([][]string, map[int]tw.MergeState, map[int]bool) {
+	t.logger.Debug("PrepareWithMerges START: position=%s, mergeMode=%d", position, config.Formatting.MergeMode)
+	if len(content) == 0 {
+		t.logger.Debug("PrepareWithMerges END: No content.")
+		return content, nil, nil
+	}
+
+	numCols := 0
+	if len(content) > 0 && len(content[0]) > 0 {
+		numCols = len(content[0])
+	} else {
+		for _, line := range content {
+			if len(line) > numCols {
+				numCols = len(line)
+			}
+		}
+		if numCols == 0 {
+			numCols = t.maxColumns()
 		}
 	}
 
-	ctx.logger.Debug("Calling renderer Close()")
-	// In batch mode, renderer.Close is called here.
-	closeErr := ctx.renderer.Close(t.writer)
-	if closeErr != nil {
-		ctx.logger.Error("Renderer Close() error: %v", closeErr)
-		if !renderError {
-			return fmt.Errorf("renderer close failed: %w", closeErr)
+	if numCols == 0 {
+		t.logger.Debug("PrepareWithMerges END: numCols is zero.")
+		return content, nil, nil
+	}
+
+	horzMergeMap := make(map[int]bool)
+	mergeMap := make(map[int]tw.MergeState)
+	result := make([][]string, len(content))
+	for i := range content {
+		result[i] = padLine(content[i], numCols)
+	}
+
+	if config.Formatting.MergeMode&tw.MergeHorizontal != 0 {
+		t.logger.Debug("Checking for horizontal merges in %d lines", len(content))
+
+		if position == tw.Footer {
+			for lineIdx := 0; lineIdx < len(content); lineIdx++ {
+				originalLine := padLine(content[lineIdx], numCols)
+				currentLineResult := result[lineIdx]
+
+				firstContentIdx := -1
+				var firstContent string
+				for c := 0; c < numCols; c++ {
+					if c >= len(originalLine) {
+						break
+					}
+					trimmedVal := strings.TrimSpace(originalLine[c])
+					if trimmedVal != "" && trimmedVal != "-" {
+						firstContentIdx = c
+						firstContent = originalLine[c]
+						break
+					} else if trimmedVal == "-" {
+						break
+					}
+				}
+
+				if firstContentIdx > 0 {
+					span := firstContentIdx + 1
+					startCol := 0
+
+					allEmptyBefore := true
+					for c := 0; c < firstContentIdx; c++ {
+						if c >= len(originalLine) || strings.TrimSpace(originalLine[c]) != "" {
+							allEmptyBefore = false
+							break
+						}
+					}
+
+					if allEmptyBefore {
+						t.logger.Debug("Footer lead-merge applied line %d: content '%s' from col %d moved to col %d, span %d",
+							lineIdx, firstContent, firstContentIdx, startCol, span)
+
+						if startCol < len(currentLineResult) {
+							currentLineResult[startCol] = firstContent
+						}
+						for k := startCol + 1; k < startCol+span; k++ {
+							if k < len(currentLineResult) {
+								currentLineResult[k] = tw.Empty
+							}
+						}
+
+						startState := mergeMap[startCol]
+						startState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: true, End: span == 1}
+						mergeMap[startCol] = startState
+						horzMergeMap[startCol] = true
+
+						for k := startCol + 1; k < startCol+span; k++ {
+							colState := mergeMap[k]
+							colState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: false, End: k == startCol+span-1}
+							mergeMap[k] = colState
+							horzMergeMap[k] = true
+						}
+					}
+				}
+			}
+		}
+
+		for lineIdx := 0; lineIdx < len(content); lineIdx++ {
+			originalLine := padLine(content[lineIdx], numCols)
+			currentLineResult := result[lineIdx]
+			col := 0
+			for col < numCols {
+				if horzMergeMap[col] {
+					leadMergeHandled := false
+					if mergeState, ok := mergeMap[col]; ok && mergeState.Horizontal.Present && !mergeState.Horizontal.Start {
+						tempCol := col - 1
+						startCol := -1
+						startState := tw.MergeState{}
+						for tempCol >= 0 {
+							if state, okS := mergeMap[tempCol]; okS && state.Horizontal.Present && state.Horizontal.Start {
+								startCol = tempCol
+								startState = state
+								break
+							}
+							tempCol--
+						}
+						if startCol != -1 {
+							skipToCol := startCol + startState.Horizontal.Span
+							if skipToCol > col {
+								t.logger.Debug("Skipping standard H-merge check from col %d to %d (part of detected H-merge)", col, skipToCol-1)
+								col = skipToCol
+								leadMergeHandled = true
+							}
+						}
+					}
+					if leadMergeHandled {
+						continue
+					}
+				}
+
+				if col >= len(currentLineResult) {
+					break
+				}
+				currentVal := strings.TrimSpace(currentLineResult[col])
+
+				if currentVal == "" || currentVal == "-" || (mergeMap[col].Horizontal.Present && mergeMap[col].Horizontal.Start) {
+					col++
+					continue
+				}
+
+				span := 1
+				startCol := col
+				for nextCol := col + 1; nextCol < numCols; nextCol++ {
+					if nextCol >= len(originalLine) {
+						break
+					}
+					originalNextVal := strings.TrimSpace(originalLine[nextCol])
+
+					if currentVal == originalNextVal && !horzMergeMap[nextCol] && originalNextVal != "-" {
+						span++
+					} else {
+						break
+					}
+				}
+
+				if span > 1 {
+					t.logger.Debug("Standard horizontal merge at line %d, col %d, span %d", lineIdx, startCol, span)
+					startState := mergeMap[startCol]
+					startState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: true, End: (span == 1)}
+					mergeMap[startCol] = startState
+					horzMergeMap[startCol] = true
+
+					for k := startCol + 1; k < startCol+span; k++ {
+						if k < len(currentLineResult) {
+							currentLineResult[k] = tw.Empty
+						}
+						colState := mergeMap[k]
+						colState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: false, End: k == startCol+span-1}
+						mergeMap[k] = colState
+						horzMergeMap[k] = true
+					}
+					col += span
+				} else {
+					col++
+				}
+			}
 		}
 	}
 
-	if renderError {
-		return errors.New("table rendering failed in one or more sections")
-	}
-
-	// This flag needs careful consideration with streaming.
-	// For now, it marks that rendering finished (batch mode).
-	t.hasPrinted = true
-	ctx.logger.Debug("Render completed")
-	return nil
+	t.logger.Debug("PrepareWithMerges END: position=%s, lines=%d", position, len(result))
+	return result, mergeMap, horzMergeMap
 }
 
 // renderFooter renders the table's footer section with borders and padding.
@@ -1379,7 +1156,6 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 				},
 				Level:    tw.LevelFooter,
 				IsSubRow: false,
-				Debug:    t.config.Debug,
 			})
 		} else {
 			ctx.logger.Debug("Footer is empty and no content above or borders disabled, skipping footer render")
@@ -1469,7 +1245,6 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 			Level:     tw.LevelFooter,
 			IsSubRow:  false,
 			HasFooter: true,
-			Debug:     t.config.Debug,
 		})
 	}
 
@@ -1540,7 +1315,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 			if j == 0 || representativePadChar == " " {
 				representativePadChar = padChar
 			}
-			padWidth := twfn.DisplayWidth(padChar)
+			padWidth := tw.DisplayWidth(padChar)
 			if padWidth < 1 {
 				padWidth = 1
 			}
@@ -1555,12 +1330,12 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 				repeatCount = 0
 			}
 			rawPaddingContent := strings.Repeat(padChar, repeatCount)
-			currentWd := twfn.DisplayWidth(rawPaddingContent)
+			currentWd := tw.DisplayWidth(rawPaddingContent)
 			if currentWd < colWd {
 				rawPaddingContent += strings.Repeat(" ", colWd-currentWd)
 			}
 			if currentWd > colWd && colWd > 0 {
-				rawPaddingContent = twfn.TruncateString(rawPaddingContent, colWd)
+				rawPaddingContent = tw.TruncateString(rawPaddingContent, colWd)
 			}
 			if colWd == 0 {
 				rawPaddingContent = ""
@@ -1652,7 +1427,6 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 			},
 			Level:    tw.LevelFooter,
 			IsSubRow: false,
-			Debug:    t.config.Debug,
 		})
 	}
 
@@ -1795,7 +1569,6 @@ func (t *Table) renderLine(ctx *renderContext, mctx *mergeContext, hctx *helperC
 		},
 		Level:            t.getLevel(hctx.position),
 		IsSubRow:         hctx.lineIdx > 0 || isPaddingLine,
-		Debug:            t.config.Debug,
 		NormalizedWidths: normalizedWidths,
 	}
 
@@ -1874,7 +1647,6 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 			},
 			Level:    tw.LevelHeader,
 			IsSubRow: false,
-			Debug:    t.config.Debug,
 		})
 	}
 
@@ -1974,7 +1746,6 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 					Level:     tw.LevelBody,
 					IsSubRow:  false,
 					HasFooter: footerExists,
-					Debug:     t.config.Debug,
 				})
 			} else if cfg.Settings.Separators.BetweenRows.Enabled() && isLastRow && isLastLineOfRow {
 				ctx.logger.Debug("Skipping between-rows separator after last row %d line %d (footerExists=%v, rowHasBottomPadding=%v, bottomBorderEnabled=%v)",
@@ -1998,44 +1769,4 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 		}
 	}
 	return nil
-}
-
-// updateWidths updates the width map based on cell content and padding.
-// Parameters include row content, widths map, and padding configuration.
-// No return value.
-func (t *Table) updateWidths(row []string, widths tw.Mapper[int, int], padding tw.CellPadding) {
-	t.logger.Debug("Updating widths for row: %v", row)
-	for i, cell := range row {
-		colPad := padding.Global
-		if i < len(padding.PerColumn) && padding.PerColumn[i] != (tw.Padding{}) {
-			colPad = padding.PerColumn[i]
-			t.logger.Debug("  Col %d: Using per-column padding: L:'%s' R:'%s'", i, colPad.Left, colPad.Right)
-		} else {
-			t.logger.Debug("  Col %d: Using global padding: L:'%s' R:'%s'", i, padding.Global.Left, padding.Global.Right)
-		}
-
-		padLeftWidth := twfn.DisplayWidth(colPad.Left)
-		padRightWidth := twfn.DisplayWidth(colPad.Right)
-		contentWidth := twfn.DisplayWidth(strings.TrimSpace(cell))
-		totalWidth := contentWidth + padLeftWidth + padRightWidth
-		minRequiredPaddingWidth := padLeftWidth + padRightWidth
-
-		if contentWidth == 0 && totalWidth < minRequiredPaddingWidth {
-			t.logger.Debug("  Col %d: Empty content, ensuring width >= padding width (%d). Setting totalWidth to %d.", i, minRequiredPaddingWidth, minRequiredPaddingWidth)
-			totalWidth = minRequiredPaddingWidth
-		}
-
-		if totalWidth < 1 {
-			t.logger.Debug("  Col %d: Calculated totalWidth is zero, setting minimum width to 1.", i)
-			totalWidth = 1
-		}
-
-		currentMax, _ := widths.OK(i)
-		if totalWidth > currentMax {
-			widths.Set(i, totalWidth)
-			t.logger.Debug("  Col %d: Updated width from %d to %d (content:%d + padL:%d + padR:%d) for cell '%s'", i, currentMax, totalWidth, contentWidth, padLeftWidth, padRightWidth, cell)
-		} else {
-			t.logger.Debug("  Col %d: Width %d not greater than current max %d for cell '%s'", i, totalWidth, currentMax, cell)
-		}
-	}
 }
