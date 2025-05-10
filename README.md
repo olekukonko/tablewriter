@@ -21,21 +21,21 @@ Here’s a polished version of your introduction with improved clarity, structur
 
 ### Installation
 
-#### Stable Version (v0.0.5)
+#### Legacy Version (v0.0.5)
 For production use with guaranteed compatibility:
 ```bash
 go get github.com/olekukonko/tablewriter@v0.0.5
 ```
 
-#### Latest Development Version
-For experimental features (prototype branch):
+#### Latest  Version
+With some breaking changes:
 ```bash
 go get github.com/olekukonko/tablewriter@latest
 ```
 
 > **Version Guidance**
 > - Production: Use `v0.0.5` (stable)
-> - New Features: Use `@latest` (includes generics, streaming APIs)
+> - New Features: Use `@latest` (includes generics, super fast streaming APIs)
 > - Legacy Docs: See [README_LEGACY.md](README_LEGACY.md)
 
 ---
