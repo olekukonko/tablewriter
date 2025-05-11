@@ -1,8 +1,10 @@
 # TableWriter for Go
 
-[![CI](https://github.com/olekukonko/tablewriter/workflows/ci/badge.svg?branch=master)](https://github.com/olekukonko/tablewriter/actions?query=workflow%3Aci)
-[![GoDoc](https://godoc.org/github.com/olekukonko/tablewriter?status.svg)](https://godoc.org/github.com/olekukonko/tablewriter)
-[![Latest Release](https://img.shields.io/github/v/release/olekukonko/tablewriter)](https://github.com/olekukonko/tablewriter/releases)
+[![Go](https://github.com/olekukonko/tablewriter/actions/workflows/go.yml/badge.svg)](https://github.com/olekukonko/tablewriter/actions/workflows/go.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/olekukonko/tablewriter.svg)](https://pkg.go.dev/github.com/olekukonko/tablewriter)
+[![Go Report Card](https://goreportcard.com/badge/github.com/olekukonko/tablewriter)](https://goreportcard.com/report/github.com/olekukonko/tablewriter)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Benchmarks](https://img.shields.io/badge/benchmarks-included-success)](README.md#benchmarks)
 
 `tablewriter` is a Go library for generating **rich text-based tables** with support for multiple output formats, including ASCII, Unicode, Markdown, HTML, and colorized terminals. Perfect for CLI tools, logs, and web applications.
 
@@ -88,9 +90,12 @@ Create a table with `NewTable` or `NewWriter`, configure it using options or a `
 
 ### Basic Examples
 
-#### 1. Simple ASCII Table
+#### 1. Simple Tables
 
-Create a basic ASCII table with headers and rows.
+Create a basic table with headers and rows.
+
+
+##### default 
 
 ```go
 package main
@@ -131,6 +136,65 @@ func main() {
 └───────┴────────┴──────────┘
 
 ```
+
+
+##### with customization 
+
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/renderer"
+	"github.com/olekukonko/tablewriter/tw"
+	"os"
+)
+
+type Age int
+
+func (a Age) String() string {
+	return fmt.Sprintf("%d yrs", a)
+}
+
+func main() {
+	data := [][]any{
+		{"Alice", Age(25), "New York"},
+		{"Bob", Age(30), "Boston"},
+	}
+
+	symbols := tw.NewSymbolCustom("Hearts").
+		WithRow("♥").
+		WithColumn("❤").
+		WithTopLeft("❥").
+		WithTopMid("♡").
+		WithTopRight("❥").
+		WithMidLeft("❣").
+		WithCenter("✚").
+		WithMidRight("❣").
+		WithBottomLeft("❦").
+		WithBottomMid("♡").
+		WithBottomRight("❦")
+
+	table := tablewriter.NewTable(os.Stdout, tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{Symbols: symbols})))
+	table.Header("Name", "Age", "City")
+	table.Bulk(data)
+	table.Render()
+}
+
+```
+
+```
+❥♥♥♥♥♥♥♥♡♥♥♥♥♥♥♥♥♡♥♥♥♥♥♥♥♥♥♥❥
+❤ NAME  ❤  AGE   ❤   CITY   ❤
+❣♥♥♥♥♥♥♥✚♥♥♥♥♥♥♥♥✚♥♥♥♥♥♥♥♥♥♥❣
+❤ Alice ❤ 25 yrs ❤ New York ❤
+❤ Bob   ❤ 30 yrs ❤ Boston   ❤
+❦♥♥♥♥♥♥♥♡♥♥♥♥♥♥♥♥♡♥♥♥♥♥♥♥♥♥♥❦
+```
+
+See [symbols example](https://github.com/olekukonko/tablewriter/blob/master/_example/symbols/main.go) for more
 
 #### 2. Markdown Table
 
@@ -792,6 +856,217 @@ func main() {
 
 ```
 
+#### 11. SVG Support 
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/olekukonko/ll"
+	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/renderer"
+	"os"
+)
+
+type Age int
+
+func (a Age) String() string {
+	return fmt.Sprintf("%d yrs", a)
+}
+
+func main() {
+	data := [][]any{
+		{"Alice", Age(25), "New York"},
+		{"Bob", Age(30), "Boston"},
+	}
+
+	file, err := os.OpenFile("out.svg", os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		ll.Fatal(err)
+	}
+	defer file.Close()
+
+	table := tablewriter.NewTable(file, tablewriter.WithRenderer(renderer.NewSVG()))
+	table.Header("Name", "Age", "City")
+	table.Bulk(data)
+	table.Render()
+}
+```
+
+```go
+<svg xmlns="http://www.w3.org/2000/svg" width="170.80" height="84.40" font-family="sans-serif" font-size="12.00">
+<style>text { stroke: none; }</style>
+  <rect x="1.00" y="1.00" width="46.00" height="26.80" fill="#F0F0F0"/>
+  <text x="24.00" y="14.40" fill="black" text-anchor="middle" dominant-baseline="middle">NAME</text>
+  <rect x="48.00" y="1.00" width="53.20" height="26.80" fill="#F0F0F0"/>
+  <text x="74.60" y="14.40" fill="black" text-anchor="middle" dominant-baseline="middle">AGE</text>
+  <rect x="102.20" y="1.00" width="67.60" height="26.80" fill="#F0F0F0"/>
+  <text x="136.00" y="14.40" fill="black" text-anchor="middle" dominant-baseline="middle">CITY</text>
+  <rect x="1.00" y="28.80" width="46.00" height="26.80" fill="white"/>
+  <text x="6.00" y="42.20" fill="black" text-anchor="start" dominant-baseline="middle">Alice</text>
+  <rect x="48.00" y="28.80" width="53.20" height="26.80" fill="white"/>
+  <text x="53.00" y="42.20" fill="black" text-anchor="start" dominant-baseline="middle">25 yrs</text>
+  <rect x="102.20" y="28.80" width="67.60" height="26.80" fill="white"/>
+  <text x="107.20" y="42.20" fill="black" text-anchor="start" dominant-baseline="middle">New York</text>
+  <rect x="1.00" y="56.60" width="46.00" height="26.80" fill="#F9F9F9"/>
+  <text x="6.00" y="70.00" fill="black" text-anchor="start" dominant-baseline="middle">Bob</text>
+  <rect x="48.00" y="56.60" width="53.20" height="26.80" fill="#F9F9F9"/>
+  <text x="53.00" y="70.00" fill="black" text-anchor="start" dominant-baseline="middle">30 yrs</text>
+  <rect x="102.20" y="56.60" width="67.60" height="26.80" fill="#F9F9F9"/>
+  <text x="107.20" y="70.00" fill="black" text-anchor="start" dominant-baseline="middle">Boston</text>
+  <g class="table-borders" stroke="black" stroke-width="1.00" stroke-linecap="square">
+    <line x1="0.50" y1="0.50" x2="170.30" y2="0.50" />
+    <line x1="0.50" y1="28.30" x2="170.30" y2="28.30" />
+    <line x1="0.50" y1="56.10" x2="170.30" y2="56.10" />
+    <line x1="0.50" y1="83.90" x2="170.30" y2="83.90" />
+    <line x1="0.50" y1="0.50" x2="0.50" y2="83.90" />
+    <line x1="47.50" y1="0.50" x2="47.50" y2="83.90" />
+    <line x1="101.70" y1="0.50" x2="101.70" y2="83.90" />
+    <line x1="170.30" y1="0.50" x2="170.30" y2="83.90" />
+  </g>
+</svg>
+
+```
+
+#### 12 Simple Application
+
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/tw"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+const (
+	folder    = "📁"
+	file      = "📄"
+	baseDir   = "../"
+	indentStr = "    "
+)
+
+func main() {
+	table := tablewriter.NewTable(os.Stdout, tablewriter.WithTrimSpace(tw.Off))
+	table.Header([]string{"Tree", "Size", "Permissions", "Modified"})
+	err := filepath.WalkDir(baseDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.Name() == "." || d.Name() == ".." {
+			return nil
+		}
+
+		// Calculate relative path depth
+		relPath, err := filepath.Rel(baseDir, path)
+		if err != nil {
+			return err
+		}
+
+		depth := 0
+		if relPath != "." {
+			depth = len(strings.Split(relPath, string(filepath.Separator))) - 1
+		}
+
+		indent := strings.Repeat(indentStr, depth)
+
+		var name string
+		if d.IsDir() {
+			name = fmt.Sprintf("%s%s %s", indent, folder, d.Name())
+		} else {
+			name = fmt.Sprintf("%s%s %s", indent, file, d.Name())
+		}
+
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+
+		table.Append([]string{
+			name,
+			Size(info.Size()).String(),
+			info.Mode().String(),
+			Time(info.ModTime()).Format(),
+		})
+
+		return nil
+	})
+
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "Error: %v\n", err)
+		return
+	}
+
+	table.Render()
+}
+
+const (
+	KB = 1024
+	MB = KB * 1024
+	GB = MB * 1024
+	TB = GB * 1024
+)
+
+type Size int64
+
+func (s Size) String() string {
+	switch {
+	case s < KB:
+		return fmt.Sprintf("%d B", s)
+	case s < MB:
+		return fmt.Sprintf("%.2f KB", float64(s)/KB)
+	case s < GB:
+		return fmt.Sprintf("%.2f MB", float64(s)/MB)
+	case s < TB:
+		return fmt.Sprintf("%.2f GB", float64(s)/GB)
+	default:
+		return fmt.Sprintf("%.2f TB", float64(s)/TB)
+	}
+}
+
+type Time time.Time
+
+func (t Time) Format() string {
+	now := time.Now()
+	diff := now.Sub(time.Time(t))
+
+	if diff.Seconds() < 60 {
+		return "just now"
+	} else if diff.Minutes() < 60 {
+		return fmt.Sprintf("%d minutes ago", int(diff.Minutes()))
+	} else if diff.Hours() < 24 {
+		return fmt.Sprintf("%d hours ago", int(diff.Hours()))
+	} else if diff.Hours() < 24*7 {
+		return fmt.Sprintf("%d days ago", int(diff.Hours()/24))
+	} else {
+		return time.Time(t).Format("Jan 2, 2006")
+	}
+}
+
+```
+
+```
+┌──────────────────┬─────────┬─────────────┬──────────────┐
+│       TREE       │  SIZE   │ PERMISSIONS │   MODIFIED   │
+├──────────────────┼─────────┼─────────────┼──────────────┤
+│ 📁 filetable     │ 160 B   │ drwxr-xr-x  │ just now     │
+│     📄 main.go   │ 2.19 KB │ -rw-r--r--  │ 22 hours ago │
+│     📄 out.txt   │ 0 B     │ -rw-r--r--  │ just now     │
+│     📁 testdata  │ 128 B   │ drwxr-xr-x  │ 1 days ago   │
+│         📄 a.txt │ 11 B    │ -rw-r--r--  │ 1 days ago   │
+│         📄 b.txt │ 17 B    │ -rw-r--r--  │ 1 days ago   │
+│ 📁 symbols       │ 128 B   │ drwxr-xr-x  │ just now     │
+│     📄 main.go   │ 4.58 KB │ -rw-r--r--  │ 1 hours ago  │
+│     📄 out.txt   │ 8.72 KB │ -rw-r--r--  │ just now     │
+└──────────────────┴─────────┴─────────────┴──────────────┘
+```
 
 ## Command-Line Tool
 
