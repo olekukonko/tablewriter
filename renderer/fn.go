@@ -6,7 +6,7 @@ import (
 	"github.com/olekukonko/tablewriter/tw"
 )
 
-// defaultBlueprint returns a default Rendition for ASCII table rendering with borders and light symbols.
+// defaultBlueprint returns a default Rendition for ASCII table rendering with borders and default symbols.
 func defaultBlueprint() tw.Rendition {
 	return tw.Rendition{
 		Borders: tw.Border{
@@ -31,7 +31,7 @@ func defaultBlueprint() tw.Rendition {
 
 			CompactMode: tw.Off,
 		},
-		Symbols:   tw.NewSymbols(tw.StyleLight),
+		Symbols:   tw.NewSymbols(tw.StyleDefault),
 		Streaming: true,
 	}
 }

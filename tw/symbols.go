@@ -77,9 +77,9 @@ func (s BorderStyle) String() string {
 // NewSymbols creates a new Symbols instance with the specified style
 func NewSymbols(style BorderStyle) Symbols {
 	switch style {
-	case StyleASCII:
+	case StyleASCII, StyleDefault:
 		return &SymbolASCII{}
-	case StyleLight, StyleDefault:
+	case StyleLight:
 		return &SymbolUnicode{
 			row:    "─",
 			column: "│",
