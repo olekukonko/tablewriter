@@ -126,6 +126,12 @@ func NewTable(w io.Writer, opts ...Option) *Table {
 		opt(t)
 	}
 
+	// force debugging mode if set
+	// This should  be move away form WithDebug
+	if t.config.Debug == true {
+		t.logger.Enable()
+	}
+
 	// send logger to renderer
 	// this will overwrite the default logger
 	t.renderer.Logger(t.logger)

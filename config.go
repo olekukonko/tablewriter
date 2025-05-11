@@ -3,7 +3,6 @@ package tablewriter
 
 import (
 	"github.com/olekukonko/ll"             // Logging library for debug output
-	"github.com/olekukonko/ll/lx"          // Logging level extensions
 	"github.com/olekukonko/tablewriter/tw" // Tablewriter core types and utilities
 	"io"                                   // Input/output interfaces
 	"reflect"                              // Reflection for type handling
@@ -743,18 +742,6 @@ func WithConfig(cfg Config) Option {
 func WithDebug(debug bool) Option {
 	return func(target *Table) {
 		target.config.Debug = debug
-		if target.logger != nil {
-			if debug {
-				target.logger.Enable()
-				target.logger.Level(lx.LevelDebug)
-			} else {
-				target.logger.Level(lx.LevelInfo)
-			}
-			target.logger.Debug("Option: WithDebug applied to Table: %v", debug)
-			if target.renderer != nil {
-				target.renderer.Logger(target.logger)
-			}
-		}
 	}
 }
 
