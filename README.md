@@ -28,10 +28,13 @@ go get github.com/olekukonko/tablewriter@v0.0.5
 ```
 
 #### Latest  Version
-The latest version (API Change)
+The latest stable version
 ```bash
-go get github.com/olekukonko/tablewriter@latest
+go get github.com/olekukonko/tablewriter@v1.0.1
 ```
+
+**Warning:** Version `v1.0.0` contains missing functionality and should not be used.
+
 
 > **Version Guidance**
 > - Production: Use `v0.0.5` (stable)
