@@ -1,7 +1,3 @@
-Here’s a polished version of your introduction with improved clarity, structure, and consistency:
-
----
-
 # TableWriter for Go
 
 [![CI](https://github.com/olekukonko/tablewriter/workflows/ci/badge.svg?branch=master)](https://github.com/olekukonko/tablewriter/actions?query=workflow%3Aci)
