@@ -327,3 +327,65 @@ func (s *SymbolMerger) BottomRight() string { return s.corners[8] }
 func (s *SymbolMerger) HeaderLeft() string  { return s.MidLeft() }
 func (s *SymbolMerger) HeaderMid() string   { return s.Center() }
 func (s *SymbolMerger) HeaderRight() string { return s.MidRight() }
+
+// SymbolCustom implements the Symbols interface with fully configurable symbols
+type SymbolCustom struct {
+	name        string
+	center      string
+	row         string
+	column      string
+	topLeft     string
+	topMid      string
+	topRight    string
+	midLeft     string
+	midRight    string
+	bottomLeft  string
+	bottomMid   string
+	bottomRight string
+	headerLeft  string
+	headerMid   string
+	headerRight string
+}
+
+// NewSymbolCustom creates a new customizable border style
+func NewSymbolCustom(name string) *SymbolCustom {
+	return &SymbolCustom{
+		name:   name,
+		center: "+",
+		row:    "-",
+		column: "|",
+	}
+}
+
+// Implement all Symbols interface methods
+func (c *SymbolCustom) Name() string        { return c.name }
+func (c *SymbolCustom) Center() string      { return c.center }
+func (c *SymbolCustom) Row() string         { return c.row }
+func (c *SymbolCustom) Column() string      { return c.column }
+func (c *SymbolCustom) TopLeft() string     { return c.topLeft }
+func (c *SymbolCustom) TopMid() string      { return c.topMid }
+func (c *SymbolCustom) TopRight() string    { return c.topRight }
+func (c *SymbolCustom) MidLeft() string     { return c.midLeft }
+func (c *SymbolCustom) MidRight() string    { return c.midRight }
+func (c *SymbolCustom) BottomLeft() string  { return c.bottomLeft }
+func (c *SymbolCustom) BottomMid() string   { return c.bottomMid }
+func (c *SymbolCustom) BottomRight() string { return c.bottomRight }
+func (c *SymbolCustom) HeaderLeft() string  { return c.headerLeft }
+func (c *SymbolCustom) HeaderMid() string   { return c.headerMid }
+func (c *SymbolCustom) HeaderRight() string { return c.headerRight }
+
+// Builder methods for fluent configuration
+func (c *SymbolCustom) WithCenter(s string) *SymbolCustom      { c.center = s; return c }
+func (c *SymbolCustom) WithRow(s string) *SymbolCustom         { c.row = s; return c }
+func (c *SymbolCustom) WithColumn(s string) *SymbolCustom      { c.column = s; return c }
+func (c *SymbolCustom) WithTopLeft(s string) *SymbolCustom     { c.topLeft = s; return c }
+func (c *SymbolCustom) WithTopMid(s string) *SymbolCustom      { c.topMid = s; return c }
+func (c *SymbolCustom) WithTopRight(s string) *SymbolCustom    { c.topRight = s; return c }
+func (c *SymbolCustom) WithMidLeft(s string) *SymbolCustom     { c.midLeft = s; return c }
+func (c *SymbolCustom) WithMidRight(s string) *SymbolCustom    { c.midRight = s; return c }
+func (c *SymbolCustom) WithBottomLeft(s string) *SymbolCustom  { c.bottomLeft = s; return c }
+func (c *SymbolCustom) WithBottomMid(s string) *SymbolCustom   { c.bottomMid = s; return c }
+func (c *SymbolCustom) WithBottomRight(s string) *SymbolCustom { c.bottomRight = s; return c }
+func (c *SymbolCustom) WithHeaderLeft(s string) *SymbolCustom  { c.headerLeft = s; return c }
+func (c *SymbolCustom) WithHeaderMid(s string) *SymbolCustom   { c.headerMid = s; return c }
+func (c *SymbolCustom) WithHeaderRight(s string) *SymbolCustom { c.headerRight = s; return c }
