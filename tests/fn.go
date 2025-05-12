@@ -209,3 +209,61 @@ func normalizeHTMLStrict(s string) string {
 	// Trim overall leading/trailing space that might be left.
 	return strings.TrimSpace(s)
 }
+
+// visualCheckCaption (helper function, potentially shared or adapted from your existing visualCheck)
+// Ensure this helper normalizes expected and got strings for reliable comparison
+// (e.g., trim spaces from each line, normalize newlines)
+func visualCheckCaption(t *testing.T, testName, got, expected string) bool {
+	t.Helper()
+	normalize := func(s string) string {
+		s = strings.ReplaceAll(s, "\r\n", "\n") // Normalize newlines
+		lines := strings.Split(s, "\n")
+		var trimmedLines []string
+		for _, l := range lines {
+			trimmedLines = append(trimmedLines, strings.TrimSpace(l))
+		}
+		// Join, then trim overall to handle cases where expected might have leading/trailing blank lines
+		// but individual lines should keep their relative structure.
+		return strings.TrimSpace(strings.Join(trimmedLines, "\n"))
+	}
+
+	gotNormalized := normalize(got)
+	expectedNormalized := normalize(expected)
+
+	if gotNormalized != expectedNormalized {
+		// Use a more detailed diff output if available, or just print both.
+		t.Errorf("%s: outputs do not match.\nExpected:\n```\n%s\n```\nGot:\n```\n%s\n```\n---Diff---\n%s",
+			testName, expected, got, getDiff(expectedNormalized, gotNormalized)) // You might need a diff utility
+		return false
+	}
+	return true
+}
+
+// A simple diff helper (replace with a proper library if needed)
+func getDiff(expected, actual string) string {
+	expectedLines := strings.Split(expected, "\n")
+	actualLines := strings.Split(actual, "\n")
+	maxLen := len(expectedLines)
+	if len(actualLines) > maxLen {
+		maxLen = len(actualLines)
+	}
+	var diff strings.Builder
+	diff.WriteString("Line | Expected                         | Actual\n")
+	diff.WriteString("-----|----------------------------------|----------------------------------\n")
+	for i := 0; i < maxLen; i++ {
+		eLine := ""
+		if i < len(expectedLines) {
+			eLine = expectedLines[i]
+		}
+		aLine := ""
+		if i < len(actualLines) {
+			aLine = actualLines[i]
+		}
+		marker := " "
+		if eLine != aLine {
+			marker = "!"
+		}
+		diff.WriteString(fmt.Sprintf("%4d %s| %-32s | %-32s\n", i+1, marker, eLine, aLine))
+	}
+	return diff.String()
+}

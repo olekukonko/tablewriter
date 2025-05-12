@@ -213,7 +213,7 @@ func TestAutoHideFeature(t *testing.T) {
 		{"E", "The Tester", "999"},
 	}
 
-	// --- Test Case 1: Hide Empty Column ---
+	//  Test Case 1: Hide Empty Column
 	t.Run("HideWhenEmpty", func(t *testing.T) {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf,
@@ -257,7 +257,7 @@ func TestAutoHideFeature(t *testing.T) {
 		}
 	})
 
-	// --- Test Case 2: Show Column When Not Empty ---
+	//  Test Case 2: Show Column When Not Empty
 	t.Run("ShowWhenNotEmpty", func(t *testing.T) {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf,
@@ -295,7 +295,7 @@ func TestAutoHideFeature(t *testing.T) {
 		}
 	})
 
-	// --- Test Case 3: Feature Disabled ---
+	//  Test Case 3: Feature Disabled ---
 	t.Run("DisabledShowsEmpty", func(t *testing.T) {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf,

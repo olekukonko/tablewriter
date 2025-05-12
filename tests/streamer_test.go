@@ -49,7 +49,7 @@ func TestStreamTableDefault(t *testing.T) {
 	│ Bob   │ 30  │ Boston   │
 	└───────┴─────┴──────────┘
 `
-		debug := visualCheck(t, "BasicTableRendering", buf.String(), expected)
+		debug := visualCheck(t, "TestStreamTableDefault", buf.String(), expected)
 		if !debug {
 			t.Error(table.Debug().String())
 		}
@@ -358,7 +358,8 @@ func TestStreamTruncation(t *testing.T) {
 			tablewriter.Config{
 				Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
 				Row: tw.CellConfig{
-					Formatting: tw.CellFormatting{Alignment: tw.AlignLeft, AutoWrap: tw.WrapTruncate, MaxWidth: 13},
+					Formatting:   tw.CellFormatting{Alignment: tw.AlignLeft, AutoWrap: tw.WrapTruncate},
+					ColMaxWidths: tw.CellWidth{Global: 13},
 				},
 				Stream: tw.StreamConfig{
 					Enable: true,

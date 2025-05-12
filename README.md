@@ -28,7 +28,7 @@ go get github.com/olekukonko/tablewriter@v0.0.5
 #### Latest  Version
 The latest stable version
 ```bash
-go get github.com/olekukonko/tablewriter@v1.0.3
+go get github.com/olekukonko/tablewriter@v1.0.4
 ```
 
 **Warning:** Version `v1.0.0` contains missing functionality and should not be used.
@@ -77,7 +77,7 @@ func main() {
 │   PACKAGE   │ VERSION │ STATUS │
 ├─────────────┼─────────┼────────┤
 │ tablewriter │ v0.0.5  │ legacy │
-│ tablewriter │ v1.0.3  │ latest │
+│ tablewriter │ v1.0.4  │ latest │
 └─────────────┴─────────┴────────┘
 ```
 
@@ -369,10 +369,10 @@ func main() {
 		tablewriter.WithConfig(tablewriter.Config{
 			Row: tw.CellConfig{
 				Formatting: tw.CellFormatting{
-					MaxWidth:  25,            // Limit column width
 					AutoWrap:  tw.WrapNormal, // Wrap long content
 					Alignment: tw.AlignLeft,  // Left-align rows
 				},
+				ColMaxWidths: tw.CellWidth{Global: 25},
 			},
 			Footer: tw.CellConfig{
 				Formatting: tw.CellFormatting{Alignment: tw.AlignRight},
@@ -655,13 +655,9 @@ func main() {
   A | A  │  B | B  
  ---+--- │ ---+--- 
   A | A  │  B | B  
- ---+--- │ ---+--- 
-         │         
   C | C  │  D | D  
  ---+--- │ ---+--- 
-  C | C  │  D | D  
- ---+--- │ ---+--- 
-         │         
+  C | C  │  D | D   
 ```
 
 #### 9. Structs with Database

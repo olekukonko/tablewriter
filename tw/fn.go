@@ -205,6 +205,25 @@ func PadLeft(s, pad string, width int) string {
 	return s
 }
 
+// Pad aligns a string within a specified width using a padding character.
+// It truncates if the string is wider than the target width.
+func Pad(s string, padChar string, totalWidth int, alignment Align) string {
+	sDisplayWidth := DisplayWidth(s)
+	if sDisplayWidth > totalWidth {
+		return TruncateString(s, totalWidth) // Only truncate if necessary
+	}
+	switch alignment {
+	case AlignLeft:
+		return PadRight(s, padChar, totalWidth)
+	case AlignRight:
+		return PadLeft(s, padChar, totalWidth)
+	case AlignCenter:
+		return PadCenter(s, padChar, totalWidth)
+	default:
+		return PadRight(s, padChar, totalWidth)
+	}
+}
+
 // IsIsNumericOrSpace checks if a rune is a digit or space character.
 // Used in formatting logic to determine safe character replacements.
 func IsIsNumericOrSpace(r rune) bool {

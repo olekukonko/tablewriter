@@ -71,7 +71,7 @@ func TestOceanTableStreaming_Simple(t *testing.T) {
         │ Bob  │ 30  │ Boston   │
         └──────┴─────┴──────────┘
 `
-	// Note: Alignment differences might occur if streaming path doesn't pass full CellContext for alignment
+	// Note: Align differences might occur if streaming path doesn't pass full CellContext for alignment
 	// The expected output assumes default (left) alignment for rows, center for header.
 	// Ocean's formatCellContent will apply these based on ctx.Row.Position if no cellCtx.Align.
 	if !visualCheck(t, "OceanTableStreaming_Simple", buf.String(), expected) {

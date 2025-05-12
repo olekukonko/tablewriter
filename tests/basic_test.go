@@ -26,7 +26,7 @@ func TestBasicTableDefault(t *testing.T) {
 	│ Bob   │ 30  │ Boston   │
 	└───────┴─────┴──────────┘
 `
-	debug := visualCheck(t, "BasicTableRendering", buf.String(), expected)
+	debug := visualCheck(t, "TestBasicTableDefault", buf.String(), expected)
 	if !debug {
 		t.Error(table.Debug().String())
 	}
@@ -34,12 +34,6 @@ func TestBasicTableDefault(t *testing.T) {
 
 func TestBasicTableDefaultBorder(t *testing.T) {
 	var buf bytes.Buffer
-
-	//table := tablewriter.NewTable(&buf)
-	//table.Header([]string{"Name", "Age", "City"})
-	//table.Append([]string{"Alice", "25", "New York"})
-	//table.Append([]string{"Bob", "30", "Boston"})
-	//table.Render()
 
 	t.Run("all-off", func(t *testing.T) {
 		buf.Reset()
@@ -61,7 +55,7 @@ func TestBasicTableDefaultBorder(t *testing.T) {
          Bob   │ 30  │ Boston   
 `
 
-		visualCheck(t, "BasicTableRendering-all-off", buf.String(), expected)
+		visualCheck(t, "TestBasicTableDefaultBorder-top-off", buf.String(), expected)
 
 	})
 
@@ -87,7 +81,7 @@ func TestBasicTableDefaultBorder(t *testing.T) {
 
 `
 
-		visualCheck(t, "BasicTableRendering-top-on", buf.String(), expected)
+		visualCheck(t, "TestBasicTableDefaultBorder-top-on", buf.String(), expected)
 	})
 
 	t.Run("mix", func(t *testing.T) {
@@ -112,7 +106,7 @@ func TestBasicTableDefaultBorder(t *testing.T) {
         ───────┴─────┴──────────┘
 
 `
-		visualCheck(t, "BasicTableRendering-mix", buf.String(), expected)
+		visualCheck(t, "TestBasicTableDefaultBorder-mix", buf.String(), expected)
 
 	})
 }
@@ -353,10 +347,11 @@ func TestLongHeaders(t *testing.T) {
 
 	t.Run("long-headers", func(t *testing.T) {
 		c := tablewriter.Config{
-			MaxWidth: 30,
 			Header: tw.CellConfig{Formatting: tw.CellFormatting{
 				AutoWrap: tw.WrapTruncate,
-			}},
+			},
+				ColMaxWidths: tw.CellWidth{Global: 30},
+			},
 			Debug: false,
 		}
 		buf.Reset()
@@ -374,7 +369,7 @@ func TestLongHeaders(t *testing.T) {
             │ Bob   │ 30  │ Boston                      │
             └───────┴─────┴─────────────────────────────┘
 `
-		if !visualCheck(t, "BasicTableRendering", buf.String(), expected) {
+		if !visualCheck(t, "TestLongHeaders", buf.String(), expected) {
 			t.Log(table.Debug())
 		}
 
@@ -384,10 +379,10 @@ func TestLongHeaders(t *testing.T) {
 		buf.Reset()
 
 		c := tablewriter.Config{
-			MaxWidth: 30,
 			Header: tw.CellConfig{Formatting: tw.CellFormatting{
 				AutoWrap: tw.WrapNormal,
-			}},
+			},
+				ColMaxWidths: tw.CellWidth{Global: 30}},
 		}
 
 		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c))
@@ -423,21 +418,20 @@ func TestLongValues(t *testing.T) {
 	c := tablewriter.Config{
 		Header: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				MaxWidth:   30,
 				Alignment:  tw.AlignCenter,
 				AutoFormat: true,
 			},
+			ColMaxWidths: tw.CellWidth{Global: 30},
 		},
 		Row: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				MaxWidth:  30,
 				AutoWrap:  tw.WrapNormal,
 				Alignment: tw.AlignLeft,
 			},
+			ColMaxWidths: tw.CellWidth{Global: 30},
 		},
 		Footer: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				MaxWidth:  30,
 				Alignment: tw.AlignRight,
 			},
 			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.Skip, tw.AlignLeft},
@@ -499,16 +493,16 @@ func TestWrapping(t *testing.T) {
 		},
 		Row: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				MaxWidth:  30,
 				AutoWrap:  tw.WrapBreak,
 				Alignment: tw.AlignLeft,
 			},
+			ColMaxWidths: tw.CellWidth{Global: 30},
 		},
 		Footer: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				MaxWidth:  30,
 				Alignment: tw.AlignRight,
 			},
+			ColMaxWidths: tw.CellWidth{Global: 30},
 		},
 	}
 

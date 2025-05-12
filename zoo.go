@@ -638,6 +638,7 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 // calculateContentMaxWidth computes the maximum content width for a column, accounting for padding and mode-specific constraints.
 // Returns the effective content width (after subtracting padding) for the given column index.
 func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLeftWidth, padRightWidth int, isStreaming bool) int {
+
 	var effectiveContentMaxWidth int
 	if isStreaming {
 		totalColumnWidthFromStream := t.streamWidths.Get(colIdx)
@@ -665,8 +666,8 @@ func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLe
 				t.logger.Debug("calculateContentMaxWidth: Batch col %d using config.ColMaxWidths.PerColumn (as total cell width constraint): %d", colIdx, constraintTotalCellWidth)
 			}
 		}
-		if !hasConstraint && config.Formatting.MaxWidth > 0 {
-			constraintTotalCellWidth = config.Formatting.MaxWidth
+		if !hasConstraint && config.ColMaxWidths.Global > 0 {
+			constraintTotalCellWidth = config.ColMaxWidths.Global
 			hasConstraint = true
 			t.logger.Debug("calculateContentMaxWidth: Batch col %d using config.Formatting.MaxWidth (as total cell width constraint): %d", colIdx, constraintTotalCellWidth)
 		}

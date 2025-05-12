@@ -80,7 +80,6 @@ func (t *Table) Close() error {
 func (t *Table) Start() error {
 	t.ensureInitialized() // Ensures basic setup like loggers
 
-	// --- MODIFIED LOGIC START ---
 	if !t.config.Stream.Enable {
 		// Start() should only be called when streaming is explicitly enabled.
 		// Otherwise, the user should call Render() for batch mode.
@@ -761,7 +760,7 @@ func (t *Table) streamRenderFooter(processedFooterLines [][]string) error {
 	f := t.renderer
 	cfg := t.renderer.Config()
 
-	// --- Render Row/Footer or Header/Footer Separator Line ---
+	//  Render Row/Footer or Header/Footer Separator Line
 	// This separator is drawn if ShowFooterLine is enabled AND there was content before the footer.
 	// The last rendered position (t.lastRenderedPosition) should be Row or Header or "separator".
 	if (t.lastRenderedPosition == tw.Row || t.lastRenderedPosition == tw.Header || t.lastRenderedPosition == tw.Position("separator")) &&
@@ -819,7 +818,7 @@ func (t *Table) streamRenderFooter(processedFooterLines [][]string) error {
 		t.lastRenderedMergeState = nil
 		t.logger.Debug("streamRenderFooter: Footer separator line rendered.")
 	}
-	// --- End Render Separator Line ---
+	//  End Render Separator Line
 
 	// Detect horizontal merges for the footer section based on its (assumed stored) raw input.
 	// This is tricky because streamStoreFooter gets []string, but prepareWithMerges expects [][]string.

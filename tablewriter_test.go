@@ -52,11 +52,11 @@ func TestCalculateContentMaxWidth(t *testing.T) {
 	table := NewTable(os.Stdout)
 	config := tw.CellConfig{
 		Formatting: tw.CellFormatting{
-			MaxWidth:   10,
 			AutoWrap:   tw.WrapTruncate,
 			Alignment:  tw.AlignLeft,
 			AutoFormat: false,
 		},
+		ColMaxWidths: tw.CellWidth{Global: 10},
 		Padding: tw.CellPadding{
 			Global: tw.Padding{Left: " ", Right: " "},
 		},
@@ -77,7 +77,7 @@ func TestCalculateContentMaxWidth(t *testing.T) {
 		}
 	})
 	t.Run("No Constraint in Batch", func(t *testing.T) {
-		config.Formatting.MaxWidth = 0
+		config.ColMaxWidths.Global = 0
 		got := table.calculateContentMaxWidth(0, config, 1, 1, false)
 		if got != 0 {
 			t.Errorf("Expected width 0, got %d", got)
@@ -319,7 +319,6 @@ func TestMergeCellConfig(t *testing.T) {
 			AutoWrap:   tw.WrapNormal, // 1
 			AutoFormat: false,
 			MergeMode:  tw.MergeNone,
-			MaxWidth:   0,
 		},
 		Padding: tw.CellPadding{
 			Global: tw.Padding{Left: " ", Right: " "},
@@ -341,7 +340,6 @@ func TestMergeCellConfig(t *testing.T) {
 					AutoWrap:   tw.WrapNormal,
 					AutoFormat: false,
 					MergeMode:  tw.MergeNone,
-					MaxWidth:   0,
 				},
 				Padding: tw.CellPadding{
 					Global: tw.Padding{Left: " ", Right: " "},
@@ -362,7 +360,6 @@ func TestMergeCellConfig(t *testing.T) {
 					AutoWrap:   tw.WrapNormal,
 					AutoFormat: false,
 					MergeMode:  tw.MergeNone,
-					MaxWidth:   0,
 				},
 				Padding: tw.CellPadding{
 					Global: tw.Padding{Left: " ", Right: " "},
@@ -383,7 +380,6 @@ func TestMergeCellConfig(t *testing.T) {
 					AutoWrap:   tw.WrapNormal,
 					AutoFormat: false,
 					MergeMode:  tw.MergeVertical,
-					MaxWidth:   0,
 				},
 				Padding: tw.CellPadding{
 					Global: tw.Padding{Left: " ", Right: " "},
@@ -404,7 +400,6 @@ func TestMergeCellConfig(t *testing.T) {
 					AutoWrap:   tw.WrapNormal,
 					AutoFormat: false,
 					MergeMode:  tw.MergeHorizontal,
-					MaxWidth:   0,
 				},
 				Padding: tw.CellPadding{
 					Global: tw.Padding{Left: " ", Right: " "},
@@ -425,7 +420,6 @@ func TestMergeCellConfig(t *testing.T) {
 					AutoWrap:   tw.WrapNormal,
 					AutoFormat: false,
 					MergeMode:  tw.MergeBoth,
-					MaxWidth:   0,
 				},
 				Padding: tw.CellPadding{
 					Global: tw.Padding{Left: " ", Right: " "},
@@ -446,7 +440,6 @@ func TestMergeCellConfig(t *testing.T) {
 					AutoWrap:   tw.WrapNormal,
 					AutoFormat: false,
 					MergeMode:  tw.MergeHierarchical,
-					MaxWidth:   0,
 				},
 				Padding: tw.CellPadding{
 					Global: tw.Padding{Left: " ", Right: " "},
@@ -467,7 +460,6 @@ func TestMergeCellConfig(t *testing.T) {
 					AutoWrap:   tw.WrapTruncate,    // From defaultConfig() Header
 					AutoFormat: true,               // From defaultConfig() Header
 					MergeMode:  tw.MergeHorizontal, // From builder
-					MaxWidth:   0,
 				},
 				Padding: tw.CellPadding{
 					Global: tw.Padding{Left: " ", Right: " "},
@@ -532,7 +524,7 @@ func TestMergeCellConfig2(t *testing.T) {
 		input       tw.CellConfig
 		expected    tw.CellConfig
 	}{
-		// --- Test Cases for ROW section (using defaultConfig().Row as base) ---
+		//  Test Cases for ROW section (using defaultConfig().Row as base)
 		{
 			name:        "Row_EmptyInput",
 			baseSection: "row",
@@ -587,7 +579,7 @@ func TestMergeCellConfig2(t *testing.T) {
 				return cfg
 			}(),
 		},
-		// --- Test Cases for HEADER section (using defaultConfig().Header as base) ---
+		//  Test Cases for HEADER section (using defaultConfig().Header as base)
 		{
 			name:        "Header_FromBuilderFlattened",
 			baseSection: "header",
