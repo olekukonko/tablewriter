@@ -2,7 +2,11 @@
 // including validation logic for various table properties.
 package tw
 
-import "github.com/olekukonko/errors" // Custom error handling library
+import (
+	"fmt"
+	"github.com/olekukonko/errors"
+	"strings"
+) // Custom error handling library
 
 // Position defines where formatting applies in the table (e.g., header, footer, or rows).
 type Position string
@@ -38,6 +42,41 @@ func (a Align) Validate() error {
 	}
 	// Return an error for any unrecognized alignment
 	return errors.New("invalid align")
+}
+
+type Alignment []Align
+
+func (a Alignment) String() string {
+	var str strings.Builder
+	for i, a := range a {
+		if i > 0 {
+			str.WriteString("; ")
+		}
+		str.WriteString(fmt.Sprint(i))
+		str.WriteString("=")
+		str.WriteString(string(a))
+	}
+	return str.String()
+}
+
+func (a Alignment) Add(aligns ...Align) Alignment {
+	aa := make(Alignment, len(aligns))
+	copy(aa, aligns)
+	return aa
+}
+
+func (a Alignment) Set(col int, align Align) Alignment {
+	if col >= 0 && col < len(a) {
+		a[col] = align
+	}
+	return a
+}
+
+// Copy creates a new independent copy of the Alignment
+func (a Alignment) Copy() Alignment {
+	aa := make(Alignment, len(a))
+	copy(aa, a)
+	return aa
 }
 
 // Level indicates the vertical position of a line in the table (e.g., header, body, or footer).

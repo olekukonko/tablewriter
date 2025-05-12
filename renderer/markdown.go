@@ -11,8 +11,9 @@ import (
 
 // Markdown renders tables in Markdown format with customizable settings.
 type Markdown struct {
-	config tw.Rendition // Rendering configuration
-	logger *ll.Logger   // Debug trace messages
+	config    tw.Rendition // Rendering configuration
+	logger    *ll.Logger   // Debug trace messages
+	alignment tw.Alignment // alias of []tw.Align
 }
 
 // NewMarkdown initializes a Markdown renderer with defaults tailored for Markdown (e.g., pipes, header separator).
@@ -63,6 +64,93 @@ func (m *Markdown) Logger(logger *ll.Logger) {
 // Config returns the renderer's current configuration.
 func (m *Markdown) Config() tw.Rendition {
 	return m.config
+}
+
+// Header renders the Markdown table header and its separator line.
+func (m *Markdown) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
+	m.resolveAlignment(ctx)
+	if len(headers) == 0 || len(headers[0]) == 0 {
+		m.logger.Debug("Header: No headers to render")
+		return
+	}
+	m.logger.Debug("Rendering header with %d lines, widths=%v, current=%v, next=%v",
+		len(headers), ctx.Row.Widths, ctx.Row.Current, ctx.Row.Next)
+
+	// Render header content
+	m.renderMarkdownLine(w, headers[0], ctx, false)
+
+	// Render separator if enabled
+	if m.config.Settings.Lines.ShowHeaderLine.Enabled() {
+		sepCtx := ctx
+		sepCtx.Row.Widths = ctx.Row.Widths
+		sepCtx.Row.Current = ctx.Row.Current
+		sepCtx.Row.Previous = ctx.Row.Current
+		sepCtx.IsSubRow = true
+		m.renderMarkdownLine(w, nil, sepCtx, true)
+	}
+}
+
+// Row renders a Markdown table data row.
+func (m *Markdown) Row(w io.Writer, row []string, ctx tw.Formatting) {
+	m.resolveAlignment(ctx)
+	m.logger.Debug("Rendering row with data=%v, widths=%v, previous=%v, current=%v, next=%v",
+		row, ctx.Row.Widths, ctx.Row.Previous, ctx.Row.Current, ctx.Row.Next)
+	m.renderMarkdownLine(w, row, ctx, false)
+
+}
+
+// Footer renders the Markdown table footer.
+func (m *Markdown) Footer(w io.Writer, footers [][]string, ctx tw.Formatting) {
+	m.resolveAlignment(ctx)
+	if len(footers) == 0 || len(footers[0]) == 0 {
+		m.logger.Debug("Footer: No footers to render")
+		return
+	}
+	m.logger.Debug("Rendering footer with %d lines, widths=%v, previous=%v, current=%v, next=%v",
+		len(footers), ctx.Row.Widths, ctx.Row.Previous, ctx.Row.Current, ctx.Row.Next)
+	m.renderMarkdownLine(w, footers[0], ctx, false)
+}
+
+// Line is a no-op for Markdown, as only the header separator is rendered (handled by Header).
+func (m *Markdown) Line(w io.Writer, ctx tw.Formatting) {
+	m.logger.Debug("Line: Generic Line call received (pos: %s, loc: %s). Markdown ignores these.", ctx.Row.Position, ctx.Row.Location)
+}
+
+// Reset clears the renderer's internal state, including debug traces.
+func (m *Markdown) Reset() {
+	m.logger.Info("Reset: Cleared debug trace")
+}
+
+func (m *Markdown) Start(w io.Writer) error {
+	m.logger.Warn("Markdown.Start() called (no-op).")
+	return nil
+}
+
+func (m *Markdown) Close(w io.Writer) error {
+	m.logger.Warn("Markdown.Close() called (no-op).")
+	return nil
+}
+
+func (m *Markdown) resolveAlignment(ctx tw.Formatting) tw.Alignment {
+	if len(m.alignment) != 0 {
+		return m.alignment
+	}
+
+	// get total columns
+	total := len(ctx.Row.Current)
+
+	// build default alignment
+	for i := 0; i < total; i++ {
+		m.alignment = append(m.alignment, tw.AlignLeft)
+	}
+
+	// add per colum alignment if it exits
+	for i := 0; i < total; i++ {
+		m.alignment[i] = ctx.Row.Current[i].Align
+	}
+
+	m.logger.Debug(" → Alignment Resolved %s", m.alignment)
+	return m.alignment
 }
 
 // formatCell formats a Markdown cell's content with padding and alignment, ensuring at least 3 characters wide.
@@ -154,7 +242,7 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 
 // formatSeparator generates a Markdown separator (e.g., `---`, `:--`, `:-:`) with alignment indicators.
 func (m *Markdown) formatSeparator(width int, align tw.Align) string {
-	targetWidth := tw.Max(3, width) // Minimum width of 3
+	targetWidth := tw.Max(3, width)
 	var sb strings.Builder
 
 	switch align {
@@ -168,7 +256,7 @@ func (m *Markdown) formatSeparator(width int, align tw.Align) string {
 		sb.WriteRune(':')
 		sb.WriteString(strings.Repeat("-", targetWidth-2))
 		sb.WriteRune(':')
-	default: // Fallback to left alignment for unspecified
+	default:
 		sb.WriteRune(':')
 		sb.WriteString(strings.Repeat("-", targetWidth-1))
 	}
@@ -230,17 +318,13 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 
 	for colIndex < numCols {
 		cellCtx, ok := ctx.Row.Current[colIndex]
+		align := m.alignment[colIndex]
+
 		defaultPadding := tw.Padding{Left: " ", Right: " "}
 		if !ok {
-			defaultAlign := tw.AlignLeft // Default for rows
-			if ctx.Row.Position == tw.Header && !isHeaderSep {
-				defaultAlign = tw.AlignCenter // Default for headers
-			}
-			if ctx.Row.Position == tw.Footer {
-				defaultAlign = tw.AlignRight
-			}
+
 			cellCtx = tw.CellContext{
-				Data: "", Align: defaultAlign, Padding: defaultPadding,
+				Data: "", Align: align, Padding: defaultPadding,
 				Width: ctx.Row.Widths.Get(colIndex), Merge: tw.MergeState{},
 			}
 		} else if cellCtx.Padding == (tw.Padding{}) {
@@ -256,7 +340,7 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 
 		// Calculate width and span
 		span := 1
-		align := cellCtx.Align
+
 		if align == tw.AlignNone || align == "" {
 			if ctx.Row.Position == tw.Header && !isHeaderSep {
 				align = tw.AlignCenter
@@ -299,15 +383,10 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 		} else {
 			var formattedSegment string
 			if isHeaderSep {
-				// Use the header's alignment from ctx.Row.Previous (header row)
+				// Use header's alignment from ctx.Row.Previous
 				headerAlign := tw.AlignCenter // Default for headers
 				if headerCellCtx, headerOK := ctx.Row.Previous[colIndex]; headerOK {
 					headerAlign = headerCellCtx.Align
-					if headerAlign == tw.AlignNone || headerAlign == "" {
-						headerAlign = tw.AlignCenter
-					}
-				} else if cellCtx, ok := ctx.Row.Current[colIndex]; ok {
-					headerAlign = cellCtx.Align
 					if headerAlign == tw.AlignNone || headerAlign == "" {
 						headerAlign = tw.AlignCenter
 					}
@@ -318,7 +397,14 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 				if colIndex < len(line) {
 					content = line[colIndex]
 				}
-				formattedSegment = m.formatCell(content, visualWidth, align, cellCtx.Padding)
+				// For rows, use the header's alignment if specified
+				rowAlign := align
+				if headerCellCtx, headerOK := ctx.Row.Previous[colIndex]; headerOK && isHeaderSep == false {
+					if headerCellCtx.Align != tw.AlignNone && headerCellCtx.Align != "" {
+						rowAlign = headerCellCtx.Align
+					}
+				}
+				formattedSegment = m.formatCell(content, visualWidth, rowAlign, cellCtx.Padding)
 			}
 			output.WriteString(formattedSegment)
 			m.logger.Debug("renderMarkdownLine: Wrote col %d (span %d, width %d): '%s'", colIndex, span, visualWidth, formattedSegment)
@@ -331,65 +417,4 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 	output.WriteString(tw.NewLine)
 	fmt.Fprint(w, output.String())
 	m.logger.Debug("renderMarkdownLine: Final line: %s", strings.TrimSuffix(output.String(), tw.NewLine))
-}
-
-// Header renders the Markdown table header and its separator line.
-func (m *Markdown) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
-	if len(headers) == 0 || len(headers[0]) == 0 {
-		m.logger.Debug("Header: No headers to render")
-		return
-	}
-	m.logger.Debug("Rendering header with %d lines, widths=%v, current=%v, next=%v",
-		len(headers), ctx.Row.Widths, ctx.Row.Current, ctx.Row.Next)
-
-	// Render header content
-	m.renderMarkdownLine(w, headers[0], ctx, false)
-
-	// Render separator if enabled
-	if m.config.Settings.Lines.ShowHeaderLine.Enabled() {
-		sepCtx := ctx
-		sepCtx.Row.Widths = ctx.Row.Widths
-		sepCtx.Row.Current = ctx.Row.Current
-		sepCtx.Row.Previous = ctx.Row.Current
-		sepCtx.IsSubRow = true
-		m.renderMarkdownLine(w, nil, sepCtx, true)
-	}
-}
-
-// Row renders a Markdown table data row.
-func (m *Markdown) Row(w io.Writer, row []string, ctx tw.Formatting) {
-	m.logger.Debug("Rendering row with data=%v, widths=%v, previous=%v, current=%v, next=%v",
-		row, ctx.Row.Widths, ctx.Row.Previous, ctx.Row.Current, ctx.Row.Next)
-	m.renderMarkdownLine(w, row, ctx, false)
-}
-
-// Footer renders the Markdown table footer.
-func (m *Markdown) Footer(w io.Writer, footers [][]string, ctx tw.Formatting) {
-	if len(footers) == 0 || len(footers[0]) == 0 {
-		m.logger.Debug("Footer: No footers to render")
-		return
-	}
-	m.logger.Debug("Rendering footer with %d lines, widths=%v, previous=%v, current=%v, next=%v",
-		len(footers), ctx.Row.Widths, ctx.Row.Previous, ctx.Row.Current, ctx.Row.Next)
-	m.renderMarkdownLine(w, footers[0], ctx, false)
-}
-
-// Line is a no-op for Markdown, as only the header separator is rendered (handled by Header).
-func (m *Markdown) Line(w io.Writer, ctx tw.Formatting) {
-	m.logger.Debug("Line: Generic Line call received (pos: %s, loc: %s). Markdown ignores these.", ctx.Row.Position, ctx.Row.Location)
-}
-
-// Reset clears the renderer's internal state, including debug traces.
-func (m *Markdown) Reset() {
-	m.logger.Info("Reset: Cleared debug trace")
-}
-
-func (m *Markdown) Start(w io.Writer) error {
-	m.logger.Warn("Markdown.Start() called (no-op).")
-	return nil
-}
-
-func (m *Markdown) Close(w io.Writer) error {
-	m.logger.Warn("Markdown.Close() called (no-op).")
-	return nil
 }

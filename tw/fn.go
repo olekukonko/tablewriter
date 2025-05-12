@@ -333,3 +333,11 @@ func BreakPoint(s string, limit int) int {
 	// Entire string fits within the limit
 	return runeCount
 }
+
+func MakeAlign(l int, align Align) Alignment {
+	aa := make(Alignment, l)
+	for i := 0; i < l; i++ {
+		aa[i] = align
+	}
+	return aa
+}

@@ -20,10 +20,34 @@ func TestMarkdownBasicTable(t *testing.T) {
 	table.Render()
 
 	expected := `
-| NAME  | AGE |   CITY   |
-|:-----:|:---:|:--------:|
-| Alice | 25  | New York |
-| Bob   | 30  | Boston   |
+	| NAME  | AGE |   CITY   |
+	|:-----:|:---:|:--------:|
+	| Alice | 25  | New York |
+	|  Bob  | 30  |  Boston  |
+`
+	if !visualCheck(t, "MarkdownBasicTable", buf.String(), expected) {
+		t.Error(table.Debug().String())
+	}
+}
+
+func TestMarkdownAlignment(t *testing.T) {
+	var buf bytes.Buffer
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithRenderer(renderer.NewMarkdown()),
+		tablewriter.WithConfig(tablewriter.Config{Header: tw.CellConfig{
+			ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignRight, tw.AlignRight, tw.AlignCenter}},
+		}),
+	)
+	table.Header([]string{"Name", "Age", "City", "Status"})
+	table.Append([]string{"Alice", "25", "New York", "OK"})
+	table.Append([]string{"Bob", "30", "Boston", "ERROR"})
+	table.Render()
+
+	expected := `
+	| NAME  | AGE |     CITY | STATUS |
+	|:------|----:|---------:|:------:|
+	| Alice |  25 | New York |   OK   |
+	| Bob   |  30 |   Boston | ERROR  |
 `
 	if !visualCheck(t, "MarkdownBasicTable", buf.String(), expected) {
 		t.Error(table.Debug().String())
@@ -36,17 +60,21 @@ func TestMarkdownNoBorders(t *testing.T) {
 		tablewriter.WithRenderer(renderer.NewMarkdown(tw.Rendition{
 			Borders: tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
 		})),
+		tablewriter.WithConfig(tablewriter.Config{Header: tw.CellConfig{
+			ColumnAligns: []tw.Align{tw.AlignLeft}},
+		}),
 	)
+
 	table.Header([]string{"Name", "Age", "City"})
 	table.Append([]string{"Alice", "25", "New York"})
 	table.Append([]string{"Bob", "30", "Boston"})
 	table.Render()
 
 	expected := `
-NAME  | AGE |   CITY   
-:-----:|:---:|:--------:
-Alice | 25  | New York 
-Bob   | 30  | Boston   
+ NAME  | AGE |   CITY   
+:------|:---:|:--------:
+ Alice | 25  | New York 
+ Bob   | 30  |  Boston   
 `
 	visualCheck(t, "MarkdownNoBorders", buf.String(), expected)
 }
@@ -63,12 +91,11 @@ func TestMarkdownUnicode(t *testing.T) {
 	table.Render()
 
 	expected := `
-        | NAME | AGE |  CITY  |
-        |:----:|:---:|:------:|
-        | Bøb  | 30  | Tōkyō  |
-        | José | 28  | México |
-        | 张三 | 35  | 北京   |
-
+		| NAME | AGE |  CITY  |
+		|:----:|:---:|:------:|
+		| Bøb  | 30  | Tōkyō  |
+		| José | 28  | México |
+		| 张三 | 35  |  北京  |
 `
 	visualCheck(t, "MarkdownUnicode", buf.String(), expected)
 }
@@ -86,6 +113,7 @@ func TestMarkdownLongHeaders(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithConfig(c),
 		tablewriter.WithRenderer(renderer.NewMarkdown()),
+		tablewriter.WithAlignment(tw.MakeAlign(3, tw.AlignLeft)),
 	)
 	table.Header([]string{"Name", "Age", "Very Long Header That Needs Truncation"})
 	table.Append([]string{"Alice", "25", "New York"})
@@ -94,7 +122,7 @@ func TestMarkdownLongHeaders(t *testing.T) {
 
 	expected := `
         | NAME  | AGE | VERY LONG HEADER… |
-        |:-----:|:---:|:-----------------:|
+        |:------|:----|:------------------|
         | Alice | 25  | New York          |
         | Bob   | 30  | Boston            |
 `
@@ -115,6 +143,7 @@ func TestMarkdownLongValues(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithConfig(c),
 		tablewriter.WithRenderer(renderer.NewMarkdown()),
+		tablewriter.WithAlignment(tw.MakeAlign(3, tw.AlignLeft)),
 	)
 	table.Header([]string{"No", "Description", "Note"})
 	table.Append([]string{"1", "This is a very long description that should wrap", "Short"})
@@ -122,12 +151,12 @@ func TestMarkdownLongValues(t *testing.T) {
 	table.Render()
 
 	expected := `
-		| NO |   DESCRIPTION    |     NOTE     |
-		|:--:|:----------------:|:------------:|
-		| 1  | This is a very   | Short        |
-		|    | long description |              |
-		|    | that should wrap |              |
-		| 2  | Short desc       | Another note |
+        | NO | DESCRIPTION      | NOTE         |
+        |:---|:-----------------|:-------------|
+        | 1  | This is a very   | Short        |
+        |    | long description |              |
+        |    | that should wrap |              |
+        | 2  | Short desc       | Another note |
 `
 	visualCheck(t, "MarkdownLongValues", buf.String(), expected)
 }
@@ -159,7 +188,7 @@ func TestMarkdownCustomPadding(t *testing.T) {
         |*NAME**|*AGE*|***CITY***|
         |:-----:|:---:|:--------:|
         |>Alice<|>25<<|>New York<|
-        |>Bob<<<|>30<<|>Boston<<<|
+        |>>Bob<<|>30<<|>>Boston<<|
 `
 	visualCheck(t, "MarkdownCustomPadding", buf.String(), expected)
 }
@@ -187,9 +216,9 @@ func TestMarkdownHorizontalMerge(t *testing.T) {
 	table.Render()
 
 	expected := `
-|     MERGED      | NORMAL |
-|:---------------:|:------:|
-| Same            | Unique |
+        |     MERGED      | NORMAL |
+        |:---------------:|:------:|
+        |      Same       | Unique |
 `
 	visualCheck(t, "MarkdownHorizontalMerge", buf.String(), expected)
 }
@@ -225,11 +254,11 @@ func TestMarkdownWithFooter(t *testing.T) {
 	table.Render()
 
 	expected := `
-| NAME  | AGE |   CITY   |
-|:-----:|:---:|:--------:|
-| Alice | 25  | New York |
-| Bob   | 30  | Boston   |
-| Total |   2 |          |
+        | NAME  | AGE |   CITY   |
+        |:-----:|:---:|:--------:|
+        | Alice | 25  | New York |
+        |  Bob  | 30  |  Boston  |
+        | Total |  2  |          |
 `
 	visualCheck(t, "MarkdownWithFooter", buf.String(), expected)
 }

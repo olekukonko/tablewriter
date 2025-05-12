@@ -929,6 +929,15 @@ func WithTrimSpace(state tw.State) Option {
 	}
 }
 
+// WithAlignment helps to set default alignments
+func WithAlignment(alignment tw.Alignment) Option {
+	return func(target *Table) {
+		target.config.Header.ColumnAligns = alignment
+		target.config.Row.ColumnAligns = alignment
+		target.config.Footer.ColumnAligns = alignment
+	}
+}
+
 // defaultConfig returns a default Config with sensible settings for headers, rows, footers, and behavior.
 func defaultConfig() Config {
 	defaultPadding := tw.Padding{Left: tw.Space, Right: tw.Space, Top: tw.Empty, Bottom: tw.Empty}
