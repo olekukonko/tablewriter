@@ -232,7 +232,7 @@ func (t *Table) Footer(elements ...any) {
 	if t.config.Stream.Enable && t.hasPrinted {
 		// --- Streaming Path ---
 		actualCellsToProcess := t.processVariadicElements(elements)
-		footersAsStrings, err := t.rawCellsToStrings(actualCellsToProcess, t.config.Footer)
+		footersAsStrings, err := t.convertCellsToStrings(actualCellsToProcess, t.config.Footer)
 		if err != nil {
 			t.logger.Error("Footer(): Failed to convert footer elements to strings for streaming: %v", err)
 			footersAsStrings = []string{} // Use empty on error
@@ -248,7 +248,7 @@ func (t *Table) Footer(elements ...any) {
 	actualCellsToProcess := t.processVariadicElements(elements)
 	t.logger.Debug("Footer() (Batch): Effective cells to process: %v", actualCellsToProcess)
 
-	footersAsStrings, err := t.rawCellsToStrings(actualCellsToProcess, t.config.Footer)
+	footersAsStrings, err := t.convertCellsToStrings(actualCellsToProcess, t.config.Footer)
 	if err != nil {
 		t.logger.Error("Footer() (Batch): Failed to convert to strings: %v", err)
 		t.footers = [][]string{} // Set to empty on error
@@ -351,7 +351,7 @@ func (t *Table) appendSingle(row interface{}) error {
 	}
 	// Existing batch logic:
 	t.logger.Debug("appendSingle: Processing for batch mode, row: %v", row)
-	// toStringLines now uses the new rawCellsToStrings internally, then prepareContent.
+	// toStringLines now uses the new convertCellsToStrings internally, then prepareContent.
 	// This is fine for batch.
 	lines, err := t.toStringLines(row, t.config.Row)
 	if err != nil {
@@ -535,7 +535,7 @@ func (t *Table) Header(elements ...any) {
 	if t.config.Stream.Enable && t.hasPrinted {
 		// --- Streaming Path ---
 		actualCellsToProcess := t.processVariadicElements(elements)
-		headersAsStrings, err := t.rawCellsToStrings(actualCellsToProcess, t.config.Header)
+		headersAsStrings, err := t.convertCellsToStrings(actualCellsToProcess, t.config.Header)
 		if err != nil {
 			t.logger.Error("Header(): Failed to convert header elements to strings for streaming: %v", err)
 			headersAsStrings = []string{} // Use empty on error
@@ -551,7 +551,7 @@ func (t *Table) Header(elements ...any) {
 	actualCellsToProcess := t.processVariadicElements(elements)
 	t.logger.Debug("Header() (Batch): Effective cells to process: %v", actualCellsToProcess)
 
-	headersAsStrings, err := t.rawCellsToStrings(actualCellsToProcess, t.config.Header)
+	headersAsStrings, err := t.convertCellsToStrings(actualCellsToProcess, t.config.Header)
 	if err != nil {
 		t.logger.Error("Header() (Batch): Failed to convert to strings: %v", err)
 		t.headers = [][]string{} // Set to empty on error

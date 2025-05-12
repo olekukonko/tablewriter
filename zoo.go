@@ -674,11 +674,11 @@ func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLe
 	return effectiveContentMaxWidth
 }
 
-// callStringer invokes the table's stringer function with optional caching.
-func (t *Table) callStringer(input interface{}) ([]string, error) {
+// convertToStringer invokes the table's stringer function with optional caching.
+func (t *Table) convertToStringer(input interface{}) ([]string, error) {
 	// Try type assertion for common case: func(interface{}) []string
 	if fn, ok := t.stringer.(func(interface{}) []string); ok {
-		t.logger.Debug("callStringer: Using type-asserted func(interface{}) []string for input type %T", input)
+		t.logger.Debug("convertToStringer: Using type-asserted func(interface{}) []string for input type %T", input)
 		return fn(input), nil
 	}
 
@@ -689,7 +689,7 @@ func (t *Table) callStringer(input interface{}) ([]string, error) {
 		t.stringerCacheMu.RLock()
 		if rv, ok := t.stringerCache[inputType]; ok {
 			t.stringerCacheMu.RUnlock()
-			t.logger.Debug("callStringer: Cache hit for type %v", inputType)
+			t.logger.Debug("convertToStringer: Cache hit for type %v", inputType)
 			result := rv.Call([]reflect.Value{reflect.ValueOf(input)})
 			cells, ok := result[0].Interface().([]string)
 			if !ok {
@@ -700,7 +700,7 @@ func (t *Table) callStringer(input interface{}) ([]string, error) {
 		t.stringerCacheMu.RUnlock()
 	}
 
-	t.logger.Debug("callStringer: Cache miss or caching disabled, using reflection for type %v", inputType)
+	t.logger.Debug("convertToStringer: Cache miss or caching disabled, using reflection for type %v", inputType)
 	rv := reflect.ValueOf(t.stringer)
 	stringerType := rv.Type()
 	if !(rv.Kind() == reflect.Func && stringerType.NumIn() == 1 && stringerType.NumOut() == 1 &&
@@ -805,6 +805,166 @@ func (t *Table) convertToString(value interface{}) string {
 		t.logger.Debug("convertToString: Falling back to fmt.Sprintf for type %T", value)
 		return fmt.Sprintf("%v", value) // Fallback for rare types
 	}
+}
+
+// convertCellsToStrings converts a row to its raw string representation using specified cell config for filters.
+// 'rowInput' can be []string, []any, or a custom type if t.stringer is set.
+func (t *Table) convertCellsToStrings(rowInput interface{}, cellCfg tw.CellConfig) ([]string, error) {
+	t.logger.Debug("convertCellsToStrings: Converting row: %v (type: %T)", rowInput, rowInput)
+
+	var cells []string
+	var err error
+
+	switch v := rowInput.(type) {
+	case []string:
+		cells = v
+
+	case []interface{}:
+		cells = make([]string, len(v))
+		for i, val := range v {
+			cells[i] = t.convertToString(val)
+		}
+
+	// Integer types
+	case []int:
+		cells = make([]string, len(v))
+		for i, val := range v {
+			cells[i] = strconv.Itoa(val)
+		}
+
+	case []int8:
+		cells = make([]string, len(v))
+		for i, val := range v {
+			cells[i] = strconv.FormatInt(int64(val), 10)
+		}
+
+	case []int16:
+		cells = make([]string, len(v))
+		for i, val := range v {
+			cells[i] = strconv.FormatInt(int64(val), 10)
+		}
+
+	case []int32:
+		cells = make([]string, len(v))
+		for i, val := range v {
+			cells[i] = strconv.FormatInt(int64(val), 10)
+		}
+
+	case []int64:
+		cells = make([]string, len(v))
+		for i, val := range v {
+			cells[i] = strconv.FormatInt(val, 10)
+		}
+
+	// Unsigned integer types
+	case []uint:
+		cells = make([]string, len(v))
+		for i, val := range v {
+			cells[i] = strconv.FormatUint(uint64(val), 10)
+		}
+
+	case []uint8: // Also handles []byte
+		cells = make([]string, len(v))
+		for i, val := range v {
+			cells[i] = strconv.FormatUint(uint64(val), 10)
+		}
+
+	case []uint16:
+		cells = make([]string, len(v))
+		for i, val := range v {
+			cells[i] = strconv.FormatUint(uint64(val), 10)
+		}
+
+	case []uint32:
+		cells = make([]string, len(v))
+		for i, val := range v {
+			cells[i] = strconv.FormatUint(uint64(val), 10)
+		}
+
+	case []uint64:
+		cells = make([]string, len(v))
+		for i, val := range v {
+			cells[i] = strconv.FormatUint(val, 10)
+		}
+
+	// Floating point types
+	case []float32:
+		cells = make([]string, len(v))
+		for i, val := range v {
+			cells[i] = strconv.FormatFloat(float64(val), 'f', -1, 32)
+		}
+
+	case []float64:
+		cells = make([]string, len(v))
+		for i, val := range v {
+			cells[i] = strconv.FormatFloat(val, 'f', -1, 64)
+		}
+
+	// Boolean type
+	case []bool:
+		cells = make([]string, len(v))
+		for i, val := range v {
+			cells[i] = strconv.FormatBool(val)
+		}
+
+	// Formatter cases
+	case tw.Formatter:
+		t.logger.Debug("convertCellsToStrings: Input is tw.Formatter, using Format()")
+		cells = []string{v.Format()}
+
+	case []tw.Formatter:
+		cells = make([]string, len(v))
+		for i, val := range v {
+			cells[i] = val.Format()
+		}
+
+	// Stringer cases
+	case fmt.Stringer:
+		t.logger.Debug("convertCellsToStrings: Input is fmt.Stringer, using String()")
+		cells = []string{v.String()}
+
+	case []fmt.Stringer:
+		cells = make([]string, len(v))
+		for i, val := range v {
+			cells[i] = val.String()
+		}
+
+	default:
+		// Fallback to stringer with reflection
+		t.logger.Debug("convertCellsToStrings: Attempting conversion using custom stringer for type %T", rowInput)
+		cells, err = t.convertToStringer(rowInput)
+		if err != nil {
+			t.logger.Debug("convertCellsToStrings: Stringer error: %v", err)
+			return nil, err
+		}
+	}
+
+	// Apply filters if any
+	if cellCfg.Filter.Global != nil {
+		t.logger.Debug("convertCellsToStrings: Applying global filter to cells: %v", cells)
+		cells = cellCfg.Filter.Global(cells)
+	}
+
+	if len(cellCfg.Filter.PerColumn) > 0 {
+		t.logger.Debug("convertCellsToStrings: Applying per-column filters to cells")
+		numFilters := len(cellCfg.Filter.PerColumn)
+		limit := numFilters
+		if len(cells) < limit {
+			limit = len(cells)
+		}
+		for i := 0; i < limit; i++ {
+			if t.config.Row.Filter.PerColumn[i] != nil {
+				originalCell := cells[i]
+				cells[i] = t.config.Row.Filter.PerColumn[i](cells[i])
+				if cells[i] != originalCell {
+					t.logger.Debug("  convertCellsToStrings: Col %d filter applied: '%s' -> '%s'", i, originalCell, cells[i])
+				}
+			}
+		}
+	}
+
+	t.logger.Debug("convertCellsToStrings: Conversion and filtering completed, raw cells: %v", cells)
+	return cells, nil
 }
 
 // determineLocation determines the boundary location for a line.
@@ -928,7 +1088,7 @@ func (t *Table) prepareTableSection(elements []any, config tw.CellConfig, sectio
 	actualCellsToProcess := t.processVariadicElements(elements)
 	t.logger.Debug("%s(): Effective cells to process: %v", sectionName, actualCellsToProcess)
 
-	stringsResult, err := t.rawCellsToStrings(actualCellsToProcess, config)
+	stringsResult, err := t.convertCellsToStrings(actualCellsToProcess, config)
 	if err != nil {
 		t.logger.Error("%s(): Failed to convert elements to strings: %v", sectionName, err)
 		stringsResult = []string{}
@@ -987,71 +1147,9 @@ func (t *Table) processVariadicElements(elements []any) []any {
 	return elements
 }
 
-// rawCellsToStrings converts a row to its raw string representation using specified cell config for filters.
-// 'rowInput' can be []string, []any, or a custom type if t.stringer is set.
-func (t *Table) rawCellsToStrings(rowInput interface{}, cellCfg tw.CellConfig) ([]string, error) {
-	t.logger.Debug("rawCellsToStrings: Converting row: %v (type: %T) using filters from specified CellConfig", rowInput, rowInput)
-	var cells []string
-	var err error
-
-	// Try type assertions for common cases
-	switch v := rowInput.(type) {
-	case []string:
-		t.logger.Debug("rawCellsToStrings: Input is []string")
-		cells = v
-	case []interface{}:
-		t.logger.Debug("rawCellsToStrings: Input is []interface{}, converting elements")
-		cells = make([]string, len(v))
-		for i, element := range v {
-			cells[i] = t.convertToString(element)
-		}
-	case tw.Formatter:
-		t.logger.Debug("rawCellsToStrings: Input is tw.Formatter, using Format()")
-		cells = []string{v.Format()}
-	case fmt.Stringer:
-		t.logger.Debug("rawCellsToStrings: Input is fmt.Stringer, using String()")
-		cells = []string{v.String()}
-	default:
-		// Fallback to stringer with reflection
-		t.logger.Debug("rawCellsToStrings: Attempting conversion using custom stringer for type %T", rowInput)
-		cells, err = t.callStringer(rowInput)
-		if err != nil {
-			t.logger.Debug("rawCellsToStrings: Stringer error: %v", err)
-			return nil, err
-		}
-	}
-
-	// Apply filters if any
-	if cellCfg.Filter.Global != nil {
-		t.logger.Debug("rawCellsToStrings: Applying global filter to cells: %v", cells)
-		cells = cellCfg.Filter.Global(cells)
-	}
-
-	if len(cellCfg.Filter.PerColumn) > 0 {
-		t.logger.Debug("rawCellsToStrings: Applying per-column filters to cells")
-		numFilters := len(cellCfg.Filter.PerColumn)
-		limit := numFilters
-		if len(cells) < limit {
-			limit = len(cells)
-		}
-		for i := 0; i < limit; i++ {
-			if t.config.Row.Filter.PerColumn[i] != nil {
-				originalCell := cells[i]
-				cells[i] = t.config.Row.Filter.PerColumn[i](cells[i])
-				if cells[i] != originalCell {
-					t.logger.Debug("  rawCellsToStrings: Col %d filter applied: '%s' -> '%s'", i, originalCell, cells[i])
-				}
-			}
-		}
-	}
-
-	t.logger.Debug("rawCellsToStrings: Conversion and filtering completed, raw cells: %v", cells)
-	return cells, nil
-}
-
 // toStringLines converts raw cells to formatted lines for table output
 func (t *Table) toStringLines(row interface{}, config tw.CellConfig) ([][]string, error) {
-	cells, err := t.rawCellsToStrings(row, config)
+	cells, err := t.convertCellsToStrings(row, config)
 	if err != nil {
 		return nil, err
 	}
@@ -1103,4 +1201,21 @@ func (t *Table) updateWidths(row []string, widths tw.Mapper[int, int], padding t
 			t.logger.Debug("  Col %d: Width %d not greater than current max %d for cell '%s'", i, totalWidth, currentMax, cell)
 		}
 	}
+}
+
+// Conversion helper functions
+func convertIntSlice(v []int) []string {
+	result := make([]string, len(v))
+	for i, val := range v {
+		result[i] = strconv.Itoa(val)
+	}
+	return result
+}
+
+func convertInt64Slice(v []int64) []string {
+	result := make([]string, len(v))
+	for i, val := range v {
+		result[i] = strconv.FormatInt(val, 10)
+	}
+	return result
 }

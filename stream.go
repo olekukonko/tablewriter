@@ -206,7 +206,7 @@ func (t *Table) streamAppendRow(row interface{}) error {
 		return errors.New("streaming mode is disabled")
 	}
 
-	rawCellsSlice, err := t.rawCellsToStrings(row, t.config.Row)
+	rawCellsSlice, err := t.convertCellsToStrings(row, t.config.Row)
 	if err != nil {
 		t.logger.Error("streamAppendRow: Failed to convert row to strings: %v", err)
 		return fmt.Errorf("failed to convert row to strings: %w", err)

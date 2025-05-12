@@ -85,7 +85,7 @@ func TestCalculateContentMaxWidth(t *testing.T) {
 	})
 }
 
-// TestCallStringer tests the callStringer function with caching enabled and disabled.
+// TestCallStringer tests the convertToStringer function with caching enabled and disabled.
 // It verifies stringer invocation and cache behavior for custom types.
 func TestCallStringer(t *testing.T) {
 	table := &Table{
@@ -95,35 +95,35 @@ func TestCallStringer(t *testing.T) {
 		stringerCacheEnabled: true,
 	}
 	input := struct{ Name string }{Name: "test"}
-	cells, err := table.callStringer(input)
+	cells, err := table.convertToStringer(input)
 	if err != nil {
-		t.Errorf("callStringer failed: %v", err)
+		t.Errorf("convertToStringer failed: %v", err)
 	}
 	if len(cells) != 1 || cells[0] != "{test}" {
-		t.Errorf("callStringer returned unexpected cells: %v", cells)
+		t.Errorf("convertToStringer returned unexpected cells: %v", cells)
 	}
 
 	// Test cache hit
-	cells, err = table.callStringer(input)
+	cells, err = table.convertToStringer(input)
 	if err != nil {
-		t.Errorf("callStringer failed on cache hit: %v", err)
+		t.Errorf("convertToStringer failed on cache hit: %v", err)
 	}
 	if len(cells) != 1 || cells[0] != "{test}" {
-		t.Errorf("callStringer returned unexpected cells on cache hit: %v", cells)
+		t.Errorf("convertToStringer returned unexpected cells on cache hit: %v", cells)
 	}
 
 	// Test disabled cache
 	table.stringerCacheEnabled = false
-	cells, err = table.callStringer(input)
+	cells, err = table.convertToStringer(input)
 	if err != nil {
-		t.Errorf("callStringer failed without cache: %v", err)
+		t.Errorf("convertToStringer failed without cache: %v", err)
 	}
 	if len(cells) != 1 || cells[0] != "{test}" {
-		t.Errorf("callStringer returned unexpected cells without cache: %v", cells)
+		t.Errorf("convertToStringer returned unexpected cells without cache: %v", cells)
 	}
 }
 
-// TestCallStringerConcurrent tests the callStringer function under concurrent access.
+// TestCallStringerConcurrent tests the convertToStringer function under concurrent access.
 // It verifies thread-safety of the stringer cache with multiple goroutines.
 func TestCallStringerConcurrent(t *testing.T) {
 	table := &Table{
@@ -138,13 +138,13 @@ func TestCallStringerConcurrent(t *testing.T) {
 		go func(i int) {
 			defer wg.Done()
 			input := struct{ ID int }{ID: i}
-			cells, err := table.callStringer(input)
+			cells, err := table.convertToStringer(input)
 			if err != nil {
-				t.Errorf("callStringer failed for ID %d: %v", i, err)
+				t.Errorf("convertToStringer failed for ID %d: %v", i, err)
 			}
 			expected := fmt.Sprintf("{%d}", i)
 			if len(cells) != 1 || cells[0] != expected {
-				t.Errorf("callStringer returned unexpected cells for ID %d: got %v, want [%s]", i, cells, expected)
+				t.Errorf("convertToStringer returned unexpected cells for ID %d: got %v, want [%s]", i, cells, expected)
 			}
 		}(i)
 	}
