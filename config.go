@@ -980,7 +980,7 @@ func defaultConfig() Config {
 			},
 		},
 		Stream: tw.StreamConfig{},
-		Debug:  true,
+		Debug:  false,
 		Behavior: Behavior{
 			AutoHide:  tw.Off,
 			TrimSpace: tw.On,

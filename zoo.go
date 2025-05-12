@@ -46,8 +46,8 @@ func (t *Table) applyHierarchicalMerges(ctx *renderContext, mctx *mergeContext) 
 			}
 
 			canCompare := r > 0 &&
-				len(originalRowLines[r]) > 0 && len(originalRowLines[r][0]) > c &&
-				len(originalRowLines[r-1]) > 0 && len(originalRowLines[r-1][0]) > c
+				len(originalRowLines[r]) > 0 &&
+				len(originalRowLines[r-1]) > 0
 
 			if !canCompare {
 				currentState := mctx.rowMerges[r][c]
@@ -58,12 +58,22 @@ func (t *Table) applyHierarchicalMerges(ctx *renderContext, mctx *mergeContext) 
 				continue
 			}
 
-			currentVal := originalRowLines[r][0][c]
-			aboveVal := originalRowLines[r-1][0][c]
+			// Join all lines of the cell for comparison
+			var currentVal, aboveVal string
+			for _, line := range originalRowLines[r] {
+				if c < len(line) {
+					currentVal += line[c]
+				}
+			}
+			for _, line := range originalRowLines[r-1] {
+				if c < len(line) {
+					aboveVal += line[c]
+				}
+			}
 
 			if t.config.Behavior.TrimSpace.Enabled() {
-				currentVal = strings.TrimSpace(originalRowLines[r][0][c])
-				aboveVal = strings.TrimSpace(originalRowLines[r-1][0][c])
+				currentVal = strings.TrimSpace(currentVal)
+				aboveVal = strings.TrimSpace(aboveVal)
 			}
 			currentState := mctx.rowMerges[r][c]
 			prevStateAbove := mctx.rowMerges[r-1][c]
@@ -228,19 +238,25 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 		if len(ctx.rowLines[i]) == 0 {
 			continue
 		}
-		currentLineContent := ctx.rowLines[i][0]
-		paddedLine := padLine(currentLineContent, numCols)
+		currentLineContent := ctx.rowLines[i]
 
 		for col := 0; col < numCols; col++ {
-			currentVal := paddedLine[col]
+			// Join all lines of the cell to compare full content
+			var currentVal strings.Builder
+			for _, line := range currentLineContent {
+				if col < len(line) {
+					currentVal.WriteString(line[col])
+				}
+			}
+			currentValStr := currentVal.String()
 			if t.config.Behavior.TrimSpace.Enabled() {
-				currentVal = strings.TrimSpace(paddedLine[col])
+				currentValStr = strings.TrimSpace(currentValStr)
 			}
 			startRow, ongoingMerge := mergeStartRow[col]
 			startContent := mergeStartContent[col]
 			mergeState := mctx.rowMerges[i][col]
 
-			if ongoingMerge && currentVal == startContent && currentVal != "" {
+			if ongoingMerge && currentValStr == startContent && currentValStr != "" {
 				mergeState.Vertical = tw.MergeStateOption{
 					Present: true,
 					Span:    0,
@@ -260,6 +276,7 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 					if endedRow >= 0 && endedRow >= startRow {
 						startState := mctx.rowMerges[startRow][col]
 						startState.Vertical.Span = (endedRow - startRow) + 1
+						startState.Vertical.End = startState.Vertical.Span == 1
 						mctx.rowMerges[startRow][col] = startState
 
 						endState := mctx.rowMerges[endedRow][col]
@@ -272,7 +289,7 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 					delete(mergeStartContent, col)
 				}
 
-				if currentVal != "" {
+				if currentValStr != "" {
 					mergeState.Vertical = tw.MergeStateOption{
 						Present: true,
 						Span:    1,
@@ -281,7 +298,7 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 					}
 					mctx.rowMerges[i][col] = mergeState
 					mergeStartRow[col] = i
-					mergeStartContent[col] = currentVal
+					mergeStartContent[col] = currentValStr
 					ctx.logger.Debug("Vertical merge started at row %d, col %d", i, col)
 				} else if !mergeState.Horizontal.Present {
 					mergeState.Vertical = tw.MergeStateOption{}
@@ -297,6 +314,7 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 			startState := mctx.rowMerges[startRow][col]
 			finalSpan := (lastRowIdx - startRow) + 1
 			startState.Vertical.Span = finalSpan
+			startState.Vertical.End = finalSpan == 1
 			mctx.rowMerges[startRow][col] = startState
 
 			endState := mctx.rowMerges[lastRowIdx][col]
@@ -1173,11 +1191,17 @@ func (t *Table) updateWidths(row []string, widths tw.Mapper[int, int], padding t
 		padLeftWidth := tw.DisplayWidth(colPad.Left)
 		padRightWidth := tw.DisplayWidth(colPad.Right)
 
-		contentWidth := tw.DisplayWidth(cell)
-
-		// recalculate if space trimmed
-		if t.config.Behavior.TrimSpace.Enabled() {
-			contentWidth = tw.DisplayWidth(strings.TrimSpace(cell))
+		// Split cell into lines and find maximum content width
+		lines := strings.Split(cell, tw.NewLine)
+		contentWidth := 0
+		for _, line := range lines {
+			lineWidth := tw.DisplayWidth(line)
+			if t.config.Behavior.TrimSpace.Enabled() {
+				lineWidth = tw.DisplayWidth(strings.TrimSpace(line))
+			}
+			if lineWidth > contentWidth {
+				contentWidth = lineWidth
+			}
 		}
 
 		totalWidth := contentWidth + padLeftWidth + padRightWidth
@@ -1201,21 +1225,4 @@ func (t *Table) updateWidths(row []string, widths tw.Mapper[int, int], padding t
 			t.logger.Debug("  Col %d: Width %d not greater than current max %d for cell '%s'", i, totalWidth, currentMax, cell)
 		}
 	}
-}
-
-// Conversion helper functions
-func convertIntSlice(v []int) []string {
-	result := make([]string, len(v))
-	for i, val := range v {
-		result[i] = strconv.Itoa(val)
-	}
-	return result
-}
-
-func convertInt64Slice(v []int64) []string {
-	result := make([]string, len(v))
-	for i, val := range v {
-		result[i] = strconv.FormatInt(val, 10)
-	}
-	return result
 }

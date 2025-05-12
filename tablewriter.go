@@ -130,6 +130,8 @@ func NewTable(w io.Writer, opts ...Option) *Table {
 	// This should  be move away form WithDebug
 	if t.config.Debug == true {
 		t.logger.Enable()
+	} else {
+		t.logger.Disable()
 	}
 
 	// send logger to renderer
@@ -910,15 +912,15 @@ func (t *Table) prepareWithMerges(content [][]string, config tw.CellConfig, posi
 	}
 
 	numCols := 0
-	if len(content) > 0 && len(content[0]) > 0 {
+	if len(content) > 0 && len(content[0]) > 0 { // Assumes content[0] exists and has items
 		numCols = len(content[0])
-	} else {
-		for _, line := range content {
+	} else { // Fallback if first line is empty or content is empty
+		for _, line := range content { // Find max columns from any line
 			if len(line) > numCols {
 				numCols = len(line)
 			}
 		}
-		if numCols == 0 {
+		if numCols == 0 { // If still 0, try table-wide max (batch mode context)
 			numCols = t.maxColumns()
 		}
 	}
@@ -928,161 +930,179 @@ func (t *Table) prepareWithMerges(content [][]string, config tw.CellConfig, posi
 		return content, nil, nil
 	}
 
-	horzMergeMap := make(map[int]bool)
-	mergeMap := make(map[int]tw.MergeState)
+	horzMergeMap := make(map[int]bool)      // Tracks if a column is part of any horizontal merge for this logical row
+	mergeMap := make(map[int]tw.MergeState) // Final merge states for this logical row
+
+	// Ensure all lines in 'content' are padded to numCols for consistent processing
+	// This result is what will be modified and returned.
 	result := make([][]string, len(content))
 	for i := range content {
 		result[i] = padLine(content[i], numCols)
 	}
 
 	if config.Formatting.MergeMode&tw.MergeHorizontal != 0 {
-		t.logger.Debug("Checking for horizontal merges in %d lines", len(content))
+		t.logger.Debug("Checking for horizontal merges (logical cell comparison) for %d visual lines, %d columns", len(content), numCols)
 
-		if position == tw.Footer {
-			for lineIdx := 0; lineIdx < len(content); lineIdx++ {
-				originalLine := padLine(content[lineIdx], numCols)
-				currentLineResult := result[lineIdx]
+		// Special handling for footer lead merge (often for "TOTAL" spanning empty cells)
+		// This logic only applies if it's a footer and typically to the first (often only) visual line.
+		if position == tw.Footer && len(content) > 0 {
+			lineIdx := 0                                       // Assume footer lead merge applies to the first visual line primarily
+			originalLine := padLine(content[lineIdx], numCols) // Use original content for decision
+			currentLineResult := result[lineIdx]               // Modify the result line
 
-				firstContentIdx := -1
-				var firstContent string
-				for c := 0; c < numCols; c++ {
-					if c >= len(originalLine) {
-						break
-					}
-					trimmedVal := strings.TrimSpace(originalLine[c])
-					if trimmedVal != "" && trimmedVal != "-" {
-						firstContentIdx = c
-						firstContent = originalLine[c]
-						break
-					} else if trimmedVal == "-" {
+			firstContentIdx := -1
+			var firstContent string
+			for c := 0; c < numCols; c++ {
+				if c >= len(originalLine) {
+					break
+				}
+				trimmedVal := strings.TrimSpace(originalLine[c])
+				if trimmedVal != "" && trimmedVal != "-" { // "-" is often a placeholder not to merge over
+					firstContentIdx = c
+					firstContent = originalLine[c] // Store the raw content for placement
+					break
+				} else if trimmedVal == "-" { // Stop if we hit a hard non-mergeable placeholder
+					break
+				}
+			}
+
+			if firstContentIdx > 0 { // If content starts after the first column
+				span := firstContentIdx + 1 // Merge from col 0 up to and including firstContentIdx
+				startCol := 0
+
+				allEmptyBefore := true
+				for c := 0; c < firstContentIdx; c++ {
+					if c >= len(originalLine) || strings.TrimSpace(originalLine[c]) != "" {
+						allEmptyBefore = false
 						break
 					}
 				}
 
-				if firstContentIdx > 0 {
-					span := firstContentIdx + 1
-					startCol := 0
+				if allEmptyBefore {
+					t.logger.Debug("Footer lead-merge applied line %d: content '%s' from col %d moved to col %d, span %d",
+						lineIdx, firstContent, firstContentIdx, startCol, span)
 
-					allEmptyBefore := true
-					for c := 0; c < firstContentIdx; c++ {
-						if c >= len(originalLine) || strings.TrimSpace(originalLine[c]) != "" {
-							allEmptyBefore = false
-							break
+					if startCol < len(currentLineResult) {
+						currentLineResult[startCol] = firstContent // Place the original content
+					}
+					for k := startCol + 1; k < startCol+span; k++ { // Clear out other cells in the span
+						if k < len(currentLineResult) {
+							currentLineResult[k] = tw.Empty
 						}
 					}
 
-					if allEmptyBefore {
-						t.logger.Debug("Footer lead-merge applied line %d: content '%s' from col %d moved to col %d, span %d",
-							lineIdx, firstContent, firstContentIdx, startCol, span)
-
-						if startCol < len(currentLineResult) {
-							currentLineResult[startCol] = firstContent
-						}
-						for k := startCol + 1; k < startCol+span; k++ {
-							if k < len(currentLineResult) {
-								currentLineResult[k] = tw.Empty
+					// Update mergeMap for all visual lines of this logical row
+					for visualLine := 0; visualLine < len(result); visualLine++ {
+						// Only apply the data move to the line where it was detected,
+						// but the merge state should apply to the logical cell (all its visual lines).
+						if visualLine != lineIdx { // For other visual lines, just clear the cells in the span
+							if startCol < len(result[visualLine]) {
+								result[visualLine][startCol] = tw.Empty // Typically empty for other lines in a lead merge
+							}
+							for k := startCol + 1; k < startCol+span; k++ {
+								if k < len(result[visualLine]) {
+									result[visualLine][k] = tw.Empty
+								}
 							}
 						}
+					}
 
-						startState := mergeMap[startCol]
-						startState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: true, End: span == 1}
-						mergeMap[startCol] = startState
-						horzMergeMap[startCol] = true
+					// Set merge state for the starting column
+					startState := mergeMap[startCol]
+					startState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: true, End: (span == 1)}
+					mergeMap[startCol] = startState
+					horzMergeMap[startCol] = true // Mark this column as processed by a merge
 
-						for k := startCol + 1; k < startCol+span; k++ {
-							colState := mergeMap[k]
-							colState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: false, End: k == startCol+span-1}
-							mergeMap[k] = colState
-							horzMergeMap[k] = true
-						}
+					// Set merge state for subsequent columns in the span
+					for k := startCol + 1; k < startCol+span; k++ {
+						colState := mergeMap[k]
+						colState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: false, End: k == startCol+span-1}
+						mergeMap[k] = colState
+						horzMergeMap[k] = true // Mark as processed
 					}
 				}
 			}
 		}
 
-		for lineIdx := 0; lineIdx < len(content); lineIdx++ {
-			originalLine := padLine(content[lineIdx], numCols)
-			currentLineResult := result[lineIdx]
-			col := 0
-			for col < numCols {
-				if horzMergeMap[col] {
-					leadMergeHandled := false
-					if mergeState, ok := mergeMap[col]; ok && mergeState.Horizontal.Present && !mergeState.Horizontal.Start {
-						tempCol := col - 1
-						startCol := -1
-						startState := tw.MergeState{}
-						for tempCol >= 0 {
-							if state, okS := mergeMap[tempCol]; okS && state.Horizontal.Present && state.Horizontal.Start {
-								startCol = tempCol
-								startState = state
-								break
-							}
-							tempCol--
-						}
-						if startCol != -1 {
-							skipToCol := startCol + startState.Horizontal.Span
-							if skipToCol > col {
-								t.logger.Debug("Skipping standard H-merge check from col %d to %d (part of detected H-merge)", col, skipToCol-1)
-								col = skipToCol
-								leadMergeHandled = true
-							}
-						}
-					}
-					if leadMergeHandled {
-						continue
-					}
-				}
+		// Standard horizontal merge logic based on full logical cell content
+		col := 0
+		for col < numCols {
+			if horzMergeMap[col] { // If already part of a footer lead-merge, skip
+				col++
+				continue
+			}
 
-				if col >= len(currentLineResult) {
+			// Get full content of logical cell 'col'
+			var currentLogicalCellContentBuilder strings.Builder
+			for lineIdx := 0; lineIdx < len(content); lineIdx++ {
+				if col < len(content[lineIdx]) {
+					currentLogicalCellContentBuilder.WriteString(content[lineIdx][col])
+				}
+			}
+			currentLogicalCellTrimmed := strings.TrimSpace(currentLogicalCellContentBuilder.String())
+
+			if currentLogicalCellTrimmed == "" || currentLogicalCellTrimmed == "-" {
+				col++
+				continue
+			}
+
+			span := 1
+			for nextCol := col + 1; nextCol < numCols; nextCol++ {
+				if horzMergeMap[nextCol] { // Don't merge into an already merged (e.g. footer lead) column
 					break
 				}
-				currentVal := strings.TrimSpace(currentLineResult[col])
-
-				if currentVal == "" || currentVal == "-" || (mergeMap[col].Horizontal.Present && mergeMap[col].Horizontal.Start) {
-					col++
-					continue
-				}
-
-				span := 1
-				startCol := col
-				for nextCol := col + 1; nextCol < numCols; nextCol++ {
-					if nextCol >= len(originalLine) {
-						break
-					}
-					originalNextVal := strings.TrimSpace(originalLine[nextCol])
-
-					if currentVal == originalNextVal && !horzMergeMap[nextCol] && originalNextVal != "-" {
-						span++
-					} else {
-						break
+				var nextLogicalCellContentBuilder strings.Builder
+				for lineIdx := 0; lineIdx < len(content); lineIdx++ {
+					if nextCol < len(content[lineIdx]) {
+						nextLogicalCellContentBuilder.WriteString(content[lineIdx][nextCol])
 					}
 				}
+				nextLogicalCellTrimmed := strings.TrimSpace(nextLogicalCellContentBuilder.String())
 
-				if span > 1 {
-					t.logger.Debug("Standard horizontal merge at line %d, col %d, span %d", lineIdx, startCol, span)
-					startState := mergeMap[startCol]
-					startState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: true, End: (span == 1)}
-					mergeMap[startCol] = startState
-					horzMergeMap[startCol] = true
-
-					for k := startCol + 1; k < startCol+span; k++ {
-						if k < len(currentLineResult) {
-							currentLineResult[k] = tw.Empty
-						}
-						colState := mergeMap[k]
-						colState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: false, End: k == startCol+span-1}
-						mergeMap[k] = colState
-						horzMergeMap[k] = true
-					}
-					col += span
+				if currentLogicalCellTrimmed == nextLogicalCellTrimmed && nextLogicalCellTrimmed != "-" {
+					span++
 				} else {
-					col++
+					break
 				}
+			}
+
+			if span > 1 {
+				t.logger.Debug("Standard horizontal merge (logical cell): startCol %d, span %d for content '%s'", col, span, currentLogicalCellTrimmed)
+				startState := mergeMap[col]
+				startState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: true, End: (span == 1)}
+				mergeMap[col] = startState
+				horzMergeMap[col] = true
+
+				// For all visual lines, clear out the content of the merged-over cells
+				for lineIdx := 0; lineIdx < len(result); lineIdx++ {
+					for k := col + 1; k < col+span; k++ {
+						if k < len(result[lineIdx]) {
+							result[lineIdx][k] = tw.Empty
+						}
+					}
+				}
+
+				// Set merge state for subsequent columns in the span
+				for k := col + 1; k < col+span; k++ {
+					colState := mergeMap[k]
+					colState.Horizontal = tw.MergeStateOption{Present: true, Span: span, Start: false, End: k == col+span-1}
+					mergeMap[k] = colState
+					horzMergeMap[k] = true
+				}
+				col += span
+			} else {
+				col++
 			}
 		}
 	}
 
-	t.logger.Debug("PrepareWithMerges END: position=%s, lines=%d", position, len(result))
+	t.logger.Debug("PrepareWithMerges END: position=%s, lines=%d, mergeMapH: %v", position, len(result), func() map[int]tw.MergeStateOption {
+		m := make(map[int]tw.MergeStateOption)
+		for k, v := range mergeMap {
+			m[k] = v.Horizontal
+		}
+		return m
+	}())
 	return result, mergeMap, horzMergeMap
 }
 
@@ -1675,18 +1695,35 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 
 		footerExists := t.hasFooterElements()
 		rowHasBottomPadding := t.config.Row.Padding.Global.Bottom != tw.Empty
+		isLastRow := i == len(ctx.rowLines)-1
 
 		for j, line := range lines {
 			hctx.rowIdx = i
 			hctx.lineIdx = j
 			hctx.line = padLine(line, ctx.numCols)
 
+			if j > 0 {
+				visualLineHasActualContent := false
+				// Check if any cell in this visual line (hctx.line which is lines[j]) has actual content
+				for _, cellContentInVisualLineK := range hctx.line {
+					if strings.TrimSpace(cellContentInVisualLineK) != "" {
+						visualLineHasActualContent = true
+						break
+					}
+				}
+
+				if !visualLineHasActualContent {
+					// If the entire visual line `j` (where `j>0`) has no actual content
+					// (meaning all its cells are trimmed-empty), then we skip it.
+					ctx.logger.Debug("Skipping rendering of visual line %d for logical row %d as it contains no actual content after merges/blanking.", j, i)
+					continue
+				}
+			}
+
 			isFirstRow := i == 0
-			isLastRow := i == len(ctx.rowLines)-1
-			isFirstLineOfRow := j == 0
 			isLastLineOfRow := j == len(lines)-1
 
-			if isFirstRow && isFirstLineOfRow && !rowHasTopPadding && len(ctx.headerLines) == 0 {
+			if isFirstRow && j == 0 && !rowHasTopPadding && len(ctx.headerLines) == 0 {
 				hctx.location = tw.LocationFirst
 			} else if isLastRow && isLastLineOfRow && !rowHasBottomPadding && !footerExists {
 				hctx.location = tw.LocationEnd
@@ -1698,71 +1735,12 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 			if err := t.renderLine(ctx, mctx, hctx, colAligns, colPadding); err != nil {
 				return err
 			}
-
-			shouldDrawSeparator := cfg.Settings.Separators.BetweenRows.Enabled() &&
-				!(isLastRow && isLastLineOfRow && (footerExists || rowHasBottomPadding || (cfg.Borders.Bottom.Enabled() && cfg.Settings.Lines.ShowBottom.Enabled())))
-
-			if shouldDrawSeparator {
-				ctx.logger.Debug("Rendering between-rows separator after row %d line %d", i, j)
-				resp := t.buildCellContexts(ctx, mctx, hctx, colAligns, colPadding)
-
-				nextCells := make(map[int]tw.CellContext)
-				nextRowIdx := i
-				nextLineIdx := j + 1
-				var nextRowMerges map[int]tw.MergeState
-
-				if nextLineIdx >= len(lines) {
-					nextRowIdx = i + 1
-					nextLineIdx = 0
-				}
-
-				if nextRowIdx < len(ctx.rowLines) && nextRowIdx < len(mctx.rowMerges) {
-					if len(ctx.rowLines[nextRowIdx]) > nextLineIdx {
-						nextLineData := ctx.rowLines[nextRowIdx][nextLineIdx]
-						nextRowMerges = mctx.rowMerges[nextRowIdx]
-						for k, cell := range padLine(nextLineData, ctx.numCols) {
-							mergeState := tw.MergeState{}
-							if nextRowMerges != nil {
-								mergeState = nextRowMerges[k]
-							}
-							nextCells[k] = tw.CellContext{Data: cell, Merge: mergeState, Width: ctx.widths[tw.Row].Get(k)}
-						}
-						ctx.logger.Debug("Separator context: Next is row %d line %d", nextRowIdx, nextLineIdx)
-					} else if nextLineIdx == 0 && len(ctx.rowLines[nextRowIdx]) == 0 {
-						ctx.logger.Debug("Separator context: Next row %d is empty", nextRowIdx)
-						nextCells = nil
-					} else {
-						ctx.logger.Debug("Separator context: Unexpected end of lines for next row %d", nextRowIdx)
-						nextCells = nil
-					}
-				} else {
-					ctx.logger.Debug("Separator context: No next row.")
-					nextCells = nil
-				}
-
-				f.Line(t.writer, tw.Formatting{
-					Row: tw.RowContext{
-						Widths:   ctx.widths[tw.Row],
-						Current:  resp.cells,
-						Previous: resp.prevCells,
-						Next:     nextCells,
-						Position: tw.Row,
-						Location: tw.LocationMiddle,
-					},
-					Level:     tw.LevelBody,
-					IsSubRow:  false,
-					HasFooter: footerExists,
-				})
-			} else if cfg.Settings.Separators.BetweenRows.Enabled() && isLastRow && isLastLineOfRow {
-				ctx.logger.Debug("Skipping between-rows separator after last row %d line %d (footerExists=%v, rowHasBottomPadding=%v, bottomBorderEnabled=%v)",
-					i, j, footerExists, rowHasBottomPadding, cfg.Borders.Bottom.Enabled() && cfg.Settings.Lines.ShowBottom.Enabled())
-			}
 		}
 
 		if rowHasBottomPadding {
 			hctx.rowIdx = i
 			hctx.lineIdx = len(lines)
-			if i == len(ctx.rowLines)-1 && !footerExists {
+			if isLastRow && !footerExists {
 				hctx.location = tw.LocationEnd
 			} else {
 				hctx.location = tw.LocationMiddle
@@ -1773,6 +1751,49 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 				return err
 			}
 		}
-	}
+
+		if cfg.Settings.Separators.BetweenRows.Enabled() && !isLastRow {
+			ctx.logger.Debug("Rendering between-rows separator after logical row %d", i)
+			respCurrent := t.buildCellContexts(ctx, mctx, hctx, colAligns, colPadding)
+
+			var nextCellsForSeparator map[int]tw.CellContext = nil
+			nextRowIdx := i + 1
+			if nextRowIdx < len(ctx.rowLines) && nextRowIdx < len(mctx.rowMerges) {
+				hctxNext := &helperContext{position: tw.Row, rowIdx: nextRowIdx, location: tw.LocationMiddle}
+				nextRowActualLines := ctx.rowLines[nextRowIdx]
+				nextRowMerges := mctx.rowMerges[nextRowIdx]
+
+				if t.config.Row.Padding.Global.Top != tw.Empty {
+					hctxNext.lineIdx = -1
+					hctxNext.line = t.buildPaddingLineContents(t.config.Row.Padding.Global.Top, ctx.widths[tw.Row], ctx.numCols, nextRowMerges)
+				} else if len(nextRowActualLines) > 0 {
+					hctxNext.lineIdx = 0
+					hctxNext.line = padLine(nextRowActualLines[0], ctx.numCols)
+				} else {
+					hctxNext.lineIdx = 0
+					hctxNext.line = make([]string, ctx.numCols)
+				}
+				respNext := t.buildCellContexts(ctx, mctx, hctxNext, colAligns, colPadding)
+				nextCellsForSeparator = respNext.cells
+			} else {
+				ctx.logger.Debug("Separator context: No next logical row for separator after row %d.", i)
+			}
+
+			f.Line(t.writer, tw.Formatting{
+				Row: tw.RowContext{
+					Widths:       ctx.widths[tw.Row],
+					Current:      respCurrent.cells,
+					Previous:     respCurrent.prevCells,
+					Next:         nextCellsForSeparator,
+					Position:     tw.Row,
+					Location:     tw.LocationMiddle,
+					ColMaxWidths: t.getColMaxWidths(tw.Row),
+				},
+				Level:     tw.LevelBody,
+				IsSubRow:  false,
+				HasFooter: footerExists,
+			})
+		}
+	} // End LOGICAL ROW LOOP (i)
 	return nil
 }

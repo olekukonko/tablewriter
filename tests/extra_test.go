@@ -99,7 +99,6 @@ func TestFilterMasking(t *testing.T) {
 
 func TestMasterClass(t *testing.T) {
 	var buf bytes.Buffer
-
 	littleConfig := tablewriter.Config{
 		MaxWidth: 30,
 		Row: tw.CellConfig{
@@ -158,6 +157,7 @@ func TestMasterClass(t *testing.T) {
 
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithConfig(bigConfig),
+		tablewriter.WithDebug(true),
 		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 			Borders: tw.BorderNone,
 			Settings: tw.Settings{
@@ -184,13 +184,9 @@ func TestMasterClass(t *testing.T) {
           A A   │  B B   
          ────── │ ────── 
           A A   │  B B   
-         ────── │ ────── 
-                │        
           C C   │  D D   
          ────── │ ────── 
-          C C   │  D D   
-         ────── │ ────── 
-                │
+          C C   │  D D  
 `
 	visualCheck(t, "Master Class", buf.String(), expected)
 
