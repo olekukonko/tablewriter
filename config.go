@@ -165,7 +165,7 @@ func (b *ConfigBuilder) WithFooterMaxWidth(maxWidth int) *ConfigBuilder {
 	if maxWidth < 0 {
 		return b
 	}
-	b.config.Footer.Formatting.MaxWidth = maxWidth
+	b.config.Footer.ColMaxWidths.Global = maxWidth
 	return b
 }
 
@@ -217,7 +217,7 @@ func (b *ConfigBuilder) WithHeaderMaxWidth(maxWidth int) *ConfigBuilder {
 	if maxWidth < 0 {
 		return b
 	}
-	b.config.Header.Formatting.MaxWidth = maxWidth
+	b.config.Header.ColMaxWidths.Global = maxWidth
 	return b
 }
 
@@ -280,7 +280,7 @@ func (b *ConfigBuilder) WithRowMaxWidth(maxWidth int) *ConfigBuilder {
 	if maxWidth < 0 {
 		return b
 	}
-	b.config.Row.Formatting.MaxWidth = maxWidth
+	b.config.Row.ColMaxWidths.Global = maxWidth
 	return b
 }
 
@@ -371,13 +371,13 @@ func (ff *FooterFormattingBuilder) WithAutoWrap(autoWrap int) *FooterFormattingB
 
 // WithMaxWidth sets the maximum content width for footer cells.
 // Negative values are ignored.
-func (ff *FooterFormattingBuilder) WithMaxWidth(maxWidth int) *FooterFormattingBuilder {
-	if maxWidth < 0 {
-		return ff
-	}
-	ff.config.MaxWidth = maxWidth
-	return ff
-}
+//func (ff *FooterFormattingBuilder) WithMaxWidth(maxWidth int) *FooterFormattingBuilder {
+//	if maxWidth < 0 {
+//		return ff
+//	}
+//	ff.config.Foo = maxWidth
+//	return ff
+//}
 
 // WithNewarkMode sets the merge behavior for footer cells (likely a typo, should be WithMergeMode).
 // Invalid merge modes are ignored.
@@ -489,13 +489,13 @@ func (hf *HeaderFormattingBuilder) WithAutoWrap(autoWrap int) *HeaderFormattingB
 
 // WithMaxWidth sets the maximum content width for header cells.
 // Negative values are ignored.
-func (hf *HeaderFormattingBuilder) WithMaxWidth(maxWidth int) *HeaderFormattingBuilder {
-	if maxWidth < 0 {
-		return hf
-	}
-	hf.config.MaxWidth = maxWidth
-	return hf
-}
+//func (hf *HeaderFormattingBuilder) WithMaxWidth(maxWidth int) *HeaderFormattingBuilder {
+//	if maxWidth < 0 {
+//		return hf
+//	}
+//	hf.config.MaxWidth = maxWidth
+//	return hf
+//}
 
 // WithMergeMode sets the merge behavior for header cells.
 // Invalid merge modes are ignored.
@@ -610,13 +610,13 @@ func (rf *RowFormattingBuilder) WithAutoWrap(autoWrap int) *RowFormattingBuilder
 
 // WithMaxWidth sets the maximum content width for row cells.
 // Negative values are ignored.
-func (rf *RowFormattingBuilder) WithMaxWidth(maxWidth int) *RowFormattingBuilder {
-	if maxWidth < 0 {
-		return rf
-	}
-	rf.config.MaxWidth = maxWidth
-	return rf
-}
+//func (rf *RowFormattingBuilder) WithMaxWidth(maxWidth int) *RowFormattingBuilder {
+//	if maxWidth < 0 {
+//		return rf
+//	}
+//	rf.config.MaxWidth = maxWidth
+//	return rf
+//}
 
 // WithMergeMode sets the merge behavior for row cells.
 // Invalid merge modes are ignored.
@@ -867,7 +867,7 @@ func WithRowMaxWidth(maxWidth int) Option {
 		if maxWidth < 0 {
 			return
 		}
-		target.config.Row.Formatting.MaxWidth = maxWidth
+		target.config.Row.ColMaxWidths.Global = maxWidth
 		if target.logger != nil {
 			target.logger.Debug("Option: WithRowMaxWidth applied to Table: %v", maxWidth)
 		}
@@ -945,7 +945,6 @@ func defaultConfig() Config {
 		MaxWidth: 0,
 		Header: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				MaxWidth:   0,
 				AutoWrap:   tw.WrapTruncate,
 				Alignment:  tw.AlignCenter,
 				AutoFormat: true,
@@ -957,7 +956,6 @@ func defaultConfig() Config {
 		},
 		Row: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				MaxWidth:   0,
 				AutoWrap:   tw.WrapNormal,
 				Alignment:  tw.AlignLeft,
 				AutoFormat: false,
@@ -969,7 +967,6 @@ func defaultConfig() Config {
 		},
 		Footer: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				MaxWidth:   0,
 				AutoWrap:   tw.WrapNormal,
 				Alignment:  tw.AlignRight,
 				AutoFormat: false,
@@ -997,8 +994,8 @@ func mergeCellConfig(dst, src tw.CellConfig) tw.CellConfig {
 	if src.Formatting.AutoWrap != 0 {
 		dst.Formatting.AutoWrap = src.Formatting.AutoWrap
 	}
-	if src.Formatting.MaxWidth != 0 {
-		dst.Formatting.MaxWidth = src.Formatting.MaxWidth
+	if src.ColMaxWidths.Global != 0 {
+		dst.ColMaxWidths.Global = src.ColMaxWidths.Global
 	}
 	if src.Formatting.MergeMode != 0 {
 		dst.Formatting.MergeMode = src.Formatting.MergeMode

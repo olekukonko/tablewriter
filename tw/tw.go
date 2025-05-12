@@ -77,3 +77,21 @@ const (
 	CharEllipsis = "…" // Ellipsis character for truncation
 	CharBreak    = "↩" // Break character for wrapping
 )
+
+type Spot int
+
+const (
+	SpotNone Spot = iota
+	SpotTopLeft
+	SpotTopCenter
+	SpotTopRight
+	SpotBottomLeft
+	SpotBottomCenter // Default for legacy SetCaption
+	SpotBottomRight
+	SpotLeftTop
+	SpotLeftCenter
+	SpotLeftBottom
+	SpotRightTop
+	SpotRightCenter
+	SpotRIghtBottom
+)

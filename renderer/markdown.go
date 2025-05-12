@@ -149,7 +149,7 @@ func (m *Markdown) resolveAlignment(ctx tw.Formatting) tw.Alignment {
 		m.alignment[i] = ctx.Row.Current[i].Align
 	}
 
-	m.logger.Debug(" → Alignment Resolved %s", m.alignment)
+	m.logger.Debug(" → Align Resolved %s", m.alignment)
 	return m.alignment
 }
 

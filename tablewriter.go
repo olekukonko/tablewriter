@@ -10,6 +10,7 @@ import (
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
 	"io"
+	"math"
 	"reflect"
 	"strings"
 	"sync"
@@ -31,6 +32,9 @@ type Table struct {
 	hasPrinted   bool                // Indicates if the table has been rendered
 	logger       *ll.Logger          // Debug trace log
 	trace        *bytes.Buffer       // Debug trace log
+
+	// Caption fields
+	caption tw.Caption
 
 	// streaming
 	streamWidths            tw.Mapper[int, int]           // Fixed column widths for streaming mode, calculated once
@@ -105,7 +109,10 @@ func NewTable(w io.Writer, opts ...Option) *Table {
 		newLine:      tw.NewLine,
 		trace:        &bytes.Buffer{},
 
-		// --- ADDED INITIALIZATION START ---
+		// Caption defaults
+		caption: tw.Caption{Spot: tw.SpotNone, Align: tw.AlignLeft},
+
+		// Streaming
 		streamWidths:           tw.NewMapper[int, int](), // Initialize empty mapper for streaming widths
 		lastRenderedMergeState: tw.NewMapper[int, tw.MergeState](),
 		headerRendered:         false,
@@ -138,6 +145,36 @@ func NewTable(w io.Writer, opts ...Option) *Table {
 	// this will overwrite the default logger
 	t.renderer.Logger(t.logger)
 	t.logger.Info("Table initialized with %d options", len(opts))
+	return t
+}
+
+// Caption sets the table caption (legacy method).
+// Defaults to BottomCenter alignment, wrapping to table width.
+// Use SetCaptionOptions for more control.
+func (t *Table) Caption(caption tw.Caption) *Table { // This is the one we modified
+	originalSpot := caption.Spot
+	originalAlign := caption.Align
+
+	if caption.Spot == tw.SpotNone {
+		caption.Spot = tw.SpotBottomCenter
+		t.logger.Debug("[Table.Caption] Input Spot was SpotNone, defaulting Spot to SpotBottomCenter (%d)", caption.Spot)
+	}
+
+	if caption.Align == "" || caption.Align == tw.AlignDefault || caption.Align == tw.AlignNone {
+		switch caption.Spot {
+		case tw.SpotTopLeft, tw.SpotBottomLeft:
+			caption.Align = tw.AlignLeft
+		case tw.SpotTopRight, tw.SpotBottomRight:
+			caption.Align = tw.AlignRight
+		default:
+			caption.Align = tw.AlignCenter
+		}
+		t.logger.Debug("[Table.Caption] Input Align was empty/default, defaulting Align to %s for Spot %d", caption.Align, caption.Spot)
+	}
+
+	t.caption = caption // t.caption on the struct is now updated.
+	t.logger.Debug("Caption method called: Input(Spot:%v, Align:%q), Final(Spot:%v, Align:%q), Text:'%.20s', MaxWidth:%d",
+		originalSpot, originalAlign, t.caption.Spot, t.caption.Align, t.caption.Text, t.caption.Width)
 	return t
 }
 
@@ -232,7 +269,7 @@ func (t *Table) Footer(elements ...any) {
 		elements, len(elements), t.config.Stream.Enable, t.hasPrinted)
 
 	if t.config.Stream.Enable && t.hasPrinted {
-		// --- Streaming Path ---
+		//  Streaming Path
 		actualCellsToProcess := t.processVariadicElements(elements)
 		footersAsStrings, err := t.convertCellsToStrings(actualCellsToProcess, t.config.Footer)
 		if err != nil {
@@ -246,7 +283,7 @@ func (t *Table) Footer(elements ...any) {
 		return
 	}
 
-	// --- Batch Path ---
+	//  Batch Path
 	actualCellsToProcess := t.processVariadicElements(elements)
 	t.logger.Debug("Footer() (Batch): Effective cells to process: %v", actualCellsToProcess)
 
@@ -277,70 +314,6 @@ func (t *Table) Render() error {
 	return t.render()
 }
 
-// render generates the table output using the configured renderer.
-// No parameters are required.
-// Returns an error if rendering fails in any section.
-func (t *Table) render() error {
-	t.ensureInitialized() // This is needed in both modes, good place to keep it.
-
-	// --- ADDED LOGIC START ---
-	// If streaming is enabled, this batch rendering path should not be used.
-	// The Start/Append/Close methods handle streaming.
-	if t.config.Stream.Enable {
-		t.logger.Warn("Internal render() method called when streaming is enabled. This indicates incorrect usage of Render() instead of Start/Append/Close.")
-		// It's safer to just return an error here, as the table state is likely not set up for batch.
-		return errors.New("internal batch render called in streaming mode")
-	}
-	// --- ADDED LOGIC END ---
-
-	// The rest of the original batch rendering logic follows:
-	ctx, mctx, err := t.prepareContexts() // This is batch-specific
-	if err != nil {
-		t.logger.Error("prepareContexts failed: %v", err)
-		return err
-	}
-
-	ctx.logger.Debug("Calling renderer Start()")
-	// In batch mode, renderer.Start is called here.
-	if err := ctx.renderer.Start(t.writer); err != nil {
-		ctx.logger.Debug("Renderer Start() error: %v", err)
-		return fmt.Errorf("renderer start failed: %w", err)
-	}
-
-	renderError := false
-	// Render sections (Header, Row, Footer) sequentially using batch context
-	for _, renderFn := range []func(*renderContext, *mergeContext) error{
-		t.renderHeader,
-		t.renderRow,
-		t.renderFooter,
-	} {
-		if err := renderFn(ctx, mctx); err != nil {
-			ctx.logger.Error("Renderer section error: %v", err)
-			renderError = true
-		}
-	}
-
-	ctx.logger.Debug("Calling renderer Close()")
-	// In batch mode, renderer.Close is called here.
-	closeErr := ctx.renderer.Close(t.writer)
-	if closeErr != nil {
-		ctx.logger.Error("Renderer Close() error: %v", closeErr)
-		if !renderError {
-			return fmt.Errorf("renderer close failed: %w", closeErr)
-		}
-	}
-
-	if renderError {
-		return errors.New("table rendering failed in one or more sections")
-	}
-
-	// This flag needs careful consideration with streaming.
-	// For now, it marks that rendering finished (batch mode).
-	t.hasPrinted = true
-	ctx.logger.Debug("Render completed")
-	return nil
-}
-
 // appendSingle adds a single row to the table's row data.
 // Parameter row is the data to append, converted via stringer if needed.
 // Returns an error if conversion or appending fails.
@@ -369,7 +342,7 @@ func (t *Table) appendSingle(row interface{}) error {
 // Parameter config provides alignment settings for the section.
 // Returns a map of column indices to alignment settings.
 func (t *Table) buildAligns(config tw.CellConfig) map[int]tw.Align {
-	t.logger.Debug("buildAligns INPUT: config.Formatting.Alignment=%s, config.ColumnAligns=%v", config.Formatting.Alignment, config.ColumnAligns)
+	t.logger.Debug("buildAligns INPUT: config.Formatting.Align=%s, config.ColumnAligns=%v", config.Formatting.Alignment, config.ColumnAligns)
 	numColsToUse := t.getNumColsToUse()
 	colAlignsResult := make(map[int]tw.Align)
 	for i := 0; i < numColsToUse; i++ {
@@ -535,7 +508,7 @@ func (t *Table) Header(elements ...any) {
 		elements, len(elements), t.config.Stream.Enable, t.hasPrinted)
 
 	if t.config.Stream.Enable && t.hasPrinted {
-		// --- Streaming Path ---
+		//  Streaming Path
 		actualCellsToProcess := t.processVariadicElements(elements)
 		headersAsStrings, err := t.convertCellsToStrings(actualCellsToProcess, t.config.Header)
 		if err != nil {
@@ -549,7 +522,7 @@ func (t *Table) Header(elements ...any) {
 		return
 	}
 
-	// --- Batch Path ---
+	//  Batch Path
 	actualCellsToProcess := t.processVariadicElements(elements)
 	t.logger.Debug("Header() (Batch): Effective cells to process: %v", actualCellsToProcess)
 
@@ -610,14 +583,111 @@ func (t *Table) maxColumns() int {
 	return m
 }
 
+func (t *Table) printTopBottomCaption(w io.Writer, actualTableWidth int) {
+	// Log the state of t.caption
+	t.logger.Debug("[printCaption Entry] Text=%q, Spot=%v (type %T), Align=%q, UserWidth=%d, ActualTableWidth=%d",
+		t.caption.Text, t.caption.Spot, t.caption.Spot, t.caption.Align, t.caption.Width, actualTableWidth)
+
+	currentCaptionSpot := t.caption.Spot
+	isValidSpot := currentCaptionSpot >= tw.SpotTopLeft && currentCaptionSpot <= tw.SpotBottomRight
+	if t.caption.Text == "" || !isValidSpot {
+		t.logger.Debug("[printCaption] Aborting: Text empty OR Spot invalid...")
+		return
+	}
+
+	// Determine captionWrapWidth
+	var captionWrapWidth int
+	if t.caption.Width > 0 {
+		captionWrapWidth = t.caption.Width
+		t.logger.Debug("[printCaption] Using user-defined caption.Width %d for wrapping.", captionWrapWidth)
+	} else if actualTableWidth <= 4 { // Empty or minimal table
+		captionWrapWidth = tw.DisplayWidth(t.caption.Text)
+		t.logger.Debug("[printCaption] Empty table, no user caption.Width: Using natural caption width %d.", captionWrapWidth)
+	} else {
+		captionWrapWidth = actualTableWidth
+		t.logger.Debug("[printCaption] Non-empty table, no user caption.Width: Using actualTableWidth %d for wrapping.", actualTableWidth)
+	}
+
+	// Ensure captionWrapWidth is positive
+	if captionWrapWidth <= 0 {
+		captionWrapWidth = 10 // Minimum sensible width
+		t.logger.Warn("[printCaption] captionWrapWidth was %d (<=0). Setting to minimum %d.", captionWrapWidth, 10)
+	}
+	t.logger.Debug("[printCaption] Final captionWrapWidth to be used by twwarp: %d", captionWrapWidth)
+
+	// Wrap the caption text
+	wrappedCaptionLines, count := twwarp.WrapString(t.caption.Text, captionWrapWidth)
+	if count == 0 {
+		t.logger.Error("[printCaption] Error from twwarp.WrapString (width %d): %v. Text: %q", captionWrapWidth, count, t.caption.Text)
+		if strings.Contains(t.caption.Text, "\n") {
+			wrappedCaptionLines = strings.Split(t.caption.Text, "\n")
+		} else {
+			wrappedCaptionLines = []string{t.caption.Text}
+		}
+		t.logger.Debug("[printCaption] Fallback: using %d lines from original text.", len(wrappedCaptionLines))
+	}
+
+	if len(wrappedCaptionLines) == 0 && t.caption.Text != "" {
+		t.logger.Warn("[printCaption] Wrapping resulted in zero lines for non-empty text. Using fallback.")
+		if strings.Contains(t.caption.Text, "\n") {
+			wrappedCaptionLines = strings.Split(t.caption.Text, "\n")
+		} else {
+			wrappedCaptionLines = []string{t.caption.Text}
+		}
+	} else if t.caption.Text != "" {
+		t.logger.Debug("[printCaption] Wrapped caption into %d lines: %v", len(wrappedCaptionLines), wrappedCaptionLines)
+	}
+
+	// Determine padding target width
+	paddingTargetWidth := actualTableWidth
+	if t.caption.Width > 0 {
+		paddingTargetWidth = t.caption.Width
+	} else if actualTableWidth <= 4 {
+		paddingTargetWidth = captionWrapWidth
+	}
+	t.logger.Debug("[printCaption] Final paddingTargetWidth for tw.Pad: %d", paddingTargetWidth)
+
+	// Print each wrapped line
+	for i, line := range wrappedCaptionLines {
+		align := t.caption.Align
+		if align == "" || align == tw.AlignDefault || align == tw.AlignNone {
+			switch t.caption.Spot {
+			case tw.SpotTopLeft, tw.SpotBottomLeft:
+				align = tw.AlignLeft
+			case tw.SpotTopRight, tw.SpotBottomRight:
+				align = tw.AlignRight
+			default:
+				align = tw.AlignCenter
+			}
+			t.logger.Debug("[printCaption] Line %d: Alignment defaulted to %s based on Spot %v", i, align, t.caption.Spot)
+		}
+		paddedLine := tw.Pad(line, " ", paddingTargetWidth, align)
+		t.logger.Debug("[printCaption] Printing line %d: InputLine=%q, Align=%s, PaddingTargetWidth=%d, PaddedLine=%q",
+			i, line, align, paddingTargetWidth, paddedLine)
+		fmt.Fprintln(w, paddedLine)
+	}
+
+	t.logger.Debug("[printCaption] Finished printing all caption lines.")
+}
+
 // prepareContent processes cell content with formatting and wrapping.
 // Parameters include cells to process and config for formatting rules.
 // Returns a slice of string slices representing processed lines.
 func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string {
+	//  force max width
+
 	isStreaming := t.config.Stream.Enable && t.hasPrinted
 	t.logger.Debug("prepareContent: Processing cells=%v (streaming: %v)", cells, isStreaming)
 	initialInputCellCount := len(cells)
 	result := make([][]string, 0)
+
+	// force max width
+	if t.config.MaxWidth != 0 {
+		// it has headers
+		if len(cells) > 0 {
+			config.ColMaxWidths.Global = int(math.Floor(float64(t.config.MaxWidth) / float64(len(cells))))
+		}
+	}
 
 	effectiveNumCols := initialInputCellCount
 	if isStreaming {
@@ -1104,6 +1174,143 @@ func (t *Table) prepareWithMerges(content [][]string, config tw.CellConfig, posi
 		return m
 	}())
 	return result, mergeMap, horzMergeMap
+}
+
+// render generates the table output using the configured renderer.
+// No parameters are required.
+// Returns an error if rendering fails in any section.
+func (t *Table) render() error {
+	t.ensureInitialized()
+
+	if t.config.Stream.Enable {
+		t.logger.Warn("Render() called in streaming mode. Use Start/Append/Close methods instead.")
+		return errors.New("render called in streaming mode; use Start/Append/Close")
+	}
+
+	hasCaption := t.caption.Text != "" && t.caption.Spot != tw.SpotNone
+	isTopOrBottomCaption := hasCaption &&
+		(t.caption.Spot >= tw.SpotTopLeft && t.caption.Spot <= tw.SpotBottomRight)
+
+	var tableStringBuffer *strings.Builder
+	targetWriter := t.writer
+	originalWriter := t.writer // Save original writer for restoration if needed
+
+	if isTopOrBottomCaption {
+		tableStringBuffer = &strings.Builder{}
+		targetWriter = tableStringBuffer
+		t.logger.Debug("Top/Bottom caption detected. Rendering table core to buffer first.")
+	} else {
+		t.logger.Debug("No caption detected. Rendering table core directly to writer.")
+	}
+
+	// --- Render Table Core ---
+	t.writer = targetWriter // Set writer only when necessary
+
+	ctx, mctx, err := t.prepareContexts()
+	if err != nil {
+		t.writer = originalWriter
+		t.logger.Error("prepareContexts failed: %v", err)
+		return fmt.Errorf("failed to prepare table contexts: %w", err)
+	}
+
+	if err := ctx.renderer.Start(t.writer); err != nil {
+		t.writer = originalWriter
+		t.logger.Error("Renderer Start() error: %v", err)
+		return fmt.Errorf("renderer start failed: %w", err)
+	}
+
+	renderError := false
+	var firstRenderErr error
+	renderFuncs := []func(*renderContext, *mergeContext) error{
+		t.renderHeader,
+		t.renderRow,
+		t.renderFooter,
+	}
+	for i, renderFn := range renderFuncs {
+		sectionName := []string{"Header", "Row", "Footer"}[i]
+		if renderErr := renderFn(ctx, mctx); renderErr != nil {
+			t.logger.Error("Renderer section error (%s): %v", sectionName, renderErr)
+			if !renderError {
+				firstRenderErr = fmt.Errorf("failed to render %s section: %w", sectionName, renderErr)
+			}
+			renderError = true
+			break
+		}
+	}
+
+	if closeErr := ctx.renderer.Close(t.writer); closeErr != nil {
+		t.logger.Error("Renderer Close() error: %v", closeErr)
+		if !renderError {
+			firstRenderErr = fmt.Errorf("renderer close failed: %w", closeErr)
+		}
+		renderError = true
+	}
+
+	t.writer = originalWriter // Restore original writer
+
+	if renderError {
+		return firstRenderErr // Return error from core rendering if any
+	}
+	// --- End Render Table Core ---
+
+	// --- Caption Handling & Final Output ---
+	if isTopOrBottomCaption {
+		renderedTableContent := tableStringBuffer.String()
+		t.logger.Debug("[Render] Table core buffer length: %d", len(renderedTableContent))
+
+		// Check if the buffer is empty AND borders are enabled
+		shouldHaveBorders := t.renderer != nil && (t.renderer.Config().Borders.Top.Enabled() || t.renderer.Config().Borders.Bottom.Enabled())
+		if len(renderedTableContent) == 0 && shouldHaveBorders {
+			var sb strings.Builder
+			if t.renderer.Config().Borders.Top.Enabled() {
+				sb.WriteString("+--+")
+				sb.WriteString(t.newLine)
+			}
+			if t.renderer.Config().Borders.Bottom.Enabled() {
+				sb.WriteString("+--+")
+			}
+			renderedTableContent = sb.String()
+			t.logger.Warn("[Render] Table buffer was empty despite enabled borders. Manually generated minimal output: %q", renderedTableContent)
+		}
+
+		actualTableWidth := 0
+		trimmedBuffer := strings.TrimRight(renderedTableContent, "\r\n \t")
+		for _, line := range strings.Split(trimmedBuffer, "\n") {
+			w := tw.DisplayWidth(line)
+			if w > actualTableWidth {
+				actualTableWidth = w
+			}
+		}
+		t.logger.Debug("[Render] Calculated actual table width: %d (from content: %q)", actualTableWidth, renderedTableContent)
+
+		isTopCaption := t.caption.Spot >= tw.SpotTopLeft && t.caption.Spot <= tw.SpotTopRight
+
+		if isTopCaption {
+			t.logger.Debug("[Render] Printing Top Caption.")
+			t.printTopBottomCaption(t.writer, actualTableWidth)
+		}
+
+		if len(renderedTableContent) > 0 {
+			t.logger.Debug("[Render] Printing table content (length %d) to final writer.", len(renderedTableContent))
+			fmt.Fprint(t.writer, renderedTableContent)
+			if !isTopCaption && t.caption.Text != "" && !strings.HasSuffix(renderedTableContent, t.newLine) {
+				fmt.Fprintln(t.writer)
+				t.logger.Debug("[Render] Added trailing newline after table content before bottom caption.")
+			}
+		} else {
+			t.logger.Debug("[Render] No table content (original buffer or generated) to print.")
+		}
+
+		if !isTopCaption {
+			t.logger.Debug("[Render] Calling printTopBottomCaption for Bottom Caption. Width: %d", actualTableWidth)
+			t.printTopBottomCaption(t.writer, actualTableWidth)
+			t.logger.Debug("[Render] Returned from printTopBottomCaption for Bottom Caption.")
+		}
+	}
+
+	t.hasPrinted = true
+	t.logger.Info("Render() completed.")
+	return nil // Success
 }
 
 // renderFooter renders the table's footer section with borders and padding.
@@ -1697,25 +1904,23 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 		rowHasBottomPadding := t.config.Row.Padding.Global.Bottom != tw.Empty
 		isLastRow := i == len(ctx.rowLines)-1
 
-		for j, line := range lines {
+		for j, visualLineData := range lines {
 			hctx.rowIdx = i
 			hctx.lineIdx = j
-			hctx.line = padLine(line, ctx.numCols)
+			hctx.line = padLine(visualLineData, ctx.numCols)
 
 			if j > 0 {
 				visualLineHasActualContent := false
-				// Check if any cell in this visual line (hctx.line which is lines[j]) has actual content
-				for _, cellContentInVisualLineK := range hctx.line {
-					if strings.TrimSpace(cellContentInVisualLineK) != "" {
+				for kCellIdx, cellContentInVisualLine := range hctx.line {
+					if strings.TrimSpace(cellContentInVisualLine) != "" {
 						visualLineHasActualContent = true
+						ctx.logger.Debug("Visual line [%d][%d] has content in cell %d: '%s'. Not skipping.", i, j, kCellIdx, cellContentInVisualLine)
 						break
 					}
 				}
 
 				if !visualLineHasActualContent {
-					// If the entire visual line `j` (where `j>0`) has no actual content
-					// (meaning all its cells are trimmed-empty), then we skip it.
-					ctx.logger.Debug("Skipping rendering of visual line %d for logical row %d as it contains no actual content after merges/blanking.", j, i)
+					ctx.logger.Debug("Skipping visual line [%d][%d] as it's entirely blank after trimming. Line: %q", i, j, hctx.line)
 					continue
 				}
 			}
@@ -1731,7 +1936,7 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 				hctx.location = tw.LocationMiddle
 			}
 
-			ctx.logger.Debug("Rendering row %d line %d with location %v", i, j, hctx.location)
+			ctx.logger.Debug("Rendering row %d line %d with location %v. Content: %q", i, j, hctx.location, hctx.line)
 			if err := t.renderLine(ctx, mctx, hctx, colAligns, colPadding); err != nil {
 				return err
 			}
@@ -1794,6 +1999,6 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 				HasFooter: footerExists,
 			})
 		}
-	} // End LOGICAL ROW LOOP (i)
+	}
 	return nil
 }

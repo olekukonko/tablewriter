@@ -104,3 +104,11 @@ func (l Location) Validate() error {
 	// Return an error for any unrecognized location
 	return errors.New("invalid location")
 }
+
+type Caption struct {
+	Text    string
+	Spot    Spot
+	Align   Align
+	Width   int
+	Disable bool
+}

@@ -116,10 +116,10 @@ func TestColorizedLongValues(t *testing.T) {
 	c := tablewriter.Config{
 		Row: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				MaxWidth:  20,
 				AutoWrap:  tw.WrapNormal,
 				Alignment: tw.AlignLeft,
 			},
+			ColMaxWidths: tw.CellWidth{Global: 20},
 		},
 	}
 	table := tablewriter.NewTable(&buf,
