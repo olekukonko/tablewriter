@@ -237,7 +237,7 @@ func TestStreamNoHeaderASCII(t *testing.T) {
 	st := tablewriter.NewTable(&buf,
 		tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}}}),
 		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{Symbols: tw.NewSymbols(tw.StyleASCII)})),
-		tablewriter.WithDebug(true),
+		tablewriter.WithDebug(false),
 		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
 	)
 	err := st.Start()
@@ -331,7 +331,7 @@ C │ D
 			st := tablewriter.NewTable(&buf,
 				tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}}}),
 				tablewriter.WithRenderer(r),
-				tablewriter.WithDebug(true),
+				tablewriter.WithDebug(false),
 			)
 
 			st.Append(data[0])
@@ -415,7 +415,7 @@ func TestStreamCustomPadding(t *testing.T) {
 			},
 		},
 	}),
-		tablewriter.WithDebug(true))
+		tablewriter.WithDebug(false))
 
 	err := st.Start()
 	if err != nil {
@@ -454,7 +454,7 @@ func TestStreamEmptyCells(t *testing.T) {
 				Global: 20,
 			}},
 	}),
-		tablewriter.WithDebug(true))
+		tablewriter.WithDebug(false))
 
 	err := st.Start()
 	if err != nil {
@@ -492,7 +492,7 @@ func TestStreamOnlyHeader(t *testing.T) {
 	st := createStreamTable(t, &buf, tablewriter.WithConfig(tablewriter.Config{
 		Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
 	}),
-		tablewriter.WithDebug(true),
+		tablewriter.WithDebug(false),
 		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}))
 
 	err := st.Start()
@@ -593,8 +593,8 @@ func TestStreamSlowOutput(t *testing.T) {
 
 	t.Log("Slow stream test completed. Observe terminal output.")
 	if st.Logger().Len() > 0 {
-		fmt.Println("--- DEBUG LOG ---")
-		fmt.Println(st.Debug().String())
+		//fmt.Println("--- DEBUG LOG ---")
+		//fmt.Println(st.Debug().String())
 	}
 }
 
@@ -643,7 +643,7 @@ func TestStreamFormating(t *testing.T) {
 			Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
 			Row:    tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}},
 			Footer: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}}}),
-		tablewriter.WithDebug(true),
+		tablewriter.WithDebug(false),
 		tablewriter.WithStreaming(tw.StreamConfig{
 			Enable: true,
 			Widths: tw.CellWidth{PerColumn: map[int]int{0: 12, 1: 8, 2: 10}},

@@ -357,10 +357,10 @@ func TestLongHeaders(t *testing.T) {
 			Header: tw.CellConfig{Formatting: tw.CellFormatting{
 				AutoWrap: tw.WrapTruncate,
 			}},
-			Debug: true,
+			Debug: false,
 		}
 		buf.Reset()
-		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c), tablewriter.WithDebug(true))
+		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c), tablewriter.WithDebug(false))
 		table.Header([]string{"Name", "Age", "This is a very long header, let see if this will be properly wrapped"})
 		table.Append([]string{"Alice", "25", "New York"})
 		table.Append([]string{"Bob", "30", "Boston"})
@@ -661,7 +661,7 @@ C │ D
 			st := tablewriter.NewTable(&buf,
 				tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}}}),
 				tablewriter.WithRenderer(r),
-				tablewriter.WithDebug(true),
+				tablewriter.WithDebug(false),
 				tablewriter.WithStreaming(tw.StreamConfig{Enable: true, Widths: tw.CellWidth{PerColumn: widths}}),
 			)
 			err := st.Start()

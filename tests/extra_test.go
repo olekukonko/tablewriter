@@ -222,7 +222,7 @@ func TestAutoHideFeature(t *testing.T) {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf,
 			tablewriter.WithAutoHide(tw.On), // Enable the feature
-			tablewriter.WithDebug(true),
+			tablewriter.WithDebug(false),
 		)
 		table.Header([]string{"Name", "Sign", "Rating"}) // Header IS included
 
@@ -416,7 +416,7 @@ func TestSpaces(t *testing.T) {
 	}
 	t.Run("Trim", func(t *testing.T) {
 		buf.Reset()
-		table := tablewriter.NewTable(&buf, tablewriter.WithDebug(true), tablewriter.WithTrimSpace(tw.On))
+		table := tablewriter.NewTable(&buf, tablewriter.WithDebug(false), tablewriter.WithTrimSpace(tw.On))
 		table.Header(data[0])
 		table.Bulk(data[1:])
 		table.Render()

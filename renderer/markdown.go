@@ -154,38 +154,33 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 
 // formatSeparator generates a Markdown separator (e.g., `---`, `:--`, `:-:`) with alignment indicators.
 func (m *Markdown) formatSeparator(width int, align tw.Align) string {
-	targetWidth := tw.Max(3, width)
-	leftColon := align == tw.AlignLeft || align == tw.AlignCenter
-	rightColon := align == tw.AlignRight || align == tw.AlignCenter
-
-	numDashes := targetWidth
-	if leftColon {
-		numDashes--
-	}
-	if rightColon {
-		numDashes--
-	}
-	if numDashes < 1 {
-		numDashes = 1
-	}
-
+	targetWidth := tw.Max(3, width) // Minimum width of 3
 	var sb strings.Builder
-	if leftColon {
-		sb.WriteRune(':')
-	}
-	sb.WriteString(strings.Repeat("-", numDashes))
-	if rightColon {
-		sb.WriteRune(':')
-	}
 
-	currentLen := sb.Len()
-	if currentLen < targetWidth {
-		sb.WriteString(strings.Repeat("-", targetWidth-currentLen))
-	} else if currentLen > targetWidth {
-		m.logger.Debug("Markdown formatSeparator: WARNING final length %d > target %d for '%s'", currentLen, targetWidth, sb.String())
+	switch align {
+	case tw.AlignLeft:
+		sb.WriteRune(':')
+		sb.WriteString(strings.Repeat("-", targetWidth-1))
+	case tw.AlignRight:
+		sb.WriteString(strings.Repeat("-", targetWidth-1))
+		sb.WriteRune(':')
+	case tw.AlignCenter:
+		sb.WriteRune(':')
+		sb.WriteString(strings.Repeat("-", targetWidth-2))
+		sb.WriteRune(':')
+	default: // Fallback to left alignment for unspecified
+		sb.WriteRune(':')
+		sb.WriteString(strings.Repeat("-", targetWidth-1))
 	}
 
 	result := sb.String()
+	currentLen := tw.DisplayWidth(result)
+	if currentLen < targetWidth {
+		result += strings.Repeat("-", targetWidth-currentLen)
+	} else if currentLen > targetWidth {
+		result = tw.TruncateString(result, targetWidth)
+	}
+
 	m.logger.Debug("Markdown formatSeparator: width=%d, align=%s -> '%s'", width, align, result)
 	return result
 }
@@ -234,13 +229,12 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 	separatorWidth := tw.DisplayWidth(separator)
 
 	for colIndex < numCols {
-		// Fetch cell context
 		cellCtx, ok := ctx.Row.Current[colIndex]
 		defaultPadding := tw.Padding{Left: " ", Right: " "}
 		if !ok {
-			defaultAlign := tw.AlignLeft
+			defaultAlign := tw.AlignLeft // Default for rows
 			if ctx.Row.Position == tw.Header && !isHeaderSep {
-				defaultAlign = tw.AlignCenter
+				defaultAlign = tw.AlignCenter // Default for headers
 			}
 			if ctx.Row.Position == tw.Footer {
 				defaultAlign = tw.AlignRight
@@ -258,8 +252,6 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 		if colIndex > 0 && !isContinuation {
 			output.WriteString(separator)
 			m.logger.Debug("renderMarkdownLine: Added separator '%s' before col %d", separator, colIndex)
-		} else if colIndex > 0 {
-			m.logger.Debug("renderMarkdownLine: Skipped separator before col %d due to HMerge continuation", colIndex)
 		}
 
 		// Calculate width and span
@@ -273,7 +265,7 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 			} else {
 				align = tw.AlignLeft
 			}
-			m.logger.Debug("renderMarkdownLine: Col %d using renderer default align '%s'", colIndex, align)
+			m.logger.Debug("renderMarkdownLine: Col %d using default align '%s'", colIndex, align)
 		}
 
 		visualWidth := 0
@@ -292,7 +284,7 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 				}
 			}
 			visualWidth = totalWidth
-			m.logger.Debug("renderMarkdownLine: HMerge col %d, span %d, calculated visualWidth %d from normalized widths", colIndex, span, visualWidth)
+			m.logger.Debug("renderMarkdownLine: HMerge col %d, span %d, visualWidth %d", colIndex, span, visualWidth)
 		} else {
 			visualWidth = ctx.Row.Widths.Get(colIndex)
 			m.logger.Debug("renderMarkdownLine: Regular col %d, visualWidth %d", colIndex, visualWidth)
@@ -303,13 +295,19 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 
 		// Render segment
 		if isContinuation {
-			m.logger.Debug("renderMarkdownLine: Skipping col %d rendering (part of HMerge)", colIndex)
+			m.logger.Debug("renderMarkdownLine: Skipping col %d (HMerge continuation)", colIndex)
 		} else {
 			var formattedSegment string
 			if isHeaderSep {
-				headerAlign := tw.AlignCenter
+				// Use the header's alignment from ctx.Row.Previous (header row)
+				headerAlign := tw.AlignCenter // Default for headers
 				if headerCellCtx, headerOK := ctx.Row.Previous[colIndex]; headerOK {
 					headerAlign = headerCellCtx.Align
+					if headerAlign == tw.AlignNone || headerAlign == "" {
+						headerAlign = tw.AlignCenter
+					}
+				} else if cellCtx, ok := ctx.Row.Current[colIndex]; ok {
+					headerAlign = cellCtx.Align
 					if headerAlign == tw.AlignNone || headerAlign == "" {
 						headerAlign = tw.AlignCenter
 					}
@@ -323,7 +321,7 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 				formattedSegment = m.formatCell(content, visualWidth, align, cellCtx.Padding)
 			}
 			output.WriteString(formattedSegment)
-			m.logger.Debug("renderMarkdownLine: Wrote segment for col %d (span %d, visualWidth %d): '%s'", colIndex, span, visualWidth, formattedSegment)
+			m.logger.Debug("renderMarkdownLine: Wrote col %d (span %d, width %d): '%s'", colIndex, span, visualWidth, formattedSegment)
 		}
 
 		colIndex += span
@@ -332,7 +330,7 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 	output.WriteString(suffix)
 	output.WriteString(tw.NewLine)
 	fmt.Fprint(w, output.String())
-	m.logger.Debug("renderMarkdownLine: Final rendered line: %s", strings.TrimSuffix(output.String(), tw.NewLine))
+	m.logger.Debug("renderMarkdownLine: Final line: %s", strings.TrimSuffix(output.String(), tw.NewLine))
 }
 
 // Header renders the Markdown table header and its separator line.

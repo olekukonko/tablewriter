@@ -28,7 +28,7 @@ func main() {
 				Alignment: tw.AlignLeft,
 			},
 		},
-		Debug: true,
+		Debug: false,
 	}
 
 	// Create a custom border style
