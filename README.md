@@ -480,7 +480,7 @@ func main() {
 	}
 
 	table := tablewriter.NewTable(os.Stdout,
-		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 			Settings: tw.Settings{
 				Separators: tw.Separators{BetweenRows: tw.On},
 			},
@@ -546,7 +546,7 @@ func main() {
 	}
 
 	table := tablewriter.NewTable(os.Stdout,
-		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 			Settings: tw.Settings{
 				Separators: tw.Separators{BetweenRows: tw.On},
 			},
@@ -608,7 +608,7 @@ func main() {
 	createSubTable := func(s string) string {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf,
-			tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+			tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 				Borders: tw.BorderNone,
 				Symbols: tw.NewSymbols(tw.StyleASCII),
 				Settings: tw.Settings{
@@ -631,7 +631,7 @@ func main() {
 
 	// Main table
 	table := tablewriter.NewTable(os.Stdout,
-		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 			Borders: tw.BorderNone,
 			Settings: tw.Settings{
 				Separators: tw.Separators{BetweenColumns: tw.On},
@@ -710,7 +710,7 @@ func main() {
 	}
 
 	table := tablewriter.NewTable(os.Stdout,
-		tablewriter.WithRenderer(renderer.NewBlueprint(tw.RendererConfig{
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 			Symbols: tw.NewSymbols(tw.StyleRounded),
 		})),
 		tablewriter.WithStringer(employeeStringer),
