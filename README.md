@@ -28,7 +28,7 @@ go get github.com/olekukonko/tablewriter@v0.0.5
 #### Latest  Version
 The latest stable version
 ```bash
-go get github.com/olekukonko/tablewriter@v1.0.1
+go get github.com/olekukonko/tablewriter@v1.0.3
 ```
 
 **Warning:** Version `v1.0.0` contains missing functionality and should not be used.
@@ -77,7 +77,7 @@ func main() {
 │   PACKAGE   │ VERSION │ STATUS │
 ├─────────────┼─────────┼────────┤
 │ tablewriter │ v0.0.5  │ legacy │
-│ tablewriter │ v1.0.0  │ latest │
+│ tablewriter │ v1.0.3  │ latest │
 └─────────────┴─────────┴────────┘
 ```
 
@@ -164,34 +164,33 @@ func main() {
 		{"Bob", Age(30), "Boston"},
 	}
 
-	symbols := tw.NewSymbolCustom("Hearts").
-		WithRow("♥").
-		WithColumn("❤").
-		WithTopLeft("❥").
-		WithTopMid("♡").
-		WithTopRight("❥").
-		WithMidLeft("❣").
-		WithCenter("✚").
-		WithMidRight("❣").
-		WithBottomLeft("❦").
-		WithBottomMid("♡").
-		WithBottomRight("❦")
+	symbols := tw.NewSymbolCustom("Nature").
+		WithRow("~").
+		WithColumn("|").
+		WithTopLeft("🌱").
+		WithTopMid("🌿").
+		WithTopRight("🌱").
+		WithMidLeft("🍃").
+		WithCenter("❀").
+		WithMidRight("🍃").
+		WithBottomLeft("🌻").
+		WithBottomMid("🌾").
+		WithBottomRight("🌻")
 
 	table := tablewriter.NewTable(os.Stdout, tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{Symbols: symbols})))
 	table.Header("Name", "Age", "City")
 	table.Bulk(data)
 	table.Render()
 }
-
 ```
 
 ```
-❥♥♥♥♥♥♥♥♡♥♥♥♥♥♥♥♥♡♥♥♥♥♥♥♥♥♥♥❥
-❤ NAME  ❤  AGE   ❤   CITY   ❤
-❣♥♥♥♥♥♥♥✚♥♥♥♥♥♥♥♥✚♥♥♥♥♥♥♥♥♥♥❣
-❤ Alice ❤ 25 yrs ❤ New York ❤
-❤ Bob   ❤ 30 yrs ❤ Boston   ❤
-❦♥♥♥♥♥♥♥♡♥♥♥♥♥♥♥♥♡♥♥♥♥♥♥♥♥♥♥❦
+🌱~~~~~~❀~~~~~~~~❀~~~~~~~~~🌱
+| NAME  |  AGE   |   CITY   |
+🍃~~~~~~❀~~~~~~~~❀~~~~~~~~~🍃
+| Alice | 25 yrs | New York |
+| Bob   | 30 yrs | Boston   |
+🌻~~~~~~❀~~~~~~~~❀~~~~~~~~~🌻
 ```
 
 See [symbols example](https://github.com/olekukonko/tablewriter/blob/master/_example/symbols/main.go) for more
