@@ -508,3 +508,151 @@ func TestMergeWithPadding(t *testing.T) {
 	visualCheck(t, "MergeWithPadding", buf.String(), expected)
 
 }
+
+func TestMergeWithMultipleLines(t *testing.T) {
+	var buf bytes.Buffer
+
+	data := [][]string{
+		{"Module", "Description", "Version", "Status"},
+		{"core\nutils", "Utility\nfunctions", "v1.0.0", "stable"},
+		{"core\nutils", "Helper\nroutines", "v1.1.0", "beta"},
+		{"web\nserver", "HTTP\nserver", "v2.0.0", "stable"},
+		{"web\nserver", "", "v2.1.0", "testing"},
+		{"db\nclient", "Database\naccess", "v3.0.0", ""},
+	}
+
+	t.Run("Horizontal", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
+			Row: tw.CellConfig{
+				Formatting: tw.CellFormatting{
+					MergeMode: tw.MergeHorizontal,
+				},
+				ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignLeft, tw.AlignLeft, tw.AlignLeft},
+			},
+		}), tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
+			Settings: tw.Settings{
+				Separators: tw.Separators{
+					BetweenRows: tw.On,
+				},
+			},
+		})))
+		table.Header(data[0])
+		table.Bulk(data[1:])
+		table.Render()
+
+		expected := `
+┌────────┬─────────────┬─────────┬─────────┐
+│ MODULE │ DESCRIPTION │ VERSION │ STATUS  │
+├────────┼─────────────┼─────────┼─────────┤
+│ core   │ Utility     │ v1.0.0  │ stable  │
+│ utils  │ functions   │         │         │
+├────────┼─────────────┼─────────┼─────────┤
+│ core   │ Helper      │ v1.1.0  │ beta    │
+│ utils  │ routines    │         │         │
+├────────┼─────────────┼─────────┼─────────┤
+│ web    │ HTTP        │ v2.0.0  │ stable  │
+│ server │ server      │         │         │
+├────────┼─────────────┼─────────┼─────────┤
+│ web    │             │ v2.1.0  │ testing │
+│ server │             │         │         │
+├────────┼─────────────┼─────────┼─────────┤
+│ db     │ Database    │ v3.0.0  │         │
+│ client │ access      │         │         │
+└────────┴─────────────┴─────────┴─────────┘
+`
+		// t.Log("====== LOG", table.Logger().Enabled())
+		if !visualCheck(t, "Horizontal", buf.String(), expected) {
+			t.Error(table.Debug())
+		}
+	})
+
+	t.Run("Vertical", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
+			Row: tw.CellConfig{
+				Formatting: tw.CellFormatting{
+					MergeMode: tw.MergeVertical,
+				},
+				ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignLeft, tw.AlignLeft, tw.AlignLeft},
+			},
+			Debug: true,
+		}), tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
+			Settings: tw.Settings{
+				Separators: tw.Separators{
+					BetweenRows: tw.On,
+				},
+			},
+		})))
+		table.Header(data[0])
+		table.Bulk(data[1:])
+		table.Render()
+
+		expected := `
+┌────────┬─────────────┬─────────┬─────────┐
+│ MODULE │ DESCRIPTION │ VERSION │ STATUS  │
+├────────┼─────────────┼─────────┼─────────┤
+│ core   │ Utility     │ v1.0.0  │ stable  │
+│ utils  │ functions   │         │         │
+│        ├─────────────┼─────────┼─────────┤
+│        │ Helper      │ v1.1.0  │ beta    │
+│        │ routines    │         │         │
+├────────┼─────────────┼─────────┼─────────┤
+│ web    │ HTTP        │ v2.0.0  │ stable  │
+│ server │ server      │         │         │
+│        ├─────────────┼─────────┼─────────┤
+│        │             │ v2.1.0  │ testing │
+├────────┼─────────────┼─────────┼─────────┤
+│ db     │ Database    │ v3.0.0  │         │
+│ client │ access      │         │         │
+└────────┴─────────────┴─────────┴─────────┘
+`
+		if !visualCheck(t, "Vertical", buf.String(), expected) {
+			t.Error(table.Debug())
+		}
+	})
+
+	t.Run("Hierarch", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
+			Row: tw.CellConfig{
+				Formatting: tw.CellFormatting{
+					MergeMode: tw.MergeHierarchical,
+				},
+				ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignLeft, tw.AlignLeft, tw.AlignLeft},
+			},
+		}), tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
+			Settings: tw.Settings{
+				Separators: tw.Separators{
+					BetweenRows: tw.On,
+				},
+			},
+		})))
+		table.Header(data[0])
+		table.Bulk(data[1:])
+		table.Render()
+
+		expected := `
+        ┌────────┬─────────────┬─────────┬─────────┐
+        │ MODULE │ DESCRIPTION │ VERSION │ STATUS  │
+        ├────────┼─────────────┼─────────┼─────────┤
+        │ core   │ Utility     │ v1.0.0  │ stable  │
+        │ utils  │ functions   │         │         │
+        │        ├─────────────┼─────────┼─────────┤
+        │        │ Helper      │ v1.1.0  │ beta    │
+        │        │ routines    │         │         │
+        ├────────┼─────────────┼─────────┼─────────┤
+        │ web    │ HTTP        │ v2.0.0  │ stable  │
+        │ server │ server      │         │         │
+        │        ├─────────────┼─────────┼─────────┤
+        │        │             │ v2.1.0  │ testing │
+        ├────────┼─────────────┼─────────┼─────────┤
+        │ db     │ Database    │ v3.0.0  │         │
+        │ client │ access      │         │         │
+        └────────┴─────────────┴─────────┴─────────┘
+`
+		if !visualCheck(t, "Hierarch", buf.String(), expected) {
+			// t.Error(table.Debug().String())
+		}
+	})
+}

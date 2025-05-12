@@ -429,11 +429,11 @@ func TestStreamCustomPadding(t *testing.T) {
 	}
 
 	expected := `
-        ┌───────┬───────┐
-        │>>H…<< │>>H…<< │
-        ├───────┼───────┤
-        │>>R1C<<│>>R1C<<│
-        └───────┴───────┘
+		┌───────┬───────┐
+		│>>H…<<<│>>H…<<<│
+		├───────┼───────┤
+		│>>R1C<<│>>R1C<<│
+		└───────┴───────┘
 `
 	if !visualCheck(t, "StreamCustomPadding", buf.String(), expected) {
 		fmt.Println("--- DEBUG LOG ---")
