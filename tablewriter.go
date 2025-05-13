@@ -384,6 +384,63 @@ func (t *Table) Options(opts ...Option) *Table {
 	return t
 }
 
+// Reset clears all data (headers, rows, footers, caption) and rendering state
+// from the table, allowing the Table instance to be reused for a new table
+// with the same configuration and writer.
+// It does NOT reset the configuration itself (set by NewTable options or Configure)
+// or the underlying io.Writer.
+func (t *Table) Reset() {
+	t.logger.Debug("Reset() called. Clearing table data and render state.")
+
+	// Clear data slices
+	t.rows = nil    // Or t.rows = make([][][]string, 0)
+	t.headers = nil // Or t.headers = make([][]string, 0)
+	t.footers = nil // Or t.footers = make([][]string, 0)
+
+	// Reset width mappers (important for recalculating widths for the new table)
+	t.headerWidths = tw.NewMapper[int, int]()
+	t.rowWidths = tw.NewMapper[int, int]()
+	t.footerWidths = tw.NewMapper[int, int]()
+
+	// Reset caption
+	t.caption = tw.Caption{} // Reset to zero value
+
+	// Reset rendering state flags
+	t.hasPrinted = false // Critical for allowing Render() or stream Start() again
+
+	// Reset streaming-specific state
+	// (Important if the table was used in streaming mode and might be reused in batch or another stream)
+	t.streamWidths = tw.NewMapper[int, int]()
+	t.streamFooterLines = nil
+	t.headerRendered = false
+	t.firstRowRendered = false
+	t.lastRenderedLineContent = nil
+	t.lastRenderedMergeState = tw.NewMapper[int, tw.MergeState]() // Re-initialize
+	t.lastRenderedPosition = ""
+	t.streamNumCols = 0
+	t.streamRowCounter = 0
+
+	// The stringer and its cache are part of the table's configuration,
+	if t.stringerCacheEnabled {
+		t.stringerCacheMu.Lock()
+		t.stringerCache = make(map[reflect.Type]reflect.Value)
+		t.stringerCacheMu.Unlock()
+		t.logger.Debug("Reset(): Stringer cache cleared.")
+	}
+
+	// If the renderer has its own state that needs resetting after a table is done,
+	// this would be the place to call a renderer.Reset() method if it existed.
+	// Most current renderers are stateless per render call or reset in their Start/Close.
+	// For instance, HTML and SVG renderers have their own Reset method.
+	// It might be good practice to call it if available.
+	if r, ok := t.renderer.(interface{ Reset() }); ok {
+		t.logger.Debug("Reset(): Calling Reset() on the current renderer.")
+		r.Reset()
+	}
+
+	t.logger.Info("Table instance has been reset.")
+}
+
 // Render triggers the table rendering process to the configured writer.
 // No parameters are required.
 // Returns an error if rendering fails.
