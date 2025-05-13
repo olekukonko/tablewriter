@@ -90,7 +90,7 @@ func main() {
 }
 
 func process(r io.Reader) error {
-	// --- CSV Reader Configuration ---
+	// CSV Reader Configuration
 	csvInputReader := csv.NewReader(r)
 	if *delimiter != "" {
 		// Handle literal \t for tab delimiter
@@ -113,7 +113,7 @@ func process(r io.Reader) error {
 		csvInputReader.FieldsPerRecord = -1 // Allow variable fields for the first pass if inferring.
 	}
 
-	// --- Symbol Selection ---
+	// Symbol Selection
 	var selectedSymbols tw.Symbols
 	// (Full switch statement for symbolStyle as provided previously)
 	switch strings.ToLower(*symbolStyle) {
@@ -162,7 +162,7 @@ func process(r io.Reader) error {
 		selectedSymbols = tw.NewSymbols(tw.StyleLight)
 	}
 
-	// --- Base Rendition Configuration ---
+	// Base Rendition Configuration
 	borderCfg := tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off}
 	linesCfg := tw.Lines{ShowTop: tw.Off, ShowBottom: tw.Off, ShowHeaderLine: tw.Off, ShowFooterLine: tw.Off}
 	separatorsCfg := tw.Separators{BetweenColumns: tw.Off, ShowHeader: tw.Off, ShowFooter: tw.Off, BetweenRows: tw.Off}
@@ -200,7 +200,7 @@ func process(r io.Reader) error {
 		Symbols:  selectedSymbols,
 	}
 
-	// --- Renderer Instantiation ---
+	// Renderer Instantiation
 	var selectedRenderer tw.Renderer
 	// For CLI, os.Stdout is the writer. For HTML/SVG, their renderers handle this.
 	outputTarget := io.Writer(os.Stdout) // Default to os.Stdout
@@ -231,7 +231,7 @@ func process(r io.Reader) error {
 		selectedRenderer = renderer.NewBlueprint(baseRendition)
 	}
 
-	// --- Table Options & Creation ---
+	// Table Options & Creation
 	calculatedMaxWidth := 0
 	if *tableMaxWidth > 0 {
 		calculatedMaxWidth = *tableMaxWidth
@@ -263,7 +263,7 @@ func process(r io.Reader) error {
 
 	table := tablewriter.NewTable(outputTarget, tableOpts...)
 
-	// --- Data Ingestion and Normalization (Two-Pass if inferring) ---
+	// Data Ingestion and Normalization (Two-Pass if inferring)
 	var headerData []string
 	var dataRecords [][]string
 
@@ -357,7 +357,7 @@ func process(r io.Reader) error {
 		// Streaming mode without inference will handle records directly from csvInputReader later.
 	}
 
-	// --- Table Population and Rendering ---
+	// Table Population and Rendering
 	if table.Config().Stream.Enable {
 		logger.Info("Populating table in STREAMING mode.")
 		if err := table.Start(); err != nil {
@@ -479,9 +479,3 @@ func isGraphicalRenderer(rendererName string) bool {
 	name := strings.ToLower(rendererName)
 	return name == "html" || name == "svg"
 }
-
-//func exit(err error) {
-//	// Using logger.Error instead of Fprintf for consistent logging if ll is used elsewhere
-//	logger.Error("Error: %v", err)
-//	os.Exit(1)
-//}

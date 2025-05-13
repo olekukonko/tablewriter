@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unicode"
 )
 
 // createStreamTable creates a TableStream with the  renderer for testing.
@@ -558,14 +557,14 @@ func TestStreamSlowOutput(t *testing.T) {
 		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
 	)
 
-	// --- Test Start() ---
+	//Test Start()
 	err := st.Start()
 	if err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
 	buf.Reset()
 
-	// --- Test Header() ---
+	//Test Header()
 	time.Sleep(100 * time.Millisecond)
 	st.Header([]string{"Event", "Timestamp"})
 	lastLine := getLastContentLine(&buf)
@@ -574,7 +573,7 @@ func TestStreamSlowOutput(t *testing.T) {
 	}
 	buf.Reset()
 
-	// --- Test Rows ---
+	//Test Rows
 	for i := 1; i <= 3; i++ {
 		time.Sleep(100 * time.Millisecond)
 		err = st.Append([]string{fmt.Sprintf("Row %d", i), time.Now().Format("15:04:05.000")})
@@ -593,43 +592,6 @@ func TestStreamSlowOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Close failed: %v", err)
 	}
-}
-
-type Name struct {
-	First string
-	Last  string
-}
-
-// this will be ignored since  Format() is present
-func (n Name) String() string {
-	return fmt.Sprintf("%s %s", n.First, n.Last)
-}
-
-// Note: Format() overrides String() if both exist.
-func (n Name) Format() string {
-	return fmt.Sprintf("%s %s", n.clean(n.First), n.clean(n.Last))
-}
-
-// clean ensures the first letter is capitalized and the rest are lowercase
-func (n Name) clean(s string) string {
-	s = strings.TrimSpace(strings.ToLower(s))
-	words := strings.Fields(s)
-	s = strings.Join(words, "")
-
-	if s == "" {
-		return s
-	}
-	// Capitalize the first letter
-	runes := []rune(s)
-	runes[0] = unicode.ToUpper(runes[0])
-	return string(runes)
-}
-
-type Age int
-
-// Age int will be ignore and string will be used
-func (a Age) String() string {
-	return fmt.Sprintf("%d yrs", a)
 }
 
 func TestStreamFormating(t *testing.T) {
@@ -670,8 +632,8 @@ func TestStreamFormating(t *testing.T) {
 		┌────────────┬────────┬──────────┐
 		│    NAME    │  AGE   │   CITY   │
 		├────────────┼────────┼──────────┤
-		│ Alice Mask │ 25 yrs │ New York │
-		│ Bob Marley │ 30 yrs │ Boston   │
+		│ Alice Mask │ 25yrs  │ New York │
+		│ Bob Marley │ 30yrs  │ Boston   │
 		└────────────┴────────┴──────────┘
 `
 	if !visualCheck(t, "StreamBasic", buf.String(), expected) {

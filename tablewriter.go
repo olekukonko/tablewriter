@@ -109,7 +109,7 @@ func NewTable(w io.Writer, opts ...Option) *Table {
 		newLine:      tw.NewLine,
 		trace:        &bytes.Buffer{},
 
-		// --- ADDED INITIALIZATION START ---
+		// Streaming
 		streamWidths:           tw.NewMapper[int, int](), // Initialize empty mapper for streaming widths
 		lastRenderedMergeState: tw.NewMapper[int, tw.MergeState](),
 		headerRendered:         false,
@@ -160,37 +160,46 @@ func (t *Table) Caption(caption tw.Caption) *Table { // This is the one we modif
 	return t
 }
 
-// Append adds rows to the table, supporting various input types.
-// Parameter rows accepts one or more rows, with stringer for custom types.
-// Returns an error if any row fails to append.
-func (t *Table) Append(rows ...interface{}) error {
-	t.ensureInitialized() // Ensure initialized regardless of mode
+// Append adds data to the current row being built for the table.
+// This method always contributes to a single logical row in the table.
+// To add multiple distinct rows, call Append multiple times (once for each row's data)
+// or use the Bulk() method if providing a slice where each element is a row.
+func (t *Table) Append(rows ...interface{}) error { // rows is already []interface{}
+	t.ensureInitialized()
 
-	// Check if streaming is enabled and started
 	if t.config.Stream.Enable && t.hasPrinted {
-		t.logger.Debug("Append() called in streaming mode with %d rows", len(rows))
-		for i, row := range rows {
-			// Delegate rendering of each row to the streaming helper
-			if err := t.streamAppendRow(row); err != nil {
-				t.logger.Error("Error rendering streaming row %d: %v", i, err)
-				// Decide error handling: stop appending? log and continue?
-				// For now, stop and return the error.
-				return fmt.Errorf("failed to stream append row %d: %w", i, err)
-			}
+		t.logger.Debug("Append() called in streaming mode with %d items for a single row", len(rows))
+		var rowItemForStream interface{}
+		if len(rows) == 1 {
+			rowItemForStream = rows[0]
+		} else {
+			rowItemForStream = rows // Pass the slice of items if multiple args
 		}
-		t.logger.Debug("Append() completed in streaming mode, %d rows processed.", len(rows))
-		return nil // Exit the function after handling streaming
+		if err := t.streamAppendRow(rowItemForStream); err != nil {
+			t.logger.Error("Error rendering streaming row: %v", err)
+			return fmt.Errorf("failed to stream append row: %w", err)
+		}
+		return nil
 	}
 
-	// Existing batch rendering logic:
-	t.logger.Debug("Starting batch Append operation with %d rows", len(rows))
-	for i, row := range rows {
-		if err := t.appendSingle(row); err != nil {
-			t.logger.Debug("Append failed at index %d (batch mode): %v", i, err)
-			return err
-		}
+	//Batch Mode Logic
+	t.logger.Debug("Append (Batch) received %d arguments: %v", len(rows), rows)
+
+	var cellsSource interface{}
+	if len(rows) == 1 {
+		cellsSource = rows[0]
+		t.logger.Debug("Append (Batch): Single argument provided. Treating it as the source for row cells.")
+	} else {
+		cellsSource = rows // 'rows' is []interface{} containing all arguments
+		t.logger.Debug("Append (Batch): Multiple arguments provided. Treating them directly as cells for one row.")
 	}
-	t.logger.Debug("Append completed (batch mode), total rows: %d", len(t.rows))
+
+	if err := t.appendSingle(cellsSource); err != nil {
+		t.logger.Error("Append (Batch) failed for cellsSource %v: %v", cellsSource, err)
+		return err
+	}
+
+	t.logger.Debug("Append (Batch) completed for one row, total rows in table: %d", len(t.rows))
 	return nil
 }
 
@@ -246,6 +255,56 @@ func (t *Table) Debug() *bytes.Buffer {
 	return t.trace
 }
 
+// Header sets the table's header content, padding to match column count.
+// Parameter elements is a slice of strings for header content.
+// No return value.
+// In streaming mode, this processes and renders the header immediately.
+func (t *Table) Header(elements ...any) {
+	t.ensureInitialized()
+	t.logger.Debug("Header() method called with raw variadic elements: %v (len %d). Streaming: %v, Started: %v",
+		elements, len(elements), t.config.Stream.Enable, t.hasPrinted)
+
+	if t.config.Stream.Enable && t.hasPrinted {
+		//  Streaming Path
+		actualCellsToProcess := t.processVariadic(elements)
+		headersAsStrings, err := t.convertCellsToStrings(actualCellsToProcess, t.config.Header)
+		if err != nil {
+			t.logger.Error("Header(): Failed to convert header elements to strings for streaming: %v", err)
+			headersAsStrings = []string{} // Use empty on error
+		}
+		errStream := t.streamRenderHeader(headersAsStrings) // streamRenderHeader handles padding to streamNumCols internally
+		if errStream != nil {
+			t.logger.Error("Error rendering streaming header: %v", errStream)
+		}
+		return
+	}
+
+	//  Batch Path
+	processedElements := t.processVariadic(elements)
+	t.logger.Debug("Header() (Batch): Effective cells to process: %v", processedElements)
+
+	headersAsStrings, err := t.convertCellsToStrings(processedElements, t.config.Header)
+	if err != nil {
+		t.logger.Error("Header() (Batch): Failed to convert to strings: %v", err)
+		t.headers = [][]string{} // Set to empty on error
+		return
+	}
+
+	// prepareContent uses t.config.Header for AutoFormat and MaxWidth constraints.
+	// It processes based on the number of columns in headersAsStrings.
+	preparedHeaderLines := t.prepareContent(headersAsStrings, t.config.Header)
+	t.headers = preparedHeaderLines // Store directly. Padding to t.maxColumns() will happen in prepareContexts.
+
+	t.logger.Debug("Header set (batch mode), lines stored: %d. First line if exists: %v",
+		len(t.headers), func() []string {
+			if len(t.headers) > 0 {
+				return t.headers[0]
+			} else {
+				return nil
+			}
+		}())
+}
+
 // Footer sets the table's footer content, padding to match column count.
 // Parameter footers is a slice of strings for footer content.
 // No return value.
@@ -259,7 +318,7 @@ func (t *Table) Footer(elements ...any) {
 
 	if t.config.Stream.Enable && t.hasPrinted {
 		//  Streaming Path
-		actualCellsToProcess := t.processVariadicElements(elements)
+		actualCellsToProcess := t.processVariadic(elements)
 		footersAsStrings, err := t.convertCellsToStrings(actualCellsToProcess, t.config.Footer)
 		if err != nil {
 			t.logger.Error("Footer(): Failed to convert footer elements to strings for streaming: %v", err)
@@ -273,10 +332,10 @@ func (t *Table) Footer(elements ...any) {
 	}
 
 	//  Batch Path
-	actualCellsToProcess := t.processVariadicElements(elements)
-	t.logger.Debug("Footer() (Batch): Effective cells to process: %v", actualCellsToProcess)
+	processedElements := t.processVariadic(elements)
+	t.logger.Debug("Footer() (Batch): Effective cells to process: %v", processedElements)
 
-	footersAsStrings, err := t.convertCellsToStrings(actualCellsToProcess, t.config.Footer)
+	footersAsStrings, err := t.convertCellsToStrings(processedElements, t.config.Footer)
 	if err != nil {
 		t.logger.Error("Footer() (Batch): Failed to convert to strings: %v", err)
 		t.footers = [][]string{} // Set to empty on error
@@ -514,56 +573,6 @@ func (t *Table) hasPerColumnBottomPadding() bool {
 		}
 	}
 	return false
-}
-
-// Header sets the table's header content, padding to match column count.
-// Parameter elements is a slice of strings for header content.
-// No return value.
-// In streaming mode, this processes and renders the header immediately.
-func (t *Table) Header(elements ...any) {
-	t.ensureInitialized()
-	t.logger.Debug("Header() method called with raw variadic elements: %v (len %d). Streaming: %v, Started: %v",
-		elements, len(elements), t.config.Stream.Enable, t.hasPrinted)
-
-	if t.config.Stream.Enable && t.hasPrinted {
-		//  Streaming Path
-		actualCellsToProcess := t.processVariadicElements(elements)
-		headersAsStrings, err := t.convertCellsToStrings(actualCellsToProcess, t.config.Header)
-		if err != nil {
-			t.logger.Error("Header(): Failed to convert header elements to strings for streaming: %v", err)
-			headersAsStrings = []string{} // Use empty on error
-		}
-		errStream := t.streamRenderHeader(headersAsStrings) // streamRenderHeader handles padding to streamNumCols internally
-		if errStream != nil {
-			t.logger.Error("Error rendering streaming header: %v", errStream)
-		}
-		return
-	}
-
-	//  Batch Path
-	actualCellsToProcess := t.processVariadicElements(elements)
-	t.logger.Debug("Header() (Batch): Effective cells to process: %v", actualCellsToProcess)
-
-	headersAsStrings, err := t.convertCellsToStrings(actualCellsToProcess, t.config.Header)
-	if err != nil {
-		t.logger.Error("Header() (Batch): Failed to convert to strings: %v", err)
-		t.headers = [][]string{} // Set to empty on error
-		return
-	}
-
-	// prepareContent uses t.config.Header for AutoFormat and MaxWidth constraints.
-	// It processes based on the number of columns in headersAsStrings.
-	preparedHeaderLines := t.prepareContent(headersAsStrings, t.config.Header)
-	t.headers = preparedHeaderLines // Store directly. Padding to t.maxColumns() will happen in prepareContexts.
-
-	t.logger.Debug("Header set (batch mode), lines stored: %d. First line if exists: %v",
-		len(t.headers), func() []string {
-			if len(t.headers) > 0 {
-				return t.headers[0]
-			} else {
-				return nil
-			}
-		}())
 }
 
 // Logger retrieves the table's logger instance.
@@ -1222,7 +1231,7 @@ func (t *Table) render() error {
 		t.logger.Debug("No caption detected. Rendering table core directly to writer.")
 	}
 
-	// --- Render Table Core ---
+	//Render Table Core ---
 	t.writer = targetWriter // Set writer only when necessary
 
 	ctx, mctx, err := t.prepareContexts()
@@ -1270,9 +1279,9 @@ func (t *Table) render() error {
 	if renderError {
 		return firstRenderErr // Return error from core rendering if any
 	}
-	// --- End Render Table Core ---
+	//End Render Table Core ---
 
-	// --- Caption Handling & Final Output ---
+	//Caption Handling & Final Output ---
 	if isTopOrBottomCaption {
 		renderedTableContent := tableStringBuffer.String()
 		t.logger.Debug("[Render] Table core buffer length: %d", len(renderedTableContent))

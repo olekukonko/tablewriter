@@ -295,7 +295,7 @@ func TestAutoHideFeature(t *testing.T) {
 		}
 	})
 
-	//  Test Case 3: Feature Disabled ---
+	//  Test Case 3: Feature Disabled
 	t.Run("DisabledShowsEmpty", func(t *testing.T) {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf,

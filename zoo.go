@@ -695,51 +695,83 @@ func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLe
 
 // convertToStringer invokes the table's stringer function with optional caching.
 func (t *Table) convertToStringer(input interface{}) ([]string, error) {
-	// Try type assertion for common case: func(interface{}) []string
-	if fn, ok := t.stringer.(func(interface{}) []string); ok {
-		t.logger.Debug("convertToStringer: Using type-asserted func(interface{}) []string for input type %T", input)
-		return fn(input), nil
+	// This function is now only called if t.stringer is non-nil.
+	if t.stringer == nil {
+		return nil, errors.New("internal error: convertToStringer called with nil t.stringer")
 	}
 
-	// Fallback to reflection with caching
 	inputType := reflect.TypeOf(input)
+	stringerFuncVal := reflect.ValueOf(t.stringer)
+	stringerFuncType := stringerFuncVal.Type()
 
+	// Cache lookup (simplified, actual cache logic can be more complex)
 	if t.stringerCacheEnabled {
 		t.stringerCacheMu.RLock()
-		if rv, ok := t.stringerCache[inputType]; ok {
-			t.stringerCacheMu.RUnlock()
-			t.logger.Debug("convertToStringer: Cache hit for type %v", inputType)
-			result := rv.Call([]reflect.Value{reflect.ValueOf(input)})
-			cells, ok := result[0].Interface().([]string)
-			if !ok {
-				return nil, errors.Newf("cached stringer for type %T did not return []string", input)
-			}
-			return cells, nil
-		}
+		cachedFunc, ok := t.stringerCache[inputType]
 		t.stringerCacheMu.RUnlock()
+		if ok {
+			// Add proper type checking for cachedFunc against input here if necessary
+			t.logger.Debug("convertToStringer: Cache hit for type %v", inputType)
+			results := cachedFunc.Call([]reflect.Value{reflect.ValueOf(input)})
+			if len(results) == 1 && results[0].Type() == reflect.TypeOf([]string{}) {
+				return results[0].Interface().([]string), nil
+			}
+		}
 	}
 
-	t.logger.Debug("convertToStringer: Cache miss or caching disabled, using reflection for type %v", inputType)
-	rv := reflect.ValueOf(t.stringer)
-	stringerType := rv.Type()
-	if !(rv.Kind() == reflect.Func && stringerType.NumIn() == 1 && stringerType.NumOut() == 1 &&
-		inputType.AssignableTo(stringerType.In(0)) &&
-		stringerType.Out(0) == reflect.TypeOf([]string{})) {
-		return nil, errors.Newf("stringer must be func(T) []string where T is assignable from %T, got %T", input, t.stringer)
+	// Robust type checking for the stringer function
+	validSignature := stringerFuncVal.Kind() == reflect.Func &&
+		stringerFuncType.NumIn() == 1 &&
+		stringerFuncType.NumOut() == 1 &&
+		stringerFuncType.Out(0) == reflect.TypeOf([]string{})
+
+	if !validSignature {
+		return nil, errors.Newf("table stringer (type %T) does not have signature func(SomeType) []string", t.stringer)
 	}
 
-	if t.stringerCacheEnabled {
+	// Check if input is assignable to stringer's parameter type
+	paramType := stringerFuncType.In(0)
+	assignable := false
+	if inputType != nil { // input is not untyped nil
+		if inputType.AssignableTo(paramType) {
+			assignable = true
+		} else if paramType.Kind() == reflect.Interface && inputType.Implements(paramType) {
+			assignable = true
+		} else if paramType.Kind() == reflect.Interface && paramType.NumMethod() == 0 { // stringer expects interface{}
+			assignable = true
+		}
+	} else if paramType.Kind() == reflect.Interface || (paramType.Kind() == reflect.Ptr && paramType.Elem().Kind() != reflect.Interface) {
+		// If input is nil, it can be assigned if stringer expects an interface or a pointer type
+		// (but not a pointer to an interface, which is rare for stringers).
+		// A nil value for a concrete type parameter would cause a panic on Call.
+		// So, if paramType is not an interface/pointer, and input is nil, it's an issue.
+		// This needs careful handling. For now, assume assignable if interface/pointer.
+		assignable = true
+	}
+
+	if !assignable {
+		return nil, errors.Newf("input type %T cannot be passed to table stringer expecting %s", input, paramType)
+	}
+
+	var callArgs []reflect.Value
+	if input == nil {
+		// If input is nil, we must pass a zero value of the stringer's parameter type
+		// if that type is a pointer or interface.
+		// Passing reflect.ValueOf(nil) directly will cause issues if paramType is concrete.
+		callArgs = []reflect.Value{reflect.Zero(paramType)}
+	} else {
+		callArgs = []reflect.Value{reflect.ValueOf(input)}
+	}
+
+	resultValues := stringerFuncVal.Call(callArgs)
+
+	if t.stringerCacheEnabled && inputType != nil { // Only cache if inputType is valid
 		t.stringerCacheMu.Lock()
-		t.stringerCache[inputType] = rv
+		t.stringerCache[inputType] = stringerFuncVal
 		t.stringerCacheMu.Unlock()
 	}
 
-	result := rv.Call([]reflect.Value{reflect.ValueOf(input)})
-	cells, ok := result[0].Interface().([]string)
-	if !ok {
-		return nil, errors.Newf("stringer for type %T did not return []string", input)
-	}
-	return cells, nil
+	return resultValues[0].Interface().([]string), nil
 }
 
 // convertToString converts a value to its string representation.
@@ -758,7 +790,7 @@ func (t *Table) convertToString(value interface{}) string {
 			return fmt.Sprintf("[reader error: %v]", err) // Keep fmt.Sprintf for rare error case
 		}
 		if buf.Len() == maxReadSize {
-			buf.WriteString("...")
+			buf.WriteString(tw.CharEllipsis)
 		}
 		return buf.String()
 	case sql.NullString:
@@ -826,6 +858,110 @@ func (t *Table) convertToString(value interface{}) string {
 	}
 }
 
+// convertItemToCells is responsible for converting a single input item (which could be
+// a struct, a basic type, or an item implementing Stringer/Formatter) into a slice
+// of strings, where each string represents a cell for the table row.
+func (t *Table) convertItemToCells(item interface{}) ([]string, error) {
+	t.logger.Debug("convertItemToCells: Converting item of type %T", item)
+
+	// 1. User-defined table-wide stringer (t.stringer) takes highest precedence.
+	if t.stringer != nil {
+		res, err := t.convertToStringer(item)
+		if err == nil {
+			t.logger.Debug("convertItemToCells: Used custom table stringer (t.stringer) for type %T. Produced %d cells: %v", item, len(res), res)
+			return res, nil
+		}
+		t.logger.Warn("convertItemToCells: Custom table stringer (t.stringer) was set but incompatible or errored for type %T: %v. Will attempt other conversion methods.", item, err)
+	}
+
+	// 2. Handle untyped nil directly.
+	if item == nil {
+		t.logger.Debug("convertItemToCells: Item is untyped nil. Returning single empty cell.")
+		return []string{""}, nil
+	}
+
+	itemValue := reflect.ValueOf(item)
+	itemType := itemValue.Type()
+
+	// 3. Handle pointers: Dereference pointers to get to the underlying struct or value.
+	if itemType.Kind() == reflect.Ptr {
+		if itemValue.IsNil() {
+			t.logger.Debug("convertItemToCells: Item is a nil pointer of type %s. Returning single empty cell.", itemType.String())
+			return []string{""}, nil
+		}
+		itemValue = itemValue.Elem()
+		itemType = itemValue.Type()
+		t.logger.Debug("convertItemToCells: Dereferenced pointer, now processing type %s.", itemType.String())
+	}
+
+	// 4. Special handling for structs:
+	if itemType.Kind() == reflect.Struct {
+		// Check if the original item (before potential dereference) implements Formatter or Stringer.
+		if formatter, ok := item.(tw.Formatter); ok {
+			t.logger.Debug("convertItemToCells: Struct item (type %s) is tw.Formatter. Using Format(). Resulting in 1 cell.", itemType.Name())
+			return []string{formatter.Format()}, nil
+		}
+		if stringer, ok := item.(fmt.Stringer); ok {
+			t.logger.Debug("convertItemToCells: Struct item (type %s) is fmt.Stringer. Using String(). Resulting in 1 cell.", itemType.Name())
+			return []string{stringer.String()}, nil
+		}
+
+		t.logger.Debug("convertItemToCells: Item is a struct (type %s). Attempting generic field reflection to expand into multiple cells.", itemType.Name())
+		numFields := itemValue.NumField()
+		structCells := make([]string, 0, numFields)
+		hasProcessableFields := false
+
+		for i := 0; i < numFields; i++ {
+			fieldMeta := itemType.Field(i)
+			if fieldMeta.PkgPath != "" {
+				t.logger.Debug("convertItemToCells: Skipping unexported field %s in struct %s", fieldMeta.Name, itemType.Name())
+				continue
+			}
+			hasProcessableFields = true // Mark true if we encounter any exported field
+
+			jsonTag := fieldMeta.Tag.Get("json")
+			if jsonTag == "-" {
+				t.logger.Debug("convertItemToCells: Skipping field %s in struct %s due to json:\"-\" tag", fieldMeta.Name, itemType.Name())
+				continue
+			}
+
+			fieldReflectedValue := itemValue.Field(i)
+			if strings.Contains(jsonTag, ",omitempty") && fieldReflectedValue.IsZero() {
+				t.logger.Debug("convertItemToCells: Omitting zero value for field %s in struct %s due to omitempty tag", fieldMeta.Name, itemType.Name())
+				structCells = append(structCells, "")
+				continue
+			}
+			structCells = append(structCells, t.convertToString(fieldReflectedValue.Interface()))
+		}
+
+		// Only return expanded cells if there were processable fields.
+		// If a struct has no exported fields, or all were skipped via json:"-",
+		// it should still produce output (e.g. fmt.Sprintf of the struct) rather than an empty row.
+		if hasProcessableFields {
+			t.logger.Debug("convertItemToCells: Struct %s reflected into %d cells: %v", itemType.Name(), len(structCells), structCells)
+			return structCells, nil
+		}
+
+		t.logger.Warn("convertItemToCells: Struct %s has no processable exported fields. Falling back to Sprintf for the whole item (resulting in 1 cell).", itemType.Name())
+		return []string{t.convertToString(item)}, nil // 'item' is the original potentially pointer type
+	}
+
+	// 5. Item is NOT a struct. It might be a basic type or a non-struct type implementing Formatter/Stringer.
+	//    These should all result in a single cell.
+	if formatter, ok := item.(tw.Formatter); ok {
+		t.logger.Debug("convertItemToCells: Item (non-struct, type %T) is tw.Formatter. Using Format(). Resulting in 1 cell.", item)
+		return []string{formatter.Format()}, nil
+	}
+	if stringer, ok := item.(fmt.Stringer); ok {
+		t.logger.Debug("convertItemToCells: Item (non-struct, type %T) is fmt.Stringer. Using String(). Resulting in 1 cell.", item)
+		return []string{stringer.String()}, nil
+	}
+
+	// 6. Fallback for any other single item (e.g., basic types like int, string, bool):
+	t.logger.Debug("convertItemToCells: Item (type %T) is a basic type or unhandled by other mechanisms. Treating as single cell via convertToString.", item)
+	return []string{t.convertToString(item)}, nil
+}
+
 // convertCellsToStrings converts a row to its raw string representation using specified cell config for filters.
 // 'rowInput' can be []string, []any, or a custom type if t.stringer is set.
 func (t *Table) convertCellsToStrings(rowInput interface{}, cellCfg tw.CellConfig) ([]string, error) {
@@ -835,153 +971,144 @@ func (t *Table) convertCellsToStrings(rowInput interface{}, cellCfg tw.CellConfi
 	var err error
 
 	switch v := rowInput.(type) {
+	//Directly supported slice types
 	case []string:
 		cells = v
-
-	case []interface{}:
+	case []interface{}: // Catches variadic simple types grouped by Append
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = t.convertToString(val)
 		}
-
-	// Integer types
 	case []int:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.Itoa(val)
 		}
-
 	case []int8:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatInt(int64(val), 10)
 		}
-
 	case []int16:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatInt(int64(val), 10)
 		}
-
-	case []int32:
+	case []int32: // Also rune
 		cells = make([]string, len(v))
 		for i, val := range v {
-			cells[i] = strconv.FormatInt(int64(val), 10)
-		}
-
+			cells[i] = t.convertToString(val)
+		} // Use convertToString for potential rune
 	case []int64:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatInt(val, 10)
 		}
-
-	// Unsigned integer types
 	case []uint:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatUint(uint64(val), 10)
 		}
-
-	case []uint8: // Also handles []byte
+	case []uint8: // Also byte
 		cells = make([]string, len(v))
+		// If it's truly []byte, convertToString will handle it as a string.
+		// If it's a slice of small numbers, convertToString will handle them individually.
 		for i, val := range v {
-			cells[i] = strconv.FormatUint(uint64(val), 10)
+			cells[i] = t.convertToString(val)
 		}
-
 	case []uint16:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatUint(uint64(val), 10)
 		}
-
 	case []uint32:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatUint(uint64(val), 10)
 		}
-
 	case []uint64:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatUint(val, 10)
 		}
-
-	// Floating point types
 	case []float32:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatFloat(float64(val), 'f', -1, 32)
 		}
-
 	case []float64:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatFloat(val, 'f', -1, 64)
 		}
-
-	// Boolean type
 	case []bool:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatBool(val)
 		}
-
-	// Formatter cases
-	case tw.Formatter:
-		t.logger.Debug("convertCellsToStrings: Input is tw.Formatter, using Format()")
-		cells = []string{v.Format()}
-
 	case []tw.Formatter:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = val.Format()
 		}
-
-	// Stringer cases
-	case fmt.Stringer:
-		t.logger.Debug("convertCellsToStrings: Input is fmt.Stringer, using String()")
-		cells = []string{v.String()}
-
 	case []fmt.Stringer:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = val.String()
 		}
 
+	//Cases for single items that are NOT slices
+	// These are now dispatched to convertItemToCells by the default case.
+	// Keeping direct tw.Formatter and fmt.Stringer here could be a micro-optimization
+	// if `rowInput` is *exactly* that type (not a struct implementing it),
+	// but for clarity, `convertItemToCells` can handle these too.
+	// For this iteration, to match the described flow:
+	case tw.Formatter: // This handles a single Formatter item
+		t.logger.Debug("convertCellsToStrings: Input is a single tw.Formatter. Using Format().")
+		cells = []string{v.Format()}
+	case fmt.Stringer: // This handles a single Stringer item
+		t.logger.Debug("convertCellsToStrings: Input is a single fmt.Stringer. Using String().")
+		cells = []string{v.String()}
+
 	default:
-		// Fallback to stringer with reflection
-		t.logger.Debug("convertCellsToStrings: Attempting conversion using custom stringer for type %T", rowInput)
-		cells, err = t.convertToStringer(rowInput)
+		// If rowInput is not one of the recognized slice types above,
+		// or not a single Formatter/Stringer that was directly matched,
+		// it's treated as a single item that needs to be converted into potentially multiple cells.
+		// This is where structs (for field expansion) or other single values (for a single cell) are handled.
+		t.logger.Debug("convertCellsToStrings: Default case for type %T. Dispatching to convertItemToCells.", rowInput)
+		cells, err = t.convertItemToCells(rowInput)
 		if err != nil {
-			t.logger.Debug("convertCellsToStrings: Stringer error: %v", err)
+			t.logger.Error("convertCellsToStrings: Error from convertItemToCells for type %T: %v", rowInput, err)
 			return nil, err
 		}
 	}
 
-	// Apply filters if any
-	if cellCfg.Filter.Global != nil {
-		t.logger.Debug("convertCellsToStrings: Applying global filter to cells: %v", cells)
-		cells = cellCfg.Filter.Global(cells)
-	}
-
-	if len(cellCfg.Filter.PerColumn) > 0 {
-		t.logger.Debug("convertCellsToStrings: Applying per-column filters to cells")
-		numFilters := len(cellCfg.Filter.PerColumn)
-		limit := numFilters
-		if len(cells) < limit {
-			limit = len(cells)
+	// Apply filters (common logic for all successful conversions)
+	if err == nil && cells != nil {
+		if cellCfg.Filter.Global != nil {
+			t.logger.Debug("convertCellsToStrings: Applying global filter to cells: %v", cells)
+			cells = cellCfg.Filter.Global(cells)
 		}
-		for i := 0; i < limit; i++ {
-			if t.config.Row.Filter.PerColumn[i] != nil {
-				originalCell := cells[i]
-				cells[i] = t.config.Row.Filter.PerColumn[i](cells[i])
-				if cells[i] != originalCell {
-					t.logger.Debug("  convertCellsToStrings: Col %d filter applied: '%s' -> '%s'", i, originalCell, cells[i])
+		if len(cellCfg.Filter.PerColumn) > 0 {
+			t.logger.Debug("convertCellsToStrings: Applying per-column filters to %d cells", len(cells))
+			for i := 0; i < len(cellCfg.Filter.PerColumn); i++ {
+				if i < len(cells) && cellCfg.Filter.PerColumn[i] != nil {
+					originalCell := cells[i]
+					cells[i] = cellCfg.Filter.PerColumn[i](cells[i])
+					if cells[i] != originalCell {
+						t.logger.Debug("  convertCellsToStrings: Col %d filter applied: '%s' -> '%s'", i, originalCell, cells[i])
+					}
+				} else if i >= len(cells) && cellCfg.Filter.PerColumn[i] != nil {
+					t.logger.Warn("  convertCellsToStrings: Per-column filter defined for col %d, but item only produced %d cells. Filter for this column skipped.", i, len(cells))
 				}
 			}
 		}
 	}
 
+	if err != nil {
+		t.logger.Debug("convertCellsToStrings: Returning with error: %v", err)
+		return nil, err
+	}
 	t.logger.Debug("convertCellsToStrings: Conversion and filtering completed, raw cells: %v", cells)
 	return cells, nil
 }
@@ -1104,7 +1231,7 @@ func (t *Table) getNumColsToUse() int {
 
 // prepareTableSection prepares either headers or footers for the table
 func (t *Table) prepareTableSection(elements []any, config tw.CellConfig, sectionName string) [][]string {
-	actualCellsToProcess := t.processVariadicElements(elements)
+	actualCellsToProcess := t.processVariadic(elements)
 	t.logger.Debug("%s(): Effective cells to process: %v", sectionName, actualCellsToProcess)
 
 	stringsResult, err := t.convertCellsToStrings(actualCellsToProcess, config)
@@ -1136,33 +1263,28 @@ func (t *Table) prepareTableSection(elements []any, config tw.CellConfig, sectio
 	return prepared
 }
 
-// processVariadicElements handles the common logic for processing variadic arguments
+// processVariadic handles the common logic for processing variadic arguments
 // that could be either individual elements or a slice of elements
-func (t *Table) processVariadicElements(elements []any) []any {
-	// Check if the input looks like a single slice was passed
+func (t *Table) processVariadic(elements []any) []any {
 	if len(elements) == 1 {
-		firstArg := elements[0]
-		// Try to assert to common slice types users might pass
-		switch v := firstArg.(type) {
+		switch v := elements[0].(type) {
 		case []string:
-			t.logger.Debug("Detected single []string argument. Unpacking it.")
-			result := make([]any, len(v))
-			for i, val := range v {
-				result[i] = val
+			t.logger.Debug("Detected single []string argument. Unpacking it (fast path).")
+			out := make([]any, len(v))
+			for i := range v {
+				out[i] = v[i]
 			}
-			return result
+			return out
+
 		case []interface{}:
-			t.logger.Debug("Detected single []interface{} argument. Unpacking it.")
-			result := make([]any, len(v))
-			for i, val := range v {
-				result[i] = val
-			}
-			return result
+			t.logger.Debug("Detected single []interface{} argument. Unpacking it (fast path).")
+			out := make([]any, len(v))
+			copy(out, v)
+			return out
 		}
 	}
 
-	// Either multiple arguments were passed, or a single non-slice argument
-	t.logger.Debug("Input has multiple elements, is empty, or is a single non-slice element. Using variadic elements as is.")
+	t.logger.Debug("Input has multiple elements or single non-slice. Using variadic elements as-is.")
 	return elements
 }
 
