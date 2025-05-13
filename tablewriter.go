@@ -699,6 +699,7 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 	initialInputCellCount := len(cells)
 	result := make([][]string, 0)
 
+	// ll.Dbg(t.config.MaxWidth)
 	// force max width
 	if t.config.MaxWidth != 0 {
 		// it has headers

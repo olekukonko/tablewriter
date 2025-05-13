@@ -714,6 +714,20 @@ func WithColumnMax(width int) Option {
 	}
 }
 
+// WithTableMax sets a global maximum table width for the table
+// Negative values are ignored, and the change is logged if debugging is enabled.
+func WithTableMax(width int) Option {
+	return func(target *Table) {
+		if width < 0 {
+			return
+		}
+		target.config.MaxWidth = width
+		if target.logger != nil {
+			target.logger.Debug("Option: WithTableMax applied to Table: %v", width)
+		}
+	}
+}
+
 // WithColumnWidths sets per-column widths for the table in streaming mode.
 // Negative widths are removed, and the change is logged if debugging is enabled.
 func WithColumnWidths(widths map[int]int) Option {
