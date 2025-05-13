@@ -549,7 +549,6 @@ func TestStreamOnlyHeaderNoHeaderLine(t *testing.T) {
 	}
 }
 
-// TestStreamSlowOutput tests streaming table with incremental output and delays.
 func TestStreamSlowOutput(t *testing.T) {
 	var buf bytes.Buffer
 	st := createStreamTable(t, &buf, tablewriter.WithConfig(tablewriter.Config{
@@ -559,43 +558,40 @@ func TestStreamSlowOutput(t *testing.T) {
 		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
 	)
 
+	// --- Test Start() ---
 	err := st.Start()
 	if err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
-	fmt.Println("Output after Start():")
-	fmt.Print(buf.String())
 	buf.Reset()
-	time.Sleep(100 * time.Millisecond)
 
-	st.Header([]string{"Event", "Timestamp"}) // Widths: 5+2=7, 9+2=11
-	fmt.Println("\nOutput after Header():")
-	fmt.Print(buf.String())
+	// --- Test Header() ---
+	time.Sleep(100 * time.Millisecond)
+	st.Header([]string{"Event", "Timestamp"})
+	lastLine := getLastContentLine(&buf)
+	if !strings.Contains(lastLine, "EVENT") || !strings.Contains(lastLine, "TIMESTAMP") {
+		t.Errorf("Header missing expected columns:\nGot: %q", lastLine)
+	}
 	buf.Reset()
-	time.Sleep(100 * time.Millisecond)
 
+	// --- Test Rows ---
 	for i := 1; i <= 3; i++ {
-		err = st.Append([]string{fmt.Sprintf("Data Row %d", i), time.Now().Format("15:04:05.000")})
+		time.Sleep(100 * time.Millisecond)
+		err = st.Append([]string{fmt.Sprintf("Row %d", i), time.Now().Format("15:04:05.000")})
 		if err != nil {
 			t.Fatalf("Row %d failed: %v", i, err)
 		}
-		fmt.Printf("\nOutput after Row %d:\n", i)
-		fmt.Print(buf.String())
+
+		lastLine = getLastContentLine(&buf)
+		if !strings.Contains(lastLine, fmt.Sprintf("Row %d", i)) {
+			t.Errorf("Row %d content missing:\nGot: %q", i, lastLine)
+		}
 		buf.Reset()
-		time.Sleep(100 * time.Millisecond)
 	}
 
 	err = st.Close()
 	if err != nil {
-		t.Fatalf("End failed: %v", err)
-	}
-	fmt.Println("\nOutput after End():")
-	fmt.Print(buf.String())
-
-	t.Log("Slow stream test completed. Observe terminal output.")
-	if st.Logger().Len() > 0 {
-		//fmt.Println("--- DEBUG LOG ---")
-		//fmt.Println(st.Debug().String())
+		t.Fatalf("Close failed: %v", err)
 	}
 }
 

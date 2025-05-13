@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -266,4 +267,20 @@ func getDiff(expected, actual string) string {
 		diff.WriteString(fmt.Sprintf("%4d %s| %-32s | %-32s\n", i+1, marker, eLine, aLine))
 	}
 	return diff.String()
+}
+
+func getLastContentLine(buf *bytes.Buffer) string {
+	content := buf.String()
+	lines := strings.Split(content, "\n")
+
+	// Search backwards for first non-border, non-empty line
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" || strings.Contains(line, "─") ||
+			strings.Contains(line, "┌") || strings.Contains(line, "└") {
+			continue
+		}
+		return line
+	}
+	return ""
 }

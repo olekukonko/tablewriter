@@ -954,14 +954,6 @@ func WithRendition(rendition tw.Rendition) Option {
 		} else {
 			target.logger.Warn("Option: WithRendition: Current renderer type %T does not implement tw.Renditioning. Rendition may not be applied as expected.", target.renderer)
 			// As a fallback, if it's a known type without the interface but we know how to re-create it (like before):
-			// if _, ok := target.renderer.(*renderer.Blueprint); ok {
-			//    target.logger.Debug("Option: WithRendition (Fallback): Re-creating Blueprint renderer with new rendition: %+v", rendition)
-			//    target.renderer = renderer.NewBlueprint(rendition)
-			//    if target.logger != nil {
-			//        target.renderer.Logger(target.logger)
-			//    }
-			// }
-			// However, relying on the interface is cleaner.
 		}
 	}
 }
