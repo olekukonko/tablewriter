@@ -498,3 +498,11 @@ func (o *Ocean) formatCellContent(content string, cellVisualWidth int, padding t
 	}
 	return sb.String()
 }
+
+func (o *Ocean) Rendition(config tw.Rendition) {
+	o.config = mergeRendition(o.config, config)
+	o.logger.Debug("Blueprint.Rendition updated. New internal config: %+v", o.config)
+}
+
+// Ensure Blueprint implements tw.Renditioning
+var _ tw.Renditioning = (*Ocean)(nil)

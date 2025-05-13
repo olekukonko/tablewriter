@@ -109,10 +109,7 @@ func NewTable(w io.Writer, opts ...Option) *Table {
 		newLine:      tw.NewLine,
 		trace:        &bytes.Buffer{},
 
-		// Caption defaults
-		caption: tw.Caption{Spot: tw.SpotNone, Align: tw.AlignLeft},
-
-		// Streaming
+		// --- ADDED INITIALIZATION START ---
 		streamWidths:           tw.NewMapper[int, int](), // Initialize empty mapper for streaming widths
 		lastRenderedMergeState: tw.NewMapper[int, tw.MergeState](),
 		headerRendered:         false,
@@ -126,24 +123,9 @@ func NewTable(w io.Writer, opts ...Option) *Table {
 		stringerCacheEnabled: false, // Disabled by default
 	}
 
-	// add logger
-	t.logger = ll.New("table").Handler(lh.NewTextHandler(t.trace))
+	// set Options
+	t.Options(opts...)
 
-	for _, opt := range opts {
-		opt(t)
-	}
-
-	// force debugging mode if set
-	// This should  be move away form WithDebug
-	if t.config.Debug == true {
-		t.logger.Enable()
-	} else {
-		t.logger.Disable()
-	}
-
-	// send logger to renderer
-	// this will overwrite the default logger
-	t.renderer.Logger(t.logger)
 	t.logger.Info("Table initialized with %d options", len(opts))
 	return t
 }
@@ -245,8 +227,15 @@ func (t *Table) Config() Config {
 // Configure updates the table's configuration using a provided function.
 // Parameter fn is a function that modifies the Config struct.
 // Returns the Table instance for method chaining.
-func (t *Table) Configure(fn func(*Config)) *Table {
-	fn(&t.config)
+func (t *Table) Configure(fn func(cfg *Config)) *Table {
+	fn(&t.config) // Let the user modify the config directly
+	// Handle any immediate side-effects of config changes, e.g., logger state
+	if t.config.Debug {
+		t.logger.Enable()
+	} else {
+		t.logger.Disable()
+	}
+	t.logger.Debug("Configure complete. New t.config: %+v", t.config)
 	return t
 }
 
@@ -305,6 +294,35 @@ func (t *Table) Footer(elements ...any) {
 				return nil
 			}
 		}())
+}
+
+// Options updates the table's Options using a provided function.
+// Parameter opts is a function that modifies the Table struct.
+// Returns the Table instance for method chaining.
+func (t *Table) Options(opts ...Option) *Table {
+
+	// add logger
+	if t.logger == nil {
+		t.logger = ll.New("table").Handler(lh.NewTextHandler(t.trace))
+	}
+
+	// loop through options
+	for _, opt := range opts {
+		opt(t)
+	}
+
+	// force debugging mode if set
+	// This should  be move away form WithDebug
+	if t.config.Debug == true {
+		t.logger.Enable()
+	} else {
+		t.logger.Disable()
+	}
+
+	// send logger to renderer
+	// this will overwrite the default logger
+	t.renderer.Logger(t.logger)
+	return t
 }
 
 // Render triggers the table rendering process to the configured writer.

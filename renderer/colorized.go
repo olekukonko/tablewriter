@@ -688,3 +688,31 @@ func (c *Colorized) renderLine(w io.Writer, ctx tw.Formatting, line []string, ti
 	fmt.Fprint(w, output.String())
 	c.logger.Debug("renderLine: Final rendered line: %s", strings.TrimSuffix(output.String(), c.newLine))
 }
+
+// Rendition updates the parts of ColorizedConfig that correspond to tw.Rendition
+// by merging the provided newRendition. Color-specific Tints are not modified.
+func (c *Colorized) Rendition(newRendition tw.Rendition) { // Method name matches interface
+	c.logger.Debug("Colorized.Rendition called. Current B/Sym/Set: B:%+v, Sym:%T, S:%+v. Override: %+v",
+		c.config.Borders, c.config.Symbols, c.config.Settings, newRendition)
+
+	currentRenditionPart := tw.Rendition{
+		Borders:  c.config.Borders,
+		Symbols:  c.config.Symbols,
+		Settings: c.config.Settings,
+	}
+
+	mergedRenditionPart := mergeRendition(currentRenditionPart, newRendition)
+
+	c.config.Borders = mergedRenditionPart.Borders
+	c.config.Symbols = mergedRenditionPart.Symbols
+	if c.config.Symbols == nil {
+		c.config.Symbols = tw.NewSymbols(tw.StyleLight)
+	}
+	c.config.Settings = mergedRenditionPart.Settings
+
+	c.logger.Debug("Colorized.Rendition updated. New B/Sym/Set: B:%+v, Sym:%T, S:%+v",
+		c.config.Borders, c.config.Symbols, c.config.Settings)
+}
+
+// Ensure Colorized implements tw.Renditioning
+var _ tw.Renditioning = (*Colorized)(nil)

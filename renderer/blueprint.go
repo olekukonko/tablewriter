@@ -380,7 +380,6 @@ func (f *Blueprint) formatCell(content string, width int, padding tw.Padding, al
 }
 
 // renderLine renders a single line (header, row, or footer) with borders, separators, and merge handling.
-// renderLine renders a single line (header, row, or footer) with borders, separators, and merge handling.
 func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 	// Get sorted column indices
 	sortedKeys := ctx.Row.Widths.SortedKeys()
@@ -565,3 +564,11 @@ func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 	fmt.Fprint(w, output.String())
 	f.logger.Debug("renderLine: Final rendered line: '%s' (total width %d)", strings.TrimSuffix(output.String(), tw.NewLine), totalLineWidth)
 }
+
+func (f *Blueprint) Rendition(config tw.Rendition) {
+	f.config = mergeRendition(f.config, config)
+	f.logger.Debug("Blueprint.Rendition updated. New internal config: %+v", f.config)
+}
+
+// Ensure Blueprint implements tw.Renditioning
+var _ tw.Renditioning = (*Blueprint)(nil)

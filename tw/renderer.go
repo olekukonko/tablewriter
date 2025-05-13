@@ -26,6 +26,12 @@ type Rendition struct {
 	Streaming bool
 }
 
+// Renditioning  has a method to update its rendition.
+// Let's define an optional interface for this.
+type Renditioning interface {
+	Rendition(r Rendition)
+}
+
 // Formatting encapsulates the complete formatting context for a table row.
 // It provides all necessary information to render a row correctly within the table structure.
 type Formatting struct {

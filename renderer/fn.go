@@ -191,3 +191,41 @@ func mergeSettings(defaults, overrides tw.Settings) tw.Settings {
 	}
 	return defaults
 }
+
+// MergeRendition merges the 'override' rendition into the 'current' rendition.
+// It only updates fields in 'current' if they are explicitly set (non-zero/non-nil) in 'override'.
+// This allows for partial updates to a renderer's configuration.
+func mergeRendition(current, override tw.Rendition) tw.Rendition {
+	// Merge Borders: Only update if override border states are explicitly set (not 0).
+	// A tw.State's zero value is 0, which is distinct from tw.On (1) or tw.Off (-1).
+	// So, if override.Borders.Left is 0, it means "not specified", so we keep current.
+	if override.Borders.Left != 0 {
+		current.Borders.Left = override.Borders.Left
+	}
+	if override.Borders.Right != 0 {
+		current.Borders.Right = override.Borders.Right
+	}
+	if override.Borders.Top != 0 {
+		current.Borders.Top = override.Borders.Top
+	}
+	if override.Borders.Bottom != 0 {
+		current.Borders.Bottom = override.Borders.Bottom
+	}
+
+	// Merge Symbols: Only update if override.Symbols is not nil.
+	if override.Symbols != nil {
+		current.Symbols = override.Symbols
+	}
+
+	// Merge Settings: Use the existing mergeSettings for granular control.
+	// mergeSettings already handles preserving defaults for unset (zero) overrides.
+	current.Settings = mergeSettings(current.Settings, override.Settings)
+
+	// Streaming flag: typically set at renderer creation, but can be overridden if needed.
+	// For now, let's assume it's not commonly changed post-creation by a generic rendition merge.
+	// If override provides a different streaming capability, it might indicate a fundamental
+	// change that a simple merge shouldn't handle without more context.
+	// current.Streaming = override.Streaming // Or keep current.Streaming
+
+	return current
+}

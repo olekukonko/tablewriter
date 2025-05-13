@@ -25,6 +25,12 @@ github.com/olekukonko/ll v0.0.0-20250510164409-ceb6a13d91b7 h1:N4G1sMmKuHIZ6aZEh
 github.com/olekukonko/ll v0.0.0-20250510164409-ceb6a13d91b7/go.mod h1:En+sEW0JNETl26+K8eZ6/W4UQ7CYSrrgg/EdIYT2H8g=
 github.com/olekukonko/ll v0.0.6-0.20250511102614-9564773e9d27 h1:LgDwLQDELPB6wMOx1x4DSXnH2pjQNDKFgqv2inJuiAU=
 github.com/olekukonko/ll v0.0.6-0.20250511102614-9564773e9d27/go.mod h1:En+sEW0JNETl26+K8eZ6/W4UQ7CYSrrgg/EdIYT2H8g=
+github.com/olekukonko/ll v0.0.6-0.20250513000243-3b679d30b046 h1:LHNAHSvMNNAYbh5Rj+RcR2BJrQ3PH3KKc3Db+ktanO4=
+github.com/olekukonko/ll v0.0.6-0.20250513000243-3b679d30b046/go.mod h1:En+sEW0JNETl26+K8eZ6/W4UQ7CYSrrgg/EdIYT2H8g=
+github.com/olekukonko/ll v0.0.6-0.20250513000539-a956e85bdb0e h1:MkLJt4HgQw7HAWjzPdA8bBgpIKjGxIGjpy2316gN1eU=
+github.com/olekukonko/ll v0.0.6-0.20250513000539-a956e85bdb0e/go.mod h1:En+sEW0JNETl26+K8eZ6/W4UQ7CYSrrgg/EdIYT2H8g=
+github.com/olekukonko/ll v0.0.6-0.20250513001635-5dbed4661872 h1:44lc4ASGSoHddTt0yClHvlqWm50vzXPE1LkkPQxj8kc=
+github.com/olekukonko/ll v0.0.6-0.20250513001635-5dbed4661872/go.mod h1:En+sEW0JNETl26+K8eZ6/W4UQ7CYSrrgg/EdIYT2H8g=
 github.com/rivo/uniseg v0.2.0 h1:S1pD9weZBuJdFmowNwbpi7BJ8TNftyUImj/0WQi72jY=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=

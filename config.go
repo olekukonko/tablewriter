@@ -938,6 +938,34 @@ func WithAlignment(alignment tw.Alignment) Option {
 	}
 }
 
+// WithRendition allows updating the active renderer's rendition configuration
+// by merging the provided rendition.
+// If the renderer does not implement tw.Renditioning, a warning is logged.
+func WithRendition(rendition tw.Rendition) Option {
+	return func(target *Table) {
+		if target.renderer == nil {
+			target.logger.Warn("Option: WithRendition: No renderer set on table.")
+			return
+		}
+
+		if ru, ok := target.renderer.(tw.Renditioning); ok {
+			ru.Rendition(rendition) // This will call Blueprint.SetRendition or Colorized.SetRendition
+			target.logger.Debug("Option: WithRendition: Applied to renderer via Renditioning.SetRendition(): %+v", rendition)
+		} else {
+			target.logger.Warn("Option: WithRendition: Current renderer type %T does not implement tw.Renditioning. Rendition may not be applied as expected.", target.renderer)
+			// As a fallback, if it's a known type without the interface but we know how to re-create it (like before):
+			// if _, ok := target.renderer.(*renderer.Blueprint); ok {
+			//    target.logger.Debug("Option: WithRendition (Fallback): Re-creating Blueprint renderer with new rendition: %+v", rendition)
+			//    target.renderer = renderer.NewBlueprint(rendition)
+			//    if target.logger != nil {
+			//        target.renderer.Logger(target.logger)
+			//    }
+			// }
+			// However, relying on the interface is cleaner.
+		}
+	}
+}
+
 // defaultConfig returns a default Config with sensible settings for headers, rows, footers, and behavior.
 func defaultConfig() Config {
 	defaultPadding := tw.Padding{Left: tw.Space, Right: tw.Space, Top: tw.Empty, Bottom: tw.Empty}
