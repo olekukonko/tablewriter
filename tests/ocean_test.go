@@ -27,7 +27,7 @@ func TestOceanTableDefault(t *testing.T) { // You already have this, keep it
 └───────┴─────┴──────────┘
 `
 	if !visualCheck(t, "OceanTableRendering_BatchDefault", buf.String(), expected) {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 

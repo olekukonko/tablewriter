@@ -44,7 +44,7 @@ func TestVerticalMerge(t *testing.T) {
 `
 
 	if !visualCheck(t, "VerticalMerge", buf.String(), expected) {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 
@@ -89,7 +89,7 @@ func TestHorizontalMerge(t *testing.T) {
 `
 
 	if !visualCheck(t, "TestHorizontalMerge", buf.String(), expected) {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 
@@ -141,7 +141,7 @@ func TestHorizontalMergeEachLine(t *testing.T) {
 `
 	check := visualCheck(t, "HorizontalMergeEachLine", buf.String(), expected)
 	if !check {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 
@@ -187,7 +187,7 @@ func TestHorizontalMergeEachLineCenter(t *testing.T) {
 `
 	check := visualCheck(t, "HorizontalMergeEachLineCenter", buf.String(), expected)
 	if !check {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 
@@ -236,7 +236,7 @@ func TestHorizontalMergeAlignFooter(t *testing.T) {
 `
 	check := visualCheck(t, "HorizontalMergeAlignFooter", buf.String(), expected)
 	if !check {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 
@@ -279,7 +279,7 @@ func TestVerticalMergeLines(t *testing.T) {
 `
 
 	if !visualCheck(t, "VerticalMergeLines", buf.String(), expected) {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 
@@ -410,7 +410,7 @@ func TestMergeHierarchical(t *testing.T) {
 `
 	check := visualCheck(t, "MergeHierarchical", buf.String(), expected)
 	if !check {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 
@@ -454,7 +454,7 @@ func TestMergeHierarchicalUnicode(t *testing.T) {
 `
 	check := visualCheck(t, "MergeHierarchicalUnicode", buf.String(), expected)
 	if !check {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 
@@ -652,7 +652,7 @@ func TestMergeWithMultipleLines(t *testing.T) {
         └────────┴─────────────┴─────────┴─────────┘
 `
 		if !visualCheck(t, "Hierarch", buf.String(), expected) {
-			// t.Error(table.Debug().String())
+			// t.Error(table.Debug())
 		}
 	})
 }

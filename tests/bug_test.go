@@ -64,7 +64,7 @@ func TestBug252(t *testing.T) {
 `
 		debug := visualCheck(t, "TestBug252-Normal", buf.String(), expected)
 		if !debug {
-			t.Error(table.Debug().String())
+			t.Error(table.Debug())
 		}
 
 	})
@@ -87,7 +87,7 @@ func TestBug252(t *testing.T) {
 `
 		debug := visualCheck(t, "TestBug252-Mixed", buf.String(), expected)
 		if !debug {
-			// t.Error(table.Debug().String())
+			// t.Error(table.Debug())
 		}
 
 	})
@@ -111,7 +111,7 @@ func TestBug252(t *testing.T) {
 `
 		debug := visualCheck(t, "TestBasicTableDefault", buf.String(), expected)
 		if !debug {
-			// t.Error(table.Debug().String())
+			// t.Error(table.Debug())
 		}
 	})
 
@@ -145,7 +145,7 @@ func TestBug252(t *testing.T) {
 `
 		debug := visualCheck(t, "TestBug252-Override", buf.String(), expected)
 		if !debug {
-			// t.Error(table.Debug().String())
+			// t.Error(table.Debug())
 		}
 	})
 
@@ -183,7 +183,7 @@ func TestBug252(t *testing.T) {
 		}
 		debug := visualCheck(t, "TestBug252-Override-Streaming", buf.String(), expected)
 		if !debug {
-			// t.Error(table.Debug().String())
+			// t.Error(table.Debug())
 		}
 	})
 

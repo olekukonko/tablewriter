@@ -31,7 +31,7 @@ func TestHTMLBasicTable(t *testing.T) {
 </tbody>
 </table>`
 	if !visualCheckHTML(t, "HTMLBasicTable", buf.String(), expected) {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 
@@ -70,7 +70,7 @@ func TestHTMLWithFooterAndAlignment(t *testing.T) {
 </tfoot>
 </table>`
 	if !visualCheckHTML(t, "HTMLWithFooterAndAlignment", buf.String(), expected) {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 
@@ -143,7 +143,7 @@ func TestHTMLMultiLine(t *testing.T) {
 </table>`
 	if !visualCheckHTML(t, "HTMLMultiLine_Default", buf.String(), expected) {
 		t.Logf("MultiLine Default Output: %s", buf.String())
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 
 	// Test case 2: With AddLinesTag (no effect due to newline pre-splitting)
@@ -198,7 +198,7 @@ func TestHTMLHorizontalMerge(t *testing.T) {
 </tfoot>
 </table>`
 	if !visualCheckHTML(t, "HTMLHorizontalMerge", buf.String(), expected) {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 
@@ -235,7 +235,7 @@ func TestHTMLVerticalMerge(t *testing.T) {
 </tbody>
 </table>`
 	if !visualCheckHTML(t, "HTMLVerticalMerge", buf.String(), expected) {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 
@@ -271,7 +271,7 @@ func TestHTMLCombinedMerge(t *testing.T) {
 </table>`
 	if !visualCheckHTML(t, "HTMLCombinedMerge", buf.String(), expected) {
 		t.Logf("Combined Merge Output: %s", buf.String())
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 
@@ -310,7 +310,7 @@ func TestHTMLHierarchicalMerge(t *testing.T) {
 </tbody>
 </table>`
 	if !visualCheckHTML(t, "HTMLHierarchicalMerge", buf.String(), expected) {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 
@@ -328,7 +328,7 @@ func TestHTMLEmptyTable(t *testing.T) {
 </table>`
 	if !visualCheckHTML(t, "HTMLEmptyTable", buf.String(), expected) {
 		t.Logf("Empty table output: '%s'", buf.String())
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 
 	// Test case 2: Header-only table
@@ -382,7 +382,7 @@ func TestHTMLCSSClasses(t *testing.T) {
 </tfoot>
 </table>`
 	if !visualCheckHTML(t, "HTMLCSSClasses", buf.String(), expected) {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 

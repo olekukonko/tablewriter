@@ -107,7 +107,7 @@ func TestColorizedCustomColors(t *testing.T) {
 └───────┴─────┘
 `
 	if !visualCheck(t, "ColorizedCustomColors", buf.String(), expected) {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 
@@ -176,6 +176,6 @@ func TestColorizedHorizontalMerge(t *testing.T) {
         └─────────────────┴────────┘
 `
 	if !visualCheck(t, "ColorizedHorizontalMerge", buf.String(), expected) {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }

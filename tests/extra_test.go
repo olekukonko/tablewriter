@@ -371,7 +371,7 @@ func TestEmojiTable(t *testing.T) {
 
 `
 	if !visualCheck(t, "EmojiTable", buf.String(), expected) {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 

@@ -50,7 +50,7 @@ func TestStreamTableDefault(t *testing.T) {
 `
 		debug := visualCheck(t, "TestStreamTableDefault", buf.String(), expected)
 		if !debug {
-			t.Error(table.Debug().String())
+			t.Error(table.Debug())
 		}
 	})
 
@@ -83,7 +83,7 @@ func TestStreamTableDefault(t *testing.T) {
 `
 		debug := visualCheck(t, "BasicTableRendering", buf.String(), expected)
 		if !debug {
-			t.Error(table.Debug().String())
+			t.Error(table.Debug())
 		}
 	})
 
