@@ -53,6 +53,18 @@ const (
 	StyleGraphical
 	StyleMerger
 	StyleDefault
+	StyleDotted
+	StyleArrow
+	StyleStarry
+	StyleHearts
+	StyleTech
+	StyleNature
+	StyleArtistic
+	Style8Bit
+	StyleChaos
+	StyleDots
+	StyleBlocks
+	StyleZen
 )
 
 // String returns the string representation of a border style
@@ -71,9 +83,23 @@ func (s BorderStyle) String() string {
 		"SymbolMarkdown",
 		"SymbolGraphical",
 		"SymbolMerger",
+		"Default",
+		"Dotted",
+		"Arrow",
+		"Starry",
+		"Hearts",
+		"Tech",
+		"Nature",
+		"Artistic",
+		"8-Bit",
+		"Chaos",
+		"Dots",
+		"Blocks",
+		"Zen",
 	}[s]
 }
 
+// NewSymbols creates a new Symbols instance with the specified style
 // NewSymbols creates a new Symbols instance with the specified style
 func NewSymbols(style BorderStyle) Symbols {
 	switch style {
@@ -172,16 +198,195 @@ func NewSymbols(style BorderStyle) Symbols {
 	case StyleGraphical:
 		return &SymbolGraphical{}
 	case StyleMerger:
-		// Private: Custom style for merged table rendering
 		return &SymbolMerger{
-			row:    "─", // Light row
-			column: "│", // Light column
-			center: "+", // Simplified junction
+			row:    "─",
+			column: "│",
+			center: "+",
 			corners: [9]string{
 				"┌", "┬", "┐",
 				"├", "┼", "┤",
 				"└", "┴", "┘",
 			},
+		}
+	case StyleDotted:
+		return &SymbolSpecial{
+			name:   "Dotted",
+			row:    "·",
+			column: ":",
+			center: "+",
+			corners: [9]string{
+				".", "·", ".",
+				":", "+", ":",
+				"'", "·", "'",
+			},
+			headerLeft:  "",
+			headerMid:   "",
+			headerRight: "",
+		}
+	case StyleArrow:
+		return &SymbolSpecial{
+			name:   "Arrow",
+			row:    "→",
+			column: "↓",
+			center: "↔",
+			corners: [9]string{
+				"↗", "↑", "↖",
+				"→", "↔", "←",
+				"↘", "↓", "↙",
+			},
+			headerLeft:  "",
+			headerMid:   "",
+			headerRight: "",
+		}
+	case StyleStarry:
+		return &SymbolSpecial{
+			name:   "Starry",
+			row:    "★",
+			column: "☆",
+			center: "✶",
+			corners: [9]string{
+				"✧", "✯", "✧",
+				"✦", "✶", "✦",
+				"✧", "✯", "✧",
+			},
+			headerLeft:  "",
+			headerMid:   "",
+			headerRight: "",
+		}
+	case StyleHearts:
+		return &SymbolSpecial{
+			name:   "Hearts",
+			row:    "♥",
+			column: "❤",
+			center: "✚",
+			corners: [9]string{
+				"❥", "♡", "❥",
+				"❣", "✚", "❣",
+				"❦", "♡", "❦",
+			},
+			headerLeft:  "",
+			headerMid:   "",
+			headerRight: "",
+		}
+	case StyleTech:
+		return &SymbolSpecial{
+			name:   "Tech",
+			row:    "=",
+			column: "||",
+			center: "<>",
+			corners: [9]string{
+				"/*", "##", "*/",
+				"//", "<>", "\\",
+				"\\*", "##", "*/",
+			},
+			headerLeft:  "",
+			headerMid:   "",
+			headerRight: "",
+		}
+	case StyleNature:
+		return &SymbolSpecial{
+			name:   "Nature",
+			row:    "~",
+			column: "|",
+			center: "❀",
+			corners: [9]string{
+				"🌱", "🌿", "🌱",
+				"🍃", "❀", "🍃",
+				"🌻", "🌾", "🌻",
+			},
+			headerLeft:  "",
+			headerMid:   "",
+			headerRight: "",
+		}
+	case StyleArtistic:
+		return &SymbolSpecial{
+			name:   "Artistic",
+			row:    "▬",
+			column: "▐",
+			center: "⬔",
+			corners: [9]string{
+				"◈", "◊", "◈",
+				"◀", "⬔", "▶",
+				"◭", "▣", "◮",
+			},
+			headerLeft:  "",
+			headerMid:   "",
+			headerRight: "",
+		}
+	case Style8Bit:
+		return &SymbolSpecial{
+			name:   "8-Bit",
+			row:    "■",
+			column: "█",
+			center: "♦",
+			corners: [9]string{
+				"╔", "▲", "╗",
+				"◄", "♦", "►",
+				"╚", "▼", "╝",
+			},
+			headerLeft:  "",
+			headerMid:   "",
+			headerRight: "",
+		}
+	case StyleChaos:
+		return &SymbolSpecial{
+			name:   "Chaos",
+			row:    "≈",
+			column: "§",
+			center: "☯",
+			corners: [9]string{
+				"⌘", "∞", "⌥",
+				"⚡", "☯", "♞",
+				"⌂", "∆", "◊",
+			},
+			headerLeft:  "",
+			headerMid:   "",
+			headerRight: "",
+		}
+	case StyleDots:
+		return &SymbolSpecial{
+			name:   "Dots",
+			row:    "·",
+			column: " ",
+			center: "·",
+			corners: [9]string{
+				"·", "·", "·",
+				" ", "·", " ",
+				"·", "·", "·",
+			},
+			headerLeft:  "",
+			headerMid:   "",
+			headerRight: "",
+		}
+	case StyleBlocks:
+		return &SymbolSpecial{
+			name:   "Blocks",
+			row:    "▀",
+			column: "█",
+			center: "█",
+			corners: [9]string{
+				"▛", "▀", "▜",
+				"▌", "█", "▐",
+				"▙", "▄", "▟",
+			},
+			headerLeft:  "",
+			headerMid:   "",
+			headerRight: "",
+		}
+	case StyleZen:
+		return &SymbolSpecial{
+			name:   "Zen",
+			row:    "~",
+			column: " ",
+			center: "☯",
+			corners: [9]string{
+				" ", "♨", " ",
+				" ", "☯", " ",
+				" ", "♨", " ",
+			},
+			headerLeft:  "",
+			headerMid:   "",
+			headerRight: "",
 		}
 	default:
 		return &SymbolNothing{}
@@ -389,3 +594,33 @@ func (c *SymbolCustom) WithBottomRight(s string) *SymbolCustom { c.bottomRight =
 func (c *SymbolCustom) WithHeaderLeft(s string) *SymbolCustom  { c.headerLeft = s; return c }
 func (c *SymbolCustom) WithHeaderMid(s string) *SymbolCustom   { c.headerMid = s; return c }
 func (c *SymbolCustom) WithHeaderRight(s string) *SymbolCustom { c.headerRight = s; return c }
+
+// SymbolSpecial provides fully independent border symbols
+// SymbolSpecial provides fully independent border symbols with a corners array
+type SymbolSpecial struct {
+	name        string
+	row         string
+	column      string
+	center      string
+	corners     [9]string // [TopLeft, TopMid, TopRight, MidLeft, Center, MidRight, BottomLeft, BottomMid, BottomRight]
+	headerLeft  string
+	headerMid   string
+	headerRight string
+}
+
+// SymbolSpecial symbol methods
+func (s *SymbolSpecial) Name() string        { return s.name }
+func (s *SymbolSpecial) Center() string      { return s.center }
+func (s *SymbolSpecial) Row() string         { return s.row }
+func (s *SymbolSpecial) Column() string      { return s.column }
+func (s *SymbolSpecial) TopLeft() string     { return s.corners[0] }
+func (s *SymbolSpecial) TopMid() string      { return s.corners[1] }
+func (s *SymbolSpecial) TopRight() string    { return s.corners[2] }
+func (s *SymbolSpecial) MidLeft() string     { return s.corners[3] }
+func (s *SymbolSpecial) MidRight() string    { return s.corners[5] }
+func (s *SymbolSpecial) BottomLeft() string  { return s.corners[6] }
+func (s *SymbolSpecial) BottomMid() string   { return s.corners[7] }
+func (s *SymbolSpecial) BottomRight() string { return s.corners[8] }
+func (s *SymbolSpecial) HeaderLeft() string  { return s.headerLeft }
+func (s *SymbolSpecial) HeaderMid() string   { return s.headerMid }
+func (s *SymbolSpecial) HeaderRight() string { return s.headerRight }
