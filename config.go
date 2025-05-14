@@ -924,7 +924,7 @@ func WithTrimSpace(state tw.State) Option {
 	return func(target *Table) {
 		target.config.Behavior.TrimSpace = state
 		if target.logger != nil {
-			target.logger.Debug("Option: WithAutoHide applied to Table: %v", state)
+			target.logger.Debug("Option: WithTrimSpace applied to Table: %v", state)
 		}
 	}
 }
