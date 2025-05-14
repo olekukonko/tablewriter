@@ -808,9 +808,7 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 			cellContent = tw.Empty
 		}
 
-		if t.config.Behavior.TrimSpace.Enabled() { // Access the global table config for TrimSpace behavior
-			cellContent = strings.TrimSpace(cellContent)
-		}
+		cellContent = t.Trimmer(cellContent)
 
 		colPad := config.Padding.Global
 		if i < len(config.Padding.PerColumn) && config.Padding.PerColumn[i] != (tw.Padding{}) {
@@ -831,7 +829,12 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 			if effectiveContentMaxWidth > 0 {
 				switch config.Formatting.AutoWrap {
 				case tw.WrapNormal:
-					wrapped, _ := twwarp.WrapString(line, effectiveContentMaxWidth)
+					var wrapped []string
+					if t.config.Behavior.TrimSpace.Enabled() {
+						wrapped, _ = twwarp.WrapString(line, effectiveContentMaxWidth)
+					} else {
+						wrapped, _ = twwarp.WrapStringWithSpaces(line, effectiveContentMaxWidth)
+					}
 					finalLinesForCell = append(finalLinesForCell, wrapped...)
 				case tw.WrapTruncate:
 					if tw.DisplayWidth(line) > effectiveContentMaxWidth {
@@ -1114,7 +1117,8 @@ func (t *Table) prepareWithMerges(content [][]string, config tw.CellConfig, posi
 				if c >= len(originalLine) {
 					break
 				}
-				trimmedVal := strings.TrimSpace(originalLine[c])
+				trimmedVal := t.Trimmer(originalLine[c])
+
 				if trimmedVal != "" && trimmedVal != "-" { // "-" is often a placeholder not to merge over
 					firstContentIdx = c
 					firstContent = originalLine[c] // Store the raw content for placement
@@ -1130,7 +1134,8 @@ func (t *Table) prepareWithMerges(content [][]string, config tw.CellConfig, posi
 
 				allEmptyBefore := true
 				for c := 0; c < firstContentIdx; c++ {
-					if c >= len(originalLine) || strings.TrimSpace(originalLine[c]) != "" {
+					originalLine[c] = t.Trimmer(originalLine[c])
+					if c >= len(originalLine) || originalLine[c] != "" {
 						allEmptyBefore = false
 						break
 					}
@@ -1197,8 +1202,8 @@ func (t *Table) prepareWithMerges(content [][]string, config tw.CellConfig, posi
 					currentLogicalCellContentBuilder.WriteString(content[lineIdx][col])
 				}
 			}
-			currentLogicalCellTrimmed := strings.TrimSpace(currentLogicalCellContentBuilder.String())
 
+			currentLogicalCellTrimmed := t.Trimmer(currentLogicalCellContentBuilder.String())
 			if currentLogicalCellTrimmed == "" || currentLogicalCellTrimmed == "-" {
 				col++
 				continue
@@ -1215,8 +1220,8 @@ func (t *Table) prepareWithMerges(content [][]string, config tw.CellConfig, posi
 						nextLogicalCellContentBuilder.WriteString(content[lineIdx][nextCol])
 					}
 				}
-				nextLogicalCellTrimmed := strings.TrimSpace(nextLogicalCellContentBuilder.String())
 
+				nextLogicalCellTrimmed := t.Trimmer(nextLogicalCellContentBuilder.String())
 				if currentLogicalCellTrimmed == nextLogicalCellTrimmed && nextLogicalCellTrimmed != "-" {
 					span++
 				} else {
@@ -2012,7 +2017,7 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 			if j > 0 {
 				visualLineHasActualContent := false
 				for kCellIdx, cellContentInVisualLine := range hctx.line {
-					if strings.TrimSpace(cellContentInVisualLine) != "" {
+					if t.Trimmer(cellContentInVisualLine) != "" {
 						visualLineHasActualContent = true
 						ctx.logger.Debug("Visual line [%d][%d] has content in cell %d: '%s'. Not skipping.", i, j, kCellIdx, cellContentInVisualLine)
 						break
@@ -2101,4 +2106,18 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 		}
 	}
 	return nil
+}
+
+// Trimmer trims whitespace from a string based on the Table’s configuration.
+// It conditionally applies strings.TrimSpace to the input string if the TrimSpace behavior
+// is enabled in t.config.Behavior, otherwise returning the string unchanged. This method
+// is used in the logging library to format strings for tabular output, ensuring consistent
+// display in log messages. Thread-safe as it only reads configuration and operates on the
+// input string.
+func (t *Table) Trimmer(str string) string {
+	if t.config.Behavior.TrimSpace.Enabled() {
+		return strings.TrimSpace(str)
+	}
+	// ll.Dump(str)
+	return str
 }

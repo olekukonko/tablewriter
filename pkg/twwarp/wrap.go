@@ -8,6 +8,7 @@
 package twwarp
 
 import (
+	"github.com/rivo/uniseg"
 	"math"
 	"strings"
 	"unicode"
@@ -21,6 +22,29 @@ const (
 )
 
 const defaultPenalty = 1e5
+
+func SplitWords(s string) []string {
+	words := make([]string, 0, len(s)/5)
+	var wordBegin int
+	wordPending := false
+	for i, c := range s {
+		if unicode.IsSpace(c) {
+			if wordPending {
+				words = append(words, s[wordBegin:i])
+				wordPending = false
+			}
+			continue
+		}
+		if !wordPending {
+			wordBegin = i
+			wordPending = true
+		}
+	}
+	if wordPending {
+		words = append(words, s[wordBegin:])
+	}
+	return words
+}
 
 // WrapString wraps s into a paragraph of lines of length lim, with minimal
 // raggedness.
@@ -46,27 +70,102 @@ func WrapString(s string, lim int) ([]string, int) {
 	return lines, lim
 }
 
-func SplitWords(s string) []string {
-	words := make([]string, 0, len(s)/5)
-	var wordBegin int
-	wordPending := false
-	for i, c := range s {
-		if unicode.IsSpace(c) {
-			if wordPending {
-				words = append(words, s[wordBegin:i])
-				wordPending = false
-			}
-			continue
+// WrapStringWithSpaces wraps a string into lines of a specified display width while preserving
+// leading and trailing spaces. It splits the input string into words, condenses internal multiple
+// spaces to a single space, and wraps the content to fit within the given width limit, measured
+// using Unicode-aware display width. The function is used in the logging library to format log
+// messages for consistent output. It returns the wrapped lines as a slice of strings and the
+// adjusted width limit, which may increase if a single word exceeds the input limit. Thread-safe
+// as it does not modify shared state.
+func WrapStringWithSpaces(s string, lim int) ([]string, int) {
+	if len(s) == 0 {
+		return []string{""}, lim
+	}
+	if strings.TrimSpace(s) == "" { // All spaces
+		if runewidth.StringWidth(s) <= lim {
+			return []string{s}, runewidth.StringWidth(s)
 		}
-		if !wordPending {
-			wordBegin = i
-			wordPending = true
+		// For very long all-space strings, "wrap" by truncating to the limit.
+		if lim > 0 {
+			// Use our new helper function to get a substring of the correct display width
+			substring, _ := stringToDisplayWidth(s, lim)
+			return []string{substring}, lim
+		}
+		return []string{""}, lim
+	}
+
+	var leadingSpaces, trailingSpaces, coreContent string
+	firstNonSpace := strings.IndexFunc(s, func(r rune) bool { return !unicode.IsSpace(r) })
+	// firstNonSpace will not be -1 due to TrimSpace check above.
+	leadingSpaces = s[:firstNonSpace]
+	lastNonSpace := strings.LastIndexFunc(s, func(r rune) bool { return !unicode.IsSpace(r) })
+	trailingSpaces = s[lastNonSpace+1:]
+	coreContent = s[firstNonSpace : lastNonSpace+1]
+
+	if coreContent == "" {
+		return []string{leadingSpaces + trailingSpaces}, lim
+	}
+
+	words := SplitWords(coreContent)
+	if len(words) == 0 {
+		return []string{leadingSpaces + trailingSpaces}, lim
+	}
+
+	var lines []string
+	currentLim := lim
+
+	maxCoreWordWidth := 0
+	for _, v := range words {
+		w := runewidth.StringWidth(v)
+		if w > maxCoreWordWidth {
+			maxCoreWordWidth = w
 		}
 	}
-	if wordPending {
-		words = append(words, s[wordBegin:])
+
+	if maxCoreWordWidth > currentLim {
+		currentLim = maxCoreWordWidth
 	}
-	return words
+
+	wrappedWordLines := WrapWords(words, 1, currentLim, defaultPenalty)
+
+	for i, lineWords := range wrappedWordLines {
+		joinedLine := strings.Join(lineWords, sp)
+		finalLine := leadingSpaces + joinedLine
+		if i == len(wrappedWordLines)-1 { // Last line
+			finalLine += trailingSpaces
+		}
+		lines = append(lines, finalLine)
+	}
+	return lines, currentLim
+}
+
+// stringToDisplayWidth returns a substring of s that has a display width
+// as close as possible to, but not exceeding, targetWidth.
+// It returns the substring and its actual display width.
+func stringToDisplayWidth(s string, targetWidth int) (substring string, actualWidth int) {
+	if targetWidth <= 0 {
+		return "", 0
+	}
+
+	var currentWidth int
+	var endIndex int // Tracks the byte index in the original string
+
+	g := uniseg.NewGraphemes(s)
+	for g.Next() {
+		grapheme := g.Str()
+		graphemeWidth := runewidth.StringWidth(grapheme) // Get width of the current grapheme cluster
+
+		if currentWidth+graphemeWidth > targetWidth {
+			// Adding this grapheme would exceed the target width
+			break
+		}
+
+		currentWidth += graphemeWidth
+		// Get the end byte position of the current grapheme cluster
+		_, e := g.Positions()
+		endIndex = e
+	}
+	return s[:endIndex], currentWidth
 }
 
 // WrapWords is the low-level line-breaking algorithm, useful if you need more

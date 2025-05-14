@@ -188,3 +188,55 @@ func TestBug252(t *testing.T) {
 	})
 
 }
+
+func TestBug254(t *testing.T) {
+	var buf bytes.Buffer
+	data := [][]string{
+		{"  LEFT", "RIGHT  ", "  BOTH  "},
+	}
+	t.Run("Normal", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf,
+			tablewriter.WithRowMaxWidth(20),
+			tablewriter.WithTrimSpace(tw.On),
+			tablewriter.WithAlignment(tw.Alignment{tw.AlignCenter, tw.AlignCenter, tw.AlignCenter}),
+		)
+		table.Bulk(data)
+		table.Render()
+
+		expected := `
+		┌──────┬───────┬──────┐
+		│ LEFT │ RIGHT │ BOTH │
+		└──────┴───────┴──────┘
+
+`
+		debug := visualCheck(t, "TestBug252-Normal", buf.String(), expected)
+		if !debug {
+			t.Error(table.Debug())
+		}
+
+	})
+
+	t.Run("Mixed", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf,
+			tablewriter.WithRowMaxWidth(20),
+			tablewriter.WithTrimSpace(tw.Off),
+			tablewriter.WithAlignment(tw.Alignment{tw.AlignCenter, tw.AlignCenter, tw.AlignCenter}),
+		)
+		table.Bulk(data)
+		table.Render()
+
+		expected := `
+	┌────────┬─────────┬──────────┐
+	│   LEFT │ RIGHT   │   BOTH   │
+	└────────┴─────────┴──────────┘
+`
+		debug := visualCheck(t, "TestBug252-Mixed", buf.String(), expected)
+		if !debug {
+			t.Error(table.Debug())
+		}
+
+	})
+
+}

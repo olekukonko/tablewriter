@@ -254,6 +254,7 @@ func (f *Blueprint) Logger(logger *ll.Logger) {
 func (f *Blueprint) Row(w io.Writer, row []string, ctx tw.Formatting) {
 	f.logger.Debug("Starting Row render: IsSubRow=%v, Location=%v, Pos=%s, hasFooter=%v",
 		ctx.IsSubRow, ctx.Row.Location, ctx.Row.Position, ctx.HasFooter)
+
 	// Render the row line
 	f.renderLine(w, ctx)
 	f.logger.Debug("Completed Row render")

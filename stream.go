@@ -5,7 +5,6 @@ import (
 	"github.com/olekukonko/errors"
 	"github.com/olekukonko/tablewriter/tw"
 	"math"
-	"strings"
 )
 
 // Close finalizes the table stream.
@@ -524,10 +523,7 @@ func (t *Table) streamCalculateWidths(sampleDataLines []string, sectionConfigFor
 
 			sampleContent := ""
 			if i < len(sampleDataLines) {
-				sampleContent = sampleDataLines[i]
-				if t.config.Behavior.TrimSpace.Enabled() {
-					sampleContent = strings.TrimSpace(sampleDataLines[i])
-				}
+				sampleContent = t.Trimmer(sampleDataLines[i])
 			}
 			sampleContentDisplayWidth := tw.DisplayWidth(sampleContent)
 

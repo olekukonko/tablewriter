@@ -71,10 +71,9 @@ func (t *Table) applyHierarchicalMerges(ctx *renderContext, mctx *mergeContext) 
 				}
 			}
 
-			if t.config.Behavior.TrimSpace.Enabled() {
-				currentVal = strings.TrimSpace(currentVal)
-				aboveVal = strings.TrimSpace(aboveVal)
-			}
+			currentVal = t.Trimmer(currentVal)
+			aboveVal = t.Trimmer(aboveVal)
+
 			currentState := mctx.rowMerges[r][c]
 			prevStateAbove := mctx.rowMerges[r-1][c]
 
@@ -248,10 +247,9 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 					currentVal.WriteString(line[col])
 				}
 			}
-			currentValStr := currentVal.String()
-			if t.config.Behavior.TrimSpace.Enabled() {
-				currentValStr = strings.TrimSpace(currentValStr)
-			}
+
+			currentValStr := t.Trimmer(currentVal.String())
+
 			startRow, ongoingMerge := mergeStartRow[col]
 			startContent := mergeStartContent[col]
 			mergeState := mctx.rowMerges[i][col]
@@ -1194,9 +1192,7 @@ func (t *Table) getEmptyColumnInfo(numOriginalCols int) (isEmpty []bool, visible
 					continue
 				}
 
-				if t.config.Behavior.TrimSpace.Enabled() {
-					cellContent = strings.TrimSpace(cellContent)
-				}
+				cellContent = t.Trimmer(cellContent)
 
 				if cellContent != "" {
 					isEmpty[colIdx] = false
@@ -1330,7 +1326,7 @@ func (t *Table) updateWidths(row []string, widths tw.Mapper[int, int], padding t
 		for _, line := range lines {
 			lineWidth := tw.DisplayWidth(line)
 			if t.config.Behavior.TrimSpace.Enabled() {
-				lineWidth = tw.DisplayWidth(strings.TrimSpace(line))
+				lineWidth = tw.DisplayWidth(t.Trimmer(line))
 			}
 			if lineWidth > contentWidth {
 				contentWidth = lineWidth
