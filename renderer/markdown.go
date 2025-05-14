@@ -73,8 +73,7 @@ func (m *Markdown) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
 		m.logger.Debug("Header: No headers to render")
 		return
 	}
-	m.logger.Debug("Rendering header with %d lines, widths=%v, current=%v, next=%v",
-		len(headers), ctx.Row.Widths, ctx.Row.Current, ctx.Row.Next)
+	m.logger.Debugf("Rendering header with %d lines, widths=%v, current=%v, next=%v", len(headers), ctx.Row.Widths, ctx.Row.Current, ctx.Row.Next)
 
 	// Render header content
 	m.renderMarkdownLine(w, headers[0], ctx, false)
@@ -93,8 +92,7 @@ func (m *Markdown) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
 // Row renders a Markdown table data row.
 func (m *Markdown) Row(w io.Writer, row []string, ctx tw.Formatting) {
 	m.resolveAlignment(ctx)
-	m.logger.Debug("Rendering row with data=%v, widths=%v, previous=%v, current=%v, next=%v",
-		row, ctx.Row.Widths, ctx.Row.Previous, ctx.Row.Current, ctx.Row.Next)
+	m.logger.Debugf("Rendering row with data=%v, widths=%v, previous=%v, current=%v, next=%v", row, ctx.Row.Widths, ctx.Row.Previous, ctx.Row.Current, ctx.Row.Next)
 	m.renderMarkdownLine(w, row, ctx, false)
 
 }
@@ -106,14 +104,14 @@ func (m *Markdown) Footer(w io.Writer, footers [][]string, ctx tw.Formatting) {
 		m.logger.Debug("Footer: No footers to render")
 		return
 	}
-	m.logger.Debug("Rendering footer with %d lines, widths=%v, previous=%v, current=%v, next=%v",
+	m.logger.Debugf("Rendering footer with %d lines, widths=%v, previous=%v, current=%v, next=%v",
 		len(footers), ctx.Row.Widths, ctx.Row.Previous, ctx.Row.Current, ctx.Row.Next)
 	m.renderMarkdownLine(w, footers[0], ctx, false)
 }
 
 // Line is a no-op for Markdown, as only the header separator is rendered (handled by Header).
 func (m *Markdown) Line(w io.Writer, ctx tw.Formatting) {
-	m.logger.Debug("Line: Generic Line call received (pos: %s, loc: %s). Markdown ignores these.", ctx.Row.Position, ctx.Row.Location)
+	m.logger.Debugf("Line: Generic Line call received (pos: %s, loc: %s). Markdown ignores these.", ctx.Row.Position, ctx.Row.Location)
 }
 
 // Reset clears the renderer's internal state, including debug traces.
@@ -149,7 +147,7 @@ func (m *Markdown) resolveAlignment(ctx tw.Formatting) tw.Alignment {
 		m.alignment[i] = ctx.Row.Current[i].Align
 	}
 
-	m.logger.Debug(" → Align Resolved %s", m.alignment)
+	m.logger.Debugf(" → Align Resolved %s", m.alignment)
 	return m.alignment
 }
 
@@ -215,7 +213,7 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 	// Adjust width if needed
 	finalWidth := tw.DisplayWidth(result)
 	if finalWidth != targetWidth {
-		m.logger.Debug("Markdown formatCell MISMATCH: content='%s', target_w=%d, paddingL='%s', paddingR='%s', align=%s -> result='%s', result_w=%d",
+		m.logger.Debugf("Markdown formatCell MISMATCH: content='%s', target_w=%d, paddingL='%s', paddingR='%s', align=%s -> result='%s', result_w=%d",
 			content, targetWidth, padding.Left, padding.Right, align, result, finalWidth)
 		adjNeeded := targetWidth - finalWidth
 		if adjNeeded > 0 {
@@ -232,10 +230,10 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 		} else {
 			result = tw.TruncateString(result, targetWidth)
 		}
-		m.logger.Debug("Markdown formatCell Corrected: target_w=%d, result='%s', new_w=%d", targetWidth, result, tw.DisplayWidth(result))
+		m.logger.Debugf("Markdown formatCell Corrected: target_w=%d, result='%s', new_w=%d", targetWidth, result, tw.DisplayWidth(result))
 	}
 
-	m.logger.Debug("Markdown formatCell: content='%s', width=%d, align=%s, paddingL='%s', paddingR='%s' -> '%s' (target %d)",
+	m.logger.Debugf("Markdown formatCell: content='%s', width=%d, align=%s, paddingL='%s', paddingR='%s' -> '%s' (target %d)",
 		content, width, align, padding.Left, padding.Right, result, targetWidth)
 	return result
 }
@@ -269,7 +267,7 @@ func (m *Markdown) formatSeparator(width int, align tw.Align) string {
 		result = tw.TruncateString(result, targetWidth)
 	}
 
-	m.logger.Debug("Markdown formatSeparator: width=%d, align=%s -> '%s'", width, align, result)
+	m.logger.Debugf("Markdown formatSeparator: width=%d, align=%s -> '%s'", width, align, result)
 	return result
 }
 
@@ -335,7 +333,7 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 		isContinuation := ok && cellCtx.Merge.Horizontal.Present && !cellCtx.Merge.Horizontal.Start
 		if colIndex > 0 && !isContinuation {
 			output.WriteString(separator)
-			m.logger.Debug("renderMarkdownLine: Added separator '%s' before col %d", separator, colIndex)
+			m.logger.Debugf("renderMarkdownLine: Added separator '%s' before col %d", separator, colIndex)
 		}
 
 		// Calculate width and span
@@ -349,7 +347,7 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 			} else {
 				align = tw.AlignLeft
 			}
-			m.logger.Debug("renderMarkdownLine: Col %d using default align '%s'", colIndex, align)
+			m.logger.Debugf("renderMarkdownLine: Col %d using default align '%s'", colIndex, align)
 		}
 
 		visualWidth := 0
@@ -368,10 +366,10 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 				}
 			}
 			visualWidth = totalWidth
-			m.logger.Debug("renderMarkdownLine: HMerge col %d, span %d, visualWidth %d", colIndex, span, visualWidth)
+			m.logger.Debugf("renderMarkdownLine: HMerge col %d, span %d, visualWidth %d", colIndex, span, visualWidth)
 		} else {
 			visualWidth = ctx.Row.Widths.Get(colIndex)
-			m.logger.Debug("renderMarkdownLine: Regular col %d, visualWidth %d", colIndex, visualWidth)
+			m.logger.Debugf("renderMarkdownLine: Regular col %d, visualWidth %d", colIndex, visualWidth)
 		}
 		if visualWidth < 0 {
 			visualWidth = 0
@@ -379,7 +377,7 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 
 		// Render segment
 		if isContinuation {
-			m.logger.Debug("renderMarkdownLine: Skipping col %d (HMerge continuation)", colIndex)
+			m.logger.Debugf("renderMarkdownLine: Skipping col %d (HMerge continuation)", colIndex)
 		} else {
 			var formattedSegment string
 			if isHeaderSep {
@@ -407,7 +405,7 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 				formattedSegment = m.formatCell(content, visualWidth, rowAlign, cellCtx.Padding)
 			}
 			output.WriteString(formattedSegment)
-			m.logger.Debug("renderMarkdownLine: Wrote col %d (span %d, width %d): '%s'", colIndex, span, visualWidth, formattedSegment)
+			m.logger.Debugf("renderMarkdownLine: Wrote col %d (span %d, width %d): '%s'", colIndex, span, visualWidth, formattedSegment)
 		}
 
 		colIndex += span
@@ -416,5 +414,5 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 	output.WriteString(suffix)
 	output.WriteString(tw.NewLine)
 	fmt.Fprint(w, output.String())
-	m.logger.Debug("renderMarkdownLine: Final line: %s", strings.TrimSuffix(output.String(), tw.NewLine))
+	m.logger.Debugf("renderMarkdownLine: Final line: %s", strings.TrimSuffix(output.String(), tw.NewLine))
 }

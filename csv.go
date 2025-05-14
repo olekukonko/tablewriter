@@ -44,7 +44,7 @@ func NewCSVReader(writer io.Writer, csvReader *csv.Reader, hasHeader bool, opts 
 				return t, nil
 			}
 			// Log other read errors
-			t.logger.Error("NewCSVReader: Error reading CSV header: %v", err)
+			t.logger.Errorf("NewCSVReader: Error reading CSV header: %v", err)
 			return nil, err // Return nil *Table on critical read error
 		}
 
@@ -59,7 +59,7 @@ func NewCSVReader(writer io.Writer, csvReader *csv.Reader, hasHeader bool, opts 
 
 		if !isEmptyHeader {
 			t.Header(headers) // Use the Table method to set the header data
-			t.logger.Debug("NewCSVReader: Header set from CSV: %v", headers)
+			t.logger.Debugf("NewCSVReader: Header set from CSV: %v", headers)
 		} else {
 			t.logger.Debug("NewCSVReader: Read an empty header line, skipping setting table header.")
 		}
@@ -74,20 +74,20 @@ func NewCSVReader(writer io.Writer, csvReader *csv.Reader, hasHeader bool, opts 
 		}
 		if err != nil {
 			// Log other read errors during data processing
-			t.logger.Error("NewCSVReader: Error reading CSV record: %v", err)
+			t.logger.Errorf("NewCSVReader: Error reading CSV record: %v", err)
 			return nil, err // Return nil *Table on critical read error
 		}
 
 		// Append the record to the table's internal buffer (for batch rendering).
 		// The Table.Append method handles conversion and storage.
 		if appendErr := t.Append(record); appendErr != nil {
-			t.logger.Error("NewCSVReader: Error appending record #%d: %v", rowCount+1, appendErr)
+			t.logger.Errorf("NewCSVReader: Error appending record #%d: %v", rowCount+1, appendErr)
 			// Decide if append error is fatal. For now, let's treat it as fatal.
 			return nil, appendErr
 		}
 		rowCount++
 	}
-	t.logger.Debug("NewCSVReader: Finished reading CSV. Appended %d data rows.", rowCount)
+	t.logger.Debugf("NewCSVReader: Finished reading CSV. Appended %d data rows.", rowCount)
 
 	// Return the configured and populated table instance, ready for Render() call.
 	return t, nil

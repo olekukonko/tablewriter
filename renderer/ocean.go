@@ -63,7 +63,7 @@ func (o *Ocean) tryFinalizeWidths(ctx tw.Formatting) {
 	if ctx.Row.Widths != nil && ctx.Row.Widths.Len() > 0 {
 		o.fixedWidths = ctx.Row.Widths.Clone()
 		o.widthsFinalized = true
-		o.logger.Debug("Widths finalized from context: %v", o.fixedWidths)
+		o.logger.Debugf("Widths finalized from context: %v", o.fixedWidths)
 	} else {
 		o.logger.Warn("Attempted to finalize widths, but no width data in context.")
 	}
@@ -83,7 +83,7 @@ func (o *Ocean) renderTopBorderIfNeeded(w io.Writer, currentPosition tw.Position
 	if !o.tableOutputStarted && o.widthsFinalized {
 		// This renderer's config for Top border
 		if o.config.Borders.Top.Enabled() && o.config.Settings.Lines.ShowTop.Enabled() {
-			o.logger.Debug("Ocean itself rendering top border (triggered by %s)", currentPosition)
+			o.logger.Debugf("Ocean itself rendering top border (triggered by %s)", currentPosition)
 			lineCtx := tw.Formatting{ // Construct specific context for this line
 				Row: tw.RowContext{
 					Widths:   o.fixedWidths,
@@ -100,8 +100,7 @@ func (o *Ocean) renderTopBorderIfNeeded(w io.Writer, currentPosition tw.Position
 }
 
 func (o *Ocean) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
-	o.logger.Debug("Ocean.Header called: IsSubRow=%v, Location=%v, NumLines=%d",
-		ctx.IsSubRow, ctx.Row.Location, len(headers))
+	o.logger.Debugf("Ocean.Header called: IsSubRow=%v, Location=%v, NumLines=%d", ctx.IsSubRow, ctx.Row.Location, len(headers))
 
 	if !o.widthsFinalized {
 		o.tryFinalizeWidths(ctx)
@@ -140,8 +139,7 @@ func (o *Ocean) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
 }
 
 func (o *Ocean) Row(w io.Writer, row []string, ctx tw.Formatting) {
-	o.logger.Debug("Ocean.Row called: IsSubRow=%v, Location=%v, DataItems=%d",
-		ctx.IsSubRow, ctx.Row.Location, len(row))
+	o.logger.Debugf("Ocean.Row called: IsSubRow=%v, Location=%v, DataItems=%d", ctx.IsSubRow, ctx.Row.Location, len(row))
 
 	if !o.widthsFinalized {
 		o.tryFinalizeWidths(ctx)
@@ -166,8 +164,7 @@ func (o *Ocean) Row(w io.Writer, row []string, ctx tw.Formatting) {
 }
 
 func (o *Ocean) Footer(w io.Writer, footers [][]string, ctx tw.Formatting) {
-	o.logger.Debug("Ocean.Footer called: IsSubRow=%v, Location=%v, NumLines=%d",
-		ctx.IsSubRow, ctx.Row.Location, len(footers))
+	o.logger.Debugf("Ocean.Footer called: IsSubRow=%v, Location=%v, NumLines=%d", ctx.IsSubRow, ctx.Row.Location, len(footers))
 
 	if !o.widthsFinalized {
 		o.tryFinalizeWidths(ctx)
@@ -214,8 +211,7 @@ func (o *Ocean) Line(w io.Writer, ctx tw.Formatting) {
 	// Ensure Line uses the consistent fixedWidths for drawing
 	ctx.Row.Widths = o.fixedWidths
 
-	o.logger.Debug("Ocean.Line DRAWING: Level=%v, Loc=%s, Pos=%s, IsSubRow=%t, WidthsLen=%d",
-		ctx.Level, ctx.Row.Location, ctx.Row.Position, ctx.IsSubRow, ctx.Row.Widths.Len())
+	o.logger.Debugf("Ocean.Line DRAWING: Level=%v, Loc=%s, Pos=%s, IsSubRow=%t, WidthsLen=%d", ctx.Level, ctx.Row.Location, ctx.Row.Position, ctx.IsSubRow, ctx.Row.Widths.Len())
 
 	jr := NewJunction(JunctionContext{
 		Symbols:       o.config.Symbols,
@@ -294,7 +290,7 @@ func (o *Ocean) Line(w io.Writer, ctx tw.Formatting) {
 	line.WriteString(tw.NewLine)
 	fmt.Fprint(w, line.String())
 	o.tableOutputStarted = true
-	o.logger.Debug("Line rendered by explicit call: %s", strings.TrimSuffix(line.String(), tw.NewLine))
+	o.logger.Debugf("Line rendered by explicit call: %s", strings.TrimSuffix(line.String(), tw.NewLine))
 }
 
 func (o *Ocean) Close(w io.Writer) error {
@@ -373,7 +369,7 @@ func (o *Ocean) renderContentLine(w io.Writer, ctx tw.Formatting, lineData []str
 						}
 					}
 					if !foundInFixedWidths && idxInMergeSpan <= sortedColIndices[len(sortedColIndices)-1] {
-						o.logger.Debug("Col %d in HMerge span not found in fixedWidths, assuming 0-width contribution.", idxInMergeSpan)
+						o.logger.Debugf("Col %d in HMerge span not found in fixedWidths, assuming 0-width contribution.", idxInMergeSpan)
 					}
 
 					if k < hSpan-1 && o.config.Settings.Separators.BetweenColumns.Enabled() {
@@ -387,7 +383,7 @@ func (o *Ocean) renderContentLine(w io.Writer, ctx tw.Formatting, lineData []str
 		}
 
 		if isHMergeContinuation {
-			o.logger.Debug("renderContentLine: Col %d is HMerge continuation, skipping content render.", colIdx)
+			o.logger.Debugf("renderContentLine: Col %d is HMerge continuation, skipping content render.", colIdx)
 			// The separator logic below needs to handle this correctly.
 			// If the *previous* column was the start of a merge that spans *this* column,
 			// then the separator after the previous column should have been suppressed.
@@ -395,7 +391,7 @@ func (o *Ocean) renderContentLine(w io.Writer, ctx tw.Formatting, lineData []str
 			formattedCell := o.formatCellContent(cellContent, actualCellWidthToRender, padding, align)
 			output.WriteString(formattedCell)
 		} else {
-			o.logger.Debug("renderContentLine: col %d has 0 render width, writing no content.", colIdx)
+			o.logger.Debugf("renderContentLine: col %d has 0 render width, writing no content.", colIdx)
 		}
 
 		// Add column separator if:
@@ -408,7 +404,7 @@ func (o *Ocean) renderContentLine(w io.Writer, ctx tw.Formatting, lineData []str
 				// If this merge start spans beyond the current colIdx into the next sortedColIndex
 				if colIdx+cellCtx.Merge.Horizontal.Span > sortedColIndices[i+1] {
 					shouldAddSeparator = false // Separator is part of the merged cell's width
-					o.logger.Debug("renderContentLine: Suppressed separator after HMerge col %d.", colIdx)
+					o.logger.Debugf("renderContentLine: Suppressed separator after HMerge col %d.", colIdx)
 				}
 			}
 			if shouldAddSeparator {
@@ -423,7 +419,7 @@ func (o *Ocean) renderContentLine(w io.Writer, ctx tw.Formatting, lineData []str
 
 	output.WriteString(tw.NewLine)
 	fmt.Fprint(w, output.String())
-	o.logger.Debug("Content line rendered: %s", strings.TrimSuffix(output.String(), tw.NewLine))
+	o.logger.Debugf("Content line rendered: %s", strings.TrimSuffix(output.String(), tw.NewLine))
 }
 
 func (o *Ocean) formatCellContent(content string, cellVisualWidth int, padding tw.Padding, align tw.Align) string {
@@ -494,14 +490,14 @@ func (o *Ocean) formatCellContent(content string, cellVisualWidth int, padding t
 		tempStr := sb.String()
 		sb.Reset()
 		sb.WriteString(tw.TruncateString(tempStr, cellVisualWidth))
-		o.logger.Warn("formatCellContent: Final string '%s' (width %d) exceeded target %d. Force truncated.", tempStr, currentFormattedWidth, cellVisualWidth)
+		o.logger.Warnf("formatCellContent: Final string '%s' (width %d) exceeded target %d. Force truncated.", tempStr, currentFormattedWidth, cellVisualWidth)
 	}
 	return sb.String()
 }
 
 func (o *Ocean) Rendition(config tw.Rendition) {
 	o.config = mergeRendition(o.config, config)
-	o.logger.Debug("Blueprint.Rendition updated. New internal config: %+v", o.config)
+	o.logger.Debugf("Blueprint.Rendition updated. New internal config: %+v", o.config)
 }
 
 // Ensure Blueprint implements tw.Renditioning

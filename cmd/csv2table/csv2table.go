@@ -51,7 +51,7 @@ func main() {
 	// Handle non-flag filename argument
 	if flag.NArg() > 0 {
 		*fileName = flag.Arg(0)
-		logger.Info("Using filename from argument: %s", *fileName)
+		logger.Infof("Using filename from argument: %s", *fileName)
 	}
 
 	// Determine input source
@@ -62,7 +62,7 @@ func main() {
 		logger.Info("Reading CSV from STDIN (pipe mode).")
 		inputReader = os.Stdin
 	} else if *fileName != "" {
-		logger.Info("Reading CSV from file: %s", *fileName)
+		logger.Infof("Reading CSV from file: %s", *fileName)
 		file, errFile := os.Open(*fileName)
 		if errFile != nil {
 			logger.Fatal("failed to open file '%s': %w", *fileName, errFile)
@@ -158,7 +158,7 @@ func process(r io.Reader) error {
 	case "none":
 		selectedSymbols = tw.NewSymbols(tw.StyleNone)
 	default:
-		logger.Warn(fmt.Sprintf("Unknown symbol style '%s', using default (Light).", *symbolStyle))
+		logger.Warnf("Unknown symbol style '%s', using default (Light).", *symbolStyle)
 		selectedSymbols = tw.NewSymbols(tw.StyleLight)
 	}
 
@@ -226,7 +226,7 @@ func process(r io.Reader) error {
 		fallthrough
 	default:
 		if *rendererType != "" && strings.ToLower(*rendererType) != "blueprint" {
-			logger.Warn(fmt.Sprintf("Unknown renderer type '%s', using Blueprint.", *rendererType))
+			logger.Warnf("Unknown renderer type '%s', using Blueprint.", *rendererType)
 		}
 		selectedRenderer = renderer.NewBlueprint(baseRendition)
 	}
@@ -243,7 +243,7 @@ func process(r io.Reader) error {
 		// If termSize fails or is 0, calculatedMaxWidth remains 0 (content-based width)
 	}
 	if calculatedMaxWidth > 0 {
-		logger.Info(fmt.Sprintf("Calculated table max width: %d", calculatedMaxWidth))
+		logger.Infof("Calculated table max width: %d", calculatedMaxWidth)
 	}
 
 	tableOpts := []tablewriter.Option{
@@ -315,7 +315,7 @@ func process(r io.Reader) error {
 		if maxCols == 0 && len(headerData) > 0 { // Only header was present
 			maxCols = len(headerData)
 		}
-		logger.Info(fmt.Sprintf("Inferred max columns: %d", maxCols))
+		logger.Infof("Inferred max columns: %d", maxCols)
 
 		// Normalize header
 		if *header && len(headerData) > 0 {

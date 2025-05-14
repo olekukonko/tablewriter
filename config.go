@@ -671,7 +671,7 @@ func WithAutoHide(state tw.State) Option {
 	return func(target *Table) {
 		target.config.Behavior.AutoHide = state
 		if target.logger != nil {
-			target.logger.Debug("Option: WithAutoHide applied to Table: %v", state)
+			target.logger.Debugf("Option: WithAutoHide applied to Table: %v", state)
 		}
 	}
 }
@@ -684,7 +684,7 @@ func WithBorders(borders tw.Border) Option {
 			cfg := target.renderer.Config()
 			cfg.Borders = borders
 			if target.logger != nil {
-				target.logger.Debug("Option: WithBorders applied to Table: %+v", borders)
+				target.logger.Debugf("Option: WithBorders applied to Table: %+v", borders)
 			}
 		}
 	}
@@ -699,7 +699,7 @@ func WithColumnMax(width int) Option {
 		}
 		target.config.Stream.Widths.Global = width
 		if target.logger != nil {
-			target.logger.Debug("Option: WithColumnMax applied to Table: %v", width)
+			target.logger.Debugf("Option: WithColumnMax applied to Table: %v", width)
 		}
 	}
 }
@@ -713,7 +713,7 @@ func WithTableMax(width int) Option {
 		}
 		target.config.MaxWidth = width
 		if target.logger != nil {
-			target.logger.Debug("Option: WithTableMax applied to Table: %v", width)
+			target.logger.Debugf("Option: WithTableMax applied to Table: %v", width)
 		}
 	}
 }
@@ -729,7 +729,7 @@ func WithColumnWidths(widths map[int]int) Option {
 		}
 		target.config.Stream.Widths.PerColumn = widths
 		if target.logger != nil {
-			target.logger.Debug("Option: WithColumnWidths applied to Table: %v", widths)
+			target.logger.Debugf("Option: WithColumnWidths applied to Table: %v", widths)
 		}
 	}
 }
@@ -776,7 +776,7 @@ func WithFooterMergeMode(mergeMode int) Option {
 		}
 		target.config.Footer.Formatting.MergeMode = mergeMode
 		if target.logger != nil {
-			target.logger.Debug("Option: WithFooterMergeMode applied to Table: %v", mergeMode)
+			target.logger.Debugf("Option: WithFooterMergeMode applied to Table: %v", mergeMode)
 		}
 	}
 }
@@ -797,7 +797,7 @@ func WithHeaderAlignment(align tw.Align) Option {
 		}
 		target.config.Header.Formatting.Alignment = align
 		if target.logger != nil {
-			target.logger.Debug("Option: WithHeaderAlignment applied to Table: %v", align)
+			target.logger.Debugf("Option: WithHeaderAlignment applied to Table: %v", align)
 		}
 	}
 }
@@ -833,7 +833,7 @@ func WithRenderer(f tw.Renderer) Option {
 	return func(target *Table) {
 		target.renderer = f
 		if target.logger != nil {
-			target.logger.Debug("Option: WithRenderer applied to Table: %T", f)
+			target.logger.Debugf("Option: WithRenderer applied to Table: %T", f)
 			f.Logger(target.logger)
 		}
 	}
@@ -847,7 +847,7 @@ func WithRendererSettings(settings tw.Settings) Option {
 			cfg := target.renderer.Config()
 			cfg.Settings = settings
 			if target.logger != nil {
-				target.logger.Debug("Option: WithRendererSettings applied to Table: %+v", settings)
+				target.logger.Debugf("Option: WithRendererSettings applied to Table: %+v", settings)
 			}
 		}
 	}
@@ -873,7 +873,7 @@ func WithRowMaxWidth(maxWidth int) Option {
 		}
 		target.config.Row.ColMaxWidths.Global = maxWidth
 		if target.logger != nil {
-			target.logger.Debug("Option: WithRowMaxWidth applied to Table: %v", maxWidth)
+			target.logger.Debugf("Option: WithRowMaxWidth applied to Table: %v", maxWidth)
 		}
 	}
 }
@@ -928,7 +928,7 @@ func WithTrimSpace(state tw.State) Option {
 	return func(target *Table) {
 		target.config.Behavior.TrimSpace = state
 		if target.logger != nil {
-			target.logger.Debug("Option: WithAutoHide applied to Table: %v", state)
+			target.logger.Debugf("Option: WithAutoHide applied to Table: %v", state)
 		}
 	}
 }
@@ -954,9 +954,9 @@ func WithRendition(rendition tw.Rendition) Option {
 
 		if ru, ok := target.renderer.(tw.Renditioning); ok {
 			ru.Rendition(rendition)
-			target.logger.Debug("Option: WithRendition: Applied to renderer via Renditioning.SetRendition(): %+v", rendition)
+			target.logger.Debugf("Option: WithRendition: Applied to renderer via Renditioning.SetRendition(): %+v", rendition)
 		} else {
-			target.logger.Warn("Option: WithRendition: Current renderer type %T does not implement tw.Renditioning. Rendition may not be applied as expected.", target.renderer)
+			target.logger.Warnf("Option: WithRendition: Current renderer type %T does not implement tw.Renditioning. Rendition may not be applied as expected.", target.renderer)
 		}
 	}
 }
