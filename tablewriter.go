@@ -51,6 +51,9 @@ type Table struct {
 	stringerCache        map[reflect.Type]reflect.Value // Cache for stringer reflection
 	stringerCacheMu      sync.RWMutex                   // Mutex for thread-safe cache access
 	stringerCacheEnabled bool                           // Flag to enable/disable caching
+
+	batchRenderNumCols      int
+	isBatchRenderNumColsSet bool
 }
 
 // renderContext holds the core state for rendering the table.
@@ -1271,6 +1274,18 @@ func (t *Table) render() error {
 		t.logger.Warn("Render() called in streaming mode. Use Start/Append/Close methods instead.")
 		return errors.New("render called in streaming mode; use Start/Append/Close")
 	}
+
+	// Calculate and cache numCols for THIS batch render pass
+	t.batchRenderNumCols = t.maxColumns() // Calculate ONCE
+	t.isBatchRenderNumColsSet = true      // Mark the cache as active for this render pass
+	t.logger.Debug("Render(): Set batchRenderNumCols to %d and isBatchRenderNumColsSet to true.", t.batchRenderNumCols)
+
+	defer func() {
+		t.isBatchRenderNumColsSet = false
+		// t.batchRenderNumCols = 0; // Optional: reset to 0, or leave as is.
+		// Since isBatchRenderNumColsSet is false, its value won't be used by getNumColsToUse.
+		t.logger.Debug("Render(): Cleared isBatchRenderNumColsSet to false (batchRenderNumCols was %d).", t.batchRenderNumCols)
+	}()
 
 	hasCaption := t.caption.Text != "" && t.caption.Spot != tw.SpotNone
 	isTopOrBottomCaption := hasCaption &&

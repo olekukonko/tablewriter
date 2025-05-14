@@ -1224,9 +1224,19 @@ func (t *Table) getNumColsToUse() int {
 		t.logger.Debug("getNumColsToUse: Using streamNumCols: %d", t.streamNumCols)
 		return t.streamNumCols
 	}
-	numCols := t.maxColumns()
-	t.logger.Debug("getNumColsToUse: Using maxColumns: %d", numCols)
-	return numCols
+
+	// For batch mode:
+	if t.isBatchRenderNumColsSet {
+		// If the flag is set, batchRenderNumCols holds the authoritative count
+		// for the current Render() pass, even if that count is 0.
+		t.logger.Debug("getNumColsToUse (batch): Using cached t.batchRenderNumCols: %d (because isBatchRenderNumColsSet is true)", t.batchRenderNumCols)
+		return t.batchRenderNumCols
+	}
+
+	// Fallback: If not streaming and cache flag is not set (e.g., called outside a Render pass)
+	num := t.maxColumns()
+	t.logger.Debug("getNumColsToUse (batch): Cache not active, calculated via t.maxColumns(): %d", num)
+	return num
 }
 
 // prepareTableSection prepares either headers or footers for the table

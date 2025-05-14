@@ -166,8 +166,6 @@ func TestBug252(t *testing.T) {
 			Age:  Age(25),
 			City: "Boston",
 		})
-		//table.Render()
-
 		expected := `
         ┌────────┬────────┬────────┐
         │  NAME  │  AGE   │  CITY  │
@@ -176,6 +174,8 @@ func TestBug252(t *testing.T) {
         │        │        │ York   │
         │ Bob    │ 25yrs  │ Boston │
         └────────┴────────┴────────┘
+
+
 `
 		err = table.Close()
 		if err != nil {

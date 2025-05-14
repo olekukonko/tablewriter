@@ -608,16 +608,6 @@ func (rf *RowFormattingBuilder) WithAutoWrap(autoWrap int) *RowFormattingBuilder
 	return rf
 }
 
-// WithMaxWidth sets the maximum content width for row cells.
-// Negative values are ignored.
-//func (rf *RowFormattingBuilder) WithMaxWidth(maxWidth int) *RowFormattingBuilder {
-//	if maxWidth < 0 {
-//		return rf
-//	}
-//	rf.config.MaxWidth = maxWidth
-//	return rf
-//}
-
 // WithMergeMode sets the merge behavior for row cells.
 // Invalid merge modes are ignored.
 func (rf *RowFormattingBuilder) WithMergeMode(mergeMode int) *RowFormattingBuilder {
@@ -963,11 +953,10 @@ func WithRendition(rendition tw.Rendition) Option {
 		}
 
 		if ru, ok := target.renderer.(tw.Renditioning); ok {
-			ru.Rendition(rendition) // This will call Blueprint.SetRendition or Colorized.SetRendition
+			ru.Rendition(rendition)
 			target.logger.Debug("Option: WithRendition: Applied to renderer via Renditioning.SetRendition(): %+v", rendition)
 		} else {
 			target.logger.Warn("Option: WithRendition: Current renderer type %T does not implement tw.Renditioning. Rendition may not be applied as expected.", target.renderer)
-			// As a fallback, if it's a known type without the interface but we know how to re-create it (like before):
 		}
 	}
 }
