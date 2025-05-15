@@ -131,3 +131,11 @@ func (c Caption) WithWidth(width int) Caption {
 	c.Width = width
 	return c
 }
+
+// Padding defines custom padding characters for a cell
+type Padding struct {
+	Left   string
+	Right  string
+	Top    string
+	Bottom string
+}

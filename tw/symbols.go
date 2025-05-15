@@ -1,12 +1,6 @@
 package tw
 
-// Padding defines custom padding characters for a cell
-type Padding struct {
-	Left   string
-	Right  string
-	Top    string
-	Bottom string
-}
+import "fmt"
 
 // Symbols defines the interface for table border symbols
 type Symbols interface {
@@ -44,6 +38,7 @@ const (
 	StyleLight
 	StyleHeavy
 	StyleDouble
+	StyleDoubleLong
 	StyleLightHeavy
 	StyleHeavyLight
 	StyleLightDouble
@@ -57,7 +52,7 @@ const (
 	StyleArrow
 	StyleStarry
 	StyleHearts
-	StyleTech
+	StyleCircuit // Renamed from StyleTech
 	StyleNature
 	StyleArtistic
 	Style8Bit
@@ -65,48 +60,201 @@ const (
 	StyleDots
 	StyleBlocks
 	StyleZen
+	StyleVintage
+	StyleSketch
+	StyleArrowDouble
+	StyleCelestial
+	StyleCyber
+	StyleRunic
+	StyleIndustrial
+	StyleInk
+	StyleArcade
+	StyleBlossom
+	StyleFrosted
+	StyleMosaic
+	StyleUFO
+	StyleSteampunk
+	StyleGalaxy
+	StyleJazz
+	StylePuzzle
+	StyleHypno
 )
+
+// StyleName defines names for border styles
+type StyleName string
+
+func (s StyleName) String() string {
+	return string(s)
+}
+
+const (
+	StyleNameNothing     StyleName = "nothing"
+	StyleNameASCII       StyleName = "ascii"
+	StyleNameLight       StyleName = "light"
+	StyleNameHeavy       StyleName = "heavy"
+	StyleNameDouble      StyleName = "double"
+	StyleNameDoubleLong  StyleName = "doublelong"
+	StyleNameLightHeavy  StyleName = "lightheavy"
+	StyleNameHeavyLight  StyleName = "heavylight"
+	StyleNameLightDouble StyleName = "lightdouble"
+	StyleNameDoubleLight StyleName = "doublelight"
+	StyleNameRounded     StyleName = "rounded"
+	StyleNameMarkdown    StyleName = "markdown"
+	StyleNameGraphical   StyleName = "graphical"
+	StyleNameMerger      StyleName = "merger"
+	StyleNameDotted      StyleName = "dotted"
+	StyleNameArrow       StyleName = "arrow"
+	StyleNameStarry      StyleName = "starry"
+	StyleNameHearts      StyleName = "hearts"
+	StyleNameCircuit     StyleName = "circuit" // Renamed from Tech
+	StyleNameNature      StyleName = "nature"
+	StyleNameArtistic    StyleName = "artistic"
+	StyleName8Bit        StyleName = "8bit"
+	StyleNameChaos       StyleName = "chaos"
+	StyleNameDots        StyleName = "dots"
+	StyleNameBlocks      StyleName = "blocks"
+	StyleNameZen         StyleName = "zen"
+	StyleNameVintage     StyleName = "vintage"
+	StyleNameSketch      StyleName = "sketch"
+	StyleNameArrowDouble StyleName = "arrowdouble"
+	StyleNameCelestial   StyleName = "celestial"
+	StyleNameCyber       StyleName = "cyber"
+	StyleNameRunic       StyleName = "runic"
+	StyleNameIndustrial  StyleName = "industrial"
+	StyleNameInk         StyleName = "ink"
+	StyleNameArcade      StyleName = "arcade"
+	StyleNameBlossom     StyleName = "blossom"
+	StyleNameFrosted     StyleName = "frosted"
+	StyleNameMosaic      StyleName = "mosaic"
+	StyleNameUFO         StyleName = "ufo"
+	StyleNameSteampunk   StyleName = "steampunk"
+	StyleNameGalaxy      StyleName = "galaxy"
+	StyleNameJazz        StyleName = "jazz"
+	StyleNamePuzzle      StyleName = "puzzle"
+	StyleNameHypno       StyleName = "hypno"
+)
+
+// Styles maps BorderStyle to StyleName
+var Styles = map[BorderStyle]StyleName{
+	StyleNone:        StyleNameNothing,
+	StyleASCII:       StyleNameASCII,
+	StyleLight:       StyleNameLight,
+	StyleHeavy:       StyleNameHeavy,
+	StyleDouble:      StyleNameDouble,
+	StyleDoubleLong:  StyleNameDoubleLong,
+	StyleLightHeavy:  StyleNameLightHeavy,
+	StyleHeavyLight:  StyleNameHeavyLight,
+	StyleLightDouble: StyleNameLightDouble,
+	StyleDoubleLight: StyleNameDoubleLight,
+	StyleRounded:     StyleNameRounded,
+	StyleMarkdown:    StyleNameMarkdown,
+	StyleGraphical:   StyleNameGraphical,
+	StyleMerger:      StyleNameMerger,
+	StyleDefault:     StyleNameLight,
+	StyleDotted:      StyleNameDotted,
+	StyleArrow:       StyleNameArrow,
+	StyleStarry:      StyleNameStarry,
+	StyleHearts:      StyleNameHearts,
+	StyleCircuit:     StyleNameCircuit,
+	StyleNature:      StyleNameNature,
+	StyleArtistic:    StyleNameArtistic,
+	Style8Bit:        StyleName8Bit,
+	StyleChaos:       StyleNameChaos,
+	StyleDots:        StyleNameDots,
+	StyleBlocks:      StyleNameBlocks,
+	StyleZen:         StyleNameZen,
+	StyleVintage:     StyleNameVintage,
+	StyleSketch:      StyleNameSketch,
+	StyleArrowDouble: StyleNameArrowDouble,
+	StyleCelestial:   StyleNameCelestial,
+	StyleCyber:       StyleNameCyber,
+	StyleRunic:       StyleNameRunic,
+	StyleIndustrial:  StyleNameIndustrial,
+	StyleInk:         StyleNameInk,
+	StyleArcade:      StyleNameArcade,
+	StyleBlossom:     StyleNameBlossom,
+	StyleFrosted:     StyleNameFrosted,
+	StyleMosaic:      StyleNameMosaic,
+	StyleUFO:         StyleNameUFO,
+	StyleSteampunk:   StyleNameSteampunk,
+	StyleGalaxy:      StyleNameGalaxy,
+	StyleJazz:        StyleNameJazz,
+	StylePuzzle:      StyleNamePuzzle,
+	StyleHypno:       StyleNameHypno,
+}
 
 // String returns the string representation of a border style
 func (s BorderStyle) String() string {
 	return [...]string{
 		"None",
-		"SymbolASCII",
+		"ASCII",
 		"Light",
 		"Heavy",
 		"Double",
+		"DoubleLong",
 		"LightHeavy",
 		"HeavyLight",
 		"LightDouble",
 		"DoubleLight",
 		"Rounded",
-		"SymbolMarkdown",
-		"SymbolGraphical",
-		"SymbolMerger",
+		"Markdown",
+		"Graphical",
+		"Merger",
 		"Default",
 		"Dotted",
 		"Arrow",
 		"Starry",
 		"Hearts",
-		"Tech",
+		"Circuit",
 		"Nature",
 		"Artistic",
-		"8-Bit",
+		"8Bit",
 		"Chaos",
 		"Dots",
 		"Blocks",
 		"Zen",
+		"Vintage",
+		"Sketch",
+		"ArrowDouble",
+		"Celestial",
+		"Cyber",
+		"Runic",
+		"Industrial",
+		"Ink",
+		"Arcade",
+		"Blossom",
+		"Frosted",
+		"Mosaic",
+		"UFO",
+		"Steampunk",
+		"Galaxy",
+		"Jazz",
+		"Puzzle",
+		"Hypno",
 	}[s]
 }
 
 // NewSymbols creates a new Symbols instance with the specified style
-// NewSymbols creates a new Symbols instance with the specified style
 func NewSymbols(style BorderStyle) Symbols {
 	switch style {
 	case StyleASCII:
-		return &SymbolASCII{}
+		return &Glyphs{
+			name:   StyleNameASCII,
+			row:    "-",
+			column: "|",
+			center: "+",
+			corners: [9]string{
+				"+", "+", "+",
+				"+", "+", "+",
+				"+", "+", "+",
+			},
+			headerLeft:  "+",
+			headerMid:   "+",
+			headerRight: "+",
+		}
 	case StyleLight, StyleDefault:
-		return &SymbolUnicode{
+		return &Glyphs{
+			name:   StyleNameLight,
 			row:    "─",
 			column: "│",
 			center: "┼",
@@ -115,9 +263,13 @@ func NewSymbols(style BorderStyle) Symbols {
 				"├", "┼", "┤",
 				"└", "┴", "┘",
 			},
+			headerLeft:  "├",
+			headerMid:   "┼",
+			headerRight: "┤",
 		}
 	case StyleHeavy:
-		return &SymbolUnicode{
+		return &Glyphs{
+			name:   StyleNameHeavy,
 			row:    "━",
 			column: "┃",
 			center: "╋",
@@ -126,9 +278,13 @@ func NewSymbols(style BorderStyle) Symbols {
 				"┣", "╋", "┫",
 				"┗", "┻", "┛",
 			},
+			headerLeft:  "┣",
+			headerMid:   "╋",
+			headerRight: "┫",
 		}
 	case StyleDouble:
-		return &SymbolUnicode{
+		return &Glyphs{
+			name:   StyleNameDouble,
 			row:    "═",
 			column: "║",
 			center: "╬",
@@ -137,9 +293,28 @@ func NewSymbols(style BorderStyle) Symbols {
 				"╠", "╬", "╣",
 				"╚", "╩", "╝",
 			},
+			headerLeft:  "╠",
+			headerMid:   "╬",
+			headerRight: "╣",
+		}
+	case StyleDoubleLong:
+		return &Glyphs{
+			name:   StyleNameDoubleLong,
+			row:    "═╡═",
+			column: "╞",
+			center: "╪",
+			corners: [9]string{
+				"╔═╡", "═╤═", "╡═╗",
+				"╟ ", "╪ ", " ╢",
+				"╚═╡", "═╧═", "╡═╝",
+			},
+			headerLeft:  "╟═╡",
+			headerMid:   "╪═╡",
+			headerRight: "╡═╢",
 		}
 	case StyleLightHeavy:
-		return &SymbolUnicode{
+		return &Glyphs{
+			name:   StyleNameLightHeavy,
 			row:    "─",
 			column: "┃",
 			center: "╂",
@@ -148,9 +323,13 @@ func NewSymbols(style BorderStyle) Symbols {
 				"┝", "╂", "┥",
 				"┕", "┷", "┙",
 			},
+			headerLeft:  "┝",
+			headerMid:   "╂",
+			headerRight: "┥",
 		}
 	case StyleHeavyLight:
-		return &SymbolUnicode{
+		return &Glyphs{
+			name:   StyleNameHeavyLight,
 			row:    "━",
 			column: "│",
 			center: "┿",
@@ -159,9 +338,13 @@ func NewSymbols(style BorderStyle) Symbols {
 				"┠", "┿", "┨",
 				"┖", "┸", "┚",
 			},
+			headerLeft:  "┠",
+			headerMid:   "┿",
+			headerRight: "┨",
 		}
 	case StyleLightDouble:
-		return &SymbolUnicode{
+		return &Glyphs{
+			name:   StyleNameLightDouble,
 			row:    "─",
 			column: "║",
 			center: "╫",
@@ -170,9 +353,13 @@ func NewSymbols(style BorderStyle) Symbols {
 				"╟", "╫", "╢",
 				"╙", "╨", "╜",
 			},
+			headerLeft:  "╟",
+			headerMid:   "╫",
+			headerRight: "╢",
 		}
 	case StyleDoubleLight:
-		return &SymbolUnicode{
+		return &Glyphs{
+			name:   StyleNameDoubleLight,
 			row:    "═",
 			column: "│",
 			center: "╪",
@@ -181,9 +368,13 @@ func NewSymbols(style BorderStyle) Symbols {
 				"╞", "╪", "╡",
 				"╘", "╧", "╛",
 			},
+			headerLeft:  "╞",
+			headerMid:   "╪",
+			headerRight: "╡",
 		}
 	case StyleRounded:
-		return &SymbolUnicode{
+		return &Glyphs{
+			name:   StyleNameRounded,
 			row:    "─",
 			column: "│",
 			center: "┼",
@@ -192,13 +383,43 @@ func NewSymbols(style BorderStyle) Symbols {
 				"├", "┼", "┤",
 				"╰", "┴", "╯",
 			},
+			headerLeft:  "├",
+			headerMid:   "┼",
+			headerRight: "┤",
 		}
 	case StyleMarkdown:
-		return &SymbolMarkdown{}
+		return &Glyphs{
+			name:   StyleNameMarkdown,
+			row:    "-",
+			column: "|",
+			center: "|",
+			corners: [9]string{
+				"", "", "",
+				"|", "|", "|",
+				"", "", "",
+			},
+			headerLeft:  "|",
+			headerMid:   "|",
+			headerRight: "|",
+		}
 	case StyleGraphical:
-		return &SymbolGraphical{}
+		return &Glyphs{
+			name:   StyleNameGraphical,
+			row:    "┄┄",
+			column: "┆",
+			center: "╂",
+			corners: [9]string{
+				"┌┄", "┄┄", "┄┐",
+				"┆ ", "╂ ", " ┆",
+				"└┄", "┄┄", "┄┘",
+			},
+			headerLeft:  "├┄",
+			headerMid:   "╂┄",
+			headerRight: "┄┤",
+		}
 	case StyleMerger:
-		return &SymbolMerger{
+		return &Glyphs{
+			name:   StyleNameMerger,
 			row:    "─",
 			column: "│",
 			center: "+",
@@ -207,10 +428,13 @@ func NewSymbols(style BorderStyle) Symbols {
 				"├", "┼", "┤",
 				"└", "┴", "┘",
 			},
+			headerLeft:  "├",
+			headerMid:   "+",
+			headerRight: "┤",
 		}
 	case StyleDotted:
-		return &SymbolSpecial{
-			name:   "Dotted",
+		return &Glyphs{
+			name:   StyleNameDotted,
 			row:    "·",
 			column: ":",
 			center: "+",
@@ -219,13 +443,13 @@ func NewSymbols(style BorderStyle) Symbols {
 				":", "+", ":",
 				"'", "·", "'",
 			},
-			headerLeft:  "",
-			headerMid:   "",
-			headerRight: "",
+			headerLeft:  ":",
+			headerMid:   "+",
+			headerRight: ":",
 		}
 	case StyleArrow:
-		return &SymbolSpecial{
-			name:   "Arrow",
+		return &Glyphs{
+			name:   StyleNameArrow,
 			row:    "→",
 			column: "↓",
 			center: "↔",
@@ -234,13 +458,13 @@ func NewSymbols(style BorderStyle) Symbols {
 				"→", "↔", "←",
 				"↘", "↓", "↙",
 			},
-			headerLeft:  "",
-			headerMid:   "",
-			headerRight: "",
+			headerLeft:  "→",
+			headerMid:   "↔",
+			headerRight: "←",
 		}
 	case StyleStarry:
-		return &SymbolSpecial{
-			name:   "Starry",
+		return &Glyphs{
+			name:   StyleNameStarry,
 			row:    "★",
 			column: "☆",
 			center: "✶",
@@ -249,13 +473,13 @@ func NewSymbols(style BorderStyle) Symbols {
 				"✦", "✶", "✦",
 				"✧", "✯", "✧",
 			},
-			headerLeft:  "",
-			headerMid:   "",
-			headerRight: "",
+			headerLeft:  "✦",
+			headerMid:   "✶",
+			headerRight: "✦",
 		}
 	case StyleHearts:
-		return &SymbolSpecial{
-			name:   "Hearts",
+		return &Glyphs{
+			name:   StyleNameHearts,
 			row:    "♥",
 			column: "❤",
 			center: "✚",
@@ -264,13 +488,13 @@ func NewSymbols(style BorderStyle) Symbols {
 				"❣", "✚", "❣",
 				"❦", "♡", "❦",
 			},
-			headerLeft:  "",
-			headerMid:   "",
-			headerRight: "",
+			headerLeft:  "❣",
+			headerMid:   "✚",
+			headerRight: "❣",
 		}
-	case StyleTech:
-		return &SymbolSpecial{
-			name:   "Tech",
+	case StyleCircuit:
+		return &Glyphs{
+			name:   StyleNameCircuit,
 			row:    "=",
 			column: "||",
 			center: "<>",
@@ -279,13 +503,13 @@ func NewSymbols(style BorderStyle) Symbols {
 				"//", "<>", "\\",
 				"\\*", "##", "*/",
 			},
-			headerLeft:  "",
-			headerMid:   "",
-			headerRight: "",
+			headerLeft:  "//",
+			headerMid:   "<>",
+			headerRight: "\\",
 		}
 	case StyleNature:
-		return &SymbolSpecial{
-			name:   "Nature",
+		return &Glyphs{
+			name:   StyleNameNature,
 			row:    "~",
 			column: "|",
 			center: "❀",
@@ -294,13 +518,13 @@ func NewSymbols(style BorderStyle) Symbols {
 				"🍃", "❀", "🍃",
 				"🌻", "🌾", "🌻",
 			},
-			headerLeft:  "",
-			headerMid:   "",
-			headerRight: "",
+			headerLeft:  "🍃",
+			headerMid:   "❀",
+			headerRight: "🍃",
 		}
 	case StyleArtistic:
-		return &SymbolSpecial{
-			name:   "Artistic",
+		return &Glyphs{
+			name:   StyleNameArtistic,
 			row:    "▬",
 			column: "▐",
 			center: "⬔",
@@ -309,13 +533,13 @@ func NewSymbols(style BorderStyle) Symbols {
 				"◀", "⬔", "▶",
 				"◭", "▣", "◮",
 			},
-			headerLeft:  "",
-			headerMid:   "",
-			headerRight: "",
+			headerLeft:  "◀",
+			headerMid:   "⬔",
+			headerRight: "▶",
 		}
 	case Style8Bit:
-		return &SymbolSpecial{
-			name:   "8-Bit",
+		return &Glyphs{
+			name:   StyleName8Bit,
 			row:    "■",
 			column: "█",
 			center: "♦",
@@ -324,13 +548,13 @@ func NewSymbols(style BorderStyle) Symbols {
 				"◄", "♦", "►",
 				"╚", "▼", "╝",
 			},
-			headerLeft:  "",
-			headerMid:   "",
-			headerRight: "",
+			headerLeft:  "◄",
+			headerMid:   "♦",
+			headerRight: "►",
 		}
 	case StyleChaos:
-		return &SymbolSpecial{
-			name:   "Chaos",
+		return &Glyphs{
+			name:   StyleNameChaos,
 			row:    "≈",
 			column: "§",
 			center: "☯",
@@ -339,13 +563,13 @@ func NewSymbols(style BorderStyle) Symbols {
 				"⚡", "☯", "♞",
 				"⌂", "∆", "◊",
 			},
-			headerLeft:  "",
-			headerMid:   "",
-			headerRight: "",
+			headerLeft:  "⚡",
+			headerMid:   "☯",
+			headerRight: "♞",
 		}
 	case StyleDots:
-		return &SymbolSpecial{
-			name:   "Dots",
+		return &Glyphs{
+			name:   StyleNameDots,
 			row:    "·",
 			column: " ",
 			center: "·",
@@ -354,13 +578,13 @@ func NewSymbols(style BorderStyle) Symbols {
 				" ", "·", " ",
 				"·", "·", "·",
 			},
-			headerLeft:  "",
-			headerMid:   "",
-			headerRight: "",
+			headerLeft:  " ",
+			headerMid:   "·",
+			headerRight: " ",
 		}
 	case StyleBlocks:
-		return &SymbolSpecial{
-			name:   "Blocks",
+		return &Glyphs{
+			name:   StyleNameBlocks,
 			row:    "▀",
 			column: "█",
 			center: "█",
@@ -369,13 +593,13 @@ func NewSymbols(style BorderStyle) Symbols {
 				"▌", "█", "▐",
 				"▙", "▄", "▟",
 			},
-			headerLeft:  "",
-			headerMid:   "",
-			headerRight: "",
+			headerLeft:  "▌",
+			headerMid:   "█",
+			headerRight: "▐",
 		}
 	case StyleZen:
-		return &SymbolSpecial{
-			name:   "Zen",
+		return &Glyphs{
+			name:   StyleNameZen,
 			row:    "~",
 			column: " ",
 			center: "☯",
@@ -384,154 +608,297 @@ func NewSymbols(style BorderStyle) Symbols {
 				" ", "☯", " ",
 				" ", "♨", " ",
 			},
+			headerLeft:  " ",
+			headerMid:   "☯",
+			headerRight: " ",
+		}
+	case StyleVintage:
+		return &Glyphs{
+			name:   StyleNameVintage,
+			row:    "────",
+			column: " ⁜ ",
+			center: " ✠ ",
+			corners: [9]string{
+				"╔══", "══╤", "══╗",
+				" ⁜ ", " ✠ ", " ⁜ ",
+				"╚══", "══╧", "══╝",
+			},
+			headerLeft:  " ├─",
+			headerMid:   "─✠─",
+			headerRight: "─┤ ",
+		}
+	case StyleSketch:
+		return &Glyphs{
+			name:   StyleNameSketch,
+			row:    "~~",
+			column: "/",
+			center: "+",
+			corners: [9]string{
+				" .", "~~", ". ",
+				"/ ", "+ ", " \\",
+				" '", "~~", "` ",
+			},
+			headerLeft:  "/~",
+			headerMid:   "+~",
+			headerRight: "~\\",
+		}
+	case StyleArrowDouble:
+		return &Glyphs{
+			name:   StyleNameArrowDouble,
+			row:    "»»",
+			column: "⫸",
+			center: "✿",
+			corners: [9]string{
+				"⌜»", "»»", "»⌝",
+				"⫸ ", "✿ ", " ⫷",
+				"⌞»", "»»", "»⌟",
+			},
+			headerLeft:  "⫸»",
+			headerMid:   "✿»",
+			headerRight: "»⫷",
+		}
+	case StyleCelestial:
+		return &Glyphs{
+			name:   StyleNameCelestial,
+			row:    "✦✧",
+			column: "☽",
+			center: "☀",
+			corners: [9]string{
+				"✧✦", "✦✧", "✦✧",
+				"☽ ", "☀ ", " ☾",
+				"✧✦", "✦✧", "✦✧",
+			},
+			headerLeft:  "☽✦",
+			headerMid:   "☀✧",
+			headerRight: "✦☾",
+		}
+	case StyleCyber:
+		return &Glyphs{
+			name:   StyleNameCyber,
+			row:    "═╦═",
+			column: "║",
+			center: "╬",
+			corners: [9]string{
+				"╔╦═", "╦═╦", "═╦╗",
+				"║ ", "╬ ", " ║",
+				"╚╩═", "╩═╩", "═╩╝",
+			},
+			headerLeft:  "╠╦═",
+			headerMid:   "╬═╦",
+			headerRight: "═╦╣",
+		}
+	case StyleRunic:
+		return &Glyphs{
+			name:   StyleNameRunic,
+			row:    "ᛖᛖᛖ",
+			column: "ᛟ",
+			center: "ᛞ",
+			corners: [9]string{
+				"ᛏᛖᛖ", "ᛖᛖᛖ", "ᛖᛖᛏ",
+				"ᛟ ", "ᛞ ", " ᛟ",
+				"ᛗᛖᛖ", "ᛖᛖᛖ", "ᛖᛖᛗ",
+			},
+			headerLeft:  "ᛟᛖᛖ",
+			headerMid:   "ᛞᛖᛖ",
+			headerRight: "ᛖᛖᛟ",
+		}
+	case StyleIndustrial:
+		return &Glyphs{
+			name:   StyleNameIndustrial,
+			row:    "━╋━",
+			column: "┃",
+			center: "╋",
+			corners: [9]string{
+				"┏╋━", "╋━╋", "━╋┓",
+				"┃ ", "╋ ", " ┃",
+				"┗╋━", "╋━╋", "━╋┛",
+			},
+			headerLeft:  "┣╋━",
+			headerMid:   "╋━╋",
+			headerRight: "━╋┫",
+		}
+	case StyleInk:
+		return &Glyphs{
+			name:   StyleNameInk,
+			row:    "﹌",
+			column: "︱",
+			center: "✒",
+			corners: [9]string{
+				"﹏", "﹌", "﹏",
+				"︱ ", "✒ ", " ︱",
+				"﹋", "﹌", "﹋",
+			},
+			headerLeft:  "︱﹌",
+			headerMid:   "✒﹌",
+			headerRight: "﹌︱",
+		}
+	case StyleArcade:
+		return &Glyphs{
+			name:   StyleNameArcade,
+			row:    "■□",
+			column: "▐",
+			center: "◉",
+			corners: [9]string{
+				"▞■", "■□", "□▚",
+				"▐ ", "◉ ", " ▐",
+				"▚■", "■□", "□▞",
+			},
+			headerLeft:  "▐■",
+			headerMid:   "◉□",
+			headerRight: "■▐",
+		}
+	case StyleBlossom:
+		return &Glyphs{
+			name:   StyleNameBlossom,
+			row:    "🌸",
+			column: "🌿",
+			center: "✿",
+			corners: [9]string{
+				"🌷", "🌸", "🌷",
+				"🌿", "✿", "🌿",
+				"🌱", "🌸", "🌱",
+			},
+			headerLeft:  "🌿🌸",
+			headerMid:   "✿🌸",
+			headerRight: "🌸🌿",
+		}
+	case StyleFrosted:
+		return &Glyphs{
+			name:   StyleNameFrosted,
+			row:    "░▒░",
+			column: "▓",
+			center: "◍",
+			corners: [9]string{
+				"◌░▒", "░▒░", "▒░◌",
+				"▓ ", "◍ ", " ▓",
+				"◌░▒", "░▒░", "▒░◌",
+			},
+			headerLeft:  "▓░▒",
+			headerMid:   "◍▒░",
+			headerRight: "░▒▓",
+		}
+	case StyleMosaic:
+		return &Glyphs{
+			name:   StyleNameMosaic,
+			row:    "▰▱",
+			column: "⧉",
+			center: "⬖",
+			corners: [9]string{
+				"⧠▰", "▰▱", "▱⧠",
+				"⧉ ", "⬖ ", " ⧉",
+				"⧅▰", "▰▱", "▱⧅",
+			},
+			headerLeft:  "⧉▰",
+			headerMid:   "⬖▱",
+			headerRight: "▰⧉",
+		}
+	case StyleUFO:
+		return &Glyphs{
+			name:   StyleNameUFO,
+			row:    "⊚⊚",
+			column: "☽",
+			center: "☢",
+			corners: [9]string{
+				"⌖⊚", "⊚⊚", "⊚⌖",
+				"☽ ", "☢ ", " ☽",
+				"⌗⊚", "⊚⊚", "⊚⌗",
+			},
+			headerLeft:  "☽⊚",
+			headerMid:   "☢⊚",
+			headerRight: "⊚☽",
+		}
+	case StyleSteampunk:
+		return &Glyphs{
+			name:   StyleNameSteampunk,
+			row:    "═⚙═",
+			column: "⛓️",
+			center: "⚔️",
+			corners: [9]string{
+				"🜂⚙═", "═⚙═", "═⚙🜂",
+				"⛓️ ", "⚔️ ", " ⛓️",
+				"🜄⚙═", "═⚙═", "═⚙🜄",
+			},
+			headerLeft:  "⛓️⚙═",
+			headerMid:   "⚔️═⚙",
+			headerRight: "═⚙⛓️",
+		}
+	case StyleGalaxy:
+		return &Glyphs{
+			name:   StyleNameGalaxy,
+			row:    "≋≋",
+			column: "♆",
+			center: "☄️",
+			corners: [9]string{
+				"⌇≋", "≋≋", "≋⌇",
+				"♆ ", "☄️ ", " ♆",
+				"⌇≋", "≋≋", "≋⌇",
+			},
+			headerLeft:  "♆≋",
+			headerMid:   "☄️≋",
+			headerRight: "≋♆",
+		}
+	case StyleJazz:
+		return &Glyphs{
+			name:   StyleNameJazz,
+			row:    "♬♬",
+			column: "▷",
+			center: "★",
+			corners: [9]string{
+				"♔♬", "♬♬", "♬♔",
+				"▷ ", "★ ", " ◁",
+				"♕♬", "♬♬", "♬♕",
+			},
+			headerLeft:  "▷♬",
+			headerMid:   "★♬",
+			headerRight: "♬◁",
+		}
+	case StylePuzzle:
+		return &Glyphs{
+			name:   StyleNamePuzzle,
+			row:    "▣▣",
+			column: "◫",
+			center: "✚",
+			corners: [9]string{
+				"◩▣", "▣▣", "▣◪",
+				"◫ ", "✚ ", " ◫",
+				"◧▣", "▣▣", "▣◨",
+			},
+			headerLeft:  "◫▣",
+			headerMid:   "✚▣",
+			headerRight: "▣◫",
+		}
+	case StyleHypno:
+		return &Glyphs{
+			name:   StyleNameHypno,
+			row:    "◜◝",
+			column: "꩜",
+			center: "⃰",
+			corners: [9]string{
+				"◟◜", "◜◝", "◝◞",
+				"꩜ ", "⃰ ", " ꩜",
+				"◟◜", "◜◝", "◝◞",
+			},
+			headerLeft:  "꩜◜",
+			headerMid:   "⃰◝",
+			headerRight: "◜꩜",
+		}
+	default:
+		return &Glyphs{
+			name:   StyleNameNothing,
+			row:    "",
+			column: "",
+			center: "",
+			corners: [9]string{
+				"", "", "",
+				"", "", "",
+				"", "", "",
+			},
 			headerLeft:  "",
 			headerMid:   "",
 			headerRight: "",
 		}
-	default:
-		return &SymbolNothing{}
 	}
 }
-
-// Private: Style name constants
-const (
-	NameASCII     = "ascii"
-	NameUnicode   = "unicode"
-	NameNothing   = "nothing"
-	NameMarkdown  = "markdown"
-	NameGraphical = "graphical"
-	NameMerger    = "merger"
-)
-
-// SymbolASCII provides basic SymbolASCII border symbols
-type SymbolASCII struct{}
-
-// SymbolASCII symbol methods
-func (s *SymbolASCII) Name() string        { return NameASCII }
-func (s *SymbolASCII) Center() string      { return "+" }
-func (s *SymbolASCII) Row() string         { return "-" }
-func (s *SymbolASCII) Column() string      { return "|" }
-func (s *SymbolASCII) TopLeft() string     { return "+" }
-func (s *SymbolASCII) TopMid() string      { return "+" }
-func (s *SymbolASCII) TopRight() string    { return "+" }
-func (s *SymbolASCII) MidLeft() string     { return "+" }
-func (s *SymbolASCII) MidRight() string    { return "+" }
-func (s *SymbolASCII) BottomLeft() string  { return "+" }
-func (s *SymbolASCII) BottomMid() string   { return "+" }
-func (s *SymbolASCII) BottomRight() string { return "+" }
-func (s *SymbolASCII) HeaderLeft() string  { return "+" }
-func (s *SymbolASCII) HeaderMid() string   { return "+" }
-func (s *SymbolASCII) HeaderRight() string { return "+" }
-
-// SymbolUnicode provides configurable SymbolUnicode border symbols
-type SymbolUnicode struct {
-	row     string
-	column  string
-	center  string
-	corners [9]string // [topLeft, topMid, topRight, midLeft, center, midRight, bottomLeft, bottomMid, bottomRight]
-}
-
-// SymbolUnicode symbol methods
-func (s *SymbolUnicode) Name() string        { return NameUnicode }
-func (s *SymbolUnicode) Center() string      { return s.center }
-func (s *SymbolUnicode) Row() string         { return s.row }
-func (s *SymbolUnicode) Column() string      { return s.column }
-func (s *SymbolUnicode) TopLeft() string     { return s.corners[0] }
-func (s *SymbolUnicode) TopMid() string      { return s.corners[1] }
-func (s *SymbolUnicode) TopRight() string    { return s.corners[2] }
-func (s *SymbolUnicode) MidLeft() string     { return s.corners[3] }
-func (s *SymbolUnicode) MidRight() string    { return s.corners[5] }
-func (s *SymbolUnicode) BottomLeft() string  { return s.corners[6] }
-func (s *SymbolUnicode) BottomMid() string   { return s.corners[7] }
-func (s *SymbolUnicode) BottomRight() string { return s.corners[8] }
-func (s *SymbolUnicode) HeaderLeft() string  { return s.MidLeft() }
-func (s *SymbolUnicode) HeaderMid() string   { return s.Center() }
-func (s *SymbolUnicode) HeaderRight() string { return s.MidRight() }
-
-// SymbolMarkdown provides symbols for SymbolMarkdown-style tables
-type SymbolMarkdown struct{}
-
-// SymbolMarkdown symbol methods
-func (s *SymbolMarkdown) Name() string        { return NameMarkdown }
-func (s *SymbolMarkdown) Center() string      { return "|" }
-func (s *SymbolMarkdown) Row() string         { return "-" }
-func (s *SymbolMarkdown) Column() string      { return "|" }
-func (s *SymbolMarkdown) TopLeft() string     { return "" }
-func (s *SymbolMarkdown) TopMid() string      { return "" }
-func (s *SymbolMarkdown) TopRight() string    { return "" }
-func (s *SymbolMarkdown) MidLeft() string     { return "|" }
-func (s *SymbolMarkdown) MidRight() string    { return "|" }
-func (s *SymbolMarkdown) BottomLeft() string  { return "" }
-func (s *SymbolMarkdown) BottomMid() string   { return "" }
-func (s *SymbolMarkdown) BottomRight() string { return "" }
-func (s *SymbolMarkdown) HeaderLeft() string  { return "|" }
-func (s *SymbolMarkdown) HeaderMid() string   { return "|" }
-func (s *SymbolMarkdown) HeaderRight() string { return "|" }
-
-// SymbolNothing provides no border symbols (invisible borders)
-type SymbolNothing struct{}
-
-// SymbolNothing symbol methods
-func (s *SymbolNothing) Name() string        { return NameNothing }
-func (s *SymbolNothing) Center() string      { return "" }
-func (s *SymbolNothing) Row() string         { return "" }
-func (s *SymbolNothing) Column() string      { return "" }
-func (s *SymbolNothing) TopLeft() string     { return "" }
-func (s *SymbolNothing) TopMid() string      { return "" }
-func (s *SymbolNothing) TopRight() string    { return "" }
-func (s *SymbolNothing) MidLeft() string     { return "" }
-func (s *SymbolNothing) MidRight() string    { return "" }
-func (s *SymbolNothing) BottomLeft() string  { return "" }
-func (s *SymbolNothing) BottomMid() string   { return "" }
-func (s *SymbolNothing) BottomRight() string { return "" }
-func (s *SymbolNothing) HeaderLeft() string  { return "" }
-func (s *SymbolNothing) HeaderMid() string   { return "" }
-func (s *SymbolNothing) HeaderRight() string { return "" }
-
-// SymbolGraphical provides border symbols using emoji/emoticons
-type SymbolGraphical struct{}
-
-// SymbolGraphical symbol methods
-func (s *SymbolGraphical) Name() string        { return NameGraphical }
-func (s *SymbolGraphical) Center() string      { return "➕" }  // Cross
-func (s *SymbolGraphical) Row() string         { return "➖" }  // Horizontal line
-func (s *SymbolGraphical) Column() string      { return "➡️" } // Vertical line (using right arrow)
-func (s *SymbolGraphical) TopLeft() string     { return "↖️" } // LevelHeader-left corner
-func (s *SymbolGraphical) TopMid() string      { return "⬆️" } // LevelHeader junction
-func (s *SymbolGraphical) TopRight() string    { return "↗️" } // LevelHeader-right corner
-func (s *SymbolGraphical) MidLeft() string     { return "⬅️" } // Left junction
-func (s *SymbolGraphical) MidRight() string    { return "➡️" } // Right junction
-func (s *SymbolGraphical) BottomLeft() string  { return "↙️" } // LevelFooter-left corner
-func (s *SymbolGraphical) BottomMid() string   { return "⬇️" } // LevelFooter junction
-func (s *SymbolGraphical) BottomRight() string { return "↘️" } // LevelFooter-right corner
-func (s *SymbolGraphical) HeaderLeft() string  { return "⏩" }  // Header left
-func (s *SymbolGraphical) HeaderMid() string   { return "⏺️" } // Header middle
-func (s *SymbolGraphical) HeaderRight() string { return "⏪" }  // Header right
-
-// SymbolMerger provides custom symbols for merged table rendering
-type SymbolMerger struct {
-	row     string
-	column  string
-	center  string
-	corners [9]string // [TL, TM, TR, ML, CenterIdx(unused), MR, BL, BM, BR]
-}
-
-// SymbolMerger symbol methods
-func (s *SymbolMerger) Name() string        { return NameMerger }
-func (s *SymbolMerger) Center() string      { return s.center } // Main crossing symbol
-func (s *SymbolMerger) Row() string         { return s.row }
-func (s *SymbolMerger) Column() string      { return s.column }
-func (s *SymbolMerger) TopLeft() string     { return s.corners[0] }
-func (s *SymbolMerger) TopMid() string      { return s.corners[1] } // LevelHeader junction
-func (s *SymbolMerger) TopRight() string    { return s.corners[2] }
-func (s *SymbolMerger) MidLeft() string     { return s.corners[3] } // Left junction
-func (s *SymbolMerger) MidRight() string    { return s.corners[5] } // Right junction
-func (s *SymbolMerger) BottomLeft() string  { return s.corners[6] }
-func (s *SymbolMerger) BottomMid() string   { return s.corners[7] } // LevelFooter junction
-func (s *SymbolMerger) BottomRight() string { return s.corners[8] }
-func (s *SymbolMerger) HeaderLeft() string  { return s.MidLeft() }
-func (s *SymbolMerger) HeaderMid() string   { return s.Center() }
-func (s *SymbolMerger) HeaderRight() string { return s.MidRight() }
 
 // SymbolCustom implements the Symbols interface with fully configurable symbols
 type SymbolCustom struct {
@@ -595,10 +962,19 @@ func (c *SymbolCustom) WithHeaderLeft(s string) *SymbolCustom  { c.headerLeft = 
 func (c *SymbolCustom) WithHeaderMid(s string) *SymbolCustom   { c.headerMid = s; return c }
 func (c *SymbolCustom) WithHeaderRight(s string) *SymbolCustom { c.headerRight = s; return c }
 
-// SymbolSpecial provides fully independent border symbols
-// SymbolSpecial provides fully independent border symbols with a corners array
-type SymbolSpecial struct {
-	name        string
+// Preview renders a small sample table to visualize the border style
+func (s *SymbolCustom) Preview() string {
+	return fmt.Sprintf(
+		"%s%s%s\n%s %s %s\n%s%s%s",
+		s.TopLeft(), s.Row(), s.TopRight(),
+		s.Column(), s.Center(), s.Column(),
+		s.BottomLeft(), s.Row(), s.BottomRight(),
+	)
+}
+
+// Glyphs provides fully independent border symbols with a corners array
+type Glyphs struct {
+	name        StyleName
 	row         string
 	column      string
 	center      string
@@ -608,19 +984,29 @@ type SymbolSpecial struct {
 	headerRight string
 }
 
-// SymbolSpecial symbol methods
-func (s *SymbolSpecial) Name() string        { return s.name }
-func (s *SymbolSpecial) Center() string      { return s.center }
-func (s *SymbolSpecial) Row() string         { return s.row }
-func (s *SymbolSpecial) Column() string      { return s.column }
-func (s *SymbolSpecial) TopLeft() string     { return s.corners[0] }
-func (s *SymbolSpecial) TopMid() string      { return s.corners[1] }
-func (s *SymbolSpecial) TopRight() string    { return s.corners[2] }
-func (s *SymbolSpecial) MidLeft() string     { return s.corners[3] }
-func (s *SymbolSpecial) MidRight() string    { return s.corners[5] }
-func (s *SymbolSpecial) BottomLeft() string  { return s.corners[6] }
-func (s *SymbolSpecial) BottomMid() string   { return s.corners[7] }
-func (s *SymbolSpecial) BottomRight() string { return s.corners[8] }
-func (s *SymbolSpecial) HeaderLeft() string  { return s.headerLeft }
-func (s *SymbolSpecial) HeaderMid() string   { return s.headerMid }
-func (s *SymbolSpecial) HeaderRight() string { return s.headerRight }
+// Glyphs symbol methods
+func (s *Glyphs) Name() string        { return s.name.String() }
+func (s *Glyphs) Center() string      { return s.center }
+func (s *Glyphs) Row() string         { return s.row }
+func (s *Glyphs) Column() string      { return s.column }
+func (s *Glyphs) TopLeft() string     { return s.corners[0] }
+func (s *Glyphs) TopMid() string      { return s.corners[1] }
+func (s *Glyphs) TopRight() string    { return s.corners[2] }
+func (s *Glyphs) MidLeft() string     { return s.corners[3] }
+func (s *Glyphs) MidRight() string    { return s.corners[5] }
+func (s *Glyphs) BottomLeft() string  { return s.corners[6] }
+func (s *Glyphs) BottomMid() string   { return s.corners[7] }
+func (s *Glyphs) BottomRight() string { return s.corners[8] }
+func (s *Glyphs) HeaderLeft() string  { return s.headerLeft }
+func (s *Glyphs) HeaderMid() string   { return s.headerMid }
+func (s *Glyphs) HeaderRight() string { return s.headerRight }
+
+// Preview renders a small sample table to visualize the border style
+func (s *Glyphs) Preview() string {
+	return fmt.Sprintf(
+		"%s%s%s\n%s %s %s\n%s%s%s",
+		s.TopLeft(), s.Row(), s.TopRight(),
+		s.Column(), s.Center(), s.Column(),
+		s.BottomLeft(), s.Row(), s.BottomRight(),
+	)
+}
