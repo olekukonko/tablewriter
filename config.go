@@ -676,20 +676,6 @@ func WithAutoHide(state tw.State) Option {
 	}
 }
 
-// WithBorders sets the border configuration for the table and updates the renderer's configuration.
-// Logs the change if debugging is enabled.
-func WithBorders(borders tw.Border) Option {
-	return func(target *Table) {
-		if target.renderer != nil {
-			cfg := target.renderer.Config()
-			cfg.Borders = borders
-			if target.logger != nil {
-				target.logger.Debugf("Option: WithBorders applied to Table: %+v", borders)
-			}
-		}
-	}
-}
-
 // WithColumnMax sets a global maximum column width for the table in streaming mode.
 // Negative values are ignored, and the change is logged if debugging is enabled.
 func WithColumnMax(width int) Option {
@@ -1151,4 +1137,19 @@ func padLine(line []string, numCols int) []string {
 		padded[i] = tw.Empty
 	}
 	return padded
+}
+
+// Deprecated: WithBorders is no longer used.
+// Border control has been moved to the renderer, which now manages its own borders.
+// This Option has no effect on the Table and may be removed in future versions.
+func WithBorders(borders tw.Border) Option {
+	return func(target *Table) {
+		if target.renderer != nil {
+			cfg := target.renderer.Config()
+			cfg.Borders = borders
+			if target.logger != nil {
+				target.logger.Debugf("Option: WithBorders applied to Table: %+v", borders)
+			}
+		}
+	}
 }
