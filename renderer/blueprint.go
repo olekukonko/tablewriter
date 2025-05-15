@@ -58,8 +58,7 @@ func (f *Blueprint) Config() tw.Rendition {
 
 // Footer renders the table footer section with configured formatting.
 func (f *Blueprint) Footer(w io.Writer, footers [][]string, ctx tw.Formatting) {
-	f.logger.Debug("Starting Footer render: IsSubRow=%v, Location=%v, Pos=%s",
-		ctx.IsSubRow, ctx.Row.Location, ctx.Row.Position)
+	f.logger.Debugf("Starting Footer render: IsSubRow=%v, Location=%v, Pos=%s", ctx.IsSubRow, ctx.Row.Location, ctx.Row.Position)
 	// Render the footer line
 	f.renderLine(w, ctx)
 	f.logger.Debug("Completed Footer render")
@@ -67,7 +66,7 @@ func (f *Blueprint) Footer(w io.Writer, footers [][]string, ctx tw.Formatting) {
 
 // Header renders the table header section with configured formatting.
 func (f *Blueprint) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
-	f.logger.Debug("Starting Header render: IsSubRow=%v, Location=%v, Pos=%s, lines=%d, widths=%v",
+	f.logger.Debugf("Starting Header render: IsSubRow=%v, Location=%v, Pos=%s, lines=%d, widths=%v",
 		ctx.IsSubRow, ctx.Row.Location, ctx.Row.Position, len(ctx.Row.Current), ctx.Row.Widths)
 	// Render the header line
 	f.renderLine(w, ctx)
@@ -110,7 +109,7 @@ func (f *Blueprint) Line(w io.Writer, ctx tw.Formatting) {
 			totalLineWidth = tw.DisplayWidth(prefix) + tw.DisplayWidth(suffix)
 			fmt.Fprint(w, line.String())
 		}
-		f.logger.Debug("Line: Handled empty row/widths case (total width %d)", totalLineWidth)
+		f.logger.Debugf("Line: Handled empty row/widths case (total width %d)", totalLineWidth)
 		return
 	}
 
@@ -136,7 +135,7 @@ func (f *Blueprint) Line(w io.Writer, ctx tw.Formatting) {
 		line.WriteString(leftBorder)
 		leftBorderWidth = tw.DisplayWidth(leftBorder)
 		totalLineWidth += leftBorderWidth
-		f.logger.Debug("Line: Left border='%s' (width %d)", leftBorder, leftBorderWidth)
+		f.logger.Debugf("Line: Left border='%s' (width %d)", leftBorder, leftBorderWidth)
 	}
 
 	visibleColIndices := make([]int, 0)
@@ -148,7 +147,7 @@ func (f *Blueprint) Line(w io.Writer, ctx tw.Formatting) {
 		}
 	}
 
-	f.logger.Debug("Line: sortedKeys=%v, Widths=%v, visibleColIndices=%v, targetTotalWidth=%d", sortedKeys, ctx.Row.Widths, visibleColIndices, targetTotalWidth)
+	f.logger.Debugf("Line: sortedKeys=%v, Widths=%v, visibleColIndices=%v, targetTotalWidth=%d", sortedKeys, ctx.Row.Widths, visibleColIndices, targetTotalWidth)
 	// Render each column segment
 	for keyIndex, currentColIdx := range visibleColIndices {
 		jr.colIdx = currentColIdx
@@ -166,17 +165,17 @@ func (f *Blueprint) Line(w io.Writer, ctx tw.Formatting) {
 		if adjustedColWidth < 0 {
 			adjustedColWidth = 0
 		}
-		f.logger.Debug("Line: colIdx=%d, segment='%s', adjusted colWidth=%d", currentColIdx, segment, adjustedColWidth)
+		f.logger.Debugf("Line: colIdx=%d, segment='%s', adjusted colWidth=%d", currentColIdx, segment, adjustedColWidth)
 		if segment == "" {
 			spaces := strings.Repeat(" ", adjustedColWidth)
 			line.WriteString(spaces)
 			totalLineWidth += adjustedColWidth
-			f.logger.Debug("Line: Rendered spaces='%s' (width %d) for col %d", spaces, adjustedColWidth, currentColIdx)
+			f.logger.Debugf("Line: Rendered spaces='%s' (width %d) for col %d", spaces, adjustedColWidth, currentColIdx)
 		} else {
 			segmentWidth := tw.DisplayWidth(segment)
 			if segmentWidth == 0 {
 				segmentWidth = 1 // Avoid division by zero
-				f.logger.Warn("Line: Segment='%s' has zero width, using 1", segment)
+				f.logger.Warnf("Line: Segment='%s' has zero width, using 1", segment)
 			}
 			// Calculate how many full segments fit
 			repeat := adjustedColWidth / segmentWidth
@@ -189,7 +188,7 @@ func (f *Blueprint) Line(w io.Writer, ctx tw.Formatting) {
 				// Truncate if too long
 				repeatedSegment = tw.TruncateString(repeatedSegment, adjustedColWidth)
 				actualWidth = tw.DisplayWidth(repeatedSegment)
-				f.logger.Debug("Line: Truncated segment='%s' to width %d", repeatedSegment, actualWidth)
+				f.logger.Debugf("Line: Truncated segment='%s' to width %d", repeatedSegment, actualWidth)
 			} else if actualWidth < adjustedColWidth {
 				// Pad with segment character to match adjustedColWidth
 				remainingWidth := adjustedColWidth - actualWidth
@@ -200,13 +199,13 @@ func (f *Blueprint) Line(w io.Writer, ctx tw.Formatting) {
 				if actualWidth < adjustedColWidth {
 					repeatedSegment = tw.PadRight(repeatedSegment, " ", adjustedColWidth)
 					actualWidth = adjustedColWidth
-					f.logger.Debug("Line: Padded segment with spaces='%s' to width %d", repeatedSegment, actualWidth)
+					f.logger.Debugf("Line: Padded segment with spaces='%s' to width %d", repeatedSegment, actualWidth)
 				}
-				f.logger.Debug("Line: Padded segment='%s' to width %d", repeatedSegment, actualWidth)
+				f.logger.Debugf("Line: Padded segment='%s' to width %d", repeatedSegment, actualWidth)
 			}
 			line.WriteString(repeatedSegment)
 			totalLineWidth += actualWidth
-			f.logger.Debug("Line: Rendered segment='%s' (width %d) for col %d", repeatedSegment, actualWidth, currentColIdx)
+			f.logger.Debugf("Line: Rendered segment='%s' (width %d) for col %d", repeatedSegment, actualWidth, currentColIdx)
 		}
 
 		// Add junction between columns if not the last column
@@ -224,7 +223,7 @@ func (f *Blueprint) Line(w io.Writer, ctx tw.Formatting) {
 			junctionWidth := tw.DisplayWidth(junction)
 			line.WriteString(junction)
 			totalLineWidth += junctionWidth
-			f.logger.Debug("Line: Junction between %d and %d: '%s' (width %d)", currentColIdx, nextColIdx, junction, junctionWidth)
+			f.logger.Debugf("Line: Junction between %d and %d: '%s' (width %d)", currentColIdx, nextColIdx, junction, junctionWidth)
 		}
 	}
 
@@ -236,13 +235,13 @@ func (f *Blueprint) Line(w io.Writer, ctx tw.Formatting) {
 		rightBorderWidth = tw.DisplayWidth(rightBorder)
 		line.WriteString(rightBorder)
 		totalLineWidth += rightBorderWidth
-		f.logger.Debug("Line: Right border='%s' (width %d)", rightBorder, rightBorderWidth)
+		f.logger.Debugf("Line: Right border='%s' (width %d)", rightBorder, rightBorderWidth)
 	}
 
 	// Write the final line
 	line.WriteString(tw.NewLine)
 	fmt.Fprint(w, line.String())
-	f.logger.Debug("Line rendered: '%s' (total width %d, target %d)", strings.TrimSuffix(line.String(), tw.NewLine), totalLineWidth, targetTotalWidth)
+	f.logger.Debugf("Line rendered: '%s' (total width %d, target %d)", strings.TrimSuffix(line.String(), tw.NewLine), totalLineWidth, targetTotalWidth)
 }
 
 // Logger sets the logger for the Blueprint instance.
@@ -252,8 +251,9 @@ func (f *Blueprint) Logger(logger *ll.Logger) {
 
 // Row renders a table data row with configured formatting.
 func (f *Blueprint) Row(w io.Writer, row []string, ctx tw.Formatting) {
-	f.logger.Debug("Starting Row render: IsSubRow=%v, Location=%v, Pos=%s, hasFooter=%v",
+	f.logger.Debugf("Starting Row render: IsSubRow=%v, Location=%v, Pos=%s, hasFooter=%v",
 		ctx.IsSubRow, ctx.Row.Location, ctx.Row.Position, ctx.HasFooter)
+
 	// Render the row line
 	f.renderLine(w, ctx)
 	f.logger.Debug("Completed Row render")
@@ -271,7 +271,7 @@ func (f *Blueprint) formatCell(content string, width int, padding tw.Padding, al
 		return ""
 	}
 
-	f.logger.Debug("Formatting cell: content='%s', width=%d, align=%s, padding={L:'%s' R:'%s'}",
+	f.logger.Debugf("Formatting cell: content='%s', width=%d, align=%s, padding={L:'%s' R:'%s'}",
 		content, width, align, padding.Left, padding.Right)
 
 	// Calculate display width of content
@@ -296,13 +296,13 @@ func (f *Blueprint) formatCell(content string, width int, padding tw.Padding, al
 	if availableContentWidth < 0 {
 		availableContentWidth = 0
 	}
-	f.logger.Debug("Available content width: %d", availableContentWidth)
+	f.logger.Debugf("Available content width: %d", availableContentWidth)
 
 	// Truncate content if it exceeds available width
 	if runeWidth > availableContentWidth {
 		content = tw.TruncateString(content, availableContentWidth)
 		runeWidth = tw.DisplayWidth(content)
-		f.logger.Debug("Truncated content to fit %d: '%s' (new width %d)", availableContentWidth, content, runeWidth)
+		f.logger.Debugf("Truncated content to fit %d: '%s' (new width %d)", availableContentWidth, content, runeWidth)
 	}
 
 	// Calculate total padding needed
@@ -310,7 +310,7 @@ func (f *Blueprint) formatCell(content string, width int, padding tw.Padding, al
 	if totalPaddingWidth < 0 {
 		totalPaddingWidth = 0
 	}
-	f.logger.Debug("Total padding width: %d", totalPaddingWidth)
+	f.logger.Debugf("Total padding width: %d", totalPaddingWidth)
 
 	var result strings.Builder
 	var leftPaddingWidth, rightPaddingWidth int
@@ -323,13 +323,13 @@ func (f *Blueprint) formatCell(content string, width int, padding tw.Padding, al
 		rightPaddingWidth = totalPaddingWidth - padLeftWidth
 		if rightPaddingWidth > 0 {
 			result.WriteString(tw.PadRight("", rightPadChar, rightPaddingWidth))
-			f.logger.Debug("Applied right padding: '%s' for %d width", rightPadChar, rightPaddingWidth)
+			f.logger.Debugf("Applied right padding: '%s' for %d width", rightPadChar, rightPaddingWidth)
 		}
 	case tw.AlignRight:
 		leftPaddingWidth = totalPaddingWidth - padRightWidth
 		if leftPaddingWidth > 0 {
 			result.WriteString(tw.PadLeft("", leftPadChar, leftPaddingWidth))
-			f.logger.Debug("Applied left padding: '%s' for %d width", leftPadChar, leftPaddingWidth)
+			f.logger.Debugf("Applied left padding: '%s' for %d width", leftPadChar, leftPaddingWidth)
 		}
 		result.WriteString(content)
 		result.WriteString(rightPadChar)
@@ -338,14 +338,14 @@ func (f *Blueprint) formatCell(content string, width int, padding tw.Padding, al
 		rightPaddingWidth = totalPaddingWidth - leftPaddingWidth
 		if leftPaddingWidth > padLeftWidth {
 			result.WriteString(tw.PadLeft("", leftPadChar, leftPaddingWidth-padLeftWidth))
-			f.logger.Debug("Applied left centering padding: '%s' for %d width", leftPadChar, leftPaddingWidth-padLeftWidth)
+			f.logger.Debugf("Applied left centering padding: '%s' for %d width", leftPadChar, leftPaddingWidth-padLeftWidth)
 		}
 		result.WriteString(leftPadChar)
 		result.WriteString(content)
 		result.WriteString(rightPadChar)
 		if rightPaddingWidth > padRightWidth {
 			result.WriteString(tw.PadRight("", rightPadChar, rightPaddingWidth-padRightWidth))
-			f.logger.Debug("Applied right centering padding: '%s' for %d width", rightPadChar, rightPaddingWidth-padRightWidth)
+			f.logger.Debugf("Applied right centering padding: '%s' for %d width", rightPadChar, rightPaddingWidth-padRightWidth)
 		}
 	default:
 		// Default to left alignment
@@ -354,7 +354,7 @@ func (f *Blueprint) formatCell(content string, width int, padding tw.Padding, al
 		rightPaddingWidth = totalPaddingWidth - padLeftWidth
 		if rightPaddingWidth > 0 {
 			result.WriteString(tw.PadRight("", rightPadChar, rightPaddingWidth))
-			f.logger.Debug("Applied right padding: '%s' for %d width", rightPadChar, rightPaddingWidth)
+			f.logger.Debugf("Applied right padding: '%s' for %d width", rightPadChar, rightPaddingWidth)
 		}
 	}
 
@@ -363,23 +363,22 @@ func (f *Blueprint) formatCell(content string, width int, padding tw.Padding, al
 	// Adjust output to match target width
 	if finalWidth > width {
 		output = tw.TruncateString(output, width)
-		f.logger.Debug("formatCell: Truncated output to width %d", width)
+		f.logger.Debugf("formatCell: Truncated output to width %d", width)
 	} else if finalWidth < width {
 		output = tw.PadRight(output, " ", width)
-		f.logger.Debug("formatCell: Padded output to meet width %d", width)
+		f.logger.Debugf("formatCell: Padded output to meet width %d", width)
 	}
 
 	// Log warning if final width doesn't match target
 	if f.logger.Enabled() && tw.DisplayWidth(output) != width {
-		f.logger.Debug("formatCell Warning: Final width %d does not match target %d for result '%s'",
+		f.logger.Debugf("formatCell Warning: Final width %d does not match target %d for result '%s'",
 			tw.DisplayWidth(output), width, output)
 	}
 
-	f.logger.Debug("Formatted cell final result: '%s' (target width %d)", output, width)
+	f.logger.Debugf("Formatted cell final result: '%s' (target width %d)", output, width)
 	return output
 }
 
-// renderLine renders a single line (header, row, or footer) with borders, separators, and merge handling.
 // renderLine renders a single line (header, row, or footer) with borders, separators, and merge handling.
 func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 	// Get sorted column indices
@@ -405,7 +404,7 @@ func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 	if prefix != "" {
 		output.WriteString(prefix)
 		totalLineWidth += tw.DisplayWidth(prefix)
-		f.logger.Debug("renderLine: Prefix='%s' (width %d)", prefix, tw.DisplayWidth(prefix))
+		f.logger.Debugf("renderLine: Prefix='%s' (width %d)", prefix, tw.DisplayWidth(prefix))
 	}
 
 	colIndex := 0
@@ -420,7 +419,7 @@ func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 		cellCtx, ok := ctx.Row.Current[colIndex]
 		isHMergeStart := ok && cellCtx.Merge.Horizontal.Present && cellCtx.Merge.Horizontal.Start
 		if visualWidth == 0 && !isHMergeStart {
-			f.logger.Debug("renderLine: Skipping col %d (zero width, not HMerge start)", colIndex)
+			f.logger.Debugf("renderLine: Skipping col %d (zero width, not HMerge start)", colIndex)
 			colIndex++
 			continue
 		}
@@ -438,9 +437,9 @@ func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 		if shouldAddSeparator {
 			output.WriteString(columnSeparator)
 			totalLineWidth += separatorDisplayWidth
-			f.logger.Debug("renderLine: Added separator '%s' before col %d (width %d)", columnSeparator, colIndex, separatorDisplayWidth)
+			f.logger.Debugf("renderLine: Added separator '%s' before col %d (width %d)", columnSeparator, colIndex, separatorDisplayWidth)
 		} else if colIndex > 0 {
-			f.logger.Debug("renderLine: Skipped separator before col %d due to zero-width prev col or HMerge continuation", colIndex)
+			f.logger.Debugf("renderLine: Skipped separator before col %d due to zero-width prev col or HMerge continuation", colIndex)
 		}
 
 		// Handle merged cells
@@ -460,14 +459,14 @@ func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 					}
 				}
 				visualWidth = dynamicTotalWidth
-				f.logger.Debug("renderLine: Row HMerge col %d, span %d, dynamic visualWidth %d", colIndex, span, visualWidth)
+				f.logger.Debugf("renderLine: Row HMerge col %d, span %d, dynamic visualWidth %d", colIndex, span, visualWidth)
 			} else {
 				visualWidth = ctx.Row.Widths.Get(colIndex)
-				f.logger.Debug("renderLine: H/F HMerge col %d, span %d, pre-adjusted visualWidth %d", colIndex, span, visualWidth)
+				f.logger.Debugf("renderLine: H/F HMerge col %d, span %d, pre-adjusted visualWidth %d", colIndex, span, visualWidth)
 			}
 		} else {
 			visualWidth = ctx.Row.Widths.Get(colIndex)
-			f.logger.Debug("renderLine: Regular col %d, visualWidth %d", colIndex, visualWidth)
+			f.logger.Debugf("renderLine: Regular col %d, visualWidth %d", colIndex, visualWidth)
 		}
 		if visualWidth < 0 {
 			visualWidth = 0
@@ -475,7 +474,7 @@ func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 
 		// Skip processing for non-start merged cells
 		if ok && cellCtx.Merge.Horizontal.Present && !cellCtx.Merge.Horizontal.Start {
-			f.logger.Debug("renderLine: Skipping col %d processing (part of HMerge)", colIndex)
+			f.logger.Debugf("renderLine: Skipping col %d processing (part of HMerge)", colIndex)
 			colIndex++
 			continue
 		}
@@ -486,9 +485,9 @@ func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 				spaces := strings.Repeat(" ", visualWidth)
 				output.WriteString(spaces)
 				totalLineWidth += visualWidth
-				f.logger.Debug("renderLine: No cell context for col %d, writing %d spaces (width %d)", colIndex, visualWidth, visualWidth)
+				f.logger.Debugf("renderLine: No cell context for col %d, writing %d spaces (width %d)", colIndex, visualWidth, visualWidth)
 			} else {
-				f.logger.Debug("renderLine: No cell context for col %d, visualWidth is 0, writing nothing", colIndex)
+				f.logger.Debugf("renderLine: No cell context for col %d, visualWidth is 0, writing nothing", colIndex)
 			}
 			colIndex += span
 			continue
@@ -505,7 +504,7 @@ func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 			} else {
 				align = tw.AlignLeft
 			}
-			f.logger.Debug("renderLine: col %d (data: '%s') using renderer default align '%s' for position %s.", colIndex, cellCtx.Data, align, ctx.Row.Position)
+			f.logger.Debugf("renderLine: col %d (data: '%s') using renderer default align '%s' for position %s.", colIndex, cellCtx.Data, align, ctx.Row.Position)
 		} else if align == tw.Skip {
 			if ctx.Row.Position == tw.Header {
 				align = tw.AlignCenter
@@ -514,7 +513,7 @@ func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 			} else {
 				align = tw.AlignLeft
 			}
-			f.logger.Debug("renderLine: col %d (data: '%s') cellCtx.Align was Skip/empty, falling back to basic default '%s'.", colIndex, cellCtx.Data, align)
+			f.logger.Debugf("renderLine: col %d (data: '%s') cellCtx.Align was Skip/empty, falling back to basic default '%s'.", colIndex, cellCtx.Data, align)
 		}
 
 		isTotalPattern := false
@@ -522,7 +521,7 @@ func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 		// Override alignment for footer merged cells
 		if (ctx.Row.Position == tw.Footer && isHMergeStart) || isTotalPattern {
 			if align != tw.AlignRight {
-				f.logger.Debug("renderLine: Applying AlignRight HMerge/TOTAL override for Footer col %d. Original/default align was: %s", colIndex, align)
+				f.logger.Debugf("renderLine: Applying AlignRight HMerge/TOTAL override for Footer col %d. Original/default align was: %s", colIndex, align)
 				align = tw.AlignRight
 			}
 		}
@@ -532,7 +531,7 @@ func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 		if (cellCtx.Merge.Vertical.Present && !cellCtx.Merge.Vertical.Start) ||
 			(cellCtx.Merge.Hierarchical.Present && !cellCtx.Merge.Hierarchical.Start) {
 			cellData = ""
-			f.logger.Debug("renderLine: Blanked data for col %d (non-start V/Hierarchical)", colIndex)
+			f.logger.Debugf("renderLine: Blanked data for col %d (non-start V/Hierarchical)", colIndex)
 		}
 
 		// Format and render the cell
@@ -541,15 +540,15 @@ func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 			output.WriteString(formattedCell)
 			cellWidth := tw.DisplayWidth(formattedCell)
 			totalLineWidth += cellWidth
-			f.logger.Debug("renderLine: Rendered col %d, formattedCell='%s' (width %d), totalLineWidth=%d", colIndex, formattedCell, cellWidth, totalLineWidth)
+			f.logger.Debugf("renderLine: Rendered col %d, formattedCell='%s' (width %d), totalLineWidth=%d", colIndex, formattedCell, cellWidth, totalLineWidth)
 		}
 
 		// Log rendering details
 		if isHMergeStart {
-			f.logger.Debug("renderLine: Rendered HMerge START col %d (span %d, visualWidth %d, align %v): '%s'",
+			f.logger.Debugf("renderLine: Rendered HMerge START col %d (span %d, visualWidth %d, align %v): '%s'",
 				colIndex, span, visualWidth, align, formattedCell)
 		} else {
-			f.logger.Debug("renderLine: Rendered regular col %d (visualWidth %d, align %v): '%s'",
+			f.logger.Debugf("renderLine: Rendered regular col %d (visualWidth %d, align %v): '%s'",
 				colIndex, visualWidth, align, formattedCell)
 		}
 		colIndex += span
@@ -559,9 +558,17 @@ func (f *Blueprint) renderLine(w io.Writer, ctx tw.Formatting) {
 	if output.Len() > len(prefix) || f.config.Borders.Right.Enabled() {
 		output.WriteString(suffix)
 		totalLineWidth += tw.DisplayWidth(suffix)
-		f.logger.Debug("renderLine: Suffix='%s' (width %d)", suffix, tw.DisplayWidth(suffix))
+		f.logger.Debugf("renderLine: Suffix='%s' (width %d)", suffix, tw.DisplayWidth(suffix))
 	}
 	output.WriteString(tw.NewLine)
 	fmt.Fprint(w, output.String())
-	f.logger.Debug("renderLine: Final rendered line: '%s' (total width %d)", strings.TrimSuffix(output.String(), tw.NewLine), totalLineWidth)
+	f.logger.Debugf("renderLine: Final rendered line: '%s' (total width %d)", strings.TrimSuffix(output.String(), tw.NewLine), totalLineWidth)
 }
+
+func (f *Blueprint) Rendition(config tw.Rendition) {
+	f.config = mergeRendition(f.config, config)
+	f.logger.Debugf("Blueprint.Rendition updated. New internal config: %+v", f.config)
+}
+
+// Ensure Blueprint implements tw.Renditioning
+var _ tw.Renditioning = (*Blueprint)(nil)

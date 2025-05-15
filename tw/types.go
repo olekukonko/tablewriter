@@ -106,9 +106,36 @@ func (l Location) Validate() error {
 }
 
 type Caption struct {
-	Text    string
-	Spot    Spot
-	Align   Align
-	Width   int
-	Disable bool
+	Text  string
+	Spot  Spot
+	Align Align
+	Width int
+}
+
+func (c Caption) WithText(text string) Caption {
+	c.Text = text
+	return c
+}
+
+func (c Caption) WithSpot(spot Spot) Caption {
+	c.Spot = spot
+	return c
+}
+
+func (c Caption) WithAlign(align Align) Caption {
+	c.Align = align
+	return c
+}
+
+func (c Caption) WithWidth(width int) Caption {
+	c.Width = width
+	return c
+}
+
+// Padding defines custom padding characters for a cell
+type Padding struct {
+	Left   string
+	Right  string
+	Top    string
+	Bottom string
 }

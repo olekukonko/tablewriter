@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unicode"
 )
 
 // createStreamTable creates a TableStream with the  renderer for testing.
@@ -51,7 +50,7 @@ func TestStreamTableDefault(t *testing.T) {
 `
 		debug := visualCheck(t, "TestStreamTableDefault", buf.String(), expected)
 		if !debug {
-			t.Error(table.Debug().String())
+			t.Error(table.Debug())
 		}
 	})
 
@@ -84,7 +83,7 @@ func TestStreamTableDefault(t *testing.T) {
 `
 		debug := visualCheck(t, "BasicTableRendering", buf.String(), expected)
 		if !debug {
-			t.Error(table.Debug().String())
+			t.Error(table.Debug())
 		}
 	})
 
@@ -549,7 +548,6 @@ func TestStreamOnlyHeaderNoHeaderLine(t *testing.T) {
 	}
 }
 
-// TestStreamSlowOutput tests streaming table with incremental output and delays.
 func TestStreamSlowOutput(t *testing.T) {
 	var buf bytes.Buffer
 	st := createStreamTable(t, &buf, tablewriter.WithConfig(tablewriter.Config{
@@ -559,81 +557,41 @@ func TestStreamSlowOutput(t *testing.T) {
 		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
 	)
 
+	//Test Start()
 	err := st.Start()
 	if err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
-	fmt.Println("Output after Start():")
-	fmt.Print(buf.String())
 	buf.Reset()
-	time.Sleep(100 * time.Millisecond)
 
-	st.Header([]string{"Event", "Timestamp"}) // Widths: 5+2=7, 9+2=11
-	fmt.Println("\nOutput after Header():")
-	fmt.Print(buf.String())
+	//Test Header()
+	time.Sleep(100 * time.Millisecond)
+	st.Header([]string{"Event", "Timestamp"})
+	lastLine := getLastContentLine(&buf)
+	if !strings.Contains(lastLine, "EVENT") || !strings.Contains(lastLine, "TIMESTAMP") {
+		t.Errorf("Header missing expected columns:\nGot: %q", lastLine)
+	}
 	buf.Reset()
-	time.Sleep(100 * time.Millisecond)
 
+	//Test Rows
 	for i := 1; i <= 3; i++ {
-		err = st.Append([]string{fmt.Sprintf("Data Row %d", i), time.Now().Format("15:04:05.000")})
+		time.Sleep(100 * time.Millisecond)
+		err = st.Append([]string{fmt.Sprintf("Row %d", i), time.Now().Format("15:04:05.000")})
 		if err != nil {
 			t.Fatalf("Row %d failed: %v", i, err)
 		}
-		fmt.Printf("\nOutput after Row %d:\n", i)
-		fmt.Print(buf.String())
+
+		lastLine = getLastContentLine(&buf)
+		if !strings.Contains(lastLine, fmt.Sprintf("Row %d", i)) {
+			t.Errorf("Row %d content missing:\nGot: %q", i, lastLine)
+		}
 		buf.Reset()
-		time.Sleep(100 * time.Millisecond)
 	}
 
 	err = st.Close()
 	if err != nil {
-		t.Fatalf("End failed: %v", err)
+		t.Fatalf("Close failed: %v", err)
 	}
-	fmt.Println("\nOutput after End():")
-	fmt.Print(buf.String())
-
-	t.Log("Slow stream test completed. Observe terminal output.")
-	if st.Logger().Len() > 0 {
-		//fmt.Println("--- DEBUG LOG ---")
-		//fmt.Println(st.Debug().String())
-	}
-}
-
-type Name struct {
-	First string
-	Last  string
-}
-
-// this will be ignored since  Format() is present
-func (n Name) String() string {
-	return fmt.Sprintf("%s %s", n.First, n.Last)
-}
-
-// Note: Format() overrides String() if both exist.
-func (n Name) Format() string {
-	return fmt.Sprintf("%s %s", n.clean(n.First), n.clean(n.Last))
-}
-
-// clean ensures the first letter is capitalized and the rest are lowercase
-func (n Name) clean(s string) string {
-	s = strings.TrimSpace(strings.ToLower(s))
-	words := strings.Fields(s)
-	s = strings.Join(words, "")
-
-	if s == "" {
-		return s
-	}
-	// Capitalize the first letter
-	runes := []rune(s)
-	runes[0] = unicode.ToUpper(runes[0])
-	return string(runes)
-}
-
-type Age int
-
-// Age int will be ignore and string will be used
-func (a Age) String() string {
-	return fmt.Sprintf("%d yrs", a)
 }
 
 func TestStreamFormating(t *testing.T) {
@@ -674,8 +632,8 @@ func TestStreamFormating(t *testing.T) {
 		┌────────────┬────────┬──────────┐
 		│    NAME    │  AGE   │   CITY   │
 		├────────────┼────────┼──────────┤
-		│ Alice Mask │ 25 yrs │ New York │
-		│ Bob Marley │ 30 yrs │ Boston   │
+		│ Alice Mask │ 25yrs  │ New York │
+		│ Bob Marley │ 30yrs  │ Boston   │
 		└────────────┴────────┴──────────┘
 `
 	if !visualCheck(t, "StreamBasic", buf.String(), expected) {

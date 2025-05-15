@@ -26,7 +26,7 @@ func TestMarkdownBasicTable(t *testing.T) {
 	|  Bob  | 30  |  Boston  |
 `
 	if !visualCheck(t, "MarkdownBasicTable", buf.String(), expected) {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 
@@ -50,7 +50,7 @@ func TestMarkdownAlignment(t *testing.T) {
 	| Bob   |  30 |   Boston | ERROR  |
 `
 	if !visualCheck(t, "MarkdownBasicTable", buf.String(), expected) {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 

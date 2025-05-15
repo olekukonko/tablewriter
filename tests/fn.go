@@ -1,11 +1,13 @@
 package tests
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 	"testing"
+	"unicode"
 )
 
 // mismatch represents a discrepancy between expected and actual output lines in a test.
@@ -266,4 +268,50 @@ func getDiff(expected, actual string) string {
 		diff.WriteString(fmt.Sprintf("%4d %s| %-32s | %-32s\n", i+1, marker, eLine, aLine))
 	}
 	return diff.String()
+}
+
+func getLastContentLine(buf *bytes.Buffer) string {
+	content := buf.String()
+	lines := strings.Split(content, "\n")
+
+	// Search backwards for first non-border, non-empty line
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" || strings.Contains(line, "─") ||
+			strings.Contains(line, "┌") || strings.Contains(line, "└") {
+			continue
+		}
+		return line
+	}
+	return ""
+}
+
+type Name struct {
+	First string
+	Last  string
+}
+
+// this will be ignored since  Format() is present
+func (n Name) String() string {
+	return fmt.Sprintf("%s %s", n.First, n.Last)
+}
+
+// Note: Format() overrides String() if both exist.
+func (n Name) Format() string {
+	return fmt.Sprintf("%s %s", clean(n.First), clean(n.Last))
+}
+
+// clean ensures the first letter is capitalized and the rest are lowercase
+func clean(s string) string {
+	s = strings.TrimSpace(strings.ToLower(s))
+	words := strings.Fields(s)
+	s = strings.Join(words, "")
+
+	if s == "" {
+		return s
+	}
+	// Capitalize the first letter
+	runes := []rune(s)
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
 }

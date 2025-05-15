@@ -28,7 +28,7 @@ func TestBasicTableDefault(t *testing.T) {
 `
 	debug := visualCheck(t, "TestBasicTableDefault", buf.String(), expected)
 	if !debug {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 
@@ -473,7 +473,7 @@ func TestLongValues(t *testing.T) {
 
 `
 	if !visualCheck(t, "LongValues", buf.String(), expected) {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 

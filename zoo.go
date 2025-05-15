@@ -53,7 +53,7 @@ func (t *Table) applyHierarchicalMerges(ctx *renderContext, mctx *mergeContext) 
 				currentState := mctx.rowMerges[r][c]
 				currentState.Hierarchical = tw.MergeStateOption{}
 				mctx.rowMerges[r][c] = currentState
-				ctx.logger.Debug("HCompare Skipped: r=%d, c=%d - Insufficient data in snapshot", r, c)
+				ctx.logger.Debugf("HCompare Skipped: r=%d, c=%d - Insufficient data in snapshot", r, c)
 				leftCellContinuedHierarchical = false
 				continue
 			}
@@ -71,10 +71,9 @@ func (t *Table) applyHierarchicalMerges(ctx *renderContext, mctx *mergeContext) 
 				}
 			}
 
-			if t.config.Behavior.TrimSpace.Enabled() {
-				currentVal = strings.TrimSpace(currentVal)
-				aboveVal = strings.TrimSpace(aboveVal)
-			}
+			currentVal = t.Trimmer(currentVal)
+			aboveVal = t.Trimmer(aboveVal)
+
 			currentState := mctx.rowMerges[r][c]
 			prevStateAbove := mctx.rowMerges[r-1][c]
 
@@ -82,7 +81,7 @@ func (t *Table) applyHierarchicalMerges(ctx *renderContext, mctx *mergeContext) 
 			hierarchyAllowed := c == 0 || leftCellContinuedHierarchical
 			shouldContinue := valuesMatch && hierarchyAllowed
 
-			ctx.logger.Debug("HCompare: r=%d, c=%d; current='%s', above='%s'; match=%v; leftCont=%v; shouldCont=%v",
+			ctx.logger.Debugf("HCompare: r=%d, c=%d; current='%s', above='%s'; match=%v; leftCont=%v; shouldCont=%v",
 				r, c, currentVal, aboveVal, valuesMatch, leftCellContinuedHierarchical, shouldContinue)
 
 			if shouldContinue {
@@ -92,7 +91,7 @@ func (t *Table) applyHierarchicalMerges(ctx *renderContext, mctx *mergeContext) 
 				if prevStateAbove.Hierarchical.Present && !prevStateAbove.Hierarchical.End {
 					startRow, ok := hMergeStartRow[c]
 					if !ok {
-						ctx.logger.Debug("Hierarchical merge WARNING: Recovering lost start row at r=%d, c=%d. Assuming r-1 was start.", r, c)
+						ctx.logger.Debugf("Hierarchical merge WARNING: Recovering lost start row at r=%d, c=%d. Assuming r-1 was start.", r, c)
 						startRow = r - 1
 						hMergeStartRow[c] = startRow
 						startState := mctx.rowMerges[startRow][c]
@@ -101,7 +100,7 @@ func (t *Table) applyHierarchicalMerges(ctx *renderContext, mctx *mergeContext) 
 						startState.Hierarchical.End = false
 						mctx.rowMerges[startRow][c] = startState
 					}
-					ctx.logger.Debug("Hierarchical merge CONTINUED row %d, col %d. Block previously started row %d", r, c, startRow)
+					ctx.logger.Debugf("Hierarchical merge CONTINUED row %d, col %d. Block previously started row %d", r, c, startRow)
 				} else {
 					startRow := r - 1
 					hMergeStartRow[c] = startRow
@@ -110,7 +109,7 @@ func (t *Table) applyHierarchicalMerges(ctx *renderContext, mctx *mergeContext) 
 					startState.Hierarchical.Start = true
 					startState.Hierarchical.End = false
 					mctx.rowMerges[startRow][c] = startState
-					ctx.logger.Debug("Hierarchical merge START detected for block ending at or after row %d, col %d (started at row %d)", r, c, startRow)
+					ctx.logger.Debugf("Hierarchical merge START detected for block ending at or after row %d, col %d (started at row %d)", r, c, startRow)
 				}
 
 				for lineIdx := range ctx.rowLines[r] {
@@ -149,10 +148,10 @@ func (t *Table) applyHierarchicalMerges(ctx *renderContext, mctx *mergeContext) 
 // No return value.
 func (t *Table) applyHorizontalMergeWidths(position tw.Position, ctx *renderContext, mergeStates map[int]tw.MergeState) {
 	if mergeStates == nil {
-		t.logger.Debug("applyHorizontalMergeWidths: Skipping %s - no merge states", position)
+		t.logger.Debugf("applyHorizontalMergeWidths: Skipping %s - no merge states", position)
 		return
 	}
-	t.logger.Debug("applyHorizontalMergeWidths: Applying HMerge width recalc for %s", position)
+	t.logger.Debugf("applyHorizontalMergeWidths: Applying HMerge width recalc for %s", position)
 
 	numCols := ctx.numCols
 	targetWidthsMap := ctx.widths[position]
@@ -184,39 +183,39 @@ func (t *Table) applyHorizontalMergeWidths(position tw.Position, ctx *renderCont
 		if state.Horizontal.Present && state.Horizontal.Start {
 			totalWidth := 0
 			span := state.Horizontal.Span
-			t.logger.Debug("  -> HMerge detected: startCol=%d, span=%d, separatorWidth=%d", col, span, separatorWidth)
+			t.logger.Debugf("  -> HMerge detected: startCol=%d, span=%d, separatorWidth=%d", col, span, separatorWidth)
 
 			for i := 0; i < span && (col+i) < numCols; i++ {
 				currentColIndex := col + i
 				normalizedWidth := originalNormalizedWidths.Get(currentColIndex)
 				totalWidth += normalizedWidth
-				t.logger.Debug("      -> col %d: adding normalized width %d", currentColIndex, normalizedWidth)
+				t.logger.Debugf("      -> col %d: adding normalized width %d", currentColIndex, normalizedWidth)
 
 				if i > 0 && separatorWidth > 0 {
 					totalWidth += separatorWidth
-					t.logger.Debug("      -> col %d: adding separator width %d", currentColIndex, separatorWidth)
+					t.logger.Debugf("      -> col %d: adding separator width %d", currentColIndex, separatorWidth)
 				}
 			}
 
 			targetWidthsMap.Set(col, totalWidth)
-			t.logger.Debug("  -> Set %s col %d width to %d (merged)", position, col, totalWidth)
+			t.logger.Debugf("  -> Set %s col %d width to %d (merged)", position, col, totalWidth)
 			processedCols[col] = true
 
 			for i := 1; i < span && (col+i) < numCols; i++ {
 				targetWidthsMap.Set(col+i, 0)
-				t.logger.Debug("  -> Set %s col %d width to 0 (part of merge)", position, col+i)
+				t.logger.Debugf("  -> Set %s col %d width to 0 (part of merge)", position, col+i)
 				processedCols[col+i] = true
 			}
 		}
 	}
-	ctx.logger.Debug("applyHorizontalMergeWidths: Final widths for %s: %v", position, targetWidthsMap)
+	ctx.logger.Debugf("applyHorizontalMergeWidths: Final widths for %s: %v", position, targetWidthsMap)
 }
 
 // applyVerticalMerges applies vertical merges to row content.
 // Parameters ctx and mctx hold rendering and merge state.
 // No return value.
 func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
-	ctx.logger.Debug("Applying vertical merges across %d rows", len(ctx.rowLines))
+	ctx.logger.Debugf("Applying vertical merges across %d rows", len(ctx.rowLines))
 	numCols := ctx.numCols
 
 	mergeStartRow := make(map[int]int)
@@ -230,7 +229,7 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 				newRowMerges[k] = make(map[int]tw.MergeState)
 			}
 			mctx.rowMerges = newRowMerges
-			ctx.logger.Debug("Extended rowMerges to index %d", i)
+			ctx.logger.Debugf("Extended rowMerges to index %d", i)
 		} else if mctx.rowMerges[i] == nil {
 			mctx.rowMerges[i] = make(map[int]tw.MergeState)
 		}
@@ -248,10 +247,9 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 					currentVal.WriteString(line[col])
 				}
 			}
-			currentValStr := currentVal.String()
-			if t.config.Behavior.TrimSpace.Enabled() {
-				currentValStr = strings.TrimSpace(currentValStr)
-			}
+
+			currentValStr := t.Trimmer(currentVal.String())
+
 			startRow, ongoingMerge := mergeStartRow[col]
 			startContent := mergeStartContent[col]
 			mergeState := mctx.rowMerges[i][col]
@@ -269,7 +267,7 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 						ctx.rowLines[i][lineIdx][col] = tw.Empty
 					}
 				}
-				ctx.logger.Debug("Vertical merge continued at row %d, col %d", i, col)
+				ctx.logger.Debugf("Vertical merge continued at row %d, col %d", i, col)
 			} else {
 				if ongoingMerge {
 					endedRow := i - 1
@@ -283,7 +281,7 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 						endState.Vertical.End = true
 						endState.Vertical.Span = startState.Vertical.Span
 						mctx.rowMerges[endedRow][col] = endState
-						ctx.logger.Debug("Vertical merge ended at row %d, col %d, span %d", endedRow, col, startState.Vertical.Span)
+						ctx.logger.Debugf("Vertical merge ended at row %d, col %d, span %d", endedRow, col, startState.Vertical.Span)
 					}
 					delete(mergeStartRow, col)
 					delete(mergeStartContent, col)
@@ -299,7 +297,7 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 					mctx.rowMerges[i][col] = mergeState
 					mergeStartRow[col] = i
 					mergeStartContent[col] = currentValStr
-					ctx.logger.Debug("Vertical merge started at row %d, col %d", i, col)
+					ctx.logger.Debugf("Vertical merge started at row %d, col %d", i, col)
 				} else if !mergeState.Horizontal.Present {
 					mergeState.Vertical = tw.MergeStateOption{}
 					mctx.rowMerges[i][col] = mergeState
@@ -325,7 +323,7 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 				endState.Vertical.Start = false
 			}
 			mctx.rowMerges[lastRowIdx][col] = endState
-			ctx.logger.Debug("Vertical merge finalized at row %d, col %d, span %d", lastRowIdx, col, finalSpan)
+			ctx.logger.Debugf("Vertical merge finalized at row %d, col %d, span %d", lastRowIdx, col, finalSpan)
 		}
 	}
 	ctx.logger.Debug("Vertical merges completed")
@@ -370,7 +368,7 @@ func (t *Table) buildAdjacentCells(ctx *renderContext, mctx *mergeContext, hctx 
 	case tw.Row:
 		targetLineIdx := hctx.lineIdx + direction
 		if hctx.rowIdx < 0 || hctx.rowIdx >= len(ctx.rowLines) || hctx.rowIdx >= len(mctx.rowMerges) {
-			t.logger.Debug("Warning: Invalid row index %d in buildAdjacentCells", hctx.rowIdx)
+			t.logger.Debugf("Warning: Invalid row index %d in buildAdjacentCells", hctx.rowIdx)
 			return nil
 		}
 		currentRowLines := ctx.rowLines[hctx.rowIdx]
@@ -455,7 +453,7 @@ func (t *Table) buildAdjacentCells(ctx *renderContext, mctx *mergeContext, hctx 
 
 	if adjMerges == nil {
 		adjMerges = make(map[int]tw.MergeState)
-		t.logger.Debug("Warning: adjMerges was nil in buildAdjacentCells despite found=true")
+		t.logger.Debugf("Warning: adjMerges was nil in buildAdjacentCells despite found=true")
 	}
 
 	paddedAdjLine := padLine(adjLine, ctx.numCols)
@@ -478,7 +476,7 @@ func (t *Table) buildAdjacentCells(ctx *renderContext, mctx *mergeContext, hctx 
 // Parameters include ctx, mctx, hctx, aligns, and padding for rendering.
 // Returns a renderMergeResponse with current, previous, and next cell contexts.
 func (t *Table) buildCellContexts(ctx *renderContext, mctx *mergeContext, hctx *helperContext, aligns map[int]tw.Align, padding map[int]tw.Padding) renderMergeResponse {
-	t.logger.Debug("buildCellContexts: Building contexts for position=%s, rowIdx=%d, lineIdx=%d", hctx.position, hctx.rowIdx, hctx.lineIdx)
+	t.logger.Debugf("buildCellContexts: Building contexts for position=%s, rowIdx=%d, lineIdx=%d", hctx.position, hctx.rowIdx, hctx.lineIdx)
 	var merges map[int]tw.MergeState
 	switch hctx.position {
 	case tw.Header:
@@ -488,13 +486,13 @@ func (t *Table) buildCellContexts(ctx *renderContext, mctx *mergeContext, hctx *
 			merges = mctx.rowMerges[hctx.rowIdx]
 		} else {
 			merges = make(map[int]tw.MergeState)
-			t.logger.Warn("buildCellContexts: Invalid row index %d or nil merges for row", hctx.rowIdx)
+			t.logger.Warnf("buildCellContexts: Invalid row index %d or nil merges for row", hctx.rowIdx)
 		}
 	case tw.Footer:
 		merges = mctx.footerMerges
 	default:
 		merges = make(map[int]tw.MergeState)
-		t.logger.Warn("buildCellContexts: Invalid position '%s'", hctx.position)
+		t.logger.Warnf("buildCellContexts: Invalid position '%s'", hctx.position)
 	}
 
 	cells := t.buildCoreCellContexts(hctx.line, merges, ctx.widths[hctx.position], aligns, padding, ctx.numCols)
@@ -534,7 +532,7 @@ func (t *Table) buildCoreCellContexts(line []string, merges map[int]tw.MergeStat
 			Merge:   mergeState,
 		}
 	}
-	t.logger.Debug("buildCoreCellContexts: Built cell contexts for %d columns", numCols)
+	t.logger.Debugf("buildCoreCellContexts: Built cell contexts for %d columns", numCols)
 	return cells
 }
 
@@ -569,7 +567,7 @@ func (t *Table) buildPaddingLineContents(padChar string, widths tw.Mapper[int, i
 		line[j] = content
 	}
 	if t.logger.Enabled() {
-		t.logger.Debug("Built padding line with char '%s' for %d columns", padChar, numCols)
+		t.logger.Debugf("Built padding line with char '%s' for %d columns", padChar, numCols)
 	}
 	return line
 }
@@ -578,7 +576,7 @@ func (t *Table) buildPaddingLineContents(padChar string, widths tw.Mapper[int, i
 // Parameter ctx holds rendering state with width maps.
 // Returns an error if width calculation fails.
 func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
-	ctx.logger.Debug("calculateAndNormalizeWidths: Computing and normalizing widths for %d columns", ctx.numCols)
+	ctx.logger.Debugf("calculateAndNormalizeWidths: Computing and normalizing widths for %d columns", ctx.numCols)
 
 	// Initialize width maps
 	t.headerWidths = tw.NewMapper[int, int]()
@@ -589,7 +587,7 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 	for _, lines := range ctx.headerLines {
 		t.updateWidths(lines, t.headerWidths, t.config.Header.Padding)
 	}
-	ctx.logger.Debug("Initial Header widths: %v", t.headerWidths)
+	ctx.logger.Debugf("Initial Header widths: %v", t.headerWidths)
 
 	// Cache row widths to avoid re-iteration
 	rowWidthCache := make([]tw.Mapper[int, int], len(ctx.rowLines))
@@ -606,13 +604,13 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 			}
 		}
 	}
-	ctx.logger.Debug("Initial Row widths: %v", t.rowWidths)
+	ctx.logger.Debugf("Initial Row widths: %v", t.rowWidths)
 
 	// Compute footer widths
 	for _, lines := range ctx.footerLines {
 		t.updateWidths(lines, t.footerWidths, t.config.Footer.Padding)
 	}
-	ctx.logger.Debug("Initial Footer widths: %v", t.footerWidths)
+	ctx.logger.Debugf("Initial Footer widths: %v", t.footerWidths)
 
 	// Initialize width maps for normalization
 	ctx.widths[tw.Header] = tw.NewMapper[int, int]()
@@ -631,7 +629,7 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 		ctx.widths[tw.Row].Set(i, maxWidth)
 		ctx.widths[tw.Footer].Set(i, maxWidth)
 	}
-	ctx.logger.Debug("Normalized widths: header=%v, row=%v, footer=%v", ctx.widths[tw.Header], ctx.widths[tw.Row], ctx.widths[tw.Footer])
+	ctx.logger.Debugf("Normalized widths: header=%v, row=%v, footer=%v", ctx.widths[tw.Header], ctx.widths[tw.Row], ctx.widths[tw.Footer])
 	return nil
 }
 
@@ -654,7 +652,7 @@ func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLe
 		if totalColumnWidthFromStream == 0 {
 			effectiveContentMaxWidth = 0
 		}
-		t.logger.Debug("calculateContentMaxWidth: Streaming col %d, TotalColWd=%d, PadL=%d, PadR=%d -> ContentMaxWd=%d",
+		t.logger.Debugf("calculateContentMaxWidth: Streaming col %d, TotalColWd=%d, PadL=%d, PadR=%d -> ContentMaxWd=%d",
 			colIdx, totalColumnWidthFromStream, padLeftWidth, padRightWidth, effectiveContentMaxWidth)
 	} else {
 		hasConstraint := false
@@ -663,18 +661,18 @@ func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLe
 			if colMax, ok := config.ColMaxWidths.PerColumn.OK(colIdx); ok && colMax > 0 {
 				constraintTotalCellWidth = colMax
 				hasConstraint = true
-				t.logger.Debug("calculateContentMaxWidth: Batch col %d using config.ColMaxWidths.PerColumn (as total cell width constraint): %d", colIdx, constraintTotalCellWidth)
+				t.logger.Debugf("calculateContentMaxWidth: Batch col %d using config.ColMaxWidths.PerColumn (as total cell width constraint): %d", colIdx, constraintTotalCellWidth)
 			}
 		}
 		if !hasConstraint && config.ColMaxWidths.Global > 0 {
 			constraintTotalCellWidth = config.ColMaxWidths.Global
 			hasConstraint = true
-			t.logger.Debug("calculateContentMaxWidth: Batch col %d using config.Formatting.MaxWidth (as total cell width constraint): %d", colIdx, constraintTotalCellWidth)
+			t.logger.Debugf("calculateContentMaxWidth: Batch col %d using config.Formatting.MaxWidth (as total cell width constraint): %d", colIdx, constraintTotalCellWidth)
 		}
 		if !hasConstraint && t.config.MaxWidth > 0 && config.Formatting.AutoWrap != tw.WrapNone {
 			constraintTotalCellWidth = t.config.MaxWidth
 			hasConstraint = true
-			t.logger.Debug("calculateContentMaxWidth: Batch col %d using t.config.MaxWidth (as total cell width constraint, due to AutoWrap != WrapNone): %d", colIdx, constraintTotalCellWidth)
+			t.logger.Debugf("calculateContentMaxWidth: Batch col %d using t.config.MaxWidth (as total cell width constraint, due to AutoWrap != WrapNone): %d", colIdx, constraintTotalCellWidth)
 		}
 		if hasConstraint {
 			effectiveContentMaxWidth = constraintTotalCellWidth - padLeftWidth - padRightWidth
@@ -683,11 +681,11 @@ func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLe
 			} else if effectiveContentMaxWidth < 0 {
 				effectiveContentMaxWidth = 0
 			}
-			t.logger.Debug("calculateContentMaxWidth: Batch col %d, ConstraintTotalCellWidth=%d, PadL=%d, PadR=%d -> EffectiveContentMaxWidth=%d",
+			t.logger.Debugf("calculateContentMaxWidth: Batch col %d, ConstraintTotalCellWidth=%d, PadL=%d, PadR=%d -> EffectiveContentMaxWidth=%d",
 				colIdx, constraintTotalCellWidth, padLeftWidth, padRightWidth, effectiveContentMaxWidth)
 		} else {
 			effectiveContentMaxWidth = 0
-			t.logger.Debug("calculateContentMaxWidth: Batch col %d, No applicable MaxWidth constraint. EffectiveContentMaxWidth set to 0 (unlimited for this stage).", colIdx)
+			t.logger.Debugf("calculateContentMaxWidth: Batch col %d, No applicable MaxWidth constraint. EffectiveContentMaxWidth set to 0 (unlimited for this stage).", colIdx)
 		}
 	}
 	return effectiveContentMaxWidth
@@ -695,51 +693,83 @@ func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLe
 
 // convertToStringer invokes the table's stringer function with optional caching.
 func (t *Table) convertToStringer(input interface{}) ([]string, error) {
-	// Try type assertion for common case: func(interface{}) []string
-	if fn, ok := t.stringer.(func(interface{}) []string); ok {
-		t.logger.Debug("convertToStringer: Using type-asserted func(interface{}) []string for input type %T", input)
-		return fn(input), nil
+	// This function is now only called if t.stringer is non-nil.
+	if t.stringer == nil {
+		return nil, errors.New("internal error: convertToStringer called with nil t.stringer")
 	}
 
-	// Fallback to reflection with caching
 	inputType := reflect.TypeOf(input)
+	stringerFuncVal := reflect.ValueOf(t.stringer)
+	stringerFuncType := stringerFuncVal.Type()
 
+	// Cache lookup (simplified, actual cache logic can be more complex)
 	if t.stringerCacheEnabled {
 		t.stringerCacheMu.RLock()
-		if rv, ok := t.stringerCache[inputType]; ok {
-			t.stringerCacheMu.RUnlock()
-			t.logger.Debug("convertToStringer: Cache hit for type %v", inputType)
-			result := rv.Call([]reflect.Value{reflect.ValueOf(input)})
-			cells, ok := result[0].Interface().([]string)
-			if !ok {
-				return nil, errors.Newf("cached stringer for type %T did not return []string", input)
-			}
-			return cells, nil
-		}
+		cachedFunc, ok := t.stringerCache[inputType]
 		t.stringerCacheMu.RUnlock()
+		if ok {
+			// Add proper type checking for cachedFunc against input here if necessary
+			t.logger.Debugf("convertToStringer: Cache hit for type %v", inputType)
+			results := cachedFunc.Call([]reflect.Value{reflect.ValueOf(input)})
+			if len(results) == 1 && results[0].Type() == reflect.TypeOf([]string{}) {
+				return results[0].Interface().([]string), nil
+			}
+		}
 	}
 
-	t.logger.Debug("convertToStringer: Cache miss or caching disabled, using reflection for type %v", inputType)
-	rv := reflect.ValueOf(t.stringer)
-	stringerType := rv.Type()
-	if !(rv.Kind() == reflect.Func && stringerType.NumIn() == 1 && stringerType.NumOut() == 1 &&
-		inputType.AssignableTo(stringerType.In(0)) &&
-		stringerType.Out(0) == reflect.TypeOf([]string{})) {
-		return nil, errors.Newf("stringer must be func(T) []string where T is assignable from %T, got %T", input, t.stringer)
+	// Robust type checking for the stringer function
+	validSignature := stringerFuncVal.Kind() == reflect.Func &&
+		stringerFuncType.NumIn() == 1 &&
+		stringerFuncType.NumOut() == 1 &&
+		stringerFuncType.Out(0) == reflect.TypeOf([]string{})
+
+	if !validSignature {
+		return nil, errors.Newf("table stringer (type %T) does not have signature func(SomeType) []string", t.stringer)
 	}
 
-	if t.stringerCacheEnabled {
+	// Check if input is assignable to stringer's parameter type
+	paramType := stringerFuncType.In(0)
+	assignable := false
+	if inputType != nil { // input is not untyped nil
+		if inputType.AssignableTo(paramType) {
+			assignable = true
+		} else if paramType.Kind() == reflect.Interface && inputType.Implements(paramType) {
+			assignable = true
+		} else if paramType.Kind() == reflect.Interface && paramType.NumMethod() == 0 { // stringer expects interface{}
+			assignable = true
+		}
+	} else if paramType.Kind() == reflect.Interface || (paramType.Kind() == reflect.Ptr && paramType.Elem().Kind() != reflect.Interface) {
+		// If input is nil, it can be assigned if stringer expects an interface or a pointer type
+		// (but not a pointer to an interface, which is rare for stringers).
+		// A nil value for a concrete type parameter would cause a panic on Call.
+		// So, if paramType is not an interface/pointer, and input is nil, it's an issue.
+		// This needs careful handling. For now, assume assignable if interface/pointer.
+		assignable = true
+	}
+
+	if !assignable {
+		return nil, errors.Newf("input type %T cannot be passed to table stringer expecting %s", input, paramType)
+	}
+
+	var callArgs []reflect.Value
+	if input == nil {
+		// If input is nil, we must pass a zero value of the stringer's parameter type
+		// if that type is a pointer or interface.
+		// Passing reflect.ValueOf(nil) directly will cause issues if paramType is concrete.
+		callArgs = []reflect.Value{reflect.Zero(paramType)}
+	} else {
+		callArgs = []reflect.Value{reflect.ValueOf(input)}
+	}
+
+	resultValues := stringerFuncVal.Call(callArgs)
+
+	if t.stringerCacheEnabled && inputType != nil { // Only cache if inputType is valid
 		t.stringerCacheMu.Lock()
-		t.stringerCache[inputType] = rv
+		t.stringerCache[inputType] = stringerFuncVal
 		t.stringerCacheMu.Unlock()
 	}
 
-	result := rv.Call([]reflect.Value{reflect.ValueOf(input)})
-	cells, ok := result[0].Interface().([]string)
-	if !ok {
-		return nil, errors.Newf("stringer for type %T did not return []string", input)
-	}
-	return cells, nil
+	return resultValues[0].Interface().([]string), nil
 }
 
 // convertToString converts a value to its string representation.
@@ -758,7 +788,7 @@ func (t *Table) convertToString(value interface{}) string {
 			return fmt.Sprintf("[reader error: %v]", err) // Keep fmt.Sprintf for rare error case
 		}
 		if buf.Len() == maxReadSize {
-			buf.WriteString("...")
+			buf.WriteString(tw.CharEllipsis)
 		}
 		return buf.String()
 	case sql.NullString:
@@ -821,168 +851,263 @@ func (t *Table) convertToString(value interface{}) string {
 	case bool:
 		return strconv.FormatBool(v)
 	default:
-		t.logger.Debug("convertToString: Falling back to fmt.Sprintf for type %T", value)
+		t.logger.Debugf("convertToString: Falling back to fmt.Sprintf for type %T", value)
 		return fmt.Sprintf("%v", value) // Fallback for rare types
 	}
+}
+
+// convertItemToCells is responsible for converting a single input item (which could be
+// a struct, a basic type, or an item implementing Stringer/Formatter) into a slice
+// of strings, where each string represents a cell for the table row.
+func (t *Table) convertItemToCells(item interface{}) ([]string, error) {
+	t.logger.Debugf("convertItemToCells: Converting item of type %T", item)
+
+	// 1. User-defined table-wide stringer (t.stringer) takes highest precedence.
+	if t.stringer != nil {
+		res, err := t.convertToStringer(item)
+		if err == nil {
+			t.logger.Debugf("convertItemToCells: Used custom table stringer (t.stringer) for type %T. Produced %d cells: %v", item, len(res), res)
+			return res, nil
+		}
+		t.logger.Warnf("convertItemToCells: Custom table stringer (t.stringer) was set but incompatible or errored for type %T: %v. Will attempt other conversion methods.", item, err)
+	}
+
+	// 2. Handle untyped nil directly.
+	if item == nil {
+		t.logger.Debugf("convertItemToCells: Item is untyped nil. Returning single empty cell.")
+		return []string{""}, nil
+	}
+
+	itemValue := reflect.ValueOf(item)
+	itemType := itemValue.Type()
+
+	// 3. Handle pointers: Dereference pointers to get to the underlying struct or value.
+	if itemType.Kind() == reflect.Ptr {
+		if itemValue.IsNil() {
+			t.logger.Debugf("convertItemToCells: Item is a nil pointer of type %s. Returning single empty cell.", itemType.String())
+			return []string{""}, nil
+		}
+		itemValue = itemValue.Elem()
+		itemType = itemValue.Type()
+		t.logger.Debugf("convertItemToCells: Dereferenced pointer, now processing type %s.", itemType.String())
+	}
+
+	// 4. Special handling for structs:
+	if itemType.Kind() == reflect.Struct {
+		// Check if the original item (before potential dereference) implements Formatter or Stringer.
+		if formatter, ok := item.(tw.Formatter); ok {
+			t.logger.Debugf("convertItemToCells: Struct item (type %s) is tw.Formatter. Using Format(). Resulting in 1 cell.", itemType.Name())
+			return []string{formatter.Format()}, nil
+		}
+		if stringer, ok := item.(fmt.Stringer); ok {
+			t.logger.Debugf("convertItemToCells: Struct item (type %s) is fmt.Stringer. Using String(). Resulting in 1 cell.", itemType.Name())
+			return []string{stringer.String()}, nil
+		}
+
+		t.logger.Debugf("convertItemToCells: Item is a struct (type %s). Attempting generic field reflection to expand into multiple cells.", itemType.Name())
+		numFields := itemValue.NumField()
+		structCells := make([]string, 0, numFields)
+		hasProcessableFields := false
+
+		for i := 0; i < numFields; i++ {
+			fieldMeta := itemType.Field(i)
+			if fieldMeta.PkgPath != "" {
+				t.logger.Debugf("convertItemToCells: Skipping unexported field %s in struct %s", fieldMeta.Name, itemType.Name())
+				continue
+			}
+			hasProcessableFields = true // Mark true if we encounter any exported field
+
+			jsonTag := fieldMeta.Tag.Get("json")
+			if jsonTag == "-" {
+				t.logger.Debugf("convertItemToCells: Skipping field %s in struct %s due to json:\"-\" tag", fieldMeta.Name, itemType.Name())
+				continue
+			}
+
+			fieldReflectedValue := itemValue.Field(i)
+			if strings.Contains(jsonTag, ",omitempty") && fieldReflectedValue.IsZero() {
+				t.logger.Debugf("convertItemToCells: Omitting zero value for field %s in struct %s due to omitempty tag", fieldMeta.Name, itemType.Name())
+				structCells = append(structCells, "")
+				continue
+			}
+			structCells = append(structCells, t.convertToString(fieldReflectedValue.Interface()))
+		}
+
+		// Only return expanded cells if there were processable fields.
+		// If a struct has no exported fields, or all were skipped via json:"-",
+		// it should still produce output (e.g. fmt.Sprintf of the struct) rather than an empty row.
+		if hasProcessableFields {
+			t.logger.Debugf("convertItemToCells: Struct %s reflected into %d cells: %v", itemType.Name(), len(structCells), structCells)
+			return structCells, nil
+		}
+
+		t.logger.Warnf("convertItemToCells: Struct %s has no processable exported fields. Falling back to Sprintf for the whole item (resulting in 1 cell).", itemType.Name())
+		return []string{t.convertToString(item)}, nil // 'item' is the original potentially pointer type
+	}
+
+	// 5. Item is NOT a struct. It might be a basic type or a non-struct type implementing Formatter/Stringer.
+	//    These should all result in a single cell.
+	if formatter, ok := item.(tw.Formatter); ok {
+		t.logger.Debugf("convertItemToCells: Item (non-struct, type %T) is tw.Formatter. Using Format(). Resulting in 1 cell.", item)
+		return []string{formatter.Format()}, nil
+	}
+	if stringer, ok := item.(fmt.Stringer); ok {
+		t.logger.Debugf("convertItemToCells: Item (non-struct, type %T) is fmt.Stringer. Using String(). Resulting in 1 cell.", item)
+		return []string{stringer.String()}, nil
+	}
+
+	// 6. Fallback for any other single item (e.g., basic types like int, string, bool):
+	t.logger.Debugf("convertItemToCells: Item (type %T) is a basic type or unhandled by other mechanisms. Treating as single cell via convertToString.", item)
+	return []string{t.convertToString(item)}, nil
 }
 
 // convertCellsToStrings converts a row to its raw string representation using specified cell config for filters.
 // 'rowInput' can be []string, []any, or a custom type if t.stringer is set.
 func (t *Table) convertCellsToStrings(rowInput interface{}, cellCfg tw.CellConfig) ([]string, error) {
-	t.logger.Debug("convertCellsToStrings: Converting row: %v (type: %T)", rowInput, rowInput)
+	t.logger.Debugf("convertCellsToStrings: Converting row: %v (type: %T)", rowInput, rowInput)
 
 	var cells []string
 	var err error
 
 	switch v := rowInput.(type) {
+	//Directly supported slice types
 	case []string:
 		cells = v
-
-	case []interface{}:
+	case []interface{}: // Catches variadic simple types grouped by Append
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = t.convertToString(val)
 		}
-
-	// Integer types
 	case []int:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.Itoa(val)
 		}
-
 	case []int8:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatInt(int64(val), 10)
 		}
-
 	case []int16:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatInt(int64(val), 10)
 		}
-
-	case []int32:
+	case []int32: // Also rune
 		cells = make([]string, len(v))
 		for i, val := range v {
-			cells[i] = strconv.FormatInt(int64(val), 10)
-		}
-
+			cells[i] = t.convertToString(val)
+		} // Use convertToString for potential rune
 	case []int64:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatInt(val, 10)
 		}
-
-	// Unsigned integer types
 	case []uint:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatUint(uint64(val), 10)
 		}
-
-	case []uint8: // Also handles []byte
+	case []uint8: // Also byte
 		cells = make([]string, len(v))
+		// If it's truly []byte, convertToString will handle it as a string.
+		// If it's a slice of small numbers, convertToString will handle them individually.
 		for i, val := range v {
-			cells[i] = strconv.FormatUint(uint64(val), 10)
+			cells[i] = t.convertToString(val)
 		}
-
 	case []uint16:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatUint(uint64(val), 10)
 		}
-
 	case []uint32:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatUint(uint64(val), 10)
 		}
-
 	case []uint64:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatUint(val, 10)
 		}
-
-	// Floating point types
 	case []float32:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatFloat(float64(val), 'f', -1, 32)
 		}
-
 	case []float64:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatFloat(val, 'f', -1, 64)
 		}
-
-	// Boolean type
 	case []bool:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = strconv.FormatBool(val)
 		}
-
-	// Formatter cases
-	case tw.Formatter:
-		t.logger.Debug("convertCellsToStrings: Input is tw.Formatter, using Format()")
-		cells = []string{v.Format()}
-
 	case []tw.Formatter:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = val.Format()
 		}
-
-	// Stringer cases
-	case fmt.Stringer:
-		t.logger.Debug("convertCellsToStrings: Input is fmt.Stringer, using String()")
-		cells = []string{v.String()}
-
 	case []fmt.Stringer:
 		cells = make([]string, len(v))
 		for i, val := range v {
 			cells[i] = val.String()
 		}
 
+	//Cases for single items that are NOT slices
+	// These are now dispatched to convertItemToCells by the default case.
+	// Keeping direct tw.Formatter and fmt.Stringer here could be a micro-optimization
+	// if `rowInput` is *exactly* that type (not a struct implementing it),
+	// but for clarity, `convertItemToCells` can handle these too.
+	// For this iteration, to match the described flow:
+	case tw.Formatter: // This handles a single Formatter item
+		t.logger.Debugf("convertCellsToStrings: Input is a single tw.Formatter. Using Format().")
+		cells = []string{v.Format()}
+	case fmt.Stringer: // This handles a single Stringer item
+		t.logger.Debugf("convertCellsToStrings: Input is a single fmt.Stringer. Using String().")
+		cells = []string{v.String()}
+
 	default:
-		// Fallback to stringer with reflection
-		t.logger.Debug("convertCellsToStrings: Attempting conversion using custom stringer for type %T", rowInput)
-		cells, err = t.convertToStringer(rowInput)
+		// If rowInput is not one of the recognized slice types above,
+		// or not a single Formatter/Stringer that was directly matched,
+		// it's treated as a single item that needs to be converted into potentially multiple cells.
+		// This is where structs (for field expansion) or other single values (for a single cell) are handled.
+		t.logger.Debugf("convertCellsToStrings: Default case for type %T. Dispatching to convertItemToCells.", rowInput)
+		cells, err = t.convertItemToCells(rowInput)
 		if err != nil {
-			t.logger.Debug("convertCellsToStrings: Stringer error: %v", err)
+			t.logger.Errorf("convertCellsToStrings: Error from convertItemToCells for type %T: %v", rowInput, err)
 			return nil, err
 		}
 	}
 
-	// Apply filters if any
-	if cellCfg.Filter.Global != nil {
-		t.logger.Debug("convertCellsToStrings: Applying global filter to cells: %v", cells)
-		cells = cellCfg.Filter.Global(cells)
-	}
-
-	if len(cellCfg.Filter.PerColumn) > 0 {
-		t.logger.Debug("convertCellsToStrings: Applying per-column filters to cells")
-		numFilters := len(cellCfg.Filter.PerColumn)
-		limit := numFilters
-		if len(cells) < limit {
-			limit = len(cells)
+	// Apply filters (common logic for all successful conversions)
+	if err == nil && cells != nil {
+		if cellCfg.Filter.Global != nil {
+			t.logger.Debugf("convertCellsToStrings: Applying global filter to cells: %v", cells)
+			cells = cellCfg.Filter.Global(cells)
 		}
-		for i := 0; i < limit; i++ {
-			if t.config.Row.Filter.PerColumn[i] != nil {
-				originalCell := cells[i]
-				cells[i] = t.config.Row.Filter.PerColumn[i](cells[i])
-				if cells[i] != originalCell {
-					t.logger.Debug("  convertCellsToStrings: Col %d filter applied: '%s' -> '%s'", i, originalCell, cells[i])
+		if len(cellCfg.Filter.PerColumn) > 0 {
+			t.logger.Debugf("convertCellsToStrings: Applying per-column filters to %d cells", len(cells))
+			for i := 0; i < len(cellCfg.Filter.PerColumn); i++ {
+				if i < len(cells) && cellCfg.Filter.PerColumn[i] != nil {
+					originalCell := cells[i]
+					cells[i] = cellCfg.Filter.PerColumn[i](cells[i])
+					if cells[i] != originalCell {
+						t.logger.Debugf("  convertCellsToStrings: Col %d filter applied: '%s' -> '%s'", i, originalCell, cells[i])
+					}
+				} else if i >= len(cells) && cellCfg.Filter.PerColumn[i] != nil {
+					t.logger.Warnf("  convertCellsToStrings: Per-column filter defined for col %d, but item only produced %d cells. Filter for this column skipped.", i, len(cells))
 				}
 			}
 		}
 	}
 
-	t.logger.Debug("convertCellsToStrings: Conversion and filtering completed, raw cells: %v", cells)
+	if err != nil {
+		t.logger.Debugf("convertCellsToStrings: Returning with error: %v", err)
+		return nil, err
+	}
+	t.logger.Debugf("convertCellsToStrings: Conversion and filtering completed, raw cells: %v", cells)
 	return cells, nil
 }
 
@@ -1004,7 +1129,7 @@ func (t *Table) determineLocation(lineIdx, totalLines int, topPad, bottomPad str
 // Returns an error if the column count cannot be determined.
 func (t *Table) ensureStreamWidthsCalculated(sampleData []string, sectionConfig tw.CellConfig) error {
 	if t.streamWidths != nil && t.streamWidths.Len() > 0 {
-		t.logger.Debug("Stream widths already set: %v", t.streamWidths)
+		t.logger.Debugf("Stream widths already set: %v", t.streamWidths)
 		return nil
 	}
 	t.streamCalculateWidths(sampleData, sectionConfig)
@@ -1017,7 +1142,7 @@ func (t *Table) ensureStreamWidthsCalculated(sampleData []string, sectionConfig 
 			t.streamWidths.Set(i, 0)
 		}
 	}
-	t.logger.Debug("Initialized stream widths: %v", t.streamWidths)
+	t.logger.Debugf("Initialized stream widths: %v", t.streamWidths)
 	return nil
 }
 
@@ -1047,7 +1172,7 @@ func (t *Table) getEmptyColumnInfo(numOriginalCols int) (isEmpty []bool, visible
 	}
 
 	if t.config.Behavior.AutoHide.Disabled() {
-		t.logger.Debug("getEmptyColumnInfo: AutoHide disabled, marking all %d columns as visible.", numOriginalCols)
+		t.logger.Debugf("getEmptyColumnInfo: AutoHide disabled, marking all %d columns as visible.", numOriginalCols)
 		for i := range isEmpty {
 			isEmpty[i] = false
 		}
@@ -1055,7 +1180,7 @@ func (t *Table) getEmptyColumnInfo(numOriginalCols int) (isEmpty []bool, visible
 		return isEmpty, visibleColCount
 	}
 
-	t.logger.Debug("getEmptyColumnInfo: Checking %d rows for %d columns...", len(t.rows), numOriginalCols)
+	t.logger.Debugf("getEmptyColumnInfo: Checking %d rows for %d columns...", len(t.rows), numOriginalCols)
 
 	for rowIdx, logicalRow := range t.rows {
 		for lineIdx, visualLine := range logicalRow {
@@ -1067,13 +1192,11 @@ func (t *Table) getEmptyColumnInfo(numOriginalCols int) (isEmpty []bool, visible
 					continue
 				}
 
-				if t.config.Behavior.TrimSpace.Enabled() {
-					cellContent = strings.TrimSpace(cellContent)
-				}
+				cellContent = t.Trimmer(cellContent)
 
 				if cellContent != "" {
 					isEmpty[colIdx] = false
-					t.logger.Debug("getEmptyColumnInfo: Found content in row %d, line %d, col %d ('%s'). Marked as not empty.", rowIdx, lineIdx, colIdx, cellContent)
+					t.logger.Debugf("getEmptyColumnInfo: Found content in row %d, line %d, col %d ('%s'). Marked as not empty.", rowIdx, lineIdx, colIdx, cellContent)
 				}
 			}
 		}
@@ -1086,7 +1209,7 @@ func (t *Table) getEmptyColumnInfo(numOriginalCols int) (isEmpty []bool, visible
 		}
 	}
 
-	t.logger.Debug("getEmptyColumnInfo: Detection complete. isEmpty: %v, visibleColCount: %d", isEmpty, visibleColCount)
+	t.logger.Debugf("getEmptyColumnInfo: Detection complete. isEmpty: %v, visibleColCount: %d", isEmpty, visibleColCount)
 	return isEmpty, visibleColCount
 }
 
@@ -1094,22 +1217,32 @@ func (t *Table) getEmptyColumnInfo(numOriginalCols int) (isEmpty []bool, visible
 // Returns the number of columns (streamNumCols for streaming, maxColumns for batch).
 func (t *Table) getNumColsToUse() int {
 	if t.config.Stream.Enable && t.hasPrinted {
-		t.logger.Debug("getNumColsToUse: Using streamNumCols: %d", t.streamNumCols)
+		t.logger.Debugf("getNumColsToUse: Using streamNumCols: %d", t.streamNumCols)
 		return t.streamNumCols
 	}
-	numCols := t.maxColumns()
-	t.logger.Debug("getNumColsToUse: Using maxColumns: %d", numCols)
-	return numCols
+
+	// For batch mode:
+	if t.isBatchRenderNumColsSet {
+		// If the flag is set, batchRenderNumCols holds the authoritative count
+		// for the current Render() pass, even if that count is 0.
+		t.logger.Debugf("getNumColsToUse (batch): Using cached t.batchRenderNumCols: %d (because isBatchRenderNumColsSet is true)", t.batchRenderNumCols)
+		return t.batchRenderNumCols
+	}
+
+	// Fallback: If not streaming and cache flag is not set (e.g., called outside a Render pass)
+	num := t.maxColumns()
+	t.logger.Debugf("getNumColsToUse (batch): Cache not active, calculated via t.maxColumns(): %d", num)
+	return num
 }
 
 // prepareTableSection prepares either headers or footers for the table
 func (t *Table) prepareTableSection(elements []any, config tw.CellConfig, sectionName string) [][]string {
-	actualCellsToProcess := t.processVariadicElements(elements)
-	t.logger.Debug("%s(): Effective cells to process: %v", sectionName, actualCellsToProcess)
+	actualCellsToProcess := t.processVariadic(elements)
+	t.logger.Debugf("%s(): Effective cells to process: %v", sectionName, actualCellsToProcess)
 
 	stringsResult, err := t.convertCellsToStrings(actualCellsToProcess, config)
 	if err != nil {
-		t.logger.Error("%s(): Failed to convert elements to strings: %v", sectionName, err)
+		t.logger.Errorf("%s(): Failed to convert elements to strings: %v", sectionName, err)
 		stringsResult = []string{}
 	}
 
@@ -1119,7 +1252,7 @@ func (t *Table) prepareTableSection(elements []any, config tw.CellConfig, sectio
 	if len(prepared) > 0 {
 		for i := range prepared {
 			if len(prepared[i]) < numColsBatch {
-				t.logger.Debug("Padding %s line %d from %d to %d columns", sectionName, i, len(prepared[i]), numColsBatch)
+				t.logger.Debugf("Padding %s line %d from %d to %d columns", sectionName, i, len(prepared[i]), numColsBatch)
 				paddedLine := make([]string, numColsBatch)
 				copy(paddedLine, prepared[i])
 				for j := len(prepared[i]); j < numColsBatch; j++ {
@@ -1127,7 +1260,7 @@ func (t *Table) prepareTableSection(elements []any, config tw.CellConfig, sectio
 				}
 				prepared[i] = paddedLine
 			} else if len(prepared[i]) > numColsBatch {
-				t.logger.Debug("Truncating %s line %d from %d to %d columns", sectionName, i, len(prepared[i]), numColsBatch)
+				t.logger.Debugf("Truncating %s line %d from %d to %d columns", sectionName, i, len(prepared[i]), numColsBatch)
 				prepared[i] = prepared[i][:numColsBatch]
 			}
 		}
@@ -1136,33 +1269,28 @@ func (t *Table) prepareTableSection(elements []any, config tw.CellConfig, sectio
 	return prepared
 }
 
-// processVariadicElements handles the common logic for processing variadic arguments
+// processVariadic handles the common logic for processing variadic arguments
 // that could be either individual elements or a slice of elements
-func (t *Table) processVariadicElements(elements []any) []any {
-	// Check if the input looks like a single slice was passed
+func (t *Table) processVariadic(elements []any) []any {
 	if len(elements) == 1 {
-		firstArg := elements[0]
-		// Try to assert to common slice types users might pass
-		switch v := firstArg.(type) {
+		switch v := elements[0].(type) {
 		case []string:
-			t.logger.Debug("Detected single []string argument. Unpacking it.")
-			result := make([]any, len(v))
-			for i, val := range v {
-				result[i] = val
+			t.logger.Debugf("Detected single []string argument. Unpacking it (fast path).")
+			out := make([]any, len(v))
+			for i := range v {
+				out[i] = v[i]
 			}
-			return result
+			return out
+
 		case []interface{}:
-			t.logger.Debug("Detected single []interface{} argument. Unpacking it.")
-			result := make([]any, len(v))
-			for i, val := range v {
-				result[i] = val
-			}
-			return result
+			t.logger.Debugf("Detected single []interface{} argument. Unpacking it (fast path).")
+			out := make([]any, len(v))
+			copy(out, v)
+			return out
 		}
 	}
 
-	// Either multiple arguments were passed, or a single non-slice argument
-	t.logger.Debug("Input has multiple elements, is empty, or is a single non-slice element. Using variadic elements as is.")
+	t.logger.Debugf("Input has multiple elements or single non-slice. Using variadic elements as-is.")
 	return elements
 }
 
@@ -1179,14 +1307,14 @@ func (t *Table) toStringLines(row interface{}, config tw.CellConfig) ([][]string
 // Parameters include row content, widths map, and padding configuration.
 // No return value.
 func (t *Table) updateWidths(row []string, widths tw.Mapper[int, int], padding tw.CellPadding) {
-	t.logger.Debug("Updating widths for row: %v", row)
+	t.logger.Debugf("Updating widths for row: %v", row)
 	for i, cell := range row {
 		colPad := padding.Global
 		if i < len(padding.PerColumn) && padding.PerColumn[i] != (tw.Padding{}) {
 			colPad = padding.PerColumn[i]
-			t.logger.Debug("  Col %d: Using per-column padding: L:'%s' R:'%s'", i, colPad.Left, colPad.Right)
+			t.logger.Debugf("  Col %d: Using per-column padding: L:'%s' R:'%s'", i, colPad.Left, colPad.Right)
 		} else {
-			t.logger.Debug("  Col %d: Using global padding: L:'%s' R:'%s'", i, padding.Global.Left, padding.Global.Right)
+			t.logger.Debugf("  Col %d: Using global padding: L:'%s' R:'%s'", i, padding.Global.Left, padding.Global.Right)
 		}
 
 		padLeftWidth := tw.DisplayWidth(colPad.Left)
@@ -1198,7 +1326,7 @@ func (t *Table) updateWidths(row []string, widths tw.Mapper[int, int], padding t
 		for _, line := range lines {
 			lineWidth := tw.DisplayWidth(line)
 			if t.config.Behavior.TrimSpace.Enabled() {
-				lineWidth = tw.DisplayWidth(strings.TrimSpace(line))
+				lineWidth = tw.DisplayWidth(t.Trimmer(line))
 			}
 			if lineWidth > contentWidth {
 				contentWidth = lineWidth
@@ -1209,21 +1337,21 @@ func (t *Table) updateWidths(row []string, widths tw.Mapper[int, int], padding t
 		minRequiredPaddingWidth := padLeftWidth + padRightWidth
 
 		if contentWidth == 0 && totalWidth < minRequiredPaddingWidth {
-			t.logger.Debug("  Col %d: Empty content, ensuring width >= padding width (%d). Setting totalWidth to %d.", i, minRequiredPaddingWidth, minRequiredPaddingWidth)
+			t.logger.Debugf("  Col %d: Empty content, ensuring width >= padding width (%d). Setting totalWidth to %d.", i, minRequiredPaddingWidth, minRequiredPaddingWidth)
 			totalWidth = minRequiredPaddingWidth
 		}
 
 		if totalWidth < 1 {
-			t.logger.Debug("  Col %d: Calculated totalWidth is zero, setting minimum width to 1.", i)
+			t.logger.Debugf("  Col %d: Calculated totalWidth is zero, setting minimum width to 1.", i)
 			totalWidth = 1
 		}
 
 		currentMax, _ := widths.OK(i)
 		if totalWidth > currentMax {
 			widths.Set(i, totalWidth)
-			t.logger.Debug("  Col %d: Updated width from %d to %d (content:%d + padL:%d + padR:%d) for cell '%s'", i, currentMax, totalWidth, contentWidth, padLeftWidth, padRightWidth, cell)
+			t.logger.Debugf("  Col %d: Updated width from %d to %d (content:%d + padL:%d + padR:%d) for cell '%s'", i, currentMax, totalWidth, contentWidth, padLeftWidth, padRightWidth, cell)
 		} else {
-			t.logger.Debug("  Col %d: Width %d not greater than current max %d for cell '%s'", i, totalWidth, currentMax, cell)
+			t.logger.Debugf("  Col %d: Width %d not greater than current max %d for cell '%s'", i, totalWidth, currentMax, cell)
 		}
 	}
 }

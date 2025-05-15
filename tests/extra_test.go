@@ -295,7 +295,7 @@ func TestAutoHideFeature(t *testing.T) {
 		}
 	})
 
-	//  Test Case 3: Feature Disabled ---
+	//  Test Case 3: Feature Disabled
 	t.Run("DisabledShowsEmpty", func(t *testing.T) {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf,
@@ -371,7 +371,7 @@ func TestEmojiTable(t *testing.T) {
 
 `
 	if !visualCheck(t, "EmojiTable", buf.String(), expected) {
-		t.Error(table.Debug().String())
+		t.Error(table.Debug())
 	}
 }
 
