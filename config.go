@@ -942,6 +942,15 @@ func WithAlignment(alignment tw.Alignment) Option {
 	}
 }
 
+// WithPadding helps to set global padding
+func WithPadding(padding tw.Padding) Option {
+	return func(target *Table) {
+		target.config.Header.Padding.Global = padding
+		target.config.Row.Padding.Global = padding
+		target.config.Footer.Padding.Global = padding
+	}
+}
+
 // WithRendition allows updating the active renderer's rendition configuration
 // by merging the provided rendition.
 // If the renderer does not implement tw.Renditioning, a warning is logged.
