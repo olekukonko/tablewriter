@@ -115,7 +115,11 @@ type Border struct {
 }
 
 // BorderNone defines a border configuration with all sides disabled.
-var BorderNone = Border{Left: Off, Right: Off, Top: Off, Bottom: Off}
+var (
+	BorderNone     = Border{Left: Off, Right: Off, Top: Off, Bottom: Off}
+	LinesNone      = Lines{ShowTop: Off, ShowBottom: Off, ShowHeaderLine: Off, ShowFooterLine: Off}
+	SeparatorsNone = Separators{ShowHeader: Off, ShowFooter: Off, BetweenRows: Off, BetweenColumns: Off}
+)
 
 type StreamConfig struct {
 	Enable bool
