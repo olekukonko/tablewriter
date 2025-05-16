@@ -419,7 +419,7 @@ func TestLongValues(t *testing.T) {
 		Header: tw.CellConfig{
 			Formatting: tw.CellFormatting{
 				Alignment:  tw.AlignCenter,
-				AutoFormat: true,
+				AutoFormat: tw.On,
 			},
 			ColMaxWidths: tw.CellWidth{Global: 30},
 		},
@@ -488,7 +488,7 @@ func TestWrapping(t *testing.T) {
 		Header: tw.CellConfig{
 			Formatting: tw.CellFormatting{
 				Alignment:  tw.AlignCenter,
-				AutoFormat: true,
+				AutoFormat: tw.On,
 			},
 		},
 		Row: tw.CellConfig{
@@ -538,7 +538,7 @@ func TestTableWithCustomPadding(t *testing.T) {
 		Header: tw.CellConfig{
 			Formatting: tw.CellFormatting{
 				Alignment:  tw.AlignCenter,
-				AutoFormat: true,
+				AutoFormat: tw.On,
 			},
 			Padding: tw.CellPadding{
 				Global: tw.Padding{Left: " ", Right: " ", Top: "^", Bottom: "^"},
@@ -555,7 +555,7 @@ func TestTableWithCustomPadding(t *testing.T) {
 		Footer: tw.CellConfig{
 			Formatting: tw.CellFormatting{
 				Alignment:  tw.AlignCenter,
-				AutoFormat: true,
+				AutoFormat: tw.On,
 			},
 			Padding: tw.CellPadding{
 				Global: tw.Padding{Left: "*", Right: "*", Top: "", Bottom: ""},

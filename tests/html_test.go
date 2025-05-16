@@ -41,7 +41,10 @@ func TestHTMLWithFooterAndAlignment(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewHTML()),
 		tablewriter.WithHeaderConfig(tw.CellConfig{
-			Formatting: tw.CellFormatting{Alignment: tw.AlignCenter},
+			Formatting: tw.CellFormatting{
+				Alignment:  tw.AlignCenter,
+				AutoFormat: tw.Off,
+			},
 		}),
 		tablewriter.WithRowConfig(tw.CellConfig{
 			ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignRight, tw.AlignCenter},
@@ -285,7 +288,7 @@ func TestHTMLHierarchicalMerge(t *testing.T) {
 		}),
 		tablewriter.WithHeaderConfig(tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				AutoFormat: false,
+				AutoFormat: tw.Off,
 				Alignment:  tw.AlignCenter,
 			},
 		}),
@@ -361,7 +364,7 @@ func TestHTMLCSSClasses(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewHTML(htmlCfg)),
 		tablewriter.WithHeaderConfig(tw.CellConfig{
-			Formatting: tw.CellFormatting{AutoFormat: false, Alignment: tw.AlignCenter},
+			Formatting: tw.CellFormatting{AutoFormat: tw.Off, Alignment: tw.AlignCenter},
 		}),
 	)
 	table.Header([]string{"H1"})

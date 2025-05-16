@@ -273,6 +273,11 @@ func (t *Table) Header(elements ...any) {
 		return
 	}
 
+	// add come common default
+	if t.config.Header.Formatting.AutoFormat == tw.Unknown {
+		t.config.Header.Formatting.AutoFormat = tw.On
+	}
+
 	if t.config.Stream.Enable && t.hasPrinted {
 		//  Streaming Path
 		actualCellsToProcess := t.processVariadic(elements)
@@ -460,6 +465,19 @@ func (t *Table) Reset() {
 // Returns an error if rendering fails.
 func (t *Table) Render() error {
 	return t.render()
+}
+
+// Trimmer trims whitespace from a string based on the Table’s configuration.
+// It conditionally applies strings.TrimSpace to the input string if the TrimSpace behavior
+// is enabled in t.config.Behavior, otherwise returning the string unchanged. This method
+// is used in the logging library to format strings for tabular output, ensuring consistent
+// display in log messages. Thread-safe as it only reads configuration and operates on the
+// input string.
+func (t *Table) Trimmer(str string) string {
+	if t.config.Behavior.TrimSpace.Enabled() {
+		return strings.TrimSpace(str)
+	}
+	return str
 }
 
 // appendSingle adds a single row to the table's row data.
@@ -832,7 +850,7 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 
 		effectiveContentMaxWidth := t.calculateContentMaxWidth(i, config, padLeftWidth, padRightWidth, isStreaming)
 
-		if config.Formatting.AutoFormat {
+		if config.Formatting.AutoFormat.Enabled() {
 			cellContent = tw.Title(strings.Join(tw.SplitCamelCase(cellContent), tw.Space))
 		}
 
@@ -2119,17 +2137,4 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 		}
 	}
 	return nil
-}
-
-// Trimmer trims whitespace from a string based on the Table’s configuration.
-// It conditionally applies strings.TrimSpace to the input string if the TrimSpace behavior
-// is enabled in t.config.Behavior, otherwise returning the string unchanged. This method
-// is used in the logging library to format strings for tabular output, ensuring consistent
-// display in log messages. Thread-safe as it only reads configuration and operates on the
-// input string.
-func (t *Table) Trimmer(str string) string {
-	if t.config.Behavior.TrimSpace.Enabled() {
-		return strings.TrimSpace(str)
-	}
-	return str
 }

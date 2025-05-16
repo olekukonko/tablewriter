@@ -2,10 +2,13 @@ package tw
 
 // CellFormatting holds formatting options for table cells.
 type CellFormatting struct {
-	Alignment  Align // Text alignment within the cell (e.g., Left, Right, Center)
-	AutoWrap   int   // Wrapping behavior (e.g., WrapTruncate, WrapNormal)
-	MergeMode  int   // Bitmask for merge behavior (e.g., MergeHorizontal, MergeVertical)
-	AutoFormat bool  // Enables automatic formatting (e.g., title case for headers)
+	Alignment Align // Text alignment within the cell (e.g., Left, Right, Center)
+	AutoWrap  int   // Wrapping behavior (e.g., WrapTruncate, WrapNormal)
+	MergeMode int   // Bitmask for merge behavior (e.g., MergeHorizontal, MergeVertical)
+
+	// Changed form bool to State
+	// See https://github.com/olekukonko/tablewriter/issues/261
+	AutoFormat State // Enables automatic formatting (e.g., title case for headers)
 }
 
 // CellPadding defines padding settings for table cells.

@@ -158,7 +158,7 @@ func process(r io.Reader) error {
 	case "none":
 		selectedSymbols = tw.NewSymbols(tw.StyleNone)
 	default:
-		logger.Warnf("Unknown symbol style '%s', using default (Light).", *symbolStyle)
+		logger.Warnf("Default symbol style '%s', using default (Light).", *symbolStyle)
 		selectedSymbols = tw.NewSymbols(tw.StyleLight)
 	}
 
@@ -226,7 +226,7 @@ func process(r io.Reader) error {
 		fallthrough
 	default:
 		if *rendererType != "" && strings.ToLower(*rendererType) != "blueprint" {
-			logger.Warnf("Unknown renderer type '%s', using Blueprint.", *rendererType)
+			logger.Warnf("Default renderer type '%s', using Blueprint.", *rendererType)
 		}
 		selectedRenderer = renderer.NewBlueprint(baseRendition)
 	}
@@ -414,7 +414,7 @@ func process(r io.Reader) error {
 }
 
 func getHeaderConfig(alignFlag string, wrapFlag string) tw.CellConfig {
-	cfgFmt := tw.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: true}
+	cfgFmt := tw.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: tw.On}
 	switch strings.ToLower(alignFlag) {
 	case "left":
 		cfgFmt.Alignment = tw.AlignLeft

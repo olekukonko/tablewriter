@@ -40,5 +40,9 @@ func (o State) String() string {
 	if o.Enabled() {
 		return "on"
 	}
-	return "off"
+
+	if o.Disabled() {
+		return "off"
+	}
+	return "undefined"
 }

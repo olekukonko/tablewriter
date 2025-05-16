@@ -70,7 +70,7 @@ func TestFilterMasking(t *testing.T) {
 			var buf bytes.Buffer
 			table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 				Header: tw.CellConfig{
-					Formatting: tw.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: true},
+					Formatting: tw.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: tw.On},
 					Padding:    tw.CellPadding{Global: tw.Padding{Left: " ", Right: " "}},
 				},
 				Row: tw.CellConfig{
