@@ -266,8 +266,12 @@ func (t *Table) Debug() *bytes.Buffer {
 // In streaming mode, this processes and renders the header immediately.
 func (t *Table) Header(elements ...any) {
 	t.ensureInitialized()
-	t.logger.Debugf("Header() method called with raw variadic elements: %v (len %d). Streaming: %v, Started: %v",
-		elements, len(elements), t.config.Stream.Enable, t.hasPrinted)
+	t.logger.Debugf("Header() method called with raw variadic elements: %v (len %d). Streaming: %v, Started: %v", elements, len(elements), t.config.Stream.Enable, t.hasPrinted)
+
+	// just forget
+	if t.config.Behavior.Header.Hide.Enabled() {
+		return
+	}
 
 	if t.config.Stream.Enable && t.hasPrinted {
 		//  Streaming Path
@@ -300,14 +304,13 @@ func (t *Table) Header(elements ...any) {
 	preparedHeaderLines := t.prepareContent(headersAsStrings, t.config.Header)
 	t.headers = preparedHeaderLines // Store directly. Padding to t.maxColumns() will happen in prepareContexts.
 
-	t.logger.Debugf("Header set (batch mode), lines stored: %d. First line if exists: %v",
-		len(t.headers), func() []string {
-			if len(t.headers) > 0 {
-				return t.headers[0]
-			} else {
-				return nil
-			}
-		}())
+	t.logger.Debugf("Header set (batch mode), lines stored: %d. First line if exists: %v", len(t.headers), func() []string {
+		if len(t.headers) > 0 {
+			return t.headers[0]
+		} else {
+			return nil
+		}
+	}())
 }
 
 // Footer sets the table's footer content, padding to match column count.
@@ -318,8 +321,12 @@ func (t *Table) Header(elements ...any) {
 // In streaming mode, this processes and stores the footer for rendering by Close().
 func (t *Table) Footer(elements ...any) {
 	t.ensureInitialized()
-	t.logger.Debugf("Footer() method called with raw variadic elements: %v (len %d). Streaming: %v, Started: %v",
-		elements, len(elements), t.config.Stream.Enable, t.hasPrinted)
+	t.logger.Debugf("Footer() method called with raw variadic elements: %v (len %d). Streaming: %v, Started: %v", elements, len(elements), t.config.Stream.Enable, t.hasPrinted)
+
+	// just forget
+	if t.config.Behavior.Footer.Hide.Enabled() {
+		return
+	}
 
 	if t.config.Stream.Enable && t.hasPrinted {
 		//  Streaming Path

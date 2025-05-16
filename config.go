@@ -8,10 +8,16 @@ import (
 	"reflect"                              // Reflection for type handling
 )
 
+type Control struct {
+	Hide tw.State
+}
+
 // Behavior defines table behavior settings that control features like auto-hiding columns and trimming spaces.
 type Behavior struct {
 	AutoHide  tw.State // Controls whether empty columns are automatically hidden (ignored in streaming mode)
 	TrimSpace tw.State // Controls whether leading/trailing spaces are trimmed from cell content
+	Header    Control
+	Footer    Control
 }
 
 // ColumnConfigBuilder is used to configure settings for a specific column across all table sections (header, row, footer).
@@ -908,18 +914,40 @@ func WithSymbols(symbols tw.Symbols) Option {
 	}
 }
 
-// WithTrimSpace enables or disables automatic trimming of leading/trailing spaces.
+// WithTrimSpace sets whether leading and trailing spaces are automatically trimmed.
 // Logs the change if debugging is enabled.
 func WithTrimSpace(state tw.State) Option {
 	return func(target *Table) {
 		target.config.Behavior.TrimSpace = state
 		if target.logger != nil {
-			target.logger.Debugf("Option: WithAutoHide applied to Table: %v", state)
+			target.logger.Debugf("Option: WithTrimSpace applied to Table: %v", state)
 		}
 	}
 }
 
-// WithAlignment helps to set default alignments
+// WithHeaderControl sets the control behavior for the table header.
+// Logs the change if debugging is enabled.
+func WithHeaderControl(control Control) Option {
+	return func(target *Table) {
+		target.config.Behavior.Header = control
+		if target.logger != nil {
+			target.logger.Debugf("Option: WithHeaderControl applied to Table: %v", control) // Fixed 'state' to 'control'
+		}
+	}
+}
+
+// WithFooterControl sets the control behavior for the table footer.
+// Logs the change if debugging is enabled.
+func WithFooterControl(control Control) Option {
+	return func(target *Table) {
+		target.config.Behavior.Footer = control
+		if target.logger != nil {
+			target.logger.Debugf("Option: WithFooterControl applied to Table: %v", control) // Fixed log message and 'state' to 'control'
+		}
+	}
+}
+
+// WithAlignment sets the default column alignment for the header, rows, and footer.
 func WithAlignment(alignment tw.Alignment) Option {
 	return func(target *Table) {
 		target.config.Header.ColumnAligns = alignment
@@ -928,7 +956,7 @@ func WithAlignment(alignment tw.Alignment) Option {
 	}
 }
 
-// WithPadding helps to set global padding
+// WithPadding sets the global padding for the header, rows, and footer.
 func WithPadding(padding tw.Padding) Option {
 	return func(target *Table) {
 		target.config.Header.Padding.Global = padding
