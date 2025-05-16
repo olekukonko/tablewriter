@@ -8,6 +8,9 @@ type State int
 // Enabled checks if the state is on
 func (o State) Enabled() bool { return o == Success }
 
+// Default checks if the state is unknown
+func (o State) Default() bool { return o == Unknown }
+
 // Disabled checks if the state is off
 func (o State) Disabled() bool { return o == Fail }
 

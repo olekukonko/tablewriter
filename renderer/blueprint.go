@@ -282,7 +282,7 @@ func (f *Blueprint) formatCell(content string, width int, padding tw.Padding, al
 	leftPadChar := padding.Left
 	rightPadChar := padding.Right
 
-	if f.config.Settings.Cushion.Disabled() {
+	if f.config.Settings.Cushion.Enabled() || f.config.Settings.Cushion.Default() {
 		if leftPadChar == tw.Empty {
 			leftPadChar = tw.Space
 		}
