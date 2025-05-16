@@ -20,7 +20,6 @@ func TestBug260(t *testing.T) {
 				BetweenRows:    tw.Off,
 				BetweenColumns: tw.Off,
 			},
-			Cushion: tw.Off,
 		},
 		Symbols: tw.NewSymbols(tw.StyleNone),
 	}

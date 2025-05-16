@@ -29,7 +29,7 @@ func defaultBlueprint() tw.Rendition {
 				ShowFooterLine: tw.On,
 			},
 			CompactMode: tw.Off,
-			Cushion:     tw.On,
+			// Cushion:     tw.On,
 		},
 		Symbols:   tw.NewSymbols(tw.StyleLight),
 		Streaming: true,
@@ -190,9 +190,9 @@ func mergeSettings(defaults, overrides tw.Settings) tw.Settings {
 		defaults.CompactMode = overrides.CompactMode
 	}
 
-	if overrides.Cushion != tw.Unknown {
-		defaults.Cushion = overrides.Cushion
-	}
+	//if overrides.Cushion != tw.Unknown {
+	//	defaults.Cushion = overrides.Cushion
+	//}
 
 	return defaults
 }
