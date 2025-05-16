@@ -110,7 +110,7 @@ func defaultOceanRendererConfig() tw.Rendition {
 
 // getHTMLStyle remains the same
 func getHTMLStyle(align tw.Align) string {
-	styleContent := ""
+	styleContent := tw.Empty
 	switch align {
 	case tw.AlignRight:
 		styleContent = "text-align: right;"
@@ -119,10 +119,10 @@ func getHTMLStyle(align tw.Align) string {
 	case tw.AlignLeft:
 		styleContent = "text-align: left;"
 	}
-	if styleContent != "" {
+	if styleContent != tw.Empty {
 		return fmt.Sprintf(` style="%s"`, styleContent)
 	}
-	return ""
+	return tw.Empty
 }
 
 // mergeLines combines default and override line settings, preserving defaults for unset (zero) overrides.

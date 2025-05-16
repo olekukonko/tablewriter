@@ -100,10 +100,10 @@ type Lines struct {
 
 // Settings holds configuration preferences for rendering behavior.
 type Settings struct {
-	Separators Separators // Separator visibility settings
-	Lines      Lines      // Line visibility settings
-	//TrimWhitespace State      // Trims whitespace from cell content if enabled
-	CompactMode State // Reserved for future compact rendering (unused)
+	Separators  Separators // Separator visibility settings
+	Lines       Lines      // Line visibility settings
+	CompactMode State      // Reserved for future compact rendering (unused)
+	Cushion     State
 }
 
 // Border defines the visibility states of table borders.
@@ -116,6 +116,7 @@ type Border struct {
 
 // BorderNone defines a border configuration with all sides disabled.
 var (
+	PaddingNone    = Padding{Left: Empty, Right: Empty, Top: Empty, Bottom: Empty}
 	BorderNone     = Border{Left: Off, Right: Off, Top: Off, Bottom: Off}
 	LinesNone      = Lines{ShowTop: Off, ShowBottom: Off, ShowHeaderLine: Off, ShowFooterLine: Off}
 	SeparatorsNone = Separators{ShowHeader: Off, ShowFooter: Off, BetweenRows: Off, BetweenColumns: Off}

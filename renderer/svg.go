@@ -86,7 +86,7 @@ func NewSVG(configs ...SVGConfig) *SVG {
 	}
 	if len(configs) > 0 {
 		userCfg := configs[0]
-		if userCfg.FontFamily != "" {
+		if userCfg.FontFamily != tw.Empty {
 			cfg.FontFamily = userCfg.FontFamily
 		}
 		if userCfg.FontSize > 0 {
@@ -101,26 +101,26 @@ func NewSVG(configs ...SVGConfig) *SVG {
 		if userCfg.StrokeWidth > 0 {
 			cfg.StrokeWidth = userCfg.StrokeWidth
 		}
-		if userCfg.StrokeColor != "" {
+		if userCfg.StrokeColor != tw.Empty {
 			cfg.StrokeColor = userCfg.StrokeColor
 		}
-		if userCfg.HeaderBG != "" {
+		if userCfg.HeaderBG != tw.Empty {
 			cfg.HeaderBG = userCfg.HeaderBG
 		}
-		if userCfg.RowBG != "" {
+		if userCfg.RowBG != tw.Empty {
 			cfg.RowBG = userCfg.RowBG
 		}
 		cfg.RowAltBG = userCfg.RowAltBG
-		if userCfg.FooterBG != "" {
+		if userCfg.FooterBG != tw.Empty {
 			cfg.FooterBG = userCfg.FooterBG
 		}
-		if userCfg.HeaderColor != "" {
+		if userCfg.HeaderColor != tw.Empty {
 			cfg.HeaderColor = userCfg.HeaderColor
 		}
-		if userCfg.RowColor != "" {
+		if userCfg.RowColor != tw.Empty {
 			cfg.RowColor = userCfg.RowColor
 		}
-		if userCfg.FooterColor != "" {
+		if userCfg.FooterColor != tw.Empty {
 			cfg.FooterColor = userCfg.FooterColor
 		}
 		if userCfg.ApproxCharWidthFactor > 0 {
@@ -412,9 +412,9 @@ func (s *SVG) getSVGAnchorFromTW(align tw.Align) string {
 	case tw.AlignRight:
 		return "end"
 	case tw.AlignNone, tw.Skip:
-		return ""
+		return tw.Empty
 	}
-	return ""
+	return tw.Empty
 }
 
 // Header buffers header lines for SVG rendering.
@@ -489,8 +489,8 @@ func (s *SVG) renderVisualLine(visualLineData []string, ctx tw.Formatting, posit
 	s.numVisualRowsDrawn++
 	s.debug("Rendering visual row %d", s.numVisualRowsDrawn)
 	singleVisualRowHeight := s.config.FontSize*s.config.LineHeightFactor + (2 * s.config.Padding)
-	bgColor := ""
-	textColor := ""
+	bgColor := tw.Empty
+	textColor := tw.Empty
 	defaultTextAnchor := "start"
 	switch position {
 	case tw.Header:
@@ -504,7 +504,7 @@ func (s *SVG) renderVisualLine(visualLineData []string, ctx tw.Formatting, posit
 	default:
 		textColor = s.config.RowColor
 		if !ctx.IsSubRow {
-			if s.config.RowAltBG != "" && s.dataRowCounter%2 != 0 {
+			if s.config.RowAltBG != tw.Empty && s.dataRowCounter%2 != 0 {
 				bgColor = s.config.RowAltBG
 			} else {
 				bgColor = s.config.RowBG
@@ -515,7 +515,7 @@ func (s *SVG) renderVisualLine(visualLineData []string, ctx tw.Formatting, posit
 			if parentDataRowStripeIndex < 0 {
 				parentDataRowStripeIndex = 0
 			}
-			if s.config.RowAltBG != "" && parentDataRowStripeIndex%2 != 0 {
+			if s.config.RowAltBG != tw.Empty && parentDataRowStripeIndex%2 != 0 {
 				bgColor = s.config.RowAltBG
 			} else {
 				bgColor = s.config.RowBG
@@ -539,7 +539,7 @@ func (s *SVG) renderVisualLine(visualLineData []string, ctx tw.Formatting, posit
 			tableColIdx++
 			continue
 		}
-		cellContentFromVisualLine := ""
+		cellContentFromVisualLine := tw.Empty
 		if currentVisualCellIdx < len(visualLineData) {
 			cellContentFromVisualLine = visualLineData[currentVisualCellIdx]
 		}
@@ -550,14 +550,14 @@ func (s *SVG) renderVisualLine(visualLineData []string, ctx tw.Formatting, posit
 			}
 		}
 		textToRender := cellContentFromVisualLine
-		if cellCtx.Data != "" {
+		if cellCtx.Data != tw.Empty {
 			if !((cellCtx.Merge.Vertical.Present && !cellCtx.Merge.Vertical.Start) || (cellCtx.Merge.Hierarchical.Present && !cellCtx.Merge.Hierarchical.Start)) {
 				textToRender = cellCtx.Data
 			} else {
-				textToRender = ""
+				textToRender = tw.Empty
 			}
 		} else if (cellCtx.Merge.Vertical.Present && !cellCtx.Merge.Vertical.Start) || (cellCtx.Merge.Hierarchical.Present && !cellCtx.Merge.Hierarchical.Start) {
-			textToRender = ""
+			textToRender = tw.Empty
 		}
 		hSpan := 1
 		if cellCtx.Merge.Horizontal.Present {
@@ -611,13 +611,13 @@ func (s *SVG) renderVisualLine(visualLineData []string, ctx tw.Formatting, posit
 			s.debug("Vertical merge at col %d, span %d, height %.2f", tableColIdx, vSpan, rectHeight)
 		} else if remainingVSpan, isMerging := s.vMergeTrack[tableColIdx]; isMerging && remainingVSpan > 1 {
 			rectHeight = singleVisualRowHeight
-			textToRender = ""
+			textToRender = tw.Empty
 		}
 		fmt.Fprintf(&s.svgElements, `  <rect x="%.2f" y="%.2f" width="%.2f" height="%.2f" fill="%s"/>%s`,
 			currentX, s.currentY, rectWidth, rectHeight, html.EscapeString(bgColor), "\n")
 		cellTextAnchor := defaultTextAnchor
 		if s.config.RenderTWConfigOverrides {
-			if al := s.getSVGAnchorFromTW(cellCtx.Align); al != "" {
+			if al := s.getSVGAnchorFromTW(cellCtx.Align); al != tw.Empty {
 				cellTextAnchor = al
 			}
 		}

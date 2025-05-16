@@ -218,8 +218,8 @@ func (c *Colorized) Line(ctx tw.Formatting) {
 
 	// Handle case with no effective columns
 	if len(effectiveKeys) == 0 {
-		prefix := ""
-		suffix := ""
+		prefix := tw.Empty
+		suffix := tw.Empty
 		if c.config.Borders.Left.Enabled() {
 			prefix = jr.RenderLeft()
 		}
@@ -230,7 +230,7 @@ func (c *Colorized) Line(ctx tw.Formatting) {
 			}
 			suffix = jr.RenderRight(originalLastColIdx)
 		}
-		if prefix != "" || suffix != "" {
+		if prefix != tw.Empty || suffix != tw.Empty {
 			line.WriteString(prefix + suffix + tw.NewLine)
 			c.w.Write([]byte(line.String()))
 		}
@@ -250,8 +250,8 @@ func (c *Colorized) Line(ctx tw.Formatting) {
 		colWidth := keyWidthMap[currentColIdx]
 		c.logger.Debugf("Line: Drawing segment for Effective colIdx=%d, segment='%s', width=%d", currentColIdx, segment, colWidth)
 
-		if segment == "" {
-			line.WriteString(strings.Repeat(" ", colWidth))
+		if segment == tw.Empty {
+			line.WriteString(strings.Repeat(tw.Space, colWidth))
 		} else {
 			// Calculate how many times to repeat the segment
 			segmentWidth := tw.DisplayWidth(segment)
@@ -269,7 +269,7 @@ func (c *Colorized) Line(ctx tw.Formatting) {
 			actualDrawnWidth := tw.DisplayWidth(drawnSegment)
 			if actualDrawnWidth < colWidth {
 				missingWidth := colWidth - actualDrawnWidth
-				spaces := strings.Repeat(" ", missingWidth)
+				spaces := strings.Repeat(tw.Space, missingWidth)
 				if len(c.config.Border.BG) > 0 {
 					line.WriteString(Tint{BG: c.config.Border.BG}.Apply(spaces))
 				} else {
@@ -369,7 +369,7 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 	// Return empty string if width is non-positive
 	if width <= 0 {
 		c.logger.Debugf("formatCell: width %d <= 0, returning empty string", width)
-		return ""
+		return tw.Empty
 	}
 
 	// Calculate visual width of content
@@ -377,11 +377,11 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 
 	// Set default padding characters
 	padLeftCharStr := padding.Left
-	if padLeftCharStr == "" {
+	if padLeftCharStr == tw.Empty {
 		padLeftCharStr = tw.Space
 	}
 	padRightCharStr := padding.Right
-	if padRightCharStr == "" {
+	if padRightCharStr == tw.Empty {
 		padRightCharStr = tw.Space
 	}
 
@@ -408,8 +408,8 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 	}
 
 	// Apply alignment padding
-	leftAlignmentPadSpaces := ""
-	rightAlignmentPadSpaces := ""
+	leftAlignmentPadSpaces := tw.Empty
+	rightAlignmentPadSpaces := tw.Empty
 	switch align {
 	case tw.AlignLeft:
 		rightAlignmentPadSpaces = strings.Repeat(tw.Space, remainingSpaceForAlignment)
@@ -446,10 +446,10 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 			coloredPadRight = bgTint.Apply(padRightCharStr)
 		}
 		// Apply background color to alignment padding
-		if leftAlignmentPadSpaces != "" {
+		if leftAlignmentPadSpaces != tw.Empty {
 			coloredAlignPadLeft = bgTint.Apply(leftAlignmentPadSpaces)
 		}
-		if rightAlignmentPadSpaces != "" {
+		if rightAlignmentPadSpaces != tw.Empty {
 			coloredAlignPadRight = bgTint.Apply(rightAlignmentPadSpaces)
 		}
 	} else if len(tint.FG) > 0 {
@@ -479,7 +479,7 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 		if currentVisualWidth > width {
 			output = tw.TruncateString(output, width)
 		} else {
-			paddingSpacesStr := strings.Repeat(" ", width-currentVisualWidth)
+			paddingSpacesStr := strings.Repeat(tw.Space, width-currentVisualWidth)
 			if len(tint.BG) > 0 {
 				output += Tint{BG: tint.BG}.Apply(paddingSpacesStr)
 			} else {
@@ -518,7 +518,7 @@ func (c *Colorized) renderLine(ctx tw.Formatting, line []string, tint Tint) {
 	var output strings.Builder
 
 	// Add left border if enabled
-	prefix := ""
+	prefix := tw.Empty
 	if c.config.Borders.Left.Enabled() {
 		prefix = c.config.Border.Apply(c.config.Symbols.Column())
 	}
@@ -526,7 +526,7 @@ func (c *Colorized) renderLine(ctx tw.Formatting, line []string, tint Tint) {
 
 	// Set up separator
 	separatorDisplayWidth := 0
-	separatorString := ""
+	separatorString := tw.Empty
 	if c.config.Settings.Separators.BetweenColumns.Enabled() {
 		separatorString = c.config.Separator.Apply(c.config.Symbols.Column())
 		separatorDisplayWidth = tw.DisplayWidth(c.config.Symbols.Column())
@@ -553,9 +553,9 @@ func (c *Colorized) renderLine(ctx tw.Formatting, line []string, tint Tint) {
 		cellCtx, ok := ctx.Row.Current[i]
 		if !ok {
 			cellCtx = tw.CellContext{
-				Data:    "",
+				Data:    tw.Empty,
 				Align:   c.defaultAlign[ctx.Row.Position],
-				Padding: tw.Padding{Left: " ", Right: " "},
+				Padding: tw.Padding{Left: tw.Space, Right: tw.Space},
 				Width:   ctx.Row.Widths.Get(i),
 				Merge:   tw.MergeState{},
 			}
@@ -605,7 +605,7 @@ func (c *Colorized) renderLine(ctx tw.Formatting, line []string, tint Tint) {
 
 		// Handle empty cell context with non-zero width
 		if !ok && visualWidth > 0 {
-			spaces := strings.Repeat(" ", visualWidth)
+			spaces := strings.Repeat(tw.Space, visualWidth)
 			if len(tint.BG) > 0 {
 				output.WriteString(Tint{BG: tint.BG}.Apply(spaces))
 			} else {
@@ -642,7 +642,7 @@ func (c *Colorized) renderLine(ctx tw.Formatting, line []string, tint Tint) {
 		content := cellCtx.Data
 		if (cellCtx.Merge.Vertical.Present && !cellCtx.Merge.Vertical.Start) ||
 			(cellCtx.Merge.Hierarchical.Present && !cellCtx.Merge.Hierarchical.Start) {
-			content = ""
+			content = tw.Empty
 			c.logger.Debugf("renderLine: Blanked data for col %d (non-start V/Hierarchical)", i)
 		}
 
@@ -678,7 +678,7 @@ func (c *Colorized) renderLine(ctx tw.Formatting, line []string, tint Tint) {
 	}
 
 	// Add right border if enabled
-	suffix := ""
+	suffix := tw.Empty
 	if c.config.Borders.Right.Enabled() {
 		suffix = c.config.Border.Apply(c.config.Symbols.Column())
 	}

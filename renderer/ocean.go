@@ -259,7 +259,7 @@ func (o *Ocean) Line(ctx tw.Formatting) {
 		if colVisualWidth <= 0 {
 			// Still need to consider separators after zero-width columns
 		} else {
-			if segmentChar == "" {
+			if segmentChar == tw.Empty {
 				segmentChar = o.config.Symbols.Row()
 			}
 			segmentDisplayWidth := tw.DisplayWidth(segmentChar)
@@ -321,9 +321,9 @@ func (o *Ocean) renderContentLine(ctx tw.Formatting, lineData []string) {
 
 	for i, colIdx := range sortedColIndices {
 		cellVisualWidth := o.fixedWidths.Get(colIdx)
-		cellContent := ""
+		cellContent := tw.Empty
 		align := tw.AlignDefault
-		padding := tw.Padding{Left: " ", Right: " "}
+		padding := tw.Padding{Left: tw.Space, Right: tw.Space}
 
 		switch ctx.Row.Position {
 		case tw.Header:
@@ -425,18 +425,18 @@ func (o *Ocean) renderContentLine(ctx tw.Formatting, lineData []string) {
 
 func (o *Ocean) formatCellContent(content string, cellVisualWidth int, padding tw.Padding, align tw.Align) string {
 	if cellVisualWidth <= 0 {
-		return ""
+		return tw.Empty
 	}
 
 	contentDisplayWidth := tw.DisplayWidth(content)
 
 	padLeftChar := padding.Left
-	if padLeftChar == "" {
-		padLeftChar = " "
+	if padLeftChar == tw.Empty {
+		padLeftChar = tw.Space
 	}
 	padRightChar := padding.Right
-	if padRightChar == "" {
-		padRightChar = " "
+	if padRightChar == tw.Empty {
+		padRightChar = tw.Space
 	}
 
 	padLeftDisplayWidth := tw.DisplayWidth(padLeftChar)
@@ -460,14 +460,14 @@ func (o *Ocean) formatCellContent(content string, cellVisualWidth int, padding t
 	var PL, PR string
 	switch align {
 	case tw.AlignRight:
-		PL = strings.Repeat(" ", remainingSpace)
+		PL = strings.Repeat(tw.Space, remainingSpace)
 	case tw.AlignCenter:
 		leftSpaces := remainingSpace / 2
 		rightSpaces := remainingSpace - leftSpaces
-		PL = strings.Repeat(" ", leftSpaces)
-		PR = strings.Repeat(" ", rightSpaces)
+		PL = strings.Repeat(tw.Space, leftSpaces)
+		PR = strings.Repeat(tw.Space, rightSpaces)
 	default:
-		PR = strings.Repeat(" ", remainingSpace)
+		PR = strings.Repeat(tw.Space, remainingSpace)
 	}
 
 	var sb strings.Builder
@@ -480,12 +480,12 @@ func (o *Ocean) formatCellContent(content string, cellVisualWidth int, padding t
 	currentFormattedWidth := tw.DisplayWidth(sb.String())
 	if currentFormattedWidth < cellVisualWidth {
 		if align == tw.AlignRight {
-			prefixSpaces := strings.Repeat(" ", cellVisualWidth-currentFormattedWidth)
+			prefixSpaces := strings.Repeat(tw.Space, cellVisualWidth-currentFormattedWidth)
 			finalStr := prefixSpaces + sb.String()
 			sb.Reset()
 			sb.WriteString(finalStr)
 		} else {
-			sb.WriteString(strings.Repeat(" ", cellVisualWidth-currentFormattedWidth))
+			sb.WriteString(strings.Repeat(tw.Space, cellVisualWidth-currentFormattedWidth))
 		}
 	} else if currentFormattedWidth > cellVisualWidth {
 		tempStr := sb.String()

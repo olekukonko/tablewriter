@@ -99,8 +99,8 @@ func (h *HTML) Start(w io.Writer) error {
 	h.Reset()
 	h.logger.Debug("HTML.Start() called.")
 
-	classAttr := ""
-	if h.config.TableClass != "" {
+	classAttr := tw.Empty
+	if h.config.TableClass != tw.Empty {
 		classAttr = fmt.Sprintf(` class="%s"`, h.config.TableClass)
 	}
 	h.logger.Debugf("Writing opening <table%s> tag", classAttr)
@@ -138,8 +138,8 @@ func (h *HTML) Header(headers [][]string, ctx tw.Formatting) {
 	}
 
 	h.closePreviousSection()
-	classAttr := ""
-	if h.config.HeaderClass != "" {
+	classAttr := tw.Empty
+	if h.config.HeaderClass != tw.Empty {
 		classAttr = fmt.Sprintf(` class="%s"`, h.config.HeaderClass)
 	}
 	fmt.Fprintf(h.w, "<thead%s>\n", classAttr)
@@ -159,8 +159,8 @@ func (h *HTML) Header(headers [][]string, ctx tw.Formatting) {
 	}
 
 	indent := "  "
-	rowClassAttr := ""
-	if h.config.HeaderRowClass != "" {
+	rowClassAttr := tw.Empty
+	if h.config.HeaderRowClass != tw.Empty {
 		rowClassAttr = fmt.Sprintf(` class="%s"`, h.config.HeaderRowClass)
 	}
 	fmt.Fprintf(h.w, "%s<tr%s>", indent, rowClassAttr)
@@ -183,7 +183,7 @@ func (h *HTML) Header(headers [][]string, ctx tw.Formatting) {
 		if !ok {
 			cellCtx = tw.CellContext{Align: tw.AlignCenter}
 		}
-		originalContent := ""
+		originalContent := tw.Empty
 		if colIdx < len(headerRow) {
 			originalContent = headerRow[colIdx]
 		}
@@ -213,8 +213,8 @@ func (h *HTML) Row(row []string, ctx tw.Formatting) {
 
 	if !h.tbodyStarted {
 		h.closePreviousSection()
-		classAttr := ""
-		if h.config.BodyClass != "" {
+		classAttr := tw.Empty
+		if h.config.BodyClass != tw.Empty {
 			classAttr = fmt.Sprintf(` class="%s"`, h.config.BodyClass)
 		}
 		h.logger.Debugf("Writing opening <tbody%s> tag", classAttr)
@@ -237,8 +237,8 @@ func (h *HTML) Row(row []string, ctx tw.Formatting) {
 	}
 
 	indent := "  "
-	rowClassAttr := ""
-	if h.config.RowClass != "" {
+	rowClassAttr := tw.Empty
+	if h.config.RowClass != tw.Empty {
 		rowClassAttr = fmt.Sprintf(` class="%s"`, h.config.RowClass)
 	}
 	fmt.Fprintf(h.w, "%s<tr%s>", indent, rowClassAttr)
@@ -261,7 +261,7 @@ func (h *HTML) Row(row []string, ctx tw.Formatting) {
 		if !ok {
 			cellCtx = tw.CellContext{Align: tw.AlignLeft}
 		}
-		originalContent := ""
+		originalContent := tw.Empty
 		if colIdx < len(row) {
 			originalContent = row[colIdx]
 		}
@@ -293,8 +293,8 @@ func (h *HTML) Footer(footers [][]string, ctx tw.Formatting) {
 	}
 
 	h.closePreviousSection()
-	classAttr := ""
-	if h.config.FooterClass != "" {
+	classAttr := tw.Empty
+	if h.config.FooterClass != tw.Empty {
 		classAttr = fmt.Sprintf(` class="%s"`, h.config.FooterClass)
 	}
 	fmt.Fprintf(h.w, "<tfoot%s>\n", classAttr)
@@ -315,8 +315,8 @@ func (h *HTML) Footer(footers [][]string, ctx tw.Formatting) {
 	}
 
 	indent := "  "
-	rowClassAttr := ""
-	if h.config.FooterRowClass != "" {
+	rowClassAttr := tw.Empty
+	if h.config.FooterRowClass != tw.Empty {
 		rowClassAttr = fmt.Sprintf(` class="%s"`, h.config.FooterRowClass)
 	}
 	fmt.Fprintf(h.w, "%s<tr%s>", indent, rowClassAttr)
@@ -327,7 +327,7 @@ func (h *HTML) Footer(footers [][]string, ctx tw.Formatting) {
 		if !ok {
 			cellCtx = tw.CellContext{Align: tw.AlignRight}
 		}
-		originalContent := ""
+		originalContent := tw.Empty
 		if colIdx < len(footerRow) {
 			originalContent = footerRow[colIdx]
 		}
@@ -398,7 +398,7 @@ func (h *HTML) renderRowCell(originalContent string, cellCtx tw.CellContext, isH
 		}
 	}
 
-	if style := getHTMLStyle(cellCtx.Align); style != "" {
+	if style := getHTMLStyle(cellCtx.Align); style != tw.Empty {
 		attrBuilder.WriteString(style)
 	}
 	attributes = attrBuilder.String()
