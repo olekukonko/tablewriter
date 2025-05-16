@@ -14,6 +14,7 @@ type Markdown struct {
 	config    tw.Rendition // Rendering configuration
 	logger    *ll.Logger   // Debug trace messages
 	alignment tw.Alignment // alias of []tw.Align
+	w         io.Writer
 }
 
 // NewMarkdown initializes a Markdown renderer with defaults tailored for Markdown (e.g., pipes, header separator).
@@ -67,7 +68,7 @@ func (m *Markdown) Config() tw.Rendition {
 }
 
 // Header renders the Markdown table header and its separator line.
-func (m *Markdown) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
+func (m *Markdown) Header(headers [][]string, ctx tw.Formatting) {
 	m.resolveAlignment(ctx)
 	if len(headers) == 0 || len(headers[0]) == 0 {
 		m.logger.Debug("Header: No headers to render")
@@ -76,7 +77,7 @@ func (m *Markdown) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
 	m.logger.Debugf("Rendering header with %d lines, widths=%v, current=%v, next=%v", len(headers), ctx.Row.Widths, ctx.Row.Current, ctx.Row.Next)
 
 	// Render header content
-	m.renderMarkdownLine(w, headers[0], ctx, false)
+	m.renderMarkdownLine(headers[0], ctx, false)
 
 	// Render separator if enabled
 	if m.config.Settings.Lines.ShowHeaderLine.Enabled() {
@@ -85,20 +86,20 @@ func (m *Markdown) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
 		sepCtx.Row.Current = ctx.Row.Current
 		sepCtx.Row.Previous = ctx.Row.Current
 		sepCtx.IsSubRow = true
-		m.renderMarkdownLine(w, nil, sepCtx, true)
+		m.renderMarkdownLine(nil, sepCtx, true)
 	}
 }
 
 // Row renders a Markdown table data row.
-func (m *Markdown) Row(w io.Writer, row []string, ctx tw.Formatting) {
+func (m *Markdown) Row(row []string, ctx tw.Formatting) {
 	m.resolveAlignment(ctx)
 	m.logger.Debugf("Rendering row with data=%v, widths=%v, previous=%v, current=%v, next=%v", row, ctx.Row.Widths, ctx.Row.Previous, ctx.Row.Current, ctx.Row.Next)
-	m.renderMarkdownLine(w, row, ctx, false)
+	m.renderMarkdownLine(row, ctx, false)
 
 }
 
 // Footer renders the Markdown table footer.
-func (m *Markdown) Footer(w io.Writer, footers [][]string, ctx tw.Formatting) {
+func (m *Markdown) Footer(footers [][]string, ctx tw.Formatting) {
 	m.resolveAlignment(ctx)
 	if len(footers) == 0 || len(footers[0]) == 0 {
 		m.logger.Debug("Footer: No footers to render")
@@ -106,11 +107,11 @@ func (m *Markdown) Footer(w io.Writer, footers [][]string, ctx tw.Formatting) {
 	}
 	m.logger.Debugf("Rendering footer with %d lines, widths=%v, previous=%v, current=%v, next=%v",
 		len(footers), ctx.Row.Widths, ctx.Row.Previous, ctx.Row.Current, ctx.Row.Next)
-	m.renderMarkdownLine(w, footers[0], ctx, false)
+	m.renderMarkdownLine(footers[0], ctx, false)
 }
 
 // Line is a no-op for Markdown, as only the header separator is rendered (handled by Header).
-func (m *Markdown) Line(w io.Writer, ctx tw.Formatting) {
+func (m *Markdown) Line(ctx tw.Formatting) {
 	m.logger.Debugf("Line: Generic Line call received (pos: %s, loc: %s). Markdown ignores these.", ctx.Row.Position, ctx.Row.Location)
 }
 
@@ -120,11 +121,12 @@ func (m *Markdown) Reset() {
 }
 
 func (m *Markdown) Start(w io.Writer) error {
+	m.w = w
 	m.logger.Warn("Markdown.Start() called (no-op).")
 	return nil
 }
 
-func (m *Markdown) Close(w io.Writer) error {
+func (m *Markdown) Close() error {
 	m.logger.Warn("Markdown.Close() called (no-op).")
 	return nil
 }
@@ -272,7 +274,7 @@ func (m *Markdown) formatSeparator(width int, align tw.Align) string {
 }
 
 // renderMarkdownLine renders a single Markdown line (header, row, footer, or separator) with pipes and alignment.
-func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatting, isHeaderSep bool) {
+func (m *Markdown) renderMarkdownLine(line []string, ctx tw.Formatting, isHeaderSep bool) {
 	numCols := 0
 	if len(ctx.Row.Widths) > 0 {
 		maxKey := -1
@@ -413,6 +415,6 @@ func (m *Markdown) renderMarkdownLine(w io.Writer, line []string, ctx tw.Formatt
 
 	output.WriteString(suffix)
 	output.WriteString(tw.NewLine)
-	fmt.Fprint(w, output.String())
+	fmt.Fprint(m.w, output.String())
 	m.logger.Debugf("renderMarkdownLine: Final line: %s", strings.TrimSuffix(output.String(), tw.NewLine))
 }

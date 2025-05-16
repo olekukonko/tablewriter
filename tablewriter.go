@@ -1347,7 +1347,7 @@ func (t *Table) render() error {
 		}
 	}
 
-	if closeErr := ctx.renderer.Close(t.writer); closeErr != nil {
+	if closeErr := ctx.renderer.Close(); closeErr != nil {
 		t.logger.Errorf("Renderer Close() error: %v", closeErr)
 		if !renderError {
 			firstRenderErr = fmt.Errorf("renderer close failed: %w", closeErr)
@@ -1487,7 +1487,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 
 			resp := t.buildCellContexts(ctx, mctx, lastLineAboveCtx, lastLineAligns, lastLinePadding)
 			ctx.logger.Debugf("Bottom border: Using Widths=%v", ctx.widths[tw.Row])
-			f.Line(t.writer, tw.Formatting{
+			f.Line(tw.Formatting{
 				Row: tw.RowContext{
 					Widths:       ctx.widths[tw.Row],
 					Current:      resp.cells,
@@ -1574,7 +1574,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 			}
 		}
 		ctx.logger.Debugf("Footer separator: Using Widths=%v", ctx.widths[tw.Row])
-		f.Line(t.writer, tw.Formatting{
+		f.Line(tw.Formatting{
 			Row: tw.RowContext{
 				Widths:       ctx.widths[tw.Row],
 				Current:      resp.cells,
@@ -1758,7 +1758,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 		}
 		resp := t.buildCellContexts(ctx, mctx, hctx, colAligns, colPadding)
 		ctx.logger.Debugf("Bottom border: Using Widths=%v", ctx.widths[tw.Row])
-		f.Line(t.writer, tw.Formatting{
+		f.Line(tw.Formatting{
 			Row: tw.RowContext{
 				Widths:       ctx.widths[tw.Row],
 				Current:      resp.cells,
@@ -1798,7 +1798,7 @@ func (t *Table) renderHeader(ctx *renderContext, mctx *mergeContext) error {
 				nextCells[j] = tw.CellContext{Data: cell, Merge: mctx.headerMerges[j]}
 			}
 		}
-		f.Line(t.writer, tw.Formatting{
+		f.Line(tw.Formatting{
 			Row: tw.RowContext{
 				Widths:   ctx.widths[tw.Header],
 				Next:     nextCells,
@@ -1855,7 +1855,7 @@ func (t *Table) renderHeader(ctx *renderContext, mctx *mergeContext) error {
 		hctx.line = padLine(ctx.headerLines[hctx.lineIdx], ctx.numCols)
 		hctx.location = tw.LocationMiddle
 		resp := t.buildCellContexts(ctx, mctx, hctx, colAligns, colPadding)
-		f.Line(t.writer, tw.Formatting{
+		f.Line(tw.Formatting{
 			Row: tw.RowContext{
 				Widths:   ctx.widths[tw.Header],
 				Current:  resp.cells,
@@ -1920,11 +1920,11 @@ func (t *Table) renderLine(ctx *renderContext, mctx *mergeContext, hctx *helperC
 
 	switch hctx.position {
 	case tw.Header:
-		f.Header(t.writer, [][]string{hctx.line}, formatting)
+		f.Header([][]string{hctx.line}, formatting)
 	case tw.Row:
-		f.Row(t.writer, hctx.line, formatting)
+		f.Row(hctx.line, formatting)
 	case tw.Footer:
-		f.Footer(t.writer, [][]string{hctx.line}, formatting)
+		f.Footer([][]string{hctx.line}, formatting)
 	}
 	return nil
 }
@@ -1980,7 +1980,7 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 				nextCells[j] = tw.CellContext{Data: cell, Merge: mergeState, Width: ctx.widths[tw.Row].Get(j)}
 			}
 		}
-		f.Line(t.writer, tw.Formatting{
+		f.Line(tw.Formatting{
 			Row: tw.RowContext{
 				Widths:   ctx.widths[tw.Row],
 				Next:     nextCells,
@@ -2093,7 +2093,7 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 				ctx.logger.Debug("Separator context: No next logical row for separator after row %d.", i)
 			}
 
-			f.Line(t.writer, tw.Formatting{
+			f.Line(tw.Formatting{
 				Row: tw.RowContext{
 					Widths:       ctx.widths[tw.Row],
 					Current:      respCurrent.cells,

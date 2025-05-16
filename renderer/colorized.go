@@ -52,6 +52,7 @@ type Colorized struct {
 	newLine      string                   // Newline character
 	defaultAlign map[tw.Position]tw.Align // Default alignments for header, row, and footer
 	logger       *ll.Logger               // Logger for debug messages
+	w            io.Writer
 }
 
 // NewColorized creates a Colorized renderer with the specified configuration, falling back to defaults if none provided.
@@ -134,7 +135,7 @@ func NewColorized(configs ...ColorizedConfig) *Colorized {
 }
 
 // Close performs cleanup (no-op in this implementation).
-func (c *Colorized) Close(w io.Writer) error {
+func (c *Colorized) Close() error {
 	c.logger.Debug("Colorized.Close() called (no-op).")
 	return nil
 }
@@ -155,7 +156,7 @@ func (c *Colorized) Debug() []string {
 }
 
 // Footer renders the table footer with configured colors and formatting.
-func (c *Colorized) Footer(w io.Writer, footers [][]string, ctx tw.Formatting) {
+func (c *Colorized) Footer(footers [][]string, ctx tw.Formatting) {
 	c.logger.Debugf("Starting Footer render: IsSubRow=%v, Location=%v, Pos=%s",
 		ctx.IsSubRow, ctx.Row.Location, ctx.Row.Position)
 
@@ -166,12 +167,12 @@ func (c *Colorized) Footer(w io.Writer, footers [][]string, ctx tw.Formatting) {
 	}
 
 	// Render the footer line
-	c.renderLine(w, ctx, footers[0], c.config.Footer)
+	c.renderLine(ctx, footers[0], c.config.Footer)
 	c.logger.Debug("Completed Footer render")
 }
 
 // Header renders the table header with configured colors and formatting.
-func (c *Colorized) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
+func (c *Colorized) Header(headers [][]string, ctx tw.Formatting) {
 	c.logger.Debugf("Starting Header render: IsSubRow=%v, Location=%v, Pos=%s, lines=%d, widths=%v",
 		ctx.IsSubRow, ctx.Row.Location, ctx.Row.Position, len(headers), ctx.Row.Widths)
 
@@ -182,12 +183,12 @@ func (c *Colorized) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
 	}
 
 	// Render the header line
-	c.renderLine(w, ctx, headers[0], c.config.Header)
+	c.renderLine(ctx, headers[0], c.config.Header)
 	c.logger.Debug("Completed Header render")
 }
 
 // Line renders a horizontal row line with colored junctions and segments, skipping zero-width columns.
-func (c *Colorized) Line(w io.Writer, ctx tw.Formatting) {
+func (c *Colorized) Line(ctx tw.Formatting) {
 	c.logger.Debugf("Line: Starting with Level=%v, Location=%v, IsSubRow=%v, Widths=%v", ctx.Level, ctx.Row.Location, ctx.IsSubRow, ctx.Row.Widths)
 
 	// Initialize junction renderer
@@ -232,7 +233,7 @@ func (c *Colorized) Line(w io.Writer, ctx tw.Formatting) {
 		}
 		if prefix != "" || suffix != "" {
 			line.WriteString(prefix + suffix + tw.NewLine)
-			fmt.Fprint(w, line.String())
+			fmt.Fprint(c.w, line.String())
 		}
 		c.logger.Debug("Line: Handled empty row/widths case (no effective keys)")
 		return
@@ -323,7 +324,7 @@ func (c *Colorized) Line(w io.Writer, ctx tw.Formatting) {
 
 	// Write the final line
 	line.WriteString(c.newLine)
-	fmt.Fprint(w, line.String())
+	fmt.Fprint(c.w, line.String())
 	c.logger.Debugf("Line rendered: %s", strings.TrimSuffix(line.String(), c.newLine))
 }
 
@@ -339,7 +340,7 @@ func (c *Colorized) Reset() {
 }
 
 // Row renders a table data row with configured colors and formatting.
-func (c *Colorized) Row(w io.Writer, row []string, ctx tw.Formatting) {
+func (c *Colorized) Row(row []string, ctx tw.Formatting) {
 	c.logger.Debugf("Starting Row render: IsSubRow=%v, Location=%v, Pos=%s, hasFooter=%v",
 		ctx.IsSubRow, ctx.Row.Location, ctx.Row.Position, ctx.HasFooter)
 
@@ -350,12 +351,13 @@ func (c *Colorized) Row(w io.Writer, row []string, ctx tw.Formatting) {
 	}
 
 	// Render the row line
-	c.renderLine(w, ctx, row, c.config.Column)
+	c.renderLine(ctx, row, c.config.Column)
 	c.logger.Debugf("Completed Row render")
 }
 
 // Start initializes the rendering process (no-op in this implementation).
 func (c *Colorized) Start(w io.Writer) error {
+	c.w = w
 	c.logger.Debugf("Colorized.Start() called (no-op).")
 	return nil
 }
@@ -493,7 +495,7 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 }
 
 // renderLine renders a single line (header, row, or footer) with colors, handling merges and separators.
-func (c *Colorized) renderLine(w io.Writer, ctx tw.Formatting, line []string, tint Tint) {
+func (c *Colorized) renderLine(ctx tw.Formatting, line []string, tint Tint) {
 	// Determine number of columns
 	numCols := 0
 	if len(ctx.Row.Current) > 0 {
@@ -685,7 +687,7 @@ func (c *Colorized) renderLine(w io.Writer, ctx tw.Formatting, line []string, ti
 
 	// Write the final line
 	output.WriteString(c.newLine)
-	fmt.Fprint(w, output.String())
+	fmt.Fprint(c.w, output.String())
 	c.logger.Debugf("renderLine: Final rendered line: %s", strings.TrimSuffix(output.String(), c.newLine))
 }
 

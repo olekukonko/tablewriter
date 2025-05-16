@@ -51,6 +51,7 @@ type SVG struct {
 	vMergeTrack         map[int]int // Tracks vertical merge spans
 	numVisualRowsDrawn  int
 	logger              *ll.Logger
+	w                   io.Writer
 }
 
 const (
@@ -277,14 +278,14 @@ func (s *SVG) calculateAllColumnWidths() {
 }
 
 // Close finalizes SVG rendering and writes output.
-// Parameter w is the output writer.
+// Parameter w is the output w.
 // Returns an error if writing fails.
-func (s *SVG) Close(w io.Writer) error {
+func (s *SVG) Close() error {
 	s.debug("Finalizing SVG output")
 	s.calculateAllColumnWidths()
 	s.renderBufferedData()
 	if s.numVisualRowsDrawn == 0 && s.maxCols == 0 {
-		fmt.Fprintf(w, `<svg xmlns="http://www.w3.org/2000/svg" width="%.2f" height="%.2f"></svg>`, s.config.StrokeWidth*2, s.config.StrokeWidth*2)
+		fmt.Fprintf(s.w, `<svg xmlns="http://www.w3.org/2000/svg" width="%.2f" height="%.2f"></svg>`, s.config.StrokeWidth*2, s.config.StrokeWidth*2)
 		return nil
 	}
 	totalWidth := s.config.StrokeWidth
@@ -312,18 +313,18 @@ func (s *SVG) Close(w io.Writer) error {
 			totalHeight = s.config.StrokeWidth * 2
 		}
 	}
-	fmt.Fprintf(w, `<svg xmlns="http://www.w3.org/2000/svg" width="%.2f" height="%.2f" font-family="%s" font-size="%.2f">`,
+	fmt.Fprintf(s.w, `<svg xmlns="http://www.w3.org/2000/svg" width="%.2f" height="%.2f" font-family="%s" font-size="%.2f">`,
 		totalWidth, totalHeight, html.EscapeString(s.config.FontFamily), s.config.FontSize)
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, "<style>text { stroke: none; }</style>")
-	if _, err := io.WriteString(w, s.svgElements.String()); err != nil {
-		fmt.Fprintln(w, `</svg>`)
+	fmt.Fprintln(s.w)
+	fmt.Fprintln(s.w, "<style>text { stroke: none; }</style>")
+	if _, err := io.WriteString(s.w, s.svgElements.String()); err != nil {
+		fmt.Fprintln(s.w, `</svg>`)
 		return fmt.Errorf("failed to write SVG elements: %w", err)
 	}
 	if s.maxCols > 0 || s.numVisualRowsDrawn > 0 {
-		fmt.Fprintf(w, `  <g class="table-borders" stroke="%s" stroke-width="%.2f" stroke-linecap="square">`,
+		fmt.Fprintf(s.w, `  <g class="table-borders" stroke="%s" stroke-width="%.2f" stroke-linecap="square">`,
 			html.EscapeString(s.config.StrokeColor), s.config.StrokeWidth)
-		fmt.Fprintln(w)
+		fmt.Fprintln(s.w)
 		yPos := s.config.StrokeWidth / 2.0
 		borderRowsToDraw := s.numVisualRowsDrawn
 		if borderRowsToDraw == 0 && s.maxCols > 0 {
@@ -335,7 +336,7 @@ func (s *SVG) Close(w io.Writer) error {
 			lineEndX += width + s.config.StrokeWidth
 		}
 		for i := 0; i <= borderRowsToDraw; i++ {
-			fmt.Fprintf(w, `    <line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" />%s`,
+			fmt.Fprintf(s.w, `    <line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" />%s`,
 				lineStartX, yPos, lineEndX, yPos, "\n")
 			if i < borderRowsToDraw {
 				yPos += singleVisualRowHeight + s.config.StrokeWidth
@@ -345,7 +346,7 @@ func (s *SVG) Close(w io.Writer) error {
 		borderLineStartY := s.config.StrokeWidth / 2.0
 		borderLineEndY := totalHeight - (s.config.StrokeWidth / 2.0)
 		for visualColIdx := 0; visualColIdx <= s.maxCols; visualColIdx++ {
-			fmt.Fprintf(w, `    <line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" />%s`,
+			fmt.Fprintf(s.w, `    <line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" />%s`,
 				xPos, borderLineStartY, xPos, borderLineEndY, "\n")
 			if visualColIdx < s.maxCols {
 				colWidth := s.config.MinColWidth
@@ -355,9 +356,9 @@ func (s *SVG) Close(w io.Writer) error {
 				xPos += colWidth + s.config.StrokeWidth
 			}
 		}
-		fmt.Fprintln(w, "  </g>")
+		fmt.Fprintln(s.w, "  </g>")
 	}
-	fmt.Fprintln(w, `</svg>`)
+	fmt.Fprintln(s.w, `</svg>`)
 	return nil
 }
 
@@ -388,9 +389,9 @@ func (s *SVG) estimateTextWidth(text string) float64 {
 }
 
 // Footer buffers footer lines for SVG rendering.
-// Parameters include w (writer), footers (lines), and ctx (formatting).
+// Parameters include w (w), footers (lines), and ctx (formatting).
 // No return value; stores data for later rendering.
-func (s *SVG) Footer(w io.Writer, footers [][]string, ctx tw.Formatting) {
+func (s *SVG) Footer(footers [][]string, ctx tw.Formatting) {
 	s.debug("Buffering %d footer lines", len(footers))
 	for i, line := range footers {
 		currentCtx := ctx
@@ -417,9 +418,9 @@ func (s *SVG) getSVGAnchorFromTW(align tw.Align) string {
 }
 
 // Header buffers header lines for SVG rendering.
-// Parameters include w (writer), headers (lines), and ctx (formatting).
+// Parameters include w (w), headers (lines), and ctx (formatting).
 // No return value; stores data for later rendering.
-func (s *SVG) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
+func (s *SVG) Header(headers [][]string, ctx tw.Formatting) {
 	s.debug("Buffering %d header lines", len(headers))
 	for i, line := range headers {
 		currentCtx := ctx
@@ -429,9 +430,9 @@ func (s *SVG) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
 }
 
 // Line handles border rendering (ignored in SVG renderer).
-// Parameters include w (writer) and ctx (formatting).
+// Parameters include w (w) and ctx (formatting).
 // No return value; SVG borders are drawn in Close.
-func (s *SVG) Line(w io.Writer, ctx tw.Formatting) {
+func (s *SVG) Line(ctx tw.Formatting) {
 	s.debug("Line rendering ignored")
 }
 
@@ -657,9 +658,9 @@ func (s *SVG) Reset() {
 }
 
 // Row buffers a row line for SVG rendering.
-// Parameters include w (writer), rowLine (cells), and ctx (formatting).
+// Parameters include w (w), rowLine (cells), and ctx (formatting).
 // No return value; stores data for later rendering.
-func (s *SVG) Row(w io.Writer, rowLine []string, ctx tw.Formatting) {
+func (s *SVG) Row(rowLine []string, ctx tw.Formatting) {
 	s.debug("Buffering row line, IsSubRow: %v", ctx.IsSubRow)
 	s.storeVisualLine(sectionTypeRow, rowLine, ctx)
 }
@@ -669,9 +670,10 @@ func (s *SVG) Logger(logger *ll.Logger) {
 }
 
 // Start initializes SVG rendering.
-// Parameter w is the output writer.
+// Parameter w is the output w.
 // Returns nil; prepares internal state.
 func (s *SVG) Start(w io.Writer) error {
+	s.w = w
 	s.debug("Starting SVG rendering")
 	s.Reset()
 	return nil

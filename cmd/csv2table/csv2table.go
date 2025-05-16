@@ -209,7 +209,7 @@ func process(r io.Reader) error {
 	case "markdown":
 		selectedRenderer = renderer.NewMarkdown(baseRendition)
 	case "html":
-		selectedRenderer = renderer.NewHTML(outputTarget, *debug, renderer.HTMLConfig{EscapeContent: true})
+		selectedRenderer = renderer.NewHTML(renderer.HTMLConfig{EscapeContent: true})
 	case "svg":
 		selectedRenderer = renderer.NewSVG(renderer.SVGConfig{FontSize: 12, Padding: 5, Debug: *debug})
 	case "colorized":

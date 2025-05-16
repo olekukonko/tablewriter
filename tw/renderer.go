@@ -9,13 +9,13 @@ import (
 // Implementations must handle headers, rows, footers, and separator lines.
 type Renderer interface {
 	Start(w io.Writer) error
-	Header(w io.Writer, headers [][]string, ctx Formatting) // Renders table header
-	Row(w io.Writer, row []string, ctx Formatting)          // Renders a single row
-	Footer(w io.Writer, footers [][]string, ctx Formatting) // Renders table footer
-	Line(w io.Writer, ctx Formatting)                       // Renders separator line
-	Config() Rendition                                      // Returns renderer config
-	Close(w io.Writer) error
-	Logger(logger *ll.Logger) // send logger to renderers
+	Header(headers [][]string, ctx Formatting) // Renders table header
+	Row(row []string, ctx Formatting)          // Renders a single row
+	Footer(footers [][]string, ctx Formatting) // Renders table footer
+	Line(ctx Formatting)                       // Renders separator line
+	Config() Rendition                         // Returns renderer config
+	Close() error                              // Gets Rendition form Blueprint
+	Logger(logger *ll.Logger)                  // send logger to renderers
 }
 
 // Rendition holds the configuration for the default renderer.
