@@ -244,8 +244,10 @@ func (t *Table) Configure(fn func(cfg *Config)) *Table {
 	// Handle any immediate side-effects of config changes, e.g., logger state
 	if t.config.Debug {
 		t.logger.Enable()
+		t.logger.Resume() // in case it was suspended
 	} else {
 		t.logger.Disable()
+		t.logger.Suspend() // suspend totally, especially because of tight loops
 	}
 	t.logger.Debugf("Configure complete. New t.config: %+v", t.config)
 	return t
@@ -377,8 +379,10 @@ func (t *Table) Options(opts ...Option) *Table {
 	// This should  be move away form WithDebug
 	if t.config.Debug == true {
 		t.logger.Enable()
+		t.logger.Resume()
 	} else {
 		t.logger.Disable()
+		t.logger.Suspend()
 	}
 
 	// send logger to renderer

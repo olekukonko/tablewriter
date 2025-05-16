@@ -160,7 +160,7 @@ func (f *Blueprint) Line(w io.Writer, ctx tw.Formatting) {
 		}
 		if f.config.Borders.Right.Enabled() && keyIndex == len(visibleColIndices)-1 {
 			rightBorderWidth := tw.DisplayWidth(jr.RenderRight(currentColIdx))
-			adjustedColWidth -= (rightBorderWidth - tw.DisplayWidth(f.config.Symbols.Column()))
+			adjustedColWidth -= rightBorderWidth - tw.DisplayWidth(f.config.Symbols.Column())
 		}
 		if adjustedColWidth < 0 {
 			adjustedColWidth = 0
