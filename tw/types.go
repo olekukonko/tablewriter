@@ -139,3 +139,15 @@ type Padding struct {
 	Top    string
 	Bottom string
 }
+
+type Control struct {
+	Hide State
+}
+
+// Behavior defines table behavior settings that control features like auto-hiding columns and trimming spaces.
+type Behavior struct {
+	AutoHide  State // Controls whether empty columns are automatically hidden (ignored in streaming mode)
+	TrimSpace State // Controls whether leading/trailing spaces are trimmed from cell content
+	Header    Control
+	Footer    Control
+}

@@ -3,22 +3,10 @@ package tablewriter
 
 import (
 	"github.com/olekukonko/ll"             // Logging library for debug output
-	"github.com/olekukonko/tablewriter/tw" // Tablewriter core types and utilities
+	"github.com/olekukonko/tablewriter/tw" // Table writer core types and utilities
 	"io"                                   // Input/output interfaces
 	"reflect"                              // Reflection for type handling
 )
-
-type Control struct {
-	Hide tw.State
-}
-
-// Behavior defines table behavior settings that control features like auto-hiding columns and trimming spaces.
-type Behavior struct {
-	AutoHide  tw.State // Controls whether empty columns are automatically hidden (ignored in streaming mode)
-	TrimSpace tw.State // Controls whether leading/trailing spaces are trimmed from cell content
-	Header    Control
-	Footer    Control
-}
 
 // ColumnConfigBuilder is used to configure settings for a specific column across all table sections (header, row, footer).
 type ColumnConfigBuilder struct {
@@ -927,7 +915,7 @@ func WithTrimSpace(state tw.State) Option {
 
 // WithHeaderControl sets the control behavior for the table header.
 // Logs the change if debugging is enabled.
-func WithHeaderControl(control Control) Option {
+func WithHeaderControl(control tw.Control) Option {
 	return func(target *Table) {
 		target.config.Behavior.Header = control
 		if target.logger != nil {
@@ -938,7 +926,7 @@ func WithHeaderControl(control Control) Option {
 
 // WithFooterControl sets the control behavior for the table footer.
 // Logs the change if debugging is enabled.
-func WithFooterControl(control Control) Option {
+func WithFooterControl(control tw.Control) Option {
 	return func(target *Table) {
 		target.config.Behavior.Footer = control
 		if target.logger != nil {
@@ -1046,7 +1034,8 @@ func mergeCellConfig(dst, src tw.CellConfig) tw.CellConfig {
 	if src.Formatting.MergeMode != 0 {
 		dst.Formatting.MergeMode = src.Formatting.MergeMode
 	}
-	dst.Formatting.AutoFormat = src.Formatting.AutoFormat || dst.Formatting.AutoFormat
+	dst.Formatting.AutoFormat = src.Formatting.AutoFormat
+
 	if src.Padding.Global != (tw.Padding{}) {
 		dst.Padding.Global = src.Padding.Global
 	}
@@ -1165,19 +1154,4 @@ func padLine(line []string, numCols int) []string {
 		padded[i] = tw.Empty
 	}
 	return padded
-}
-
-// Deprecated: WithBorders is no longer used.
-// Border control has been moved to the renderer, which now manages its own borders.
-// This Option has no effect on the Table and may be removed in future versions.
-func WithBorders(borders tw.Border) Option {
-	return func(target *Table) {
-		if target.renderer != nil {
-			cfg := target.renderer.Config()
-			cfg.Borders = borders
-			if target.logger != nil {
-				target.logger.Debugf("Option: WithBorders applied to Table: %+v", borders)
-			}
-		}
-	}
 }

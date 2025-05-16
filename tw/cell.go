@@ -4,9 +4,8 @@ package tw
 type CellFormatting struct {
 	Alignment  Align // Text alignment within the cell (e.g., Left, Right, Center)
 	AutoWrap   int   // Wrapping behavior (e.g., WrapTruncate, WrapNormal)
+	MergeMode  int   // Bitmask for merge behavior (e.g., MergeHorizontal, MergeVertical)
 	AutoFormat bool  // Enables automatic formatting (e.g., title case for headers)
-	// MaxWidth   int   // Maximum content width for the cell
-	MergeMode int // Bitmask for merge behavior (e.g., MergeHorizontal, MergeVertical)
 }
 
 // CellPadding defines padding settings for table cells.

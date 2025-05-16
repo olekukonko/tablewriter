@@ -782,7 +782,7 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 
 	// ll.Dbg(t.config.MaxWidth)
 	// force max width
-	if t.config.MaxWidth != 0 {
+	if t.config.MaxWidth > 0 {
 		// it has headers
 		if len(cells) > 0 {
 			config.ColMaxWidths.Global = int(math.Floor(float64(t.config.MaxWidth) / float64(len(cells))))
@@ -826,6 +826,7 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 		if i < len(config.Padding.PerColumn) && config.Padding.PerColumn[i] != (tw.Padding{}) {
 			colPad = config.Padding.PerColumn[i]
 		}
+
 		padLeftWidth := tw.DisplayWidth(colPad.Left)
 		padRightWidth := tw.DisplayWidth(colPad.Right)
 
@@ -2130,6 +2131,5 @@ func (t *Table) Trimmer(str string) string {
 	if t.config.Behavior.TrimSpace.Enabled() {
 		return strings.TrimSpace(str)
 	}
-	// ll.Dump(str)
 	return str
 }

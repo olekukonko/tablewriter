@@ -466,7 +466,7 @@ func TestControl(t *testing.T) {
 		table := tablewriter.NewTable(&buf,
 			tablewriter.WithDebug(false),
 			tablewriter.WithTrimSpace(tw.On),
-			tablewriter.WithHeaderControl(tablewriter.Control{Hide: tw.On}),
+			tablewriter.WithHeaderControl(tw.Control{Hide: tw.On}),
 		)
 		table.Header(data[0])
 		table.Bulk(data[1:])
@@ -489,7 +489,7 @@ func TestControl(t *testing.T) {
 		buf.Reset()
 		table := tablewriter.NewTable(&buf,
 			tablewriter.WithTrimSpace(tw.On),
-			tablewriter.WithHeaderControl(tablewriter.Control{Hide: tw.Off}),
+			tablewriter.WithHeaderControl(tw.Control{Hide: tw.Off}),
 		)
 		table.Header(data[0])
 		table.Bulk(data[1:])
