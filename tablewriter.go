@@ -755,7 +755,8 @@ func (t *Table) printTopBottomCaption(w io.Writer, actualTableWidth int) {
 		paddedLine := tw.Pad(line, " ", paddingTargetWidth, align)
 		t.logger.Debugf("[printCaption] Printing line %d: InputLine=%q, Align=%s, PaddingTargetWidth=%d, PaddedLine=%q",
 			i, line, align, paddingTargetWidth, paddedLine)
-		fmt.Fprintln(w, paddedLine)
+		w.Write([]byte(paddedLine))
+		w.Write([]byte(tw.NewLine))
 	}
 
 	t.logger.Debugf("[printCaption] Finished printing all caption lines.")
@@ -1401,9 +1402,9 @@ func (t *Table) render() error {
 
 		if len(renderedTableContent) > 0 {
 			t.logger.Debugf("[Render] Printing table content (length %d) to final writer.", len(renderedTableContent))
-			fmt.Fprint(t.writer, renderedTableContent)
+			t.writer.Write([]byte(renderedTableContent))
 			if !isTopCaption && t.caption.Text != "" && !strings.HasSuffix(renderedTableContent, t.newLine) {
-				fmt.Fprintln(t.writer)
+				t.writer.Write([]byte(tw.NewLine))
 				t.logger.Debugf("[Render] Added trailing newline after table content before bottom caption.")
 			}
 		} else {
@@ -1720,7 +1721,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 			paddingLineOutput.WriteString(cfg.Symbols.Column())
 		}
 		paddingLineOutput.WriteString(t.newLine)
-		fmt.Fprint(t.writer, paddingLineOutput.String())
+		t.writer.Write([]byte(paddingLineOutput.String()))
 		ctx.logger.Debugf("Manually rendered Footer Bottom Padding line: %s", strings.TrimSuffix(paddingLineOutput.String(), t.newLine))
 		hctx.rowIdx = 0
 		hctx.lineIdx = len(ctx.footerLines)

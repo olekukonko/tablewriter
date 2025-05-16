@@ -1,7 +1,6 @@
 package renderer
 
 import (
-	"fmt"
 	"io"
 	"strings"
 
@@ -239,7 +238,7 @@ func (o *Ocean) Line(ctx tw.Formatting) {
 		}
 		if drewEmptyBorders {
 			line.WriteString(tw.NewLine)
-			fmt.Fprint(o.w, line.String())
+			o.w.Write([]byte(line.String()))
 			o.logger.Debug("Line: Drew empty table borders based on Line call.")
 		} else {
 			o.logger.Debug("Line: Handled empty table case (no columns, no borders).")
@@ -290,7 +289,7 @@ func (o *Ocean) Line(ctx tw.Formatting) {
 	}
 
 	line.WriteString(tw.NewLine)
-	fmt.Fprint(o.w, line.String())
+	o.w.Write([]byte(line.String()))
 	o.tableOutputStarted = true
 	o.logger.Debugf("Line rendered by explicit call: %s", strings.TrimSuffix(line.String(), tw.NewLine))
 }
@@ -420,7 +419,7 @@ func (o *Ocean) renderContentLine(ctx tw.Formatting, lineData []string) {
 	}
 
 	output.WriteString(tw.NewLine)
-	fmt.Fprint(o.w, output.String())
+	o.w.Write([]byte(output.String()))
 	o.logger.Debugf("Content line rendered: %s", strings.TrimSuffix(output.String(), tw.NewLine))
 }
 

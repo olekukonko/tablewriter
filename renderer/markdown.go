@@ -1,7 +1,6 @@
 package renderer
 
 import (
-	"fmt"
 	"github.com/olekukonko/ll"
 	"io"
 	"strings"
@@ -415,6 +414,6 @@ func (m *Markdown) renderMarkdownLine(line []string, ctx tw.Formatting, isHeader
 
 	output.WriteString(suffix)
 	output.WriteString(tw.NewLine)
-	fmt.Fprint(m.w, output.String())
+	m.w.Write([]byte(output.String()))
 	m.logger.Debugf("renderMarkdownLine: Final line: %s", strings.TrimSuffix(output.String(), tw.NewLine))
 }

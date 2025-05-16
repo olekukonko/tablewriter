@@ -1,7 +1,6 @@
 package renderer
 
 import (
-	"fmt"
 	"github.com/fatih/color"
 	"github.com/olekukonko/ll"
 	"github.com/olekukonko/ll/lh"
@@ -233,7 +232,7 @@ func (c *Colorized) Line(ctx tw.Formatting) {
 		}
 		if prefix != "" || suffix != "" {
 			line.WriteString(prefix + suffix + tw.NewLine)
-			fmt.Fprint(c.w, line.String())
+			c.w.Write([]byte(line.String()))
 		}
 		c.logger.Debug("Line: Handled empty row/widths case (no effective keys)")
 		return
@@ -324,7 +323,7 @@ func (c *Colorized) Line(ctx tw.Formatting) {
 
 	// Write the final line
 	line.WriteString(c.newLine)
-	fmt.Fprint(c.w, line.String())
+	c.w.Write([]byte(line.String()))
 	c.logger.Debugf("Line rendered: %s", strings.TrimSuffix(line.String(), c.newLine))
 }
 
@@ -687,7 +686,7 @@ func (c *Colorized) renderLine(ctx tw.Formatting, line []string, tint Tint) {
 
 	// Write the final line
 	output.WriteString(c.newLine)
-	fmt.Fprint(c.w, output.String())
+	c.w.Write([]byte(output.String()))
 	c.logger.Debugf("renderLine: Final rendered line: %s", strings.TrimSuffix(output.String(), c.newLine))
 }
 

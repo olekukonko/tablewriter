@@ -1,7 +1,6 @@
 package renderer
 
 import (
-	"fmt"
 	"github.com/olekukonko/ll"
 	"io"
 	"strings"
@@ -108,7 +107,7 @@ func (f *Blueprint) Line(ctx tw.Formatting) {
 		if prefix != "" || suffix != "" {
 			line.WriteString(prefix + suffix + tw.NewLine)
 			totalLineWidth = tw.DisplayWidth(prefix) + tw.DisplayWidth(suffix)
-			fmt.Fprint(f.w, line.String())
+			f.w.Write([]byte(line.String()))
 		}
 		f.logger.Debugf("Line: Handled empty row/widths case (total width %d)", totalLineWidth)
 		return
@@ -241,7 +240,7 @@ func (f *Blueprint) Line(ctx tw.Formatting) {
 
 	// Write the final line
 	line.WriteString(tw.NewLine)
-	fmt.Fprint(f.w, line.String())
+	f.w.Write([]byte(line.String()))
 	f.logger.Debugf("Line rendered: '%s' (total width %d, target %d)", strings.TrimSuffix(line.String(), tw.NewLine), totalLineWidth, targetTotalWidth)
 }
 
@@ -563,7 +562,7 @@ func (f *Blueprint) renderLine(ctx tw.Formatting) {
 		f.logger.Debugf("renderLine: Suffix='%s' (f.width %d)", suffix, tw.DisplayWidth(suffix))
 	}
 	output.WriteString(tw.NewLine)
-	fmt.Fprint(f.w, output.String())
+	f.w.Write([]byte(output.String()))
 	f.logger.Debugf("renderLine: Final rendered line: '%s' (total width %d)", strings.TrimSuffix(output.String(), tw.NewLine), totalLineWidth)
 }
 
