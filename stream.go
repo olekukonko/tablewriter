@@ -514,7 +514,7 @@ func (t *Table) streamCalculateWidths(sampleDataLines []string, sectionConfigFor
 			ellipsisWidthBuffer = tw.DisplayWidth(tw.CharEllipsis)
 		}
 		varianceBuffer := 2 // Your suggested variance
-		minTotalColWidth := tw.DefaultMinlColumnWidth
+		minTotalColWidth := tw.MinimumColumnWidth
 		// Example: if t.config.Stream.MinAutoColumnWidth > 0 { minTotalColWidth = t.config.Stream.MinAutoColumnWidth }
 
 		for i := 0; i < t.streamNumCols; i++ {

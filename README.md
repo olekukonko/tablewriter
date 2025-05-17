@@ -711,7 +711,7 @@ func main() {
 		tablewriter.WithStringer(employeeStringer),
 		tablewriter.WithConfig(tablewriter.Config{
 			Header: tw.CellConfig{
-				Formatting: tw.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: true},
+				Formatting: tw.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: tw.On},
 			},
 			Row: tw.CellConfig{
 				Formatting: tw.CellFormatting{Alignment: tw.AlignLeft},

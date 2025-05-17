@@ -913,6 +913,12 @@ func WithTrimSpace(state tw.State) Option {
 	}
 }
 
+func WithHeaderAutoFormat(state tw.State) Option {
+	return func(target *Table) {
+		target.config.Header.Formatting.AutoFormat = state
+	}
+}
+
 // WithHeaderControl sets the control behavior for the table header.
 // Logs the change if debugging is enabled.
 func WithHeaderControl(control tw.Control) Option {

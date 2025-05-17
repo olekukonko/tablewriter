@@ -7,7 +7,7 @@ const (
 	Fail    = -1 // Operation failed
 	Success = 1  // Operation succeeded
 
-	DefaultMinlColumnWidth = 8
+	MinimumColumnWidth = 8
 )
 
 const (
