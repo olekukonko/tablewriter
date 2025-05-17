@@ -54,7 +54,7 @@ func TestCalculateContentMaxWidth(t *testing.T) {
 		Formatting: tw.CellFormatting{
 			AutoWrap:   tw.WrapTruncate,
 			Alignment:  tw.AlignLeft,
-			AutoFormat: false,
+			AutoFormat: tw.Off,
 		},
 		ColMaxWidths: tw.CellWidth{Global: 10},
 		Padding: tw.CellPadding{
@@ -309,329 +309,10 @@ func TestEnsureStreamWidthsCalculated(t *testing.T) {
 	})
 }
 
-// TestMergeCellConfig tests the mergeCellConfig function with various input configurations.
-// It includes tests for the hybrid configuration approach using ConfigBuilder and Option functions.
-func TestMergeCellConfig(t *testing.T) {
-	// Default configuration used as the base for merging, aligned with defaultConfig() from tablewriter.go
-	defaultCfg := tw.CellConfig{
-		Formatting: tw.CellFormatting{
-			Alignment:  tw.AlignLeft,
-			AutoWrap:   tw.WrapNormal, // 1
-			AutoFormat: false,
-			MergeMode:  tw.MergeNone,
-		},
-		Padding: tw.CellPadding{
-			Global: tw.Padding{Left: " ", Right: " "},
-		},
-	}
-
-	tests := []struct {
-		name     string
-		input    tw.CellConfig
-		expected tw.CellConfig
-	}{
-		// Test case: Empty input should preserve defaults
-		{
-			name:  "EmptyConfig",
-			input: tw.CellConfig{},
-			expected: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					Alignment:  tw.AlignLeft,
-					AutoWrap:   tw.WrapNormal,
-					AutoFormat: false,
-					MergeMode:  tw.MergeNone,
-				},
-				Padding: tw.CellPadding{
-					Global: tw.Padding{Left: " ", Right: " "},
-				},
-			},
-		},
-		// Test case: Override MergeMode to None
-		{
-			name: "OverrideMergeModeNone",
-			input: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					MergeMode: tw.MergeNone,
-				},
-			},
-			expected: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					Alignment:  tw.AlignLeft,
-					AutoWrap:   tw.WrapNormal,
-					AutoFormat: false,
-					MergeMode:  tw.MergeNone,
-				},
-				Padding: tw.CellPadding{
-					Global: tw.Padding{Left: " ", Right: " "},
-				},
-			},
-		},
-		// Test case: Override MergeMode to Vertical
-		{
-			name: "OverrideMergeModeVertical",
-			input: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					MergeMode: tw.MergeVertical,
-				},
-			},
-			expected: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					Alignment:  tw.AlignLeft,
-					AutoWrap:   tw.WrapNormal,
-					AutoFormat: false,
-					MergeMode:  tw.MergeVertical,
-				},
-				Padding: tw.CellPadding{
-					Global: tw.Padding{Left: " ", Right: " "},
-				},
-			},
-		},
-		// Test case: Override MergeMode to Horizontal
-		{
-			name: "OverrideMergeModeHorizontal",
-			input: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					MergeMode: tw.MergeHorizontal,
-				},
-			},
-			expected: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					Alignment:  tw.AlignLeft,
-					AutoWrap:   tw.WrapNormal,
-					AutoFormat: false,
-					MergeMode:  tw.MergeHorizontal,
-				},
-				Padding: tw.CellPadding{
-					Global: tw.Padding{Left: " ", Right: " "},
-				},
-			},
-		},
-		// Test case: Override MergeMode to Both
-		{
-			name: "OverrideMergeModeBoth",
-			input: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					MergeMode: tw.MergeBoth,
-				},
-			},
-			expected: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					Alignment:  tw.AlignLeft,
-					AutoWrap:   tw.WrapNormal,
-					AutoFormat: false,
-					MergeMode:  tw.MergeBoth,
-				},
-				Padding: tw.CellPadding{
-					Global: tw.Padding{Left: " ", Right: " "},
-				},
-			},
-		},
-		// Test case: Override MergeMode to Hierarchical
-		{
-			name: "OverrideMergeModeHierarchical",
-			input: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					MergeMode: tw.MergeHierarchical,
-				},
-			},
-			expected: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					Alignment:  tw.AlignLeft,
-					AutoWrap:   tw.WrapNormal,
-					AutoFormat: false,
-					MergeMode:  tw.MergeHierarchical,
-				},
-				Padding: tw.CellPadding{
-					Global: tw.Padding{Left: " ", Right: " "},
-				},
-			},
-		},
-		// Test case: Merge with ConfigBuilder using flattened methods
-		// Adjusted to match defaultConfig() Header defaults
-		{
-			name: "ConfigBuilderFlattened",
-			input: NewConfigBuilder().
-				WithHeaderAlignment(tw.AlignCenter).
-				WithHeaderMergeMode(tw.MergeHorizontal).
-				Build().Header,
-			expected: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					Alignment:  tw.AlignCenter,     // From builder
-					AutoWrap:   tw.WrapTruncate,    // From defaultConfig() Header
-					AutoFormat: true,               // From defaultConfig() Header
-					MergeMode:  tw.MergeHorizontal, // From builder
-				},
-				Padding: tw.CellPadding{
-					Global: tw.Padding{Left: " ", Right: " "},
-				},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Merge into a fresh copy of defaultCfg
-			baseCfg := defaultCfg
-			got := mergeCellConfig(baseCfg, tt.input)
-
-			// Compare Formatting
-			if got.Formatting != tt.expected.Formatting {
-				t.Errorf("%s: Formatting mismatch\nexpected: %+v\ngot:      %+v",
-					tt.name, tt.expected.Formatting, got.Formatting)
-			}
-
-			// Compare Padding.Global
-			if got.Padding.Global != tt.expected.Padding.Global {
-				t.Errorf("%s: Padding.Global mismatch\nexpected: %+v\ngot:      %+v",
-					tt.name, tt.expected.Padding.Global, got.Padding.Global)
-			}
-
-			// Compare Padding.PerColumn
-			if len(got.Padding.PerColumn) != len(tt.expected.Padding.PerColumn) {
-				t.Errorf("%s: Padding.PerColumn length mismatch - expected %d, got %d",
-					tt.name, len(tt.expected.Padding.PerColumn), len(got.Padding.PerColumn))
-			} else {
-				for i, pad := range tt.expected.Padding.PerColumn {
-					if got.Padding.PerColumn[i] != pad {
-						t.Errorf("%s: Padding.PerColumn[%d] mismatch - expected %+v, got %+v",
-							tt.name, i, pad, got.Padding.PerColumn[i])
-					}
-				}
-			}
-
-			// Compare ColumnAligns
-			if len(got.ColumnAligns) != len(tt.expected.ColumnAligns) {
-				t.Errorf("%s: ColumnAligns length mismatch - expected %d, got %d",
-					tt.name, len(tt.expected.ColumnAligns), len(got.ColumnAligns))
-			} else {
-				for i, align := range tt.expected.ColumnAligns {
-					if got.ColumnAligns[i] != align {
-						t.Errorf("%s: ColumnAligns[%d] mismatch - expected %s, got %s",
-							tt.name, i, align, got.ColumnAligns[i])
-					}
-				}
-			}
-		})
-	}
-}
-
-// TestMergeCellConfig2 tests the mergeCellConfig function with section-specific default configurations.
-// It verifies merging behavior for header, row, and footer sections with various input overrides.
-func TestMergeCellConfig2(t *testing.T) {
-	tests := []struct {
-		name        string
-		baseSection string // "header", "row", or "footer" to pick the correct default base
-		input       tw.CellConfig
-		expected    tw.CellConfig
-	}{
-		//  Test Cases for ROW section (using defaultConfig().Row as base)
-		{
-			name:        "Row_EmptyInput",
-			baseSection: "row",
-			input:       tw.CellConfig{},
-			expected:    getDefaultSectionConfig("row"), // Expected is just the default
-		},
-		{
-			name:        "Row_OverrideAlignment",
-			baseSection: "row",
-			input: tw.CellConfig{
-				Formatting: tw.CellFormatting{Alignment: tw.AlignCenter},
-			},
-			expected: func() tw.CellConfig {
-				cfg := getDefaultSectionConfig("row")
-				cfg.Formatting.Alignment = tw.AlignCenter
-				return cfg
-			}(),
-		},
-		{
-			name:        "Row_OverrideColumnAligns",
-			baseSection: "row",
-			input: tw.CellConfig{
-				ColumnAligns: []tw.Align{tw.AlignRight, tw.Skip, tw.AlignLeft},
-			},
-			expected: func() tw.CellConfig {
-				cfg := getDefaultSectionConfig("row")
-				cfg.ColumnAligns = []tw.Align{tw.AlignRight, tw.Skip, tw.AlignLeft}
-				return cfg
-			}(),
-		},
-		{
-			name:        "Row_OverrideAutoWrap",
-			baseSection: "row",
-			input: tw.CellConfig{
-				Formatting: tw.CellFormatting{AutoWrap: tw.WrapTruncate},
-			},
-			expected: func() tw.CellConfig {
-				cfg := getDefaultSectionConfig("row")
-				cfg.Formatting.AutoWrap = tw.WrapTruncate
-				return cfg
-			}(),
-		},
-		{
-			name:        "Row_OverrideAutoFormatTrue",
-			baseSection: "row",
-			input: tw.CellConfig{
-				Formatting: tw.CellFormatting{AutoFormat: true}, // default Row is false
-			},
-			expected: func() tw.CellConfig {
-				cfg := getDefaultSectionConfig("row")
-				cfg.Formatting.AutoFormat = true // Because of current OR logic in merge
-				return cfg
-			}(),
-		},
-		//  Test Cases for HEADER section (using defaultConfig().Header as base)
-		{
-			name:        "Header_FromBuilderFlattened",
-			baseSection: "header",
-			input:       NewConfigBuilder().WithHeaderAlignment(tw.AlignCenter).WithHeaderMergeMode(tw.MergeHorizontal).Build().Header,
-			expected: func() tw.CellConfig {
-				cfg := getDefaultSectionConfig("header") // Starts with Header defaults
-				cfg.Formatting.Alignment = tw.AlignCenter
-				cfg.Formatting.MergeMode = tw.MergeHorizontal
-				return cfg
-			}(),
-		},
-		// Add more tests for other fields (MaxWidth, Padding.PerColumn, Filters, Callbacks)
-		// for different sections if their defaults differ significantly.
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			baseCfg := getDefaultSectionConfig(tt.baseSection)
-			// Make a deep copy of baseCfg to avoid modification across tests if it contains slices/maps
-			// For structs with simple types, direct assignment is fine for 'baseCfg'.
-			// If CellConfig had map fields, a proper deep copy would be safer.
-			// Slices like ColumnAligns are handled by mergeCellConfig replacing them.
-
-			got := mergeCellConfig(baseCfg, tt.input)
-
-			// Using reflect.DeepEqual for simpler comparison of entire structs.
-			// Fallback to field-by-field if DeepEqual gives unhelpful diffs or has issues with func types.
-			if !reflect.DeepEqual(got.Formatting, tt.expected.Formatting) {
-				t.Errorf("Formatting mismatch\nexpected: %+v\ngot:      %+v", tt.expected.Formatting, got.Formatting)
-			}
-			if !reflect.DeepEqual(got.Padding, tt.expected.Padding) {
-				t.Errorf("Padding mismatch\nexpected: %+v\ngot:      %+v", tt.expected.Padding, got.Padding)
-			}
-			if !reflect.DeepEqual(got.Callbacks, tt.expected.Callbacks) {
-				t.Errorf("Callbacks mismatch\nexpected: %+v\ngot:      %+v", tt.expected.Callbacks, got.Callbacks)
-			}
-			if !reflect.DeepEqual(got.Filter, tt.expected.Filter) {
-				t.Errorf("Filter mismatch\nexpected: %+v\ngot:      %+v", tt.expected.Filter, got.Filter)
-			}
-			if !reflect.DeepEqual(got.ColumnAligns, tt.expected.ColumnAligns) {
-				t.Errorf("ColumnAligns mismatch\nexpected: %#v\ngot:      %#v", tt.expected.ColumnAligns, got.ColumnAligns)
-			}
-			if !reflect.DeepEqual(got.ColMaxWidths, tt.expected.ColMaxWidths) {
-				t.Errorf("ColMaxWidths mismatch\nexpected: %+v\ngot:      %+v", tt.expected.ColMaxWidths, got.ColMaxWidths)
-			}
-		})
-	}
-}
-
-// Helper to get a fresh default CellConfig for a section
-func getDefaultSectionConfig(section string) tw.CellConfig {
-	fullDefaultCfg := defaultConfig() // Assuming defaultConfig() is accessible
+// Helper to get a fresh default CellConfig for a section.
+// This uses the defaultConfig() function from the tablewriter package.
+func getTestSectionDefaultConfig(section string) tw.CellConfig {
+	fullDefaultCfg := defaultConfig()
 	switch section {
 	case "header":
 		return fullDefaultCfg.Header
@@ -640,6 +321,376 @@ func getDefaultSectionConfig(section string) tw.CellConfig {
 	case "footer":
 		return fullDefaultCfg.Footer
 	default:
-		panic("unknown section: " + section)
+		return fullDefaultCfg.Row
+	}
+}
+
+// TestMergeCellConfig comprehensively tests the mergeCellConfig function.
+func TestMergeCellConfig(t *testing.T) {
+	tests := []struct {
+		name           string
+		baseConfig     func() tw.CellConfig
+		inputConfig    tw.CellConfig
+		expectedConfig func() tw.CellConfig
+	}{
+		{
+			name:        "EmptyInput_OnRowDefaultBase",
+			baseConfig:  func() tw.CellConfig { return getTestSectionDefaultConfig("row") },
+			inputConfig: tw.CellConfig{},
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				// src.AutoFormat is 0 (Pending) from empty CellConfig.
+				// mergeCellConfig assigns src.AutoFormat to dst.AutoFormat.
+				cfg.Formatting.AutoFormat = tw.Pending // Should be 0
+				return cfg
+			},
+		},
+		{
+			name:       "OverrideMergeModeNone_OnRowDefaultBase",
+			baseConfig: func() tw.CellConfig { return getTestSectionDefaultConfig("row") },
+			inputConfig: tw.CellConfig{
+				Formatting: tw.CellFormatting{MergeMode: tw.MergeNone},
+			},
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.Formatting.MergeMode = tw.MergeNone
+				cfg.Formatting.AutoFormat = tw.Pending // src.AutoFormat is 0
+				return cfg
+			},
+		},
+		{
+			name:       "OverrideMergeModeVertical_OnRowDefaultBase",
+			baseConfig: func() tw.CellConfig { return getTestSectionDefaultConfig("row") },
+			inputConfig: tw.CellConfig{
+				Formatting: tw.CellFormatting{MergeMode: tw.MergeVertical},
+			},
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.Formatting.MergeMode = tw.MergeVertical
+				cfg.Formatting.AutoFormat = tw.Pending // src.AutoFormat is 0
+				return cfg
+			},
+		},
+		{
+			name:       "OverrideMergeModeHorizontal_OnRowDefaultBase",
+			baseConfig: func() tw.CellConfig { return getTestSectionDefaultConfig("row") },
+			inputConfig: tw.CellConfig{
+				Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal},
+			},
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.Formatting.MergeMode = tw.MergeHorizontal
+				cfg.Formatting.AutoFormat = tw.Pending // src.AutoFormat is 0
+				return cfg
+			},
+		},
+		{
+			name:       "OverrideMergeModeBoth_OnRowDefaultBase",
+			baseConfig: func() tw.CellConfig { return getTestSectionDefaultConfig("row") },
+			inputConfig: tw.CellConfig{
+				Formatting: tw.CellFormatting{MergeMode: tw.MergeBoth},
+			},
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.Formatting.MergeMode = tw.MergeBoth
+				cfg.Formatting.AutoFormat = tw.Pending // src.AutoFormat is 0
+				return cfg
+			},
+		},
+		{
+			name:       "OverrideMergeModeHierarchical_OnRowDefaultBase",
+			baseConfig: func() tw.CellConfig { return getTestSectionDefaultConfig("row") },
+			inputConfig: tw.CellConfig{
+				Formatting: tw.CellFormatting{MergeMode: tw.MergeHierarchical},
+			},
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.Formatting.MergeMode = tw.MergeHierarchical
+				cfg.Formatting.AutoFormat = tw.Pending // src.AutoFormat is 0
+				return cfg
+			},
+		},
+		{
+			name:       "ConfigBuilderOutput_MergingIntoRowDefault",
+			baseConfig: func() tw.CellConfig { return getTestSectionDefaultConfig("row") }, // Base AutoFormat = tw.Off (-1)
+			inputConfig: NewConfigBuilder().
+				WithHeaderAlignment(tw.AlignCenter).
+				WithHeaderMergeMode(tw.MergeHorizontal).
+				Build().Header, // Src AutoFormat = tw.On (1) from defaultConfig().Header
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.Formatting.Alignment = tw.AlignCenter
+				cfg.Formatting.AutoWrap = tw.WrapTruncate // from defaultConfig().Header
+				cfg.Formatting.AutoFormat = tw.On         // from src (Builder's Header)
+				cfg.Formatting.MergeMode = tw.MergeHorizontal
+				// Padding.Global is same in default row and header, so it's effectively overwritten by itself.
+				return cfg
+			},
+		},
+		{
+			name:        "Row_EmptyInput_OnRowBase",
+			baseConfig:  func() tw.CellConfig { return getTestSectionDefaultConfig("row") },
+			inputConfig: tw.CellConfig{},
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.Formatting.AutoFormat = tw.Pending // src.AutoFormat is 0
+				return cfg
+			},
+		},
+		{
+			name:       "Row_OverrideAlignment_OnRowBase",
+			baseConfig: func() tw.CellConfig { return getTestSectionDefaultConfig("row") },
+			inputConfig: tw.CellConfig{
+				Formatting: tw.CellFormatting{Alignment: tw.AlignCenter},
+			},
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.Formatting.Alignment = tw.AlignCenter
+				cfg.Formatting.AutoFormat = tw.Pending // src.AutoFormat is 0
+				return cfg
+			},
+		},
+		{
+			name:       "Row_OverrideColumnAligns_OnRowBase_WithSkip",
+			baseConfig: func() tw.CellConfig { return getTestSectionDefaultConfig("row") },
+			inputConfig: tw.CellConfig{
+				ColumnAligns: []tw.Align{tw.AlignRight, tw.Skip, tw.AlignLeft},
+			},
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.ColumnAligns = []tw.Align{tw.AlignRight, tw.Empty, tw.AlignLeft}
+				cfg.Formatting.AutoFormat = tw.Pending // src.AutoFormat is 0
+				return cfg
+			},
+		},
+		{
+			name:       "Row_OverrideAutoWrap_OnRowBase",
+			baseConfig: func() tw.CellConfig { return getTestSectionDefaultConfig("row") },
+			inputConfig: tw.CellConfig{
+				Formatting: tw.CellFormatting{AutoWrap: tw.WrapTruncate},
+			},
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.Formatting.AutoWrap = tw.WrapTruncate
+				cfg.Formatting.AutoFormat = tw.Pending // src.AutoFormat is 0
+				return cfg
+			},
+		},
+		{
+			name:       "Row_OverrideAutoFormat_InputOff_BaseOff",
+			baseConfig: func() tw.CellConfig { return getTestSectionDefaultConfig("row") }, // Base AutoFormat = tw.Off (-1)
+			inputConfig: tw.CellConfig{
+				Formatting: tw.CellFormatting{AutoFormat: tw.Off}, // Src AutoFormat = tw.Off (-1)
+			},
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.Formatting.AutoFormat = tw.Off // Expected -1
+				return cfg
+			},
+		},
+		{
+			name:       "Row_OverrideAutoFormat_InputOn_BaseOff",
+			baseConfig: func() tw.CellConfig { return getTestSectionDefaultConfig("row") }, // Base AutoFormat = tw.Off (-1)
+			inputConfig: tw.CellConfig{
+				Formatting: tw.CellFormatting{AutoFormat: tw.On}, // Src AutoFormat = tw.On (1)
+			},
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.Formatting.AutoFormat = tw.On // Expected 1
+				return cfg
+			},
+		},
+		{
+			name:       "Header_ConfigBuilderOutput_MergingIntoHeaderDefault",
+			baseConfig: func() tw.CellConfig { return getTestSectionDefaultConfig("header") }, // Base AutoFormat = tw.On (1)
+			inputConfig: NewConfigBuilder().
+				WithHeaderAlignment(tw.AlignCenter).
+				WithHeaderMergeMode(tw.MergeHorizontal).
+				Build().Header, // Src AutoFormat = tw.On (1)
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("header")
+				cfg.Formatting.MergeMode = tw.MergeHorizontal
+				cfg.Formatting.AutoFormat = tw.On // Expected 1 (no change from base or src)
+				return cfg
+			},
+		},
+		{
+			name:       "OverrideColMaxWidthGlobal_OnRowDefault",
+			baseConfig: func() tw.CellConfig { return getTestSectionDefaultConfig("row") },
+			inputConfig: tw.CellConfig{
+				ColMaxWidths: tw.CellWidth{Global: 50},
+			},
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.ColMaxWidths.Global = 50
+				cfg.Formatting.AutoFormat = tw.Pending // src.AutoFormat is 0
+				return cfg
+			},
+		},
+		{
+			name:       "MergeColMaxWidthPerColumn_NewEntries_OnRowDefault",
+			baseConfig: func() tw.CellConfig { return getTestSectionDefaultConfig("row") },
+			inputConfig: tw.CellConfig{
+				ColMaxWidths: tw.CellWidth{PerColumn: map[int]int{0: 10, 2: 20}},
+			},
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.ColMaxWidths.PerColumn = map[int]int{0: 10, 2: 20}
+				cfg.Formatting.AutoFormat = tw.Pending // src.AutoFormat is 0
+				return cfg
+			},
+		},
+		{
+			name: "MergeColMaxWidthPerColumn_OverwriteAndAdd_OnExisting",
+			baseConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.ColMaxWidths.PerColumn = map[int]int{0: 5, 1: 15}
+				return cfg
+			},
+			inputConfig: tw.CellConfig{
+				ColMaxWidths: tw.CellWidth{PerColumn: map[int]int{0: 10, 2: 20, 1: 0}},
+			},
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.ColMaxWidths.PerColumn = map[int]int{0: 10, 1: 15, 2: 20}
+				cfg.Formatting.AutoFormat = tw.Pending // src.AutoFormat is 0
+				return cfg
+			},
+		},
+		{
+			name:       "MergePaddingPerColumn_NewEntries_OnRowDefault",
+			baseConfig: func() tw.CellConfig { return getTestSectionDefaultConfig("row") },
+			inputConfig: tw.CellConfig{
+				Padding: tw.CellPadding{PerColumn: []tw.Padding{
+					{Left: "L0", Right: "R0"},
+					{},
+					{Left: "L2", Right: "R2"},
+				}},
+			},
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.Padding.PerColumn = []tw.Padding{
+					{Left: "L0", Right: "R0"},
+					{},
+					{Left: "L2", Right: "R2"},
+				}
+				cfg.Formatting.AutoFormat = tw.Pending // src.AutoFormat is 0
+				return cfg
+			},
+		},
+		{
+			name: "MergePaddingPerColumn_OverwriteExtendAndPreserve_OnExisting",
+			baseConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.Padding.PerColumn = []tw.Padding{
+					{Left: "BASE_L0"}, {Left: "BASE_L1"}, {Left: "BASE_L2"},
+				}
+				return cfg
+			},
+			inputConfig: tw.CellConfig{
+				Padding: tw.CellPadding{PerColumn: []tw.Padding{
+					{Left: "SRC_L0"},
+					{},
+				}},
+			},
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.Padding.PerColumn = []tw.Padding{
+					{Left: "SRC_L0"}, {Left: "BASE_L1"}, {Left: "BASE_L2"},
+				}
+				cfg.Formatting.AutoFormat = tw.Pending // src.AutoFormat is 0
+				return cfg
+			},
+		},
+		{
+			name: "MergeColumnAligns_SrcShorterThanDst_WithSkipAndEmpty",
+			baseConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.ColumnAligns = []tw.Align{tw.AlignCenter, tw.AlignRight, tw.AlignCenter}
+				return cfg
+			},
+			inputConfig: tw.CellConfig{
+				ColumnAligns: []tw.Align{tw.AlignLeft, tw.Skip},
+			},
+			expectedConfig: func() tw.CellConfig {
+				cfg := getTestSectionDefaultConfig("row")
+				cfg.ColumnAligns = []tw.Align{tw.AlignLeft, tw.AlignRight, tw.AlignCenter}
+				cfg.Formatting.AutoFormat = tw.Pending // src.AutoFormat is 0
+				return cfg
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			baseForTest := tt.baseConfig()
+			expected := tt.expectedConfig()
+
+			got := mergeCellConfig(baseForTest, tt.inputConfig)
+
+			// Use a more verbose comparison for Formatting if DeepEqual fails to pinpoint AutoFormat
+			if !reflect.DeepEqual(got.Formatting, expected.Formatting) {
+				if got.Formatting.Alignment != expected.Formatting.Alignment ||
+					got.Formatting.AutoWrap != expected.Formatting.AutoWrap ||
+					got.Formatting.MergeMode != expected.Formatting.MergeMode ||
+					got.Formatting.AutoFormat != expected.Formatting.AutoFormat { // Key comparison
+					t.Errorf("Formatting mismatch:\nexpected: Alignment:%v, AutoWrap:%d, MergeMode:%d, AutoFormat:%d (%s)\ngot:      Alignment:%v, AutoWrap:%d, MergeMode:%d, AutoFormat:%d (%s)",
+						expected.Formatting.Alignment, expected.Formatting.AutoWrap, expected.Formatting.MergeMode, expected.Formatting.AutoFormat, expected.Formatting.AutoFormat.String(),
+						got.Formatting.Alignment, got.Formatting.AutoWrap, got.Formatting.MergeMode, got.Formatting.AutoFormat, got.Formatting.AutoFormat.String())
+				} else {
+					// Fallback if the above doesn't catch it (shouldn't happen for simple fields)
+					t.Errorf("Formatting mismatch (DeepEqual failed):\nexpected: %+v\ngot:      %+v", expected.Formatting, got.Formatting)
+				}
+			}
+
+			if !reflect.DeepEqual(got.Padding.Global, expected.Padding.Global) {
+				t.Errorf("Padding.Global mismatch\nexpected: %+v\ngot:      %+v", expected.Padding.Global, got.Padding.Global)
+			}
+			if !reflect.DeepEqual(got.Padding.PerColumn, expected.Padding.PerColumn) {
+				t.Errorf("Padding.PerColumn mismatch\nexpected: %#v\ngot:      %#v", expected.Padding.PerColumn, got.Padding.PerColumn)
+			}
+			if !reflect.DeepEqual(got.ColMaxWidths.Global, expected.ColMaxWidths.Global) {
+				t.Errorf("ColMaxWidths.Global mismatch\nexpected: %d\ngot:      %d", expected.ColMaxWidths.Global, got.ColMaxWidths.Global)
+			}
+			if !reflect.DeepEqual(got.ColMaxWidths.PerColumn, expected.ColMaxWidths.PerColumn) {
+				t.Errorf("ColMaxWidths.PerColumn mismatch\nexpected: %#v\ngot:      %#v", expected.ColMaxWidths.PerColumn, got.ColMaxWidths.PerColumn)
+			}
+			if !reflect.DeepEqual(got.ColumnAligns, expected.ColumnAligns) {
+				t.Errorf("ColumnAligns mismatch\nexpected: %#v\ngot:      %#v", expected.ColumnAligns, got.ColumnAligns)
+			}
+
+			if (got.Callbacks.Global == nil) != (expected.Callbacks.Global == nil) {
+				t.Errorf("Callbacks.Global nilness mismatch\nexpected nil: %t, got nil: %t",
+					expected.Callbacks.Global == nil, got.Callbacks.Global == nil)
+			}
+			if len(got.Callbacks.PerColumn) != len(expected.Callbacks.PerColumn) {
+				t.Errorf("Callbacks.PerColumn length mismatch\nexpected: %d, got: %d",
+					len(expected.Callbacks.PerColumn), len(got.Callbacks.PerColumn))
+			} else {
+				for i := range got.Callbacks.PerColumn {
+					if (got.Callbacks.PerColumn[i] == nil) != (expected.Callbacks.PerColumn[i] == nil) {
+						t.Errorf("Callbacks.PerColumn[%d] nilness mismatch\nexpected nil: %t, got nil: %t",
+							i, expected.Callbacks.PerColumn[i] == nil, got.Callbacks.PerColumn[i] == nil)
+						break
+					}
+				}
+			}
+			if (got.Filter.Global == nil) != (expected.Filter.Global == nil) {
+				t.Errorf("Filter.Global nilness mismatch\nexpected nil: %t, got nil: %t",
+					expected.Filter.Global == nil, got.Filter.Global == nil)
+			}
+			if len(got.Filter.PerColumn) != len(expected.Filter.PerColumn) {
+				t.Errorf("Filter.PerColumn length mismatch\nexpected: %d, got: %d",
+					len(expected.Filter.PerColumn), len(got.Filter.PerColumn))
+			} else {
+				for i := range got.Filter.PerColumn {
+					if (got.Filter.PerColumn[i] == nil) != (expected.Filter.PerColumn[i] == nil) {
+						t.Errorf("Filter.PerColumn[%d] nilness mismatch\nexpected nil: %t, got nil: %t",
+							i, expected.Filter.PerColumn[i] == nil, got.Filter.PerColumn[i] == nil)
+						break
+					}
+				}
+			}
+		})
 	}
 }

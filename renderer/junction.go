@@ -56,7 +56,7 @@ func (jr *Junction) GetSegment() string {
 
 	if vPassThruStrict {
 		jr.logger.Debugf("GetSegment col %d: VPassThruStrict=%v -> Empty segment", jr.colIdx, vPassThruStrict)
-		return ""
+		return tw.Empty
 	}
 	symbol := jr.sym.Row()
 	coloredSymbol := jr.borderTint.Apply(symbol)

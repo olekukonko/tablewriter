@@ -28,8 +28,8 @@ func defaultBlueprint() tw.Rendition {
 				ShowHeaderLine: tw.On,
 				ShowFooterLine: tw.On,
 			},
-
 			CompactMode: tw.Off,
+			// Cushion:     tw.On,
 		},
 		Symbols:   tw.NewSymbols(tw.StyleLight),
 		Streaming: true,
@@ -110,7 +110,7 @@ func defaultOceanRendererConfig() tw.Rendition {
 
 // getHTMLStyle remains the same
 func getHTMLStyle(align tw.Align) string {
-	styleContent := ""
+	styleContent := tw.Empty
 	switch align {
 	case tw.AlignRight:
 		styleContent = "text-align: right;"
@@ -119,10 +119,10 @@ func getHTMLStyle(align tw.Align) string {
 	case tw.AlignLeft:
 		styleContent = "text-align: left;"
 	}
-	if styleContent != "" {
+	if styleContent != tw.Empty {
 		return fmt.Sprintf(` style="%s"`, styleContent)
 	}
-	return ""
+	return tw.Empty
 }
 
 // mergeLines combines default and override line settings, preserving defaults for unset (zero) overrides.
@@ -161,34 +161,39 @@ func mergeSeparators(defaults, overrides tw.Separators) tw.Separators {
 
 // mergeSettings combines default and override settings, preserving defaults for unset (zero) overrides.
 func mergeSettings(defaults, overrides tw.Settings) tw.Settings {
-	if overrides.Separators.ShowHeader != 0 {
+	if overrides.Separators.ShowHeader != tw.Unknown {
 		defaults.Separators.ShowHeader = overrides.Separators.ShowHeader
 	}
-	if overrides.Separators.ShowFooter != 0 {
+	if overrides.Separators.ShowFooter != tw.Unknown {
 		defaults.Separators.ShowFooter = overrides.Separators.ShowFooter
 	}
-	if overrides.Separators.BetweenRows != 0 {
+	if overrides.Separators.BetweenRows != tw.Unknown {
 		defaults.Separators.BetweenRows = overrides.Separators.BetweenRows
 	}
-	if overrides.Separators.BetweenColumns != 0 {
+	if overrides.Separators.BetweenColumns != tw.Unknown {
 		defaults.Separators.BetweenColumns = overrides.Separators.BetweenColumns
 	}
-	if overrides.Lines.ShowTop != 0 {
+	if overrides.Lines.ShowTop != tw.Unknown {
 		defaults.Lines.ShowTop = overrides.Lines.ShowTop
 	}
-	if overrides.Lines.ShowBottom != 0 {
+	if overrides.Lines.ShowBottom != tw.Unknown {
 		defaults.Lines.ShowBottom = overrides.Lines.ShowBottom
 	}
-	if overrides.Lines.ShowHeaderLine != 0 {
+	if overrides.Lines.ShowHeaderLine != tw.Unknown {
 		defaults.Lines.ShowHeaderLine = overrides.Lines.ShowHeaderLine
 	}
-	if overrides.Lines.ShowFooterLine != 0 {
+	if overrides.Lines.ShowFooterLine != tw.Unknown {
 		defaults.Lines.ShowFooterLine = overrides.Lines.ShowFooterLine
 	}
 
-	if overrides.CompactMode != 0 {
+	if overrides.CompactMode != tw.Unknown {
 		defaults.CompactMode = overrides.CompactMode
 	}
+
+	//if overrides.Cushion != tw.Unknown {
+	//	defaults.Cushion = overrides.Cushion
+	//}
+
 	return defaults
 }
 

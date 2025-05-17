@@ -59,7 +59,7 @@ func TestStructTableWithDB(t *testing.T) {
 		Header: tw.CellConfig{
 			Formatting: tw.CellFormatting{
 				Alignment:  tw.AlignCenter,
-				AutoFormat: true,
+				AutoFormat: tw.On,
 			},
 		},
 		Row: tw.CellConfig{

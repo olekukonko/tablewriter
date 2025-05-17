@@ -326,7 +326,7 @@ func TestSVGWithFooterAndAlignment(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewSVG(svgCfg)),
 		tablewriter.WithHeaderConfig(tw.CellConfig{
-			Formatting: tw.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: true},
+			Formatting: tw.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: tw.On},
 		}),
 		tablewriter.WithRowConfig(tw.CellConfig{
 			ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignRight, tw.AlignCenter},
@@ -355,7 +355,7 @@ func TestSVGColumnAlignmentOverride(t *testing.T) {
 	svgCfg := defaultSVGConfigForTests(false)
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewSVG(svgCfg)),
-		tablewriter.WithHeaderConfig(tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}}),
+		tablewriter.WithHeaderConfig(tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: tw.Off}}),
 		tablewriter.WithRowConfig(tw.CellConfig{
 			ColumnAligns: []tw.Align{tw.AlignRight, tw.AlignCenter, tw.AlignLeft},
 		}),

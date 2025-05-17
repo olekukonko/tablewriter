@@ -21,7 +21,7 @@ func (t *Table) Close() error {
 		// If we always call renderer.Close(), ensure it's safe if renderer.Start() wasn't called.
 		// Let's only call renderer.Close if stream was started.
 		if t.hasPrinted && t.renderer != nil { // Check if renderer is not nil for safety
-			t.renderer.Close(t.writer) // Still call renderer's close for cleanup
+			t.renderer.Close() // Still call renderer's close for cleanup
 		}
 		t.hasPrinted = false // Reset flag
 		return nil
@@ -44,7 +44,7 @@ func (t *Table) Close() error {
 	}
 
 	// Call the underlying renderer's Close method
-	err := t.renderer.Close(t.writer)
+	err := t.renderer.Close()
 	if err != nil {
 		t.logger.Errorf("Renderer.Close() failed: %v", err)
 	}
@@ -259,7 +259,7 @@ func (t *Table) streamAppendRow(row interface{}) error {
 				)
 				nextCellsCtx = firstRowLineResp.cells
 			}
-			f.Line(t.writer, tw.Formatting{
+			f.Line(tw.Formatting{
 				Row: tw.RowContext{
 					Widths:       t.streamWidths,
 					ColMaxWidths: tw.CellWidth{PerColumn: t.streamWidths},
@@ -297,7 +297,7 @@ func (t *Table) streamAppendRow(row interface{}) error {
 			firstRowLineResp := t.streamBuildCellContexts(tw.Row, 0, 0, processedRowLines, rowMerges, t.config.Row)
 			nextCellsCtx = firstRowLineResp.cells
 		}
-		f.Line(t.writer, tw.Formatting{
+		f.Line(tw.Formatting{
 			Row: tw.RowContext{
 				Widths:       t.streamWidths,
 				ColMaxWidths: tw.CellWidth{PerColumn: t.streamWidths},
@@ -341,7 +341,7 @@ func (t *Table) streamAppendRow(row interface{}) error {
 	for i := 0; i < totalRowLines; i++ {
 		resp := t.streamBuildCellContexts(tw.Row, 0, i, processedRowLines, rowMerges, t.config.Row)
 		t.logger.Debug("streamAppendRow: Rendering row line %d/%d with location %v for row starting with '%s'.", i, totalRowLines, resp.location, firstCellForLog)
-		f.Row(t.writer, resp.cellsContent, tw.Formatting{
+		f.Row(resp.cellsContent, tw.Formatting{
 			Row: tw.RowContext{
 				Widths:       t.streamWidths,
 				ColMaxWidths: tw.CellWidth{PerColumn: t.streamWidths},
@@ -514,7 +514,7 @@ func (t *Table) streamCalculateWidths(sampleDataLines []string, sectionConfigFor
 			ellipsisWidthBuffer = tw.DisplayWidth(tw.CharEllipsis)
 		}
 		varianceBuffer := 2 // Your suggested variance
-		minTotalColWidth := tw.DefaultMinlColumnWidth
+		minTotalColWidth := tw.MinimumColumnWidth
 		// Example: if t.config.Stream.MinAutoColumnWidth > 0 { minTotalColWidth = t.config.Stream.MinAutoColumnWidth }
 
 		for i := 0; i < t.streamNumCols; i++ {
@@ -717,7 +717,7 @@ func (t *Table) streamRenderBottomBorder() error {
 	}
 
 	f := t.renderer
-	f.Line(t.writer, tw.Formatting{
+	f.Line(tw.Formatting{
 		Row: tw.RowContext{
 			Widths:       t.streamWidths,
 			ColMaxWidths: tw.CellWidth{PerColumn: t.streamWidths},
@@ -794,7 +794,7 @@ func (t *Table) streamRenderFooter(processedFooterLines [][]string) error {
 		separatorPosition := tw.Footer   // Positioned relative to the footer it precedes
 		separatorLocation := tw.LocationMiddle
 
-		f.Line(t.writer, tw.Formatting{
+		f.Line(tw.Formatting{
 			Row: tw.RowContext{
 				Widths:       t.streamWidths,
 				ColMaxWidths: tw.CellWidth{PerColumn: t.streamWidths},
@@ -851,7 +851,7 @@ func (t *Table) streamRenderFooter(processedFooterLines [][]string) error {
 			t.logger.Debug("streamRenderFooter: Setting LocationEnd for last footer line as no bottom border will follow.")
 		}
 
-		f.Footer(t.writer, [][]string{resp.cellsContent}, tw.Formatting{
+		f.Footer([][]string{resp.cellsContent}, tw.Formatting{
 			Row: tw.RowContext{
 				Widths:       t.streamWidths,
 				ColMaxWidths: tw.CellWidth{PerColumn: t.streamWidths},
@@ -923,7 +923,7 @@ func (t *Table) streamRenderHeader(headers []string) error {
 			)
 			nextCellsCtx = firstHeaderLineResp.cells
 		}
-		f.Line(t.writer, tw.Formatting{
+		f.Line(tw.Formatting{
 			Row: tw.RowContext{
 				Widths:       t.streamWidths,
 				ColMaxWidths: tw.CellWidth{PerColumn: t.streamWidths},
@@ -945,7 +945,7 @@ func (t *Table) streamRenderHeader(headers []string) error {
 		resp.cellsContent = t.buildPaddingLineContents(t.config.Header.Padding.Global.Top, t.streamWidths, t.streamNumCols, headerMerges)
 		resp.location = tw.LocationFirst
 		t.logger.Debug("streamRenderHeader: Rendering header top padding line: %v (loc: %v)", resp.cellsContent, resp.location)
-		f.Header(t.writer, [][]string{resp.cellsContent}, tw.Formatting{
+		f.Header([][]string{resp.cellsContent}, tw.Formatting{
 			Row: tw.RowContext{
 				Widths:       t.streamWidths,
 				ColMaxWidths: tw.CellWidth{PerColumn: t.streamWidths},
@@ -972,7 +972,7 @@ func (t *Table) streamRenderHeader(headers []string) error {
 	for i := 0; i < totalHeaderLines; i++ {
 		resp := t.streamBuildCellContexts(tw.Header, 0, i, processedHeaderLines, headerMerges, t.config.Header)
 		t.logger.Debug("streamRenderHeader: Rendering header content line %d/%d with location %v", i, totalHeaderLines, resp.location)
-		f.Header(t.writer, [][]string{resp.cellsContent}, tw.Formatting{
+		f.Header([][]string{resp.cellsContent}, tw.Formatting{
 			Row: tw.RowContext{
 				Widths:       t.streamWidths,
 				ColMaxWidths: tw.CellWidth{PerColumn: t.streamWidths},
@@ -1001,7 +1001,7 @@ func (t *Table) streamRenderHeader(headers []string) error {
 		resp.cellsContent = t.buildPaddingLineContents(t.config.Header.Padding.Global.Bottom, t.streamWidths, t.streamNumCols, headerMerges)
 		resp.location = tw.LocationEnd
 		t.logger.Debug("streamRenderHeader: Rendering header bottom padding line: %v (loc: %v)", resp.cellsContent, resp.location)
-		f.Header(t.writer, [][]string{resp.cellsContent}, tw.Formatting{
+		f.Header([][]string{resp.cellsContent}, tw.Formatting{
 			Row: tw.RowContext{
 				Widths:       t.streamWidths,
 				ColMaxWidths: tw.CellWidth{PerColumn: t.streamWidths},
@@ -1027,7 +1027,7 @@ func (t *Table) streamRenderHeader(headers []string) error {
 	if cfg.Settings.Lines.ShowHeaderLine.Enabled() && (t.firstRowRendered || len(t.streamFooterLines) > 0) {
 		t.logger.Debug("streamRenderHeader: Rendering header separator line.")
 		resp := t.streamBuildCellContexts(tw.Header, 0, totalHeaderLines-1, processedHeaderLines, headerMerges, t.config.Header)
-		f.Line(t.writer, tw.Formatting{
+		f.Line(tw.Formatting{
 			Row: tw.RowContext{
 				Widths:       t.streamWidths,
 				ColMaxWidths: tw.CellWidth{PerColumn: t.streamWidths},
