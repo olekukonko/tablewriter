@@ -819,20 +819,6 @@ func WithRenderer(f tw.Renderer) Option {
 	}
 }
 
-// WithRendererSettings updates the renderer's settings (e.g., separators, lines).
-// Logs the change if debugging is enabled.
-func WithRendererSettings(settings tw.Settings) Option {
-	return func(target *Table) {
-		if target.renderer != nil {
-			cfg := target.renderer.Config()
-			cfg.Settings = settings
-			if target.logger != nil {
-				target.logger.Debugf("Option: WithRendererSettings applied to Table: %+v", settings)
-			}
-		}
-	}
-}
-
 // WithRowConfig applies a full row configuration to the table.
 // Logs the change if debugging is enabled.
 func WithRowConfig(config tw.CellConfig) Option {

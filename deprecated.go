@@ -20,3 +20,21 @@ func WithBorders(borders tw.Border) Option {
 // Deprecated: WithBorders is no longer supported.
 // Use [tw.Behavior] directly to configure border settings.
 type Behavior tw.Behavior
+
+// Deprecated: WithRendererSettings i sno longer supported.
+type Settings tw.Settings
+
+// WithRendererSettings updates the renderer's settings (e.g., separators, lines).
+// Render setting has move to renders directly
+// you can also use WithRendition for renders that have rendition support
+func WithRendererSettings(settings tw.Settings) Option {
+	return func(target *Table) {
+		if target.renderer != nil {
+			cfg := target.renderer.Config()
+			cfg.Settings = settings
+			if target.logger != nil {
+				target.logger.Debugf("Option: WithRendererSettings applied to Table: %+v", settings)
+			}
+		}
+	}
+}
