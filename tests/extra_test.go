@@ -70,7 +70,7 @@ func TestFilterMasking(t *testing.T) {
 			var buf bytes.Buffer
 			table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 				Header: tw.CellConfig{
-					Formatting: tw.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: true},
+					Formatting: tw.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: tw.On},
 					Padding:    tw.CellPadding{Global: tw.Padding{Left: " ", Right: " "}},
 				},
 				Row: tw.CellConfig{
@@ -446,6 +446,64 @@ func TestSpaces(t *testing.T) {
        │ 2        │ 30  │ x          │
        │        3 │ 28  │      Lagos │
        └──────────┴─────┴────────────┘
+
+`
+		visualCheck(t, "UnicodeTableRendering", buf.String(), expected)
+	})
+
+}
+
+func TestControl(t *testing.T) {
+	var buf bytes.Buffer
+	var data = [][]string{
+		{"No", "Age", "    City"},
+		{"    1", "25", "New York"},
+		{"2", "30", "x"},
+		{"       3", "28", "     Lagos"},
+	}
+	t.Run("Trim", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf,
+			tablewriter.WithDebug(false),
+			tablewriter.WithTrimSpace(tw.On),
+			tablewriter.WithHeaderControl(tw.Control{Hide: tw.On}),
+		)
+		table.Header(data[0])
+		table.Bulk(data[1:])
+		table.Render()
+
+		expected := `
+		┌───┬────┬──────────┐
+		│ 1 │ 25 │ New York │
+		│ 2 │ 30 │ x        │
+		│ 3 │ 28 │ Lagos    │
+		└───┴────┴──────────┘
+
+`
+		if !visualCheck(t, "UnicodeTableRendering", buf.String(), expected) {
+			t.Log(table.Debug())
+		}
+	})
+
+	t.Run("NoTrim", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf,
+			tablewriter.WithTrimSpace(tw.On),
+			tablewriter.WithHeaderControl(tw.Control{Hide: tw.Off}),
+		)
+		table.Header(data[0])
+		table.Bulk(data[1:])
+		table.Render()
+
+		expected := `
+	┌────┬─────┬──────────┐
+	│ NO │ AGE │   CITY   │
+	├────┼─────┼──────────┤
+	│ 1  │ 25  │ New York │
+	│ 2  │ 30  │ x        │
+	│ 3  │ 28  │ Lagos    │
+	└────┴─────┴──────────┘
+
 
 `
 		visualCheck(t, "UnicodeTableRendering", buf.String(), expected)

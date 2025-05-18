@@ -3,10 +3,11 @@ package tw
 // Operation Status Constants
 // Used to indicate the success or failure of operations
 const (
+	Pending = 0  // Operation failed
 	Fail    = -1 // Operation failed
 	Success = 1  // Operation succeeded
 
-	DefaultMinlColumnWidth = 8
+	MinimumColumnWidth = 8
 )
 
 const (
@@ -19,8 +20,9 @@ const (
 // Feature State Constants
 // Represents enabled/disabled states for features
 const (
-	On  State = Success // Feature is enabled
-	Off State = Fail    // Feature is disabled
+	Unknown State = Pending // Feature is enabled
+	On      State = Success // Feature is enabled
+	Off     State = Fail    // Feature is disabled
 )
 
 // Table Alignment Constants
@@ -49,6 +51,12 @@ const (
 	LocationFirst  Location = "first"  // Topmost line position
 	LocationMiddle Location = "middle" // LevelBody line position
 	LocationEnd    Location = "end"    // LevelFooter line position
+)
+
+const (
+	SectionHeader = "heder"
+	SectionRow    = "row"
+	SectionFooter = "footer"
 )
 
 // Text Wrapping Constants

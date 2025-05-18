@@ -244,8 +244,10 @@ func (t *Table) Configure(fn func(cfg *Config)) *Table {
 	// Handle any immediate side-effects of config changes, e.g., logger state
 	if t.config.Debug {
 		t.logger.Enable()
+		t.logger.Resume() // in case it was suspended
 	} else {
 		t.logger.Disable()
+		t.logger.Suspend() // suspend totally, especially because of tight loops
 	}
 	t.logger.Debugf("Configure complete. New t.config: %+v", t.config)
 	return t
@@ -264,8 +266,17 @@ func (t *Table) Debug() *bytes.Buffer {
 // In streaming mode, this processes and renders the header immediately.
 func (t *Table) Header(elements ...any) {
 	t.ensureInitialized()
-	t.logger.Debugf("Header() method called with raw variadic elements: %v (len %d). Streaming: %v, Started: %v",
-		elements, len(elements), t.config.Stream.Enable, t.hasPrinted)
+	t.logger.Debugf("Header() method called with raw variadic elements: %v (len %d). Streaming: %v, Started: %v", elements, len(elements), t.config.Stream.Enable, t.hasPrinted)
+
+	// just forget
+	if t.config.Behavior.Header.Hide.Enabled() {
+		return
+	}
+
+	// add come common default
+	if t.config.Header.Formatting.AutoFormat == tw.Unknown {
+		t.config.Header.Formatting.AutoFormat = tw.On
+	}
 
 	if t.config.Stream.Enable && t.hasPrinted {
 		//  Streaming Path
@@ -298,14 +309,13 @@ func (t *Table) Header(elements ...any) {
 	preparedHeaderLines := t.prepareContent(headersAsStrings, t.config.Header)
 	t.headers = preparedHeaderLines // Store directly. Padding to t.maxColumns() will happen in prepareContexts.
 
-	t.logger.Debugf("Header set (batch mode), lines stored: %d. First line if exists: %v",
-		len(t.headers), func() []string {
-			if len(t.headers) > 0 {
-				return t.headers[0]
-			} else {
-				return nil
-			}
-		}())
+	t.logger.Debugf("Header set (batch mode), lines stored: %d. First line if exists: %v", len(t.headers), func() []string {
+		if len(t.headers) > 0 {
+			return t.headers[0]
+		} else {
+			return nil
+		}
+	}())
 }
 
 // Footer sets the table's footer content, padding to match column count.
@@ -316,8 +326,12 @@ func (t *Table) Header(elements ...any) {
 // In streaming mode, this processes and stores the footer for rendering by Close().
 func (t *Table) Footer(elements ...any) {
 	t.ensureInitialized()
-	t.logger.Debugf("Footer() method called with raw variadic elements: %v (len %d). Streaming: %v, Started: %v",
-		elements, len(elements), t.config.Stream.Enable, t.hasPrinted)
+	t.logger.Debugf("Footer() method called with raw variadic elements: %v (len %d). Streaming: %v, Started: %v", elements, len(elements), t.config.Stream.Enable, t.hasPrinted)
+
+	// just forget
+	if t.config.Behavior.Footer.Hide.Enabled() {
+		return
+	}
 
 	if t.config.Stream.Enable && t.hasPrinted {
 		//  Streaming Path
@@ -377,8 +391,10 @@ func (t *Table) Options(opts ...Option) *Table {
 	// This should  be move away form WithDebug
 	if t.config.Debug == true {
 		t.logger.Enable()
+		t.logger.Resume()
 	} else {
 		t.logger.Disable()
+		t.logger.Suspend()
 	}
 
 	// send logger to renderer
@@ -449,6 +465,19 @@ func (t *Table) Reset() {
 // Returns an error if rendering fails.
 func (t *Table) Render() error {
 	return t.render()
+}
+
+// Trimmer trims whitespace from a string based on the Table’s configuration.
+// It conditionally applies strings.TrimSpace to the input string if the TrimSpace behavior
+// is enabled in t.config.Behavior, otherwise returning the string unchanged. This method
+// is used in the logging library to format strings for tabular output, ensuring consistent
+// display in log messages. Thread-safe as it only reads configuration and operates on the
+// input string.
+func (t *Table) Trimmer(str string) string {
+	if t.config.Behavior.TrimSpace.Enabled() {
+		return strings.TrimSpace(str)
+	}
+	return str
 }
 
 // appendSingle adds a single row to the table's row data.
@@ -751,7 +780,8 @@ func (t *Table) printTopBottomCaption(w io.Writer, actualTableWidth int) {
 		paddedLine := tw.Pad(line, " ", paddingTargetWidth, align)
 		t.logger.Debugf("[printCaption] Printing line %d: InputLine=%q, Align=%s, PaddingTargetWidth=%d, PaddedLine=%q",
 			i, line, align, paddingTargetWidth, paddedLine)
-		fmt.Fprintln(w, paddedLine)
+		w.Write([]byte(paddedLine))
+		w.Write([]byte(tw.NewLine))
 	}
 
 	t.logger.Debugf("[printCaption] Finished printing all caption lines.")
@@ -770,7 +800,7 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 
 	// ll.Dbg(t.config.MaxWidth)
 	// force max width
-	if t.config.MaxWidth != 0 {
+	if t.config.MaxWidth > 0 {
 		// it has headers
 		if len(cells) > 0 {
 			config.ColMaxWidths.Global = int(math.Floor(float64(t.config.MaxWidth) / float64(len(cells))))
@@ -814,12 +844,13 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 		if i < len(config.Padding.PerColumn) && config.Padding.PerColumn[i] != (tw.Padding{}) {
 			colPad = config.Padding.PerColumn[i]
 		}
+
 		padLeftWidth := tw.DisplayWidth(colPad.Left)
 		padRightWidth := tw.DisplayWidth(colPad.Right)
 
 		effectiveContentMaxWidth := t.calculateContentMaxWidth(i, config, padLeftWidth, padRightWidth, isStreaming)
 
-		if config.Formatting.AutoFormat {
+		if config.Formatting.AutoFormat.Enabled() {
 			cellContent = tw.Title(strings.Join(tw.SplitCamelCase(cellContent), tw.Space))
 		}
 
@@ -1343,7 +1374,7 @@ func (t *Table) render() error {
 		}
 	}
 
-	if closeErr := ctx.renderer.Close(t.writer); closeErr != nil {
+	if closeErr := ctx.renderer.Close(); closeErr != nil {
 		t.logger.Errorf("Renderer Close() error: %v", closeErr)
 		if !renderError {
 			firstRenderErr = fmt.Errorf("renderer close failed: %w", closeErr)
@@ -1397,9 +1428,9 @@ func (t *Table) render() error {
 
 		if len(renderedTableContent) > 0 {
 			t.logger.Debugf("[Render] Printing table content (length %d) to final writer.", len(renderedTableContent))
-			fmt.Fprint(t.writer, renderedTableContent)
+			t.writer.Write([]byte(renderedTableContent))
 			if !isTopCaption && t.caption.Text != "" && !strings.HasSuffix(renderedTableContent, t.newLine) {
-				fmt.Fprintln(t.writer)
+				t.writer.Write([]byte(tw.NewLine))
 				t.logger.Debugf("[Render] Added trailing newline after table content before bottom caption.")
 			}
 		} else {
@@ -1483,7 +1514,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 
 			resp := t.buildCellContexts(ctx, mctx, lastLineAboveCtx, lastLineAligns, lastLinePadding)
 			ctx.logger.Debugf("Bottom border: Using Widths=%v", ctx.widths[tw.Row])
-			f.Line(t.writer, tw.Formatting{
+			f.Line(tw.Formatting{
 				Row: tw.RowContext{
 					Widths:       ctx.widths[tw.Row],
 					Current:      resp.cells,
@@ -1570,7 +1601,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 			}
 		}
 		ctx.logger.Debugf("Footer separator: Using Widths=%v", ctx.widths[tw.Row])
-		f.Line(t.writer, tw.Formatting{
+		f.Line(tw.Formatting{
 			Row: tw.RowContext{
 				Widths:       ctx.widths[tw.Row],
 				Current:      resp.cells,
@@ -1716,7 +1747,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 			paddingLineOutput.WriteString(cfg.Symbols.Column())
 		}
 		paddingLineOutput.WriteString(t.newLine)
-		fmt.Fprint(t.writer, paddingLineOutput.String())
+		t.writer.Write([]byte(paddingLineOutput.String()))
 		ctx.logger.Debugf("Manually rendered Footer Bottom Padding line: %s", strings.TrimSuffix(paddingLineOutput.String(), t.newLine))
 		hctx.rowIdx = 0
 		hctx.lineIdx = len(ctx.footerLines)
@@ -1754,7 +1785,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 		}
 		resp := t.buildCellContexts(ctx, mctx, hctx, colAligns, colPadding)
 		ctx.logger.Debugf("Bottom border: Using Widths=%v", ctx.widths[tw.Row])
-		f.Line(t.writer, tw.Formatting{
+		f.Line(tw.Formatting{
 			Row: tw.RowContext{
 				Widths:       ctx.widths[tw.Row],
 				Current:      resp.cells,
@@ -1794,7 +1825,7 @@ func (t *Table) renderHeader(ctx *renderContext, mctx *mergeContext) error {
 				nextCells[j] = tw.CellContext{Data: cell, Merge: mctx.headerMerges[j]}
 			}
 		}
-		f.Line(t.writer, tw.Formatting{
+		f.Line(tw.Formatting{
 			Row: tw.RowContext{
 				Widths:   ctx.widths[tw.Header],
 				Next:     nextCells,
@@ -1851,7 +1882,7 @@ func (t *Table) renderHeader(ctx *renderContext, mctx *mergeContext) error {
 		hctx.line = padLine(ctx.headerLines[hctx.lineIdx], ctx.numCols)
 		hctx.location = tw.LocationMiddle
 		resp := t.buildCellContexts(ctx, mctx, hctx, colAligns, colPadding)
-		f.Line(t.writer, tw.Formatting{
+		f.Line(tw.Formatting{
 			Row: tw.RowContext{
 				Widths:   ctx.widths[tw.Header],
 				Current:  resp.cells,
@@ -1916,11 +1947,11 @@ func (t *Table) renderLine(ctx *renderContext, mctx *mergeContext, hctx *helperC
 
 	switch hctx.position {
 	case tw.Header:
-		f.Header(t.writer, [][]string{hctx.line}, formatting)
+		f.Header([][]string{hctx.line}, formatting)
 	case tw.Row:
-		f.Row(t.writer, hctx.line, formatting)
+		f.Row(hctx.line, formatting)
 	case tw.Footer:
-		f.Footer(t.writer, [][]string{hctx.line}, formatting)
+		f.Footer([][]string{hctx.line}, formatting)
 	}
 	return nil
 }
@@ -1976,7 +2007,7 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 				nextCells[j] = tw.CellContext{Data: cell, Merge: mergeState, Width: ctx.widths[tw.Row].Get(j)}
 			}
 		}
-		f.Line(t.writer, tw.Formatting{
+		f.Line(tw.Formatting{
 			Row: tw.RowContext{
 				Widths:   ctx.widths[tw.Row],
 				Next:     nextCells,
@@ -2089,7 +2120,7 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 				ctx.logger.Debug("Separator context: No next logical row for separator after row %d.", i)
 			}
 
-			f.Line(t.writer, tw.Formatting{
+			f.Line(tw.Formatting{
 				Row: tw.RowContext{
 					Widths:       ctx.widths[tw.Row],
 					Current:      respCurrent.cells,
@@ -2106,18 +2137,4 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 		}
 	}
 	return nil
-}
-
-// Trimmer trims whitespace from a string based on the Table’s configuration.
-// It conditionally applies strings.TrimSpace to the input string if the TrimSpace behavior
-// is enabled in t.config.Behavior, otherwise returning the string unchanged. This method
-// is used in the logging library to format strings for tabular output, ensuring consistent
-// display in log messages. Thread-safe as it only reads configuration and operates on the
-// input string.
-func (t *Table) Trimmer(str string) string {
-	if t.config.Behavior.TrimSpace.Enabled() {
-		return strings.TrimSpace(str)
-	}
-	// ll.Dump(str)
-	return str
 }

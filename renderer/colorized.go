@@ -1,7 +1,6 @@
 package renderer
 
 import (
-	"fmt"
 	"github.com/fatih/color"
 	"github.com/olekukonko/ll"
 	"github.com/olekukonko/ll/lh"
@@ -52,6 +51,7 @@ type Colorized struct {
 	newLine      string                   // Newline character
 	defaultAlign map[tw.Position]tw.Align // Default alignments for header, row, and footer
 	logger       *ll.Logger               // Logger for debug messages
+	w            io.Writer
 }
 
 // NewColorized creates a Colorized renderer with the specified configuration, falling back to defaults if none provided.
@@ -134,7 +134,7 @@ func NewColorized(configs ...ColorizedConfig) *Colorized {
 }
 
 // Close performs cleanup (no-op in this implementation).
-func (c *Colorized) Close(w io.Writer) error {
+func (c *Colorized) Close() error {
 	c.logger.Debug("Colorized.Close() called (no-op).")
 	return nil
 }
@@ -155,7 +155,7 @@ func (c *Colorized) Debug() []string {
 }
 
 // Footer renders the table footer with configured colors and formatting.
-func (c *Colorized) Footer(w io.Writer, footers [][]string, ctx tw.Formatting) {
+func (c *Colorized) Footer(footers [][]string, ctx tw.Formatting) {
 	c.logger.Debugf("Starting Footer render: IsSubRow=%v, Location=%v, Pos=%s",
 		ctx.IsSubRow, ctx.Row.Location, ctx.Row.Position)
 
@@ -166,12 +166,12 @@ func (c *Colorized) Footer(w io.Writer, footers [][]string, ctx tw.Formatting) {
 	}
 
 	// Render the footer line
-	c.renderLine(w, ctx, footers[0], c.config.Footer)
+	c.renderLine(ctx, footers[0], c.config.Footer)
 	c.logger.Debug("Completed Footer render")
 }
 
 // Header renders the table header with configured colors and formatting.
-func (c *Colorized) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
+func (c *Colorized) Header(headers [][]string, ctx tw.Formatting) {
 	c.logger.Debugf("Starting Header render: IsSubRow=%v, Location=%v, Pos=%s, lines=%d, widths=%v",
 		ctx.IsSubRow, ctx.Row.Location, ctx.Row.Position, len(headers), ctx.Row.Widths)
 
@@ -182,12 +182,12 @@ func (c *Colorized) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
 	}
 
 	// Render the header line
-	c.renderLine(w, ctx, headers[0], c.config.Header)
+	c.renderLine(ctx, headers[0], c.config.Header)
 	c.logger.Debug("Completed Header render")
 }
 
 // Line renders a horizontal row line with colored junctions and segments, skipping zero-width columns.
-func (c *Colorized) Line(w io.Writer, ctx tw.Formatting) {
+func (c *Colorized) Line(ctx tw.Formatting) {
 	c.logger.Debugf("Line: Starting with Level=%v, Location=%v, IsSubRow=%v, Widths=%v", ctx.Level, ctx.Row.Location, ctx.IsSubRow, ctx.Row.Widths)
 
 	// Initialize junction renderer
@@ -218,8 +218,8 @@ func (c *Colorized) Line(w io.Writer, ctx tw.Formatting) {
 
 	// Handle case with no effective columns
 	if len(effectiveKeys) == 0 {
-		prefix := ""
-		suffix := ""
+		prefix := tw.Empty
+		suffix := tw.Empty
 		if c.config.Borders.Left.Enabled() {
 			prefix = jr.RenderLeft()
 		}
@@ -230,9 +230,9 @@ func (c *Colorized) Line(w io.Writer, ctx tw.Formatting) {
 			}
 			suffix = jr.RenderRight(originalLastColIdx)
 		}
-		if prefix != "" || suffix != "" {
+		if prefix != tw.Empty || suffix != tw.Empty {
 			line.WriteString(prefix + suffix + tw.NewLine)
-			fmt.Fprint(w, line.String())
+			c.w.Write([]byte(line.String()))
 		}
 		c.logger.Debug("Line: Handled empty row/widths case (no effective keys)")
 		return
@@ -250,8 +250,8 @@ func (c *Colorized) Line(w io.Writer, ctx tw.Formatting) {
 		colWidth := keyWidthMap[currentColIdx]
 		c.logger.Debugf("Line: Drawing segment for Effective colIdx=%d, segment='%s', width=%d", currentColIdx, segment, colWidth)
 
-		if segment == "" {
-			line.WriteString(strings.Repeat(" ", colWidth))
+		if segment == tw.Empty {
+			line.WriteString(strings.Repeat(tw.Space, colWidth))
 		} else {
 			// Calculate how many times to repeat the segment
 			segmentWidth := tw.DisplayWidth(segment)
@@ -269,7 +269,7 @@ func (c *Colorized) Line(w io.Writer, ctx tw.Formatting) {
 			actualDrawnWidth := tw.DisplayWidth(drawnSegment)
 			if actualDrawnWidth < colWidth {
 				missingWidth := colWidth - actualDrawnWidth
-				spaces := strings.Repeat(" ", missingWidth)
+				spaces := strings.Repeat(tw.Space, missingWidth)
 				if len(c.config.Border.BG) > 0 {
 					line.WriteString(Tint{BG: c.config.Border.BG}.Apply(spaces))
 				} else {
@@ -323,7 +323,7 @@ func (c *Colorized) Line(w io.Writer, ctx tw.Formatting) {
 
 	// Write the final line
 	line.WriteString(c.newLine)
-	fmt.Fprint(w, line.String())
+	c.w.Write([]byte(line.String()))
 	c.logger.Debugf("Line rendered: %s", strings.TrimSuffix(line.String(), c.newLine))
 }
 
@@ -339,7 +339,7 @@ func (c *Colorized) Reset() {
 }
 
 // Row renders a table data row with configured colors and formatting.
-func (c *Colorized) Row(w io.Writer, row []string, ctx tw.Formatting) {
+func (c *Colorized) Row(row []string, ctx tw.Formatting) {
 	c.logger.Debugf("Starting Row render: IsSubRow=%v, Location=%v, Pos=%s, hasFooter=%v",
 		ctx.IsSubRow, ctx.Row.Location, ctx.Row.Position, ctx.HasFooter)
 
@@ -350,12 +350,13 @@ func (c *Colorized) Row(w io.Writer, row []string, ctx tw.Formatting) {
 	}
 
 	// Render the row line
-	c.renderLine(w, ctx, row, c.config.Column)
+	c.renderLine(ctx, row, c.config.Column)
 	c.logger.Debugf("Completed Row render")
 }
 
 // Start initializes the rendering process (no-op in this implementation).
 func (c *Colorized) Start(w io.Writer) error {
+	c.w = w
 	c.logger.Debugf("Colorized.Start() called (no-op).")
 	return nil
 }
@@ -368,7 +369,7 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 	// Return empty string if width is non-positive
 	if width <= 0 {
 		c.logger.Debugf("formatCell: width %d <= 0, returning empty string", width)
-		return ""
+		return tw.Empty
 	}
 
 	// Calculate visual width of content
@@ -376,11 +377,11 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 
 	// Set default padding characters
 	padLeftCharStr := padding.Left
-	if padLeftCharStr == "" {
+	if padLeftCharStr == tw.Empty {
 		padLeftCharStr = tw.Space
 	}
 	padRightCharStr := padding.Right
-	if padRightCharStr == "" {
+	if padRightCharStr == tw.Empty {
 		padRightCharStr = tw.Space
 	}
 
@@ -407,8 +408,8 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 	}
 
 	// Apply alignment padding
-	leftAlignmentPadSpaces := ""
-	rightAlignmentPadSpaces := ""
+	leftAlignmentPadSpaces := tw.Empty
+	rightAlignmentPadSpaces := tw.Empty
 	switch align {
 	case tw.AlignLeft:
 		rightAlignmentPadSpaces = strings.Repeat(tw.Space, remainingSpaceForAlignment)
@@ -445,10 +446,10 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 			coloredPadRight = bgTint.Apply(padRightCharStr)
 		}
 		// Apply background color to alignment padding
-		if leftAlignmentPadSpaces != "" {
+		if leftAlignmentPadSpaces != tw.Empty {
 			coloredAlignPadLeft = bgTint.Apply(leftAlignmentPadSpaces)
 		}
-		if rightAlignmentPadSpaces != "" {
+		if rightAlignmentPadSpaces != tw.Empty {
 			coloredAlignPadRight = bgTint.Apply(rightAlignmentPadSpaces)
 		}
 	} else if len(tint.FG) > 0 {
@@ -478,7 +479,7 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 		if currentVisualWidth > width {
 			output = tw.TruncateString(output, width)
 		} else {
-			paddingSpacesStr := strings.Repeat(" ", width-currentVisualWidth)
+			paddingSpacesStr := strings.Repeat(tw.Space, width-currentVisualWidth)
 			if len(tint.BG) > 0 {
 				output += Tint{BG: tint.BG}.Apply(paddingSpacesStr)
 			} else {
@@ -493,7 +494,7 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 }
 
 // renderLine renders a single line (header, row, or footer) with colors, handling merges and separators.
-func (c *Colorized) renderLine(w io.Writer, ctx tw.Formatting, line []string, tint Tint) {
+func (c *Colorized) renderLine(ctx tw.Formatting, line []string, tint Tint) {
 	// Determine number of columns
 	numCols := 0
 	if len(ctx.Row.Current) > 0 {
@@ -517,7 +518,7 @@ func (c *Colorized) renderLine(w io.Writer, ctx tw.Formatting, line []string, ti
 	var output strings.Builder
 
 	// Add left border if enabled
-	prefix := ""
+	prefix := tw.Empty
 	if c.config.Borders.Left.Enabled() {
 		prefix = c.config.Border.Apply(c.config.Symbols.Column())
 	}
@@ -525,7 +526,7 @@ func (c *Colorized) renderLine(w io.Writer, ctx tw.Formatting, line []string, ti
 
 	// Set up separator
 	separatorDisplayWidth := 0
-	separatorString := ""
+	separatorString := tw.Empty
 	if c.config.Settings.Separators.BetweenColumns.Enabled() {
 		separatorString = c.config.Separator.Apply(c.config.Symbols.Column())
 		separatorDisplayWidth = tw.DisplayWidth(c.config.Symbols.Column())
@@ -552,9 +553,9 @@ func (c *Colorized) renderLine(w io.Writer, ctx tw.Formatting, line []string, ti
 		cellCtx, ok := ctx.Row.Current[i]
 		if !ok {
 			cellCtx = tw.CellContext{
-				Data:    "",
+				Data:    tw.Empty,
 				Align:   c.defaultAlign[ctx.Row.Position],
-				Padding: tw.Padding{Left: " ", Right: " "},
+				Padding: tw.Padding{Left: tw.Space, Right: tw.Space},
 				Width:   ctx.Row.Widths.Get(i),
 				Merge:   tw.MergeState{},
 			}
@@ -604,7 +605,7 @@ func (c *Colorized) renderLine(w io.Writer, ctx tw.Formatting, line []string, ti
 
 		// Handle empty cell context with non-zero width
 		if !ok && visualWidth > 0 {
-			spaces := strings.Repeat(" ", visualWidth)
+			spaces := strings.Repeat(tw.Space, visualWidth)
 			if len(tint.BG) > 0 {
 				output.WriteString(Tint{BG: tint.BG}.Apply(spaces))
 			} else {
@@ -641,7 +642,7 @@ func (c *Colorized) renderLine(w io.Writer, ctx tw.Formatting, line []string, ti
 		content := cellCtx.Data
 		if (cellCtx.Merge.Vertical.Present && !cellCtx.Merge.Vertical.Start) ||
 			(cellCtx.Merge.Hierarchical.Present && !cellCtx.Merge.Hierarchical.Start) {
-			content = ""
+			content = tw.Empty
 			c.logger.Debugf("renderLine: Blanked data for col %d (non-start V/Hierarchical)", i)
 		}
 
@@ -677,7 +678,7 @@ func (c *Colorized) renderLine(w io.Writer, ctx tw.Formatting, line []string, ti
 	}
 
 	// Add right border if enabled
-	suffix := ""
+	suffix := tw.Empty
 	if c.config.Borders.Right.Enabled() {
 		suffix = c.config.Border.Apply(c.config.Symbols.Column())
 	}
@@ -685,7 +686,7 @@ func (c *Colorized) renderLine(w io.Writer, ctx tw.Formatting, line []string, ti
 
 	// Write the final line
 	output.WriteString(c.newLine)
-	fmt.Fprint(w, output.String())
+	c.w.Write([]byte(output.String()))
 	c.logger.Debugf("renderLine: Final rendered line: %s", strings.TrimSuffix(output.String(), c.newLine))
 }
 

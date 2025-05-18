@@ -1,7 +1,6 @@
 package renderer
 
 import (
-	"fmt"
 	"io"
 	"strings"
 
@@ -22,6 +21,7 @@ type Ocean struct {
 	tableOutputStarted    bool
 	headerContentRendered bool // True if actual header *content* has been rendered by Ocean.Header
 	logger                *ll.Logger
+	w                     io.Writer
 }
 
 func NewOcean(oceanConfig ...OceanConfig) *Ocean {
@@ -70,6 +70,7 @@ func (o *Ocean) tryFinalizeWidths(ctx tw.Formatting) {
 }
 
 func (o *Ocean) Start(w io.Writer) error {
+	o.w = w
 	o.logger.Debug("Start() called.")
 	o.resetState()
 	// Top border is drawn by the first component (Header or Row) that has widths
@@ -79,7 +80,7 @@ func (o *Ocean) Start(w io.Writer) error {
 
 // renderTopBorderIfNeeded is called by Header or Row if it's the first to render
 // and tableOutputStarted is false.
-func (o *Ocean) renderTopBorderIfNeeded(w io.Writer, currentPosition tw.Position, ctx tw.Formatting) {
+func (o *Ocean) renderTopBorderIfNeeded(currentPosition tw.Position, ctx tw.Formatting) {
 	if !o.tableOutputStarted && o.widthsFinalized {
 		// This renderer's config for Top border
 		if o.config.Borders.Top.Enabled() && o.config.Settings.Lines.ShowTop.Enabled() {
@@ -93,13 +94,13 @@ func (o *Ocean) renderTopBorderIfNeeded(w io.Writer, currentPosition tw.Position
 				},
 				Level: tw.LevelHeader,
 			}
-			o.Line(w, lineCtx)
+			o.Line(lineCtx)
 			o.tableOutputStarted = true
 		}
 	}
 }
 
-func (o *Ocean) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
+func (o *Ocean) Header(headers [][]string, ctx tw.Formatting) {
 	o.logger.Debugf("Ocean.Header called: IsSubRow=%v, Location=%v, NumLines=%d", ctx.IsSubRow, ctx.Row.Location, len(headers))
 
 	if !o.widthsFinalized {
@@ -126,7 +127,7 @@ func (o *Ocean) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
 			if i > 0 {
 				currentLineCtx.IsSubRow = true
 			}
-			o.renderContentLine(w, currentLineCtx, headerLineData)
+			o.renderContentLine(currentLineCtx, headerLineData)
 			o.tableOutputStarted = true // Content was written
 		}
 		o.headerContentRendered = true
@@ -138,7 +139,7 @@ func (o *Ocean) Header(w io.Writer, headers [][]string, ctx tw.Formatting) {
 	// DO NOT draw the header separator line here. Let table.go's renderHeader or streamRenderHeader call o.Line().
 }
 
-func (o *Ocean) Row(w io.Writer, row []string, ctx tw.Formatting) {
+func (o *Ocean) Row(row []string, ctx tw.Formatting) {
 	o.logger.Debugf("Ocean.Row called: IsSubRow=%v, Location=%v, DataItems=%d", ctx.IsSubRow, ctx.Row.Location, len(row))
 
 	if !o.widthsFinalized {
@@ -159,11 +160,11 @@ func (o *Ocean) Row(w io.Writer, row []string, ctx tw.Formatting) {
 	}
 
 	ctx.Row.Widths = o.fixedWidths
-	o.renderContentLine(w, ctx, row)
+	o.renderContentLine(ctx, row)
 	o.tableOutputStarted = true
 }
 
-func (o *Ocean) Footer(w io.Writer, footers [][]string, ctx tw.Formatting) {
+func (o *Ocean) Footer(footers [][]string, ctx tw.Formatting) {
 	o.logger.Debugf("Ocean.Footer called: IsSubRow=%v, Location=%v, NumLines=%d", ctx.IsSubRow, ctx.Row.Location, len(footers))
 
 	if !o.widthsFinalized {
@@ -187,7 +188,7 @@ func (o *Ocean) Footer(w io.Writer, footers [][]string, ctx tw.Formatting) {
 			if i > 0 {
 				currentLineCtx.IsSubRow = true
 			}
-			o.renderContentLine(w, currentLineCtx, footerLineData)
+			o.renderContentLine(currentLineCtx, footerLineData)
 			o.tableOutputStarted = true
 		}
 	} else {
@@ -196,7 +197,7 @@ func (o *Ocean) Footer(w io.Writer, footers [][]string, ctx tw.Formatting) {
 	// DO NOT draw the bottom border here. Let table.go's main Close or batch renderFooter call o.Line().
 }
 
-func (o *Ocean) Line(w io.Writer, ctx tw.Formatting) {
+func (o *Ocean) Line(ctx tw.Formatting) {
 	// This method is now called EXTERNALLY by table.go's batch or stream logic
 	// to draw all horizontal lines (top border, header sep, footer sep, bottom border).
 	if !o.widthsFinalized {
@@ -237,7 +238,7 @@ func (o *Ocean) Line(w io.Writer, ctx tw.Formatting) {
 		}
 		if drewEmptyBorders {
 			line.WriteString(tw.NewLine)
-			fmt.Fprint(w, line.String())
+			o.w.Write([]byte(line.String()))
 			o.logger.Debug("Line: Drew empty table borders based on Line call.")
 		} else {
 			o.logger.Debug("Line: Handled empty table case (no columns, no borders).")
@@ -258,7 +259,7 @@ func (o *Ocean) Line(w io.Writer, ctx tw.Formatting) {
 		if colVisualWidth <= 0 {
 			// Still need to consider separators after zero-width columns
 		} else {
-			if segmentChar == "" {
+			if segmentChar == tw.Empty {
 				segmentChar = o.config.Symbols.Row()
 			}
 			segmentDisplayWidth := tw.DisplayWidth(segmentChar)
@@ -288,12 +289,12 @@ func (o *Ocean) Line(w io.Writer, ctx tw.Formatting) {
 	}
 
 	line.WriteString(tw.NewLine)
-	fmt.Fprint(w, line.String())
+	o.w.Write([]byte(line.String()))
 	o.tableOutputStarted = true
 	o.logger.Debugf("Line rendered by explicit call: %s", strings.TrimSuffix(line.String(), tw.NewLine))
 }
 
-func (o *Ocean) Close(w io.Writer) error {
+func (o *Ocean) Close() error {
 	o.logger.Debug("Ocean.Close() called.")
 	// The actual bottom border drawing is expected to be handled by table.go's
 	// batch render logic (renderFooter) or stream logic (streamRenderBottomBorder)
@@ -305,7 +306,7 @@ func (o *Ocean) Close(w io.Writer) error {
 	return nil
 }
 
-func (o *Ocean) renderContentLine(w io.Writer, ctx tw.Formatting, lineData []string) {
+func (o *Ocean) renderContentLine(ctx tw.Formatting, lineData []string) {
 	if !o.widthsFinalized || o.fixedWidths.Len() == 0 {
 		o.logger.Error("renderContentLine: Cannot render, fixedWidths not set or empty.")
 		return
@@ -320,9 +321,9 @@ func (o *Ocean) renderContentLine(w io.Writer, ctx tw.Formatting, lineData []str
 
 	for i, colIdx := range sortedColIndices {
 		cellVisualWidth := o.fixedWidths.Get(colIdx)
-		cellContent := ""
+		cellContent := tw.Empty
 		align := tw.AlignDefault
-		padding := tw.Padding{Left: " ", Right: " "}
+		padding := tw.Padding{Left: tw.Space, Right: tw.Space}
 
 		switch ctx.Row.Position {
 		case tw.Header:
@@ -418,24 +419,24 @@ func (o *Ocean) renderContentLine(w io.Writer, ctx tw.Formatting, lineData []str
 	}
 
 	output.WriteString(tw.NewLine)
-	fmt.Fprint(w, output.String())
+	o.w.Write([]byte(output.String()))
 	o.logger.Debugf("Content line rendered: %s", strings.TrimSuffix(output.String(), tw.NewLine))
 }
 
 func (o *Ocean) formatCellContent(content string, cellVisualWidth int, padding tw.Padding, align tw.Align) string {
 	if cellVisualWidth <= 0 {
-		return ""
+		return tw.Empty
 	}
 
 	contentDisplayWidth := tw.DisplayWidth(content)
 
 	padLeftChar := padding.Left
-	if padLeftChar == "" {
-		padLeftChar = " "
+	if padLeftChar == tw.Empty {
+		padLeftChar = tw.Space
 	}
 	padRightChar := padding.Right
-	if padRightChar == "" {
-		padRightChar = " "
+	if padRightChar == tw.Empty {
+		padRightChar = tw.Space
 	}
 
 	padLeftDisplayWidth := tw.DisplayWidth(padLeftChar)
@@ -459,14 +460,14 @@ func (o *Ocean) formatCellContent(content string, cellVisualWidth int, padding t
 	var PL, PR string
 	switch align {
 	case tw.AlignRight:
-		PL = strings.Repeat(" ", remainingSpace)
+		PL = strings.Repeat(tw.Space, remainingSpace)
 	case tw.AlignCenter:
 		leftSpaces := remainingSpace / 2
 		rightSpaces := remainingSpace - leftSpaces
-		PL = strings.Repeat(" ", leftSpaces)
-		PR = strings.Repeat(" ", rightSpaces)
+		PL = strings.Repeat(tw.Space, leftSpaces)
+		PR = strings.Repeat(tw.Space, rightSpaces)
 	default:
-		PR = strings.Repeat(" ", remainingSpace)
+		PR = strings.Repeat(tw.Space, remainingSpace)
 	}
 
 	var sb strings.Builder
@@ -479,12 +480,12 @@ func (o *Ocean) formatCellContent(content string, cellVisualWidth int, padding t
 	currentFormattedWidth := tw.DisplayWidth(sb.String())
 	if currentFormattedWidth < cellVisualWidth {
 		if align == tw.AlignRight {
-			prefixSpaces := strings.Repeat(" ", cellVisualWidth-currentFormattedWidth)
+			prefixSpaces := strings.Repeat(tw.Space, cellVisualWidth-currentFormattedWidth)
 			finalStr := prefixSpaces + sb.String()
 			sb.Reset()
 			sb.WriteString(finalStr)
 		} else {
-			sb.WriteString(strings.Repeat(" ", cellVisualWidth-currentFormattedWidth))
+			sb.WriteString(strings.Repeat(tw.Space, cellVisualWidth-currentFormattedWidth))
 		}
 	} else if currentFormattedWidth > cellVisualWidth {
 		tempStr := sb.String()

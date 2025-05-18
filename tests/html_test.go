@@ -13,7 +13,7 @@ import (
 func TestHTMLBasicTable(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
+		tablewriter.WithRenderer(renderer.NewHTML()),
 	)
 	table.Header([]string{"Name", "Age", "City"})
 	table.Append([]string{"Alice", "25", "New York"})
@@ -39,9 +39,12 @@ func TestHTMLBasicTable(t *testing.T) {
 func TestHTMLWithFooterAndAlignment(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
+		tablewriter.WithRenderer(renderer.NewHTML()),
 		tablewriter.WithHeaderConfig(tw.CellConfig{
-			Formatting: tw.CellFormatting{Alignment: tw.AlignCenter},
+			Formatting: tw.CellFormatting{
+				Alignment:  tw.AlignCenter,
+				AutoFormat: tw.Off,
+			},
 		}),
 		tablewriter.WithRowConfig(tw.CellConfig{
 			ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignRight, tw.AlignCenter},
@@ -79,7 +82,7 @@ func TestHTMLEscaping(t *testing.T) {
 	// Test case 1: Default (EscapeContent = true)
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
+		tablewriter.WithRenderer(renderer.NewHTML()),
 	)
 	table.Header([]string{"Tag", "Attribute"})
 	table.Append([]string{"<br>", "should escape < & >"})
@@ -103,7 +106,7 @@ func TestHTMLEscaping(t *testing.T) {
 	// Test case 2: EscapeContent = false
 	buf.Reset()
 	tableNoEscape := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewHTML(&buf, false, renderer.HTMLConfig{EscapeContent: false})),
+		tablewriter.WithRenderer(renderer.NewHTML(renderer.HTMLConfig{EscapeContent: false})),
 	)
 	tableNoEscape.Header([]string{"Tag", "Attribute"})
 	tableNoEscape.Append([]string{"<br>", "should NOT escape < & >"})
@@ -129,7 +132,7 @@ func TestHTMLMultiLine(t *testing.T) {
 	// Test case 1: Default behavior (newlines split into separate rows)
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
+		tablewriter.WithRenderer(renderer.NewHTML()),
 	)
 	table.Append([]string{"Line 1\nLine 2", "Single Line"})
 	table.Render()
@@ -149,7 +152,7 @@ func TestHTMLMultiLine(t *testing.T) {
 	// Test case 2: With AddLinesTag (no effect due to newline pre-splitting)
 	buf.Reset()
 	tableLinesTag := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewHTML(&buf, false, renderer.HTMLConfig{AddLinesTag: true})),
+		tablewriter.WithRenderer(renderer.NewHTML(renderer.HTMLConfig{AddLinesTag: true})),
 	)
 	tableLinesTag.Append([]string{"Line 1\nLine 2", "Single Line"})
 	tableLinesTag.Render()
@@ -171,7 +174,7 @@ func TestHTMLMultiLine(t *testing.T) {
 func TestHTMLHorizontalMerge(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
+		tablewriter.WithRenderer(renderer.NewHTML()),
 		tablewriter.WithConfig(tablewriter.Config{
 			Header: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal}},
 			Row:    tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal}},
@@ -206,7 +209,7 @@ func TestHTMLHorizontalMerge(t *testing.T) {
 func TestHTMLVerticalMerge(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
+		tablewriter.WithRenderer(renderer.NewHTML()),
 		tablewriter.WithConfig(tablewriter.Config{
 			Row: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeVertical}},
 		}),
@@ -243,7 +246,7 @@ func TestHTMLVerticalMerge(t *testing.T) {
 func TestHTMLCombinedMerge(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
+		tablewriter.WithRenderer(renderer.NewHTML()),
 		tablewriter.WithConfig(tablewriter.Config{
 			Row: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeBoth}},
 		}),
@@ -279,13 +282,13 @@ func TestHTMLCombinedMerge(t *testing.T) {
 func TestHTMLHierarchicalMerge(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
+		tablewriter.WithRenderer(renderer.NewHTML()),
 		tablewriter.WithConfig(tablewriter.Config{
 			Row: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHierarchical}},
 		}),
 		tablewriter.WithHeaderConfig(tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				AutoFormat: false,
+				AutoFormat: tw.Off,
 				Alignment:  tw.AlignCenter,
 			},
 		}),
@@ -319,7 +322,7 @@ func TestHTMLEmptyTable(t *testing.T) {
 	// Test case 1: Completely empty table
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
+		tablewriter.WithRenderer(renderer.NewHTML()),
 	)
 	table.Render()
 
@@ -334,7 +337,7 @@ func TestHTMLEmptyTable(t *testing.T) {
 	// Test case 2: Header-only table
 	buf.Reset()
 	tableHeaderOnly := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
+		tablewriter.WithRenderer(renderer.NewHTML()),
 	)
 	tableHeaderOnly.Header([]string{"Col A"})
 	tableHeaderOnly.Render()
@@ -359,9 +362,9 @@ func TestHTMLCSSClasses(t *testing.T) {
 		FooterRowClass: "my-footer-row",
 	}
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewHTML(&buf, false, htmlCfg)),
+		tablewriter.WithRenderer(renderer.NewHTML(htmlCfg)),
 		tablewriter.WithHeaderConfig(tw.CellConfig{
-			Formatting: tw.CellFormatting{AutoFormat: false, Alignment: tw.AlignCenter},
+			Formatting: tw.CellFormatting{AutoFormat: tw.Off, Alignment: tw.AlignCenter},
 		}),
 	)
 	table.Header([]string{"H1"})
@@ -390,7 +393,7 @@ func TestHTMLCSSClasses(t *testing.T) {
 func TestHTMLStructureStrict(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
-		tablewriter.WithRenderer(renderer.NewHTML(&buf, false)),
+		tablewriter.WithRenderer(renderer.NewHTML()),
 	)
 	table.Header([]string{"A", "B"})
 	table.Append([]string{"1", "2"})
