@@ -496,7 +496,7 @@ func TestWrapping(t *testing.T) {
 				AutoWrap:  tw.WrapBreak,
 				Alignment: tw.AlignLeft,
 			},
-			ColMaxWidths: tw.CellWidth{Global: 30},
+			ColMaxWidths: tw.CellWidth{Global: 33},
 		},
 		Footer: tw.CellConfig{
 			Formatting: tw.CellFormatting{
@@ -513,16 +513,16 @@ func TestWrapping(t *testing.T) {
 	table.Render()
 
 	expected := `
-        ┌────┬───────────────────────────────┬───────────────────┐
-        │ NO │            PACKAGE            │     COMMENTS      │
-        ├────┼───────────────────────────────┼───────────────────┤
-        │ 1  │ https://github.com/olekukonk↩ │ routing websocket │
-        │    │ o/ruta                        │                   │
-        │ 2  │ https://github.com/olekukonk↩ │ better error      │
-        │    │ o/error                       │                   │
-        │ 3  │ https://github.com/olekukonk↩ │ terminal          │
-        │    │ o/tablewriter                 │ table             │
-        └────┴───────────────────────────────┴───────────────────┘
+        ┌────┬─────────────────────────────────┬───────────────────┐
+        │ NO │             PACKAGE             │     COMMENTS      │
+        ├────┼─────────────────────────────────┼───────────────────┤
+        │ 1  │ https://github.com/olekukonko/↩ │ routing websocket │
+        │    │ ruta                            │                   │
+        │ 2  │ https://github.com/olekukonko/↩ │ better error      │
+        │    │ error                           │                   │
+        │ 3  │ https://github.com/olekukonko/↩ │ terminal          │
+        │    │ tablewriter                     │ table             │
+        └────┴─────────────────────────────────┴───────────────────┘
 `
 	visualCheck(t, "Wrapping", buf.String(), expected)
 }

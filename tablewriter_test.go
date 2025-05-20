@@ -510,7 +510,7 @@ func TestMergeCellConfig(t *testing.T) {
 			expectedConfig: func() tw.CellConfig {
 				cfg := getTestSectionDefaultConfig("header")
 				cfg.Formatting.MergeMode = tw.MergeHorizontal
-				cfg.Formatting.AutoFormat = tw.On // Expected 1 (no change from base or src)
+				cfg.Formatting.AutoFormat = tw.On
 				return cfg
 			},
 		},

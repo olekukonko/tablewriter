@@ -704,8 +704,12 @@ func (t *Table) maxColumns() int {
 	return m
 }
 
+// printTopBottomCaption prints the table's caption at the specified top or bottom position.
+// It wraps the caption text to fit the table width or a user-defined width, aligns it according
+// to the specified alignment, and writes it to the provided writer. If the caption text is empty
+// or the spot is invalid, it logs the issue and returns without printing. The function handles
+// wrapping errors by falling back to splitting on newlines or using the original text.
 func (t *Table) printTopBottomCaption(w io.Writer, actualTableWidth int) {
-	// Log the state of t.caption
 	t.logger.Debugf("[printCaption Entry] Text=%q, Spot=%v (type %T), Align=%q, UserWidth=%d, ActualTableWidth=%d",
 		t.caption.Text, t.caption.Spot, t.caption.Spot, t.caption.Align, t.caption.Width, actualTableWidth)
 
@@ -716,12 +720,11 @@ func (t *Table) printTopBottomCaption(w io.Writer, actualTableWidth int) {
 		return
 	}
 
-	// Determine captionWrapWidth
 	var captionWrapWidth int
 	if t.caption.Width > 0 {
 		captionWrapWidth = t.caption.Width
 		t.logger.Debugf("[printCaption] Using user-defined caption.Width %d for wrapping.", captionWrapWidth)
-	} else if actualTableWidth <= 4 { // Empty or minimal table
+	} else if actualTableWidth <= 4 {
 		captionWrapWidth = tw.DisplayWidth(t.caption.Text)
 		t.logger.Debugf("[printCaption] Empty table, no user caption.Width: Using natural caption width %d.", captionWrapWidth)
 	} else {
@@ -729,14 +732,12 @@ func (t *Table) printTopBottomCaption(w io.Writer, actualTableWidth int) {
 		t.logger.Debugf("[printCaption] Non-empty table, no user caption.Width: Using actualTableWidth %d for wrapping.", actualTableWidth)
 	}
 
-	// Ensure captionWrapWidth is positive
 	if captionWrapWidth <= 0 {
-		captionWrapWidth = 10 // Minimum sensible width
+		captionWrapWidth = 10
 		t.logger.Warnf("[printCaption] captionWrapWidth was %d (<=0). Setting to minimum %d.", captionWrapWidth, 10)
 	}
 	t.logger.Debugf("[printCaption] Final captionWrapWidth to be used by twwarp: %d", captionWrapWidth)
 
-	// Wrap the caption text
 	wrappedCaptionLines, count := twwarp.WrapString(t.caption.Text, captionWrapWidth)
 	if count == 0 {
 		t.logger.Errorf("[printCaption] Error from twwarp.WrapString (width %d): %v. Text: %q", captionWrapWidth, count, t.caption.Text)
@@ -759,7 +760,6 @@ func (t *Table) printTopBottomCaption(w io.Writer, actualTableWidth int) {
 		t.logger.Debugf("[printCaption] Wrapped caption into %d lines: %v", len(wrappedCaptionLines), wrappedCaptionLines)
 	}
 
-	// Determine padding target width
 	paddingTargetWidth := actualTableWidth
 	if t.caption.Width > 0 {
 		paddingTargetWidth = t.caption.Width
@@ -768,7 +768,6 @@ func (t *Table) printTopBottomCaption(w io.Writer, actualTableWidth int) {
 	}
 	t.logger.Debugf("[printCaption] Final paddingTargetWidth for tw.Pad: %d", paddingTargetWidth)
 
-	// Print each wrapped line
 	for i, line := range wrappedCaptionLines {
 		align := t.caption.Align
 		if align == "" || align == tw.AlignDefault || align == tw.AlignNone {
@@ -796,21 +795,10 @@ func (t *Table) printTopBottomCaption(w io.Writer, actualTableWidth int) {
 // Parameters include cells to process and config for formatting rules.
 // Returns a slice of string slices representing processed lines.
 func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string {
-	//  force max width
-
 	isStreaming := t.config.Stream.Enable && t.hasPrinted
 	t.logger.Debugf("prepareContent: Processing cells=%v (streaming: %v)", cells, isStreaming)
 	initialInputCellCount := len(cells)
 	result := make([][]string, 0)
-
-	// ll.Dbg(t.config.MaxWidth)
-	// force max width
-	if t.config.MaxWidth > 0 {
-		// it has headers
-		if len(cells) > 0 {
-			config.ColMaxWidths.Global = int(math.Floor(float64(t.config.MaxWidth) / float64(len(cells))))
-		}
-	}
 
 	effectiveNumCols := initialInputCellCount
 	if isStreaming {
@@ -832,6 +820,16 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 			}
 		} else {
 			t.logger.Warnf("prepareContent: Streaming mode enabled but streamNumCols is 0. Using input cell count %d. Stream widths may not be available.", effectiveNumCols)
+		}
+	}
+
+	if t.config.MaxWidth > 0 && !t.config.Widths.Constrained() {
+		if effectiveNumCols > 0 {
+			derivedSectionGlobalMaxWidth := int(math.Floor(float64(t.config.MaxWidth) / float64(effectiveNumCols)))
+			config.ColMaxWidths.Global = derivedSectionGlobalMaxWidth
+			t.logger.Debugf("prepareContent: Table MaxWidth %d active and t.config.Widths not constrained. "+
+				"Derived section ColMaxWidths.Global: %d for %d columns. This will be used by calculateContentMaxWidth if no higher priority constraints exist.",
+				t.config.MaxWidth, config.ColMaxWidths.Global, effectiveNumCols)
 		}
 	}
 
@@ -886,50 +884,45 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 				case tw.WrapBreak:
 					wrapped := make([]string, 0)
 					currentLine := line
+					breakCharWidth := tw.DisplayWidth(tw.CharBreak)
 					for tw.DisplayWidth(currentLine) > effectiveContentMaxWidth {
-						breakPoint := tw.BreakPoint(currentLine, effectiveContentMaxWidth)
-						if breakPoint <= 0 {
-							t.logger.Warnf("prepareContent: WrapBreak - BreakPoint <= 0 for line '%s' at width %d. Attempting manual break.", currentLine, effectiveContentMaxWidth)
-							runes := []rune(currentLine)
+						targetWidth := effectiveContentMaxWidth - breakCharWidth
+						if targetWidth < 0 {
+							targetWidth = 0
+						}
+						breakPoint := tw.BreakPoint(currentLine, targetWidth)
+						runes := []rune(currentLine)
+						if breakPoint <= 0 || breakPoint > len(runes) {
+							t.logger.Warnf("prepareContent: WrapBreak - Invalid BreakPoint %d for line '%s' at width %d. Attempting manual break.", breakPoint, currentLine, targetWidth)
 							actualBreakRuneCount := 0
 							tempWidth := 0
-							for charIdx, r := range currentLine {
+							for charIdx, r := range runes {
 								runeStr := string(r)
 								rw := tw.DisplayWidth(runeStr)
-								if tempWidth+rw > effectiveContentMaxWidth && charIdx > 0 {
+								if tempWidth+rw > targetWidth && charIdx > 0 {
 									break
 								}
 								tempWidth += rw
 								actualBreakRuneCount = charIdx + 1
-								if tempWidth >= effectiveContentMaxWidth && charIdx == 0 {
+								if tempWidth >= targetWidth && charIdx == 0 {
 									break
 								}
 							}
 							if actualBreakRuneCount == 0 && len(runes) > 0 {
 								actualBreakRuneCount = 1
 							}
-
 							if actualBreakRuneCount > 0 && actualBreakRuneCount <= len(runes) {
 								wrapped = append(wrapped, string(runes[:actualBreakRuneCount])+tw.CharBreak)
 								currentLine = string(runes[actualBreakRuneCount:])
 							} else {
-								if tw.DisplayWidth(currentLine) > 0 {
-									wrapped = append(wrapped, currentLine)
-									currentLine = ""
-								}
-								break
-							}
-						} else {
-							runes := []rune(currentLine)
-							if breakPoint <= len(runes) {
-								wrapped = append(wrapped, string(runes[:breakPoint])+tw.CharBreak)
-								currentLine = string(runes[breakPoint:])
-							} else {
-								t.logger.Warnf("prepareContent: WrapBreak - BreakPoint (%d) out of bounds for line runes (%d). Adding full line.", breakPoint, len(runes))
+								t.logger.Warnf("prepareContent: WrapBreak - Cannot break line '%s'. Adding as is.", currentLine)
 								wrapped = append(wrapped, currentLine)
 								currentLine = ""
 								break
 							}
+						} else {
+							wrapped = append(wrapped, string(runes[:breakPoint])+tw.CharBreak)
+							currentLine = string(runes[breakPoint:])
 						}
 					}
 					if tw.DisplayWidth(currentLine) > 0 {
@@ -964,7 +957,8 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 			if i < len(result[j]) {
 				result[j][i] = cellLineContent
 			} else {
-				t.logger.Warnf("prepareContent: Column index %d out of bounds (%d) during result matrix population.", i, len(result[j]))
+				t.logger.Warnf("prepareContent: Column index %d out of bounds (%d) during result matrix population. EffectiveNumCols: %d. This indicates a logic error.",
+					i, len(result[j]), effectiveNumCols)
 			}
 		}
 	}
@@ -1345,9 +1339,8 @@ func (t *Table) render() error {
 		t.logger.Debugf("No caption detected. Rendering table core directly to writer.")
 	}
 
-	//Render Table Core ---
-	t.writer = targetWriter // Set writer only when necessary
-
+	//Render Table Core
+	t.writer = targetWriter
 	ctx, mctx, err := t.prepareContexts()
 	if err != nil {
 		t.writer = originalWriter
@@ -1393,7 +1386,6 @@ func (t *Table) render() error {
 	if renderError {
 		return firstRenderErr // Return error from core rendering if any
 	}
-	//End Render Table Core ---
 
 	//Caption Handling & Final Output ---
 	if isTopOrBottomCaption {

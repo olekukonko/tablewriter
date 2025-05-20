@@ -6,6 +6,7 @@ import (
 	"github.com/olekukonko/errors"
 	"github.com/olekukonko/tablewriter/tw"
 	"io"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -583,19 +584,15 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 	t.rowWidths = tw.NewMapper[int, int]()
 	t.footerWidths = tw.NewMapper[int, int]()
 
-	// Compute header widths
+	// Compute content-based widths
 	for _, lines := range ctx.headerLines {
 		t.updateWidths(lines, t.headerWidths, t.config.Header.Padding)
 	}
-	ctx.logger.Debugf("Initial Header widths: %v", t.headerWidths)
-
-	// Cache row widths to avoid re-iteration
 	rowWidthCache := make([]tw.Mapper[int, int], len(ctx.rowLines))
 	for i, row := range ctx.rowLines {
 		rowWidthCache[i] = tw.NewMapper[int, int]()
 		for _, line := range row {
 			t.updateWidths(line, rowWidthCache[i], t.config.Row.Padding)
-			// Aggregate into t.rowWidths
 			for col, width := range rowWidthCache[i] {
 				currentMax, _ := t.rowWidths.OK(col)
 				if width > currentMax {
@@ -604,37 +601,109 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 			}
 		}
 	}
-	ctx.logger.Debugf("Initial Row widths: %v", t.rowWidths)
-
-	// Compute footer widths
 	for _, lines := range ctx.footerLines {
 		t.updateWidths(lines, t.footerWidths, t.config.Footer.Padding)
 	}
-	ctx.logger.Debugf("Initial Footer widths: %v", t.footerWidths)
+	ctx.logger.Debugf("Content-based widths: header=%v, row=%v, footer=%v", t.headerWidths, t.rowWidths, t.footerWidths)
 
-	// Initialize width maps for normalization
+	// Apply Config.Widths constraints
+	constrainedWidths := tw.NewMapper[int, int]()
+	if t.config.Widths.Constrained() {
+		t.logger.Debugf("calculateAndNormalizeWidths: Applying Config.Widths constraints")
+		for i := 0; i < ctx.numCols; i++ {
+			width := 0
+			if colWidth, ok := t.config.Widths.PerColumn.OK(i); ok && colWidth >= 0 {
+				width = colWidth
+			} else if t.config.Widths.Global > 0 {
+				width = t.config.Widths.Global
+			}
+			if width > 0 {
+				constrainedWidths.Set(i, width)
+			}
+		}
+
+		// Adjust for global width constraint (similar to streaming mode)
+		if t.config.Widths.Global > 0 {
+			currentTotalColumnWidthsSum := 0
+			constrainedWidths.Each(func(_ int, w int) {
+				currentTotalColumnWidthsSum += w
+			})
+			separatorWidth := 0
+			if t.renderer != nil && t.renderer.Config().Settings.Separators.BetweenColumns.Enabled() {
+				separatorWidth = tw.DisplayWidth(t.renderer.Config().Symbols.Column())
+			}
+			totalWidthIncludingSeparators := currentTotalColumnWidthsSum
+			if ctx.numCols > 1 {
+				totalWidthIncludingSeparators += (ctx.numCols - 1) * separatorWidth
+			}
+			if totalWidthIncludingSeparators > t.config.Widths.Global && totalWidthIncludingSeparators > 0 {
+				t.logger.Debugf("calculateAndNormalizeWidths: Scaling widths to fit Config.Widths.Global=%d", t.config.Widths.Global)
+				targetSumForColumnWidths := t.config.Widths.Global - (ctx.numCols-1)*separatorWidth
+				if targetSumForColumnWidths < ctx.numCols {
+					targetSumForColumnWidths = ctx.numCols
+				}
+				scaleFactor := float64(targetSumForColumnWidths) / float64(currentTotalColumnWidthsSum)
+				adjustedSum := 0
+				for i := 0; i < ctx.numCols; i++ {
+					if originalWidth, ok := constrainedWidths.OK(i); ok && originalWidth > 0 {
+						scaledWidth := int(math.Round(float64(originalWidth) * scaleFactor))
+						if scaledWidth < 1 {
+							scaledWidth = 1
+						}
+						constrainedWidths.Set(i, scaledWidth)
+						adjustedSum += scaledWidth
+					}
+				}
+				// Distribute rounding errors
+				remainingSpace := targetSumForColumnWidths - adjustedSum
+				if remainingSpace != 0 {
+					colsToAdjust := []int{}
+					constrainedWidths.Each(func(col int, w int) {
+						if w > 0 {
+							colsToAdjust = append(colsToAdjust, col)
+						}
+					})
+					for i := 0; i < int(math.Abs(float64(remainingSpace))); i++ {
+						colIdx := colsToAdjust[i%len(colsToAdjust)]
+						currentColWidth := constrainedWidths.Get(colIdx)
+						if remainingSpace > 0 {
+							constrainedWidths.Set(colIdx, currentColWidth+1)
+						} else if currentColWidth > 1 {
+							constrainedWidths.Set(colIdx, currentColWidth-1)
+						}
+					}
+				}
+			}
+		}
+		t.logger.Debugf("calculateAndNormalizeWidths: Constrained widths: %v", constrainedWidths)
+	}
+
+	// Normalize widths
 	ctx.widths[tw.Header] = tw.NewMapper[int, int]()
 	ctx.widths[tw.Row] = tw.NewMapper[int, int]()
 	ctx.widths[tw.Footer] = tw.NewMapper[int, int]()
-
-	// Normalize widths by taking the maximum across sections
 	for i := 0; i < ctx.numCols; i++ {
-		maxWidth := 0
-		for _, w := range []tw.Mapper[int, int]{t.headerWidths, t.rowWidths, t.footerWidths} {
-			if wd := w.Get(i); wd > maxWidth {
-				maxWidth = wd
+		// Use constrained width if available, else fall back to content-based
+		width := 0
+		if constrainedWidth, ok := constrainedWidths.OK(i); ok {
+			width = constrainedWidth
+		} else {
+			maxWidth := 0
+			for _, w := range []tw.Mapper[int, int]{t.headerWidths, t.rowWidths, t.footerWidths} {
+				if wd := w.Get(i); wd > maxWidth {
+					maxWidth = wd
+				}
 			}
+			width = maxWidth
 		}
-		ctx.widths[tw.Header].Set(i, maxWidth)
-		ctx.widths[tw.Row].Set(i, maxWidth)
-		ctx.widths[tw.Footer].Set(i, maxWidth)
+		ctx.widths[tw.Header].Set(i, width)
+		ctx.widths[tw.Row].Set(i, width)
+		ctx.widths[tw.Footer].Set(i, width)
 	}
-	ctx.logger.Debugf("Normalized widths: header=%v, row=%v, footer=%v", ctx.widths[tw.Header], ctx.widths[tw.Row], ctx.widths[tw.Footer])
+	ctx.logger.Debugf("Final normalized widths: header=%v, row=%v, footer=%v", ctx.widths[tw.Header], ctx.widths[tw.Row], ctx.widths[tw.Footer])
 	return nil
 }
 
-// calculateContentMaxWidth computes the maximum content width for a column, accounting for padding and mode-specific constraints.
-// Returns the effective content width (after subtracting padding) for the given column index.
 // calculateContentMaxWidth computes the maximum content width for a column, accounting for padding and mode-specific constraints.
 // Returns the effective content width (after subtracting padding) for the given column index.
 func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLeftWidth, padRightWidth int, isStreaming bool) int {
@@ -655,8 +724,7 @@ func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLe
 		if totalColumnWidthFromStream == 0 {
 			effectiveContentMaxWidth = 0
 		}
-		t.logger.Debugf("calculateContentMaxWidth: Streaming col %d, TotalColWd=%d, PadL=%d, PadR=%d -> ContentMaxWd=%d",
-			colIdx, totalColumnWidthFromStream, padLeftWidth, padRightWidth, effectiveContentMaxWidth)
+		t.logger.Debugf("calculateContentMaxWidth: Streaming col %d, TotalColWd=%d, PadL=%d, PadR=%d -> ContentMaxWd=%d", colIdx, totalColumnWidthFromStream, padLeftWidth, padRightWidth, effectiveContentMaxWidth)
 	} else {
 		// New priority-based width constraint checking
 		constraintTotalCellWidth := 0
