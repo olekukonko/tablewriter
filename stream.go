@@ -113,10 +113,10 @@ func (t *Table) Start() error {
 
 	// Calculate initial fixed widths if provided in StreamConfig.Widths
 	// These widths will be used for all subsequent rendering in streaming mode.
-	if t.config.Stream.Widths.PerColumn != nil && t.config.Stream.Widths.PerColumn.Len() > 0 {
+	if t.config.Widths.PerColumn != nil && t.config.Widths.PerColumn.Len() > 0 {
 		// Use per-column stream widths if set
-		t.logger.Debugf("Using per-column stream widths from StreamConfig: %v", t.config.Stream.Widths.PerColumn)
-		t.streamWidths = t.config.Stream.Widths.PerColumn.Clone()
+		t.logger.Debugf("Using per-column stream widths from StreamConfig: %v", t.config.Widths.PerColumn)
+		t.streamWidths = t.config.Widths.PerColumn.Clone()
 		// Determine numCols from the highest index in PerColumn map
 		maxColIdx := -1
 		t.streamWidths.Each(func(col int, width int) {
@@ -139,14 +139,14 @@ func (t *Table) Start() error {
 			t.logger.Debugf("PerColumn widths map is effectively empty or contains only negative values, streamNumCols = 0.")
 		}
 
-	} else if t.config.Stream.Widths.Global > 0 {
+	} else if t.config.Widths.Global > 0 {
 		// Global width is set, but we don't know the number of columns yet.
 		// Defer applying global width until the first data (Header or first Row) arrives.
 		// Store a placeholder or flag indicating global width should be used.
 		// The simple way for now: Keep streamWidths empty, signal the global width preference.
 		// The width calculation function called later will need to check StreamConfig.Widths.Global
 		// if streamWidths is empty.
-		t.logger.Debugf("Global stream width %d set in StreamConfig. Will derive numCols from first data.", t.config.Stream.Widths.Global)
+		t.logger.Debugf("Global stream width %d set in StreamConfig. Will derive numCols from first data.", t.config.Widths.Global)
 		t.streamWidths = tw.NewMapper[int, int]() // Initialize as empty, will be populated later
 		// Note: No need to store Global width value here, it's available in t.config.Stream.Widths.Global
 
@@ -451,26 +451,26 @@ func (t *Table) streamBuildCellContexts(
 // The paddingConfig should be the CellPadding config relevant to the sample data (Header/Row/Footer).
 // Returns the determined number of columns.
 // This function should only be called when t.streamWidths is currently empty.
-func (t *Table) streamCalculateWidths(sampleDataLines []string, sectionConfigForSampleData tw.CellConfig) int {
+func (t *Table) streamCalculateWidths(sampling []string, config tw.CellConfig) int {
 	if t.streamWidths != nil && t.streamWidths.Len() > 0 {
 		t.logger.Debug("streamCalculateWidths: Called when streaming widths are already set (%d columns). Reusing existing.", t.streamNumCols)
 		return t.streamNumCols
 	}
 
-	t.logger.Debug("streamCalculateWidths: Calculating streaming widths. Sample data cells: %d. Using section config: %+v", len(sampleDataLines), sectionConfigForSampleData.Formatting)
+	t.logger.Debug("streamCalculateWidths: Calculating streaming widths. Sample data cells: %d. Using section config: %+v", len(sampling), config.Formatting)
 
 	determinedNumCols := 0
-	if t.config.Stream.Widths.PerColumn != nil && t.config.Stream.Widths.PerColumn.Len() > 0 {
+	if t.config.Widths.PerColumn != nil && t.config.Widths.PerColumn.Len() > 0 {
 		maxColIdx := -1
-		t.config.Stream.Widths.PerColumn.Each(func(col int, width int) {
+		t.config.Widths.PerColumn.Each(func(col int, width int) {
 			if col > maxColIdx {
 				maxColIdx = col
 			}
 		})
 		determinedNumCols = maxColIdx + 1
 		t.logger.Debug("streamCalculateWidths: Determined numCols (%d) from StreamConfig.Widths.PerColumn", determinedNumCols)
-	} else if len(sampleDataLines) > 0 {
-		determinedNumCols = len(sampleDataLines)
+	} else if len(sampling) > 0 {
+		determinedNumCols = len(sampling)
 		t.logger.Debug("streamCalculateWidths: Determined numCols (%d) from sample data length", determinedNumCols)
 	} else {
 		t.logger.Debug("streamCalculateWidths: Cannot determine numCols (no PerColumn config, no sample data)")
@@ -482,14 +482,14 @@ func (t *Table) streamCalculateWidths(sampleDataLines []string, sectionConfigFor
 	t.streamNumCols = determinedNumCols
 	t.streamWidths = tw.NewMapper[int, int]()
 
-	// Use padding and autowrap from the provided sectionConfigForSampleData
-	paddingForWidthCalc := sectionConfigForSampleData.Padding
-	autoWrapForWidthCalc := sectionConfigForSampleData.Formatting.AutoWrap
+	// Use padding and autowrap from the provided config
+	paddingForWidthCalc := config.Padding
+	autoWrapForWidthCalc := config.Formatting.AutoWrap
 
-	if t.config.Stream.Widths.PerColumn != nil && t.config.Stream.Widths.PerColumn.Len() > 0 {
+	if t.config.Widths.PerColumn != nil && t.config.Widths.PerColumn.Len() > 0 {
 		t.logger.Debug("streamCalculateWidths: Using widths from StreamConfig.Widths.PerColumn")
 		for i := 0; i < t.streamNumCols; i++ {
-			width, ok := t.config.Stream.Widths.PerColumn.OK(i)
+			width, ok := t.config.Widths.PerColumn.OK(i)
 			if !ok {
 				width = 0
 			}
@@ -501,12 +501,12 @@ func (t *Table) streamCalculateWidths(sampleDataLines []string, sectionConfigFor
 			t.streamWidths.Set(i, width)
 		}
 	} else {
-		// No PerColumn config, derive from sampleDataLines intelligently
+		// No PerColumn config, derive from sampling intelligently
 		t.logger.Debug("streamCalculateWidths: Intelligently deriving widths from sample data content and padding.")
 		tempRequiredWidths := tw.NewMapper[int, int]() // Widths from updateWidths (content + padding)
-		if len(sampleDataLines) > 0 {
+		if len(sampling) > 0 {
 			// updateWidths calculates: DisplayWidth(content) + padLeft + padRight
-			t.updateWidths(sampleDataLines, tempRequiredWidths, paddingForWidthCalc)
+			t.updateWidths(sampling, tempRequiredWidths, paddingForWidthCalc)
 		}
 
 		ellipsisWidthBuffer := 0
@@ -522,13 +522,13 @@ func (t *Table) streamCalculateWidths(sampleDataLines []string, sectionConfigFor
 			// We need to deconstruct it to apply logic to content_width first.
 
 			sampleContent := ""
-			if i < len(sampleDataLines) {
-				sampleContent = t.Trimmer(sampleDataLines[i])
+			if i < len(sampling) {
+				sampleContent = t.Trimmer(sampling[i])
 			}
 			sampleContentDisplayWidth := tw.DisplayWidth(sampleContent)
 
 			colPad := paddingForWidthCalc.Global
-			if i < len(paddingForWidthCalc.PerColumn) && paddingForWidthCalc.PerColumn[i].CanSet() {
+			if i < len(paddingForWidthCalc.PerColumn) && paddingForWidthCalc.PerColumn[i].Paddable() {
 				colPad = paddingForWidthCalc.PerColumn[i]
 			}
 			currentPadLWidth := tw.DisplayWidth(colPad.Left)
@@ -584,8 +584,8 @@ func (t *Table) streamCalculateWidths(sampleDataLines []string, sectionConfigFor
 	}
 
 	// Apply Global Constraint (if t.config.Stream.Widths.Global > 0)
-	if t.config.Stream.Widths.Global > 0 && t.streamNumCols > 0 {
-		t.logger.Debug("streamCalculateWidths: Applying global stream width constraint %d", t.config.Stream.Widths.Global)
+	if t.config.Widths.Global > 0 && t.streamNumCols > 0 {
+		t.logger.Debug("streamCalculateWidths: Applying global stream width constraint %d", t.config.Widths.Global)
 		currentTotalColumnWidthsSum := 0
 		t.streamWidths.Each(func(_ int, w int) {
 			currentTotalColumnWidthsSum += w
@@ -606,11 +606,11 @@ func (t *Table) streamCalculateWidths(sampleDataLines []string, sectionConfigFor
 			totalWidthIncludingSeparators += (t.streamNumCols - 1) * separatorWidth
 		}
 
-		if t.config.Stream.Widths.Global < totalWidthIncludingSeparators && totalWidthIncludingSeparators > 0 { // Added check for total > 0
-			t.logger.Debug("streamCalculateWidths: Total calculated width (%d incl separators) exceeds global stream width (%d). Shrinking.", totalWidthIncludingSeparators, t.config.Stream.Widths.Global)
+		if t.config.Widths.Global < totalWidthIncludingSeparators && totalWidthIncludingSeparators > 0 { // Added check for total > 0
+			t.logger.Debug("streamCalculateWidths: Total calculated width (%d incl separators) exceeds global stream width (%d). Shrinking.", totalWidthIncludingSeparators, t.config.Widths.Global)
 
 			// Target sum for column widths only (global limit - total separator width)
-			targetSumForColumnWidths := t.config.Stream.Widths.Global
+			targetSumForColumnWidths := t.config.Widths.Global
 			if t.streamNumCols > 1 {
 				targetSumForColumnWidths -= (t.streamNumCols - 1) * separatorWidth
 			}
@@ -671,7 +671,7 @@ func (t *Table) streamCalculateWidths(sampleDataLines []string, sectionConfigFor
 			}
 			t.logger.Debug("streamCalculateWidths: Widths after scaling and distribution: %v", t.streamWidths)
 		} else {
-			t.logger.Debug("streamCalculateWidths: Total calculated width (%d) fits global stream width (%d). No scaling needed.", totalWidthIncludingSeparators, t.config.Stream.Widths.Global)
+			t.logger.Debug("streamCalculateWidths: Total calculated width (%d) fits global stream width (%d). No scaling needed.", totalWidthIncludingSeparators, t.config.Widths.Global)
 		}
 	}
 

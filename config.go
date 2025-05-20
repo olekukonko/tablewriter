@@ -8,6 +8,18 @@ import (
 	"reflect"                              // Reflection for type handling
 )
 
+// Config represents the overall configuration for a table, including settings for header, rows, footer, and behavior.
+type Config struct {
+	MaxWidth int             // Maximum width of the entire table (0 for unlimited)
+	Header   tw.CellConfig   // Configuration for the header section
+	Row      tw.CellConfig   // Configuration for the row section
+	Footer   tw.CellConfig   // Configuration for the footer section
+	Debug    bool            // Enables debug logging when true
+	Stream   tw.StreamConfig // Configuration specific to streaming mode
+	Behavior tw.Behavior     // Behavioral settings like auto-hiding and trimming
+	Widths   tw.CellWidth    // New: Global/per-column fixed width settings for the table
+}
+
 // ColumnConfigBuilder is used to configure settings for a specific column across all table sections (header, row, footer).
 type ColumnConfigBuilder struct {
 	parent *ConfigBuilder // Reference to the parent ConfigBuilder for chaining
@@ -51,17 +63,6 @@ func (c *ColumnConfigBuilder) WithMaxWidth(width int) *ColumnConfigBuilder {
 	c.parent.config.Row.ColMaxWidths.PerColumn[c.col] = width
 	c.parent.config.Footer.ColMaxWidths.PerColumn[c.col] = width
 	return c
-}
-
-// Config represents the overall configuration for a table, including settings for header, rows, footer, and behavior.
-type Config struct {
-	MaxWidth int             // Maximum width of the entire table (0 for unlimited)
-	Header   tw.CellConfig   // Configuration for the header section
-	Row      tw.CellConfig   // Configuration for the row section
-	Footer   tw.CellConfig   // Configuration for the footer section
-	Debug    bool            // Enables debug logging when true
-	Stream   tw.StreamConfig // Configuration specific to streaming mode
-	Behavior tw.Behavior     // Behavioral settings like auto-hiding and trimming
 }
 
 // ConfigBuilder provides a fluent interface for building a Config struct with both direct and nested configuration methods.
@@ -677,7 +678,7 @@ func WithColumnMax(width int) Option {
 		if width < 0 {
 			return
 		}
-		target.config.Stream.Widths.Global = width
+		target.config.Widths.Global = width
 		if target.logger != nil {
 			target.logger.Debugf("Option: WithColumnMax applied to Table: %v", width)
 		}
@@ -698,16 +699,27 @@ func WithTableMax(width int) Option {
 	}
 }
 
-// WithColumnWidths sets per-column widths for the table in streaming mode.
+// WithWidths sets per-column widths for the table
 // Negative widths are removed, and the change is logged if debugging is enabled.
-func WithColumnWidths(widths map[int]int) Option {
+func WithWidths(width tw.CellWidth) Option {
+	return func(target *Table) {
+		target.config.Widths = width
+		if target.logger != nil {
+			target.logger.Debugf("Option: WithColumnWidths applied to Table: %v", width)
+		}
+	}
+}
+
+// WithColumnWidths sets per-column widths for the table
+// Negative widths are removed, and the change is logged if debugging is enabled.
+func WithColumnWidths(widths tw.Mapper[int, int]) Option {
 	return func(target *Table) {
 		for k, v := range widths {
 			if v < 0 {
 				delete(widths, k)
 			}
 		}
-		target.config.Stream.Widths.PerColumn = widths
+		target.config.Widths.PerColumn = widths
 		if target.logger != nil {
 			target.logger.Debugf("Option: WithColumnWidths applied to Table: %v", widths)
 		}
@@ -1029,7 +1041,7 @@ func mergeCellConfig(dst, src tw.CellConfig) tw.CellConfig {
 
 	dst.Formatting.AutoFormat = src.Formatting.AutoFormat
 
-	if src.Padding.Global.CanSet() {
+	if src.Padding.Global.Paddable() {
 		dst.Padding.Global = src.Padding.Global
 	}
 
@@ -1040,7 +1052,7 @@ func mergeCellConfig(dst, src tw.CellConfig) tw.CellConfig {
 			dst.Padding.PerColumn = append(dst.Padding.PerColumn, make([]tw.Padding, len(src.Padding.PerColumn)-len(dst.Padding.PerColumn))...)
 		}
 		for i, pad := range src.Padding.PerColumn {
-			if pad.CanSet() {
+			if pad.Paddable() {
 				dst.Padding.PerColumn[i] = pad
 			}
 		}
@@ -1110,19 +1122,7 @@ func mergeConfig(dst, src Config) Config {
 	dst.Debug = src.Debug || dst.Debug
 	dst.Behavior.AutoHide = src.Behavior.AutoHide
 	dst.Behavior.TrimSpace = src.Behavior.TrimSpace
-	dst.Header = mergeCellConfig(dst.Header, src.Header)
-	dst.Row = mergeCellConfig(dst.Row, src.Row)
-	dst.Footer = mergeCellConfig(dst.Footer, src.Footer)
-	dst.Stream = mergeStreamConfig(dst.Stream, src.Stream)
 
-	return dst
-}
-
-// mergeStreamConfig merges a source StreamConfig into a destination StreamConfig, prioritizing non-default source values.
-func mergeStreamConfig(dst, src tw.StreamConfig) tw.StreamConfig {
-	if src.Enable {
-		dst.Enable = true
-	}
 	if src.Widths.Global != 0 {
 		dst.Widths.Global = src.Widths.Global
 	}
@@ -1135,6 +1135,20 @@ func mergeStreamConfig(dst, src tw.StreamConfig) tw.StreamConfig {
 				dst.Widths.PerColumn[k] = v
 			}
 		}
+	}
+
+	dst.Header = mergeCellConfig(dst.Header, src.Header)
+	dst.Row = mergeCellConfig(dst.Row, src.Row)
+	dst.Footer = mergeCellConfig(dst.Footer, src.Footer)
+	dst.Stream = mergeStreamConfig(dst.Stream, src.Stream)
+
+	return dst
+}
+
+// mergeStreamConfig merges a source StreamConfig into a destination StreamConfig, prioritizing non-default source values.
+func mergeStreamConfig(dst, src tw.StreamConfig) tw.StreamConfig {
+	if src.Enable {
+		dst.Enable = true
 	}
 	return dst
 }

@@ -44,3 +44,7 @@ type CellWidth struct {
 	Global    int
 	PerColumn Mapper[int, int]
 }
+
+func (c CellWidth) Constrained() bool {
+	return c.Global > 0 || c.PerColumn.Len() > 0
+}

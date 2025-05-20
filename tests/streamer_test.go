@@ -362,9 +362,9 @@ func TestStreamTruncation(t *testing.T) {
 				},
 				Stream: tw.StreamConfig{
 					Enable: true,
-					Widths: tw.CellWidth{
-						PerColumn: map[int]int{0: 4, 1: 15, 2: 8},
-					},
+				},
+				Widths: tw.CellWidth{
+					PerColumn: map[int]int{0: 4, 1: 15, 2: 8},
 				},
 			}))
 
@@ -410,9 +410,9 @@ func TestStreamCustomPadding(t *testing.T) {
 		},
 		Stream: tw.StreamConfig{
 			Enable: true,
-			Widths: tw.CellWidth{
-				PerColumn: map[int]int{0: 7, 1: 7},
-			},
+		},
+		Widths: tw.CellWidth{
+			PerColumn: map[int]int{0: 7, 1: 7},
 		},
 	}),
 		tablewriter.WithDebug(false))
@@ -450,10 +450,10 @@ func TestStreamEmptyCells(t *testing.T) {
 		Row:    tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}},
 		Stream: tw.StreamConfig{
 			Enable: true,
-			Widths: tw.CellWidth{
-				Global: 20,
-			}},
-	}),
+		},
+		Widths: tw.CellWidth{
+			Global: 20,
+		}}),
 		tablewriter.WithDebug(false))
 
 	err := st.Start()
@@ -601,11 +601,12 @@ func TestStreamFormating(t *testing.T) {
 		tablewriter.WithConfig(tablewriter.Config{
 			Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
 			Row:    tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}},
-			Footer: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}}}),
+			Footer: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}},
+			Widths: tw.CellWidth{PerColumn: map[int]int{0: 12, 1: 8, 2: 10}}}),
+
 		tablewriter.WithDebug(false),
 		tablewriter.WithStreaming(tw.StreamConfig{
 			Enable: true,
-			Widths: tw.CellWidth{PerColumn: map[int]int{0: 12, 1: 8, 2: 10}},
 		}),
 	)
 

@@ -117,5 +117,9 @@ type Border struct {
 
 type StreamConfig struct {
 	Enable bool
-	Widths CellWidth // Cell/column widths
+
+	// Deprecated: Use top-level Config.Widths for streaming width control.
+	// This field will be removed in a future version. It will be respected if
+	// Config.Widths is not set and this field is.
+	Widths CellWidth
 }

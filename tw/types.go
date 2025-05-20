@@ -177,13 +177,13 @@ func (p Padding) Empty() bool {
 	return p.Left == "" && p.Right == "" && p.Top == "" && p.Bottom == ""
 }
 
-// CanSet reports whether this Padding configuration should override existing padding.
+// Paddable reports whether this Padding configuration should override existing padding.
 // Returns true if either:
 //   - Any padding string is non-empty (!p.Empty())
 //   - Overwrite flag is true (even with all strings empty)
 //
 // This is used internally during configuration merging to determine whether to
 // apply the padding settings.
-func (p Padding) CanSet() bool {
+func (p Padding) Paddable() bool {
 	return !p.Empty() || p.Overwrite
 }

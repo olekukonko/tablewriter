@@ -48,7 +48,8 @@ func TestOceanTableStreaming_Simple(t *testing.T) {
 	tbl := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewOcean()),
 		tablewriter.WithDebug(false),
-		tablewriter.WithStreaming(tw.StreamConfig{Enable: true, Widths: tw.CellWidth{PerColumn: widths}}),
+		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
+		tablewriter.WithColumnWidths(widths),
 	)
 
 	err := tbl.Start()
@@ -93,7 +94,8 @@ func TestOceanTableStreaming_NoHeader(t *testing.T) {
 	tbl := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewOcean()),
 		tablewriter.WithDebug(false),
-		tablewriter.WithStreaming(tw.StreamConfig{Enable: true, Widths: tw.CellWidth{PerColumn: widths}}),
+		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
+		tablewriter.WithColumnWidths(widths),
 	)
 
 	err := tbl.Start()
@@ -177,7 +179,8 @@ func TestOceanTableStreaming_WithFooter(t *testing.T) {
 	tbl := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewOcean()), // Uses default Ocean config initially
 		tablewriter.WithDebug(false),
-		tablewriter.WithStreaming(tw.StreamConfig{Enable: true, Widths: tw.CellWidth{PerColumn: widths}}),
+		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
+		tablewriter.WithColumnWidths(widths),
 	)
 
 	err := tbl.Start()
@@ -226,7 +229,8 @@ func TestOceanTableStreaming_VaryingWidthsFromConfig(t *testing.T) {
 	tbl := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewOcean()),
 		tablewriter.WithDebug(false),
-		tablewriter.WithStreaming(tw.StreamConfig{Enable: true, Widths: tw.CellWidth{PerColumn: widths}}),
+		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
+		tablewriter.WithColumnWidths(widths),
 	)
 
 	err := tbl.Start()
@@ -277,7 +281,8 @@ func TestOceanTableStreaming_MultiLineCells(t *testing.T) {
 	tbl := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewOcean()),
 		tablewriter.WithDebug(false),
-		tablewriter.WithStreaming(tw.StreamConfig{Enable: true, Widths: tw.CellWidth{PerColumn: widths}}),
+		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
+		tablewriter.WithColumnWidths(widths),
 	)
 
 	err := tbl.Start()
@@ -319,7 +324,8 @@ func TestOceanTableStreaming_OnlyHeader(t *testing.T) {
 	tbl := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewOcean()),
 		tablewriter.WithDebug(false),
-		tablewriter.WithStreaming(tw.StreamConfig{Enable: true, Widths: tw.CellWidth{PerColumn: widths}}),
+		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
+		tablewriter.WithColumnWidths(widths),
 	)
 
 	err := tbl.Start()
@@ -361,7 +367,8 @@ func TestOceanTableStreaming_HorizontalMerge(t *testing.T) {
 	tbl := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewOcean()),
 		tablewriter.WithDebug(false),
-		tablewriter.WithStreaming(tw.StreamConfig{Enable: true, Widths: tw.CellWidth{PerColumn: widths}}),
+		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
+		tablewriter.WithColumnWidths(widths),
 	)
 
 	err := tbl.Start()

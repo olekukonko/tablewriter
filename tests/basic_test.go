@@ -653,10 +653,10 @@ C │ D
 				},
 			)
 			st := tablewriter.NewTable(&buf,
-				tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}}}),
+				tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}}, Widths: tw.CellWidth{PerColumn: widths}}),
 				tablewriter.WithRenderer(r),
 				tablewriter.WithDebug(false),
-				tablewriter.WithStreaming(tw.StreamConfig{Enable: true, Widths: tw.CellWidth{PerColumn: widths}}),
+				tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
 			)
 			err := st.Start()
 			if err != nil {

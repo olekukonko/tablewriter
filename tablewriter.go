@@ -397,6 +397,11 @@ func (t *Table) Options(opts ...Option) *Table {
 		t.logger.Suspend()
 	}
 
+	// help resolve from deprecation
+	//if t.config.Stream.Enable {
+	//	t.config.Widths = t.config.Stream.Widths
+	//}
+
 	// send logger to renderer
 	// this will overwrite the default logger
 	t.renderer.Logger(t.logger)
@@ -532,7 +537,7 @@ func (t *Table) buildPadding(padding tw.CellPadding) map[int]tw.Padding {
 	numColsToUse := t.getNumColsToUse()
 	colPadding := make(map[int]tw.Padding)
 	for i := 0; i < numColsToUse; i++ {
-		if i < len(padding.PerColumn) && padding.PerColumn[i].CanSet() {
+		if i < len(padding.PerColumn) && padding.PerColumn[i].Paddable() {
 			colPadding[i] = padding.PerColumn[i]
 		} else {
 			colPadding[i] = padding.Global
@@ -841,7 +846,7 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 		cellContent = t.Trimmer(cellContent)
 
 		colPad := config.Padding.Global
-		if i < len(config.Padding.PerColumn) && config.Padding.PerColumn[i].CanSet() {
+		if i < len(config.Padding.PerColumn) && config.Padding.PerColumn[i].Paddable() {
 			colPad = config.Padding.PerColumn[i]
 		}
 

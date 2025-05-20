@@ -635,10 +635,13 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 
 // calculateContentMaxWidth computes the maximum content width for a column, accounting for padding and mode-specific constraints.
 // Returns the effective content width (after subtracting padding) for the given column index.
+// calculateContentMaxWidth computes the maximum content width for a column, accounting for padding and mode-specific constraints.
+// Returns the effective content width (after subtracting padding) for the given column index.
 func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLeftWidth, padRightWidth int, isStreaming bool) int {
-
 	var effectiveContentMaxWidth int
+
 	if isStreaming {
+		// Existing streaming logic remains unchanged
 		totalColumnWidthFromStream := t.streamWidths.Get(colIdx)
 		if totalColumnWidthFromStream < 0 {
 			totalColumnWidthFromStream = 0
@@ -655,25 +658,55 @@ func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLe
 		t.logger.Debugf("calculateContentMaxWidth: Streaming col %d, TotalColWd=%d, PadL=%d, PadR=%d -> ContentMaxWd=%d",
 			colIdx, totalColumnWidthFromStream, padLeftWidth, padRightWidth, effectiveContentMaxWidth)
 	} else {
-		hasConstraint := false
+		// New priority-based width constraint checking
 		constraintTotalCellWidth := 0
-		if config.ColMaxWidths.PerColumn != nil {
+		hasConstraint := false
+
+		// 1. Check new Widths.PerColumn (highest priority)
+		if t.config.Widths.Constrained() {
+
+			if colWidth, ok := t.config.Widths.PerColumn.OK(colIdx); ok && colWidth > 0 {
+				constraintTotalCellWidth = colWidth
+				hasConstraint = true
+				t.logger.Debugf("calculateContentMaxWidth: Using Widths.PerColumn[%d] = %d",
+					colIdx, constraintTotalCellWidth)
+			}
+
+			// 2. Check new Widths.Global
+			if !hasConstraint && t.config.Widths.Global > 0 {
+				constraintTotalCellWidth = t.config.Widths.Global
+				hasConstraint = true
+				t.logger.Debugf("calculateContentMaxWidth: Using Widths.Global = %d", constraintTotalCellWidth)
+			}
+		}
+
+		// 3. Fall back to legacy ColMaxWidths.PerColumn (backward compatibility)
+		if !hasConstraint && config.ColMaxWidths.PerColumn != nil {
 			if colMax, ok := config.ColMaxWidths.PerColumn.OK(colIdx); ok && colMax > 0 {
 				constraintTotalCellWidth = colMax
 				hasConstraint = true
-				t.logger.Debugf("calculateContentMaxWidth: Batch col %d using config.ColMaxWidths.PerColumn (as total cell width constraint): %d", colIdx, constraintTotalCellWidth)
+				t.logger.Debugf("calculateContentMaxWidth: Using legacy ColMaxWidths.PerColumn[%d] = %d",
+					colIdx, constraintTotalCellWidth)
 			}
 		}
+
+		// 4. Fall back to legacy ColMaxWidths.Global
 		if !hasConstraint && config.ColMaxWidths.Global > 0 {
 			constraintTotalCellWidth = config.ColMaxWidths.Global
 			hasConstraint = true
-			t.logger.Debugf("calculateContentMaxWidth: Batch col %d using config.Formatting.MaxWidth (as total cell width constraint): %d", colIdx, constraintTotalCellWidth)
+			t.logger.Debugf("calculateContentMaxWidth: Using legacy ColMaxWidths.Global = %d",
+				constraintTotalCellWidth)
 		}
+
+		// 5. Fall back to table MaxWidth if auto-wrapping
 		if !hasConstraint && t.config.MaxWidth > 0 && config.Formatting.AutoWrap != tw.WrapNone {
 			constraintTotalCellWidth = t.config.MaxWidth
 			hasConstraint = true
-			t.logger.Debugf("calculateContentMaxWidth: Batch col %d using t.config.MaxWidth (as total cell width constraint, due to AutoWrap != WrapNone): %d", colIdx, constraintTotalCellWidth)
+			t.logger.Debugf("calculateContentMaxWidth: Using table MaxWidth = %d (AutoWrap enabled)",
+				constraintTotalCellWidth)
 		}
+
+		// Calculate effective width based on found constraint
 		if hasConstraint {
 			effectiveContentMaxWidth = constraintTotalCellWidth - padLeftWidth - padRightWidth
 			if effectiveContentMaxWidth < 1 && constraintTotalCellWidth > (padLeftWidth+padRightWidth) {
@@ -681,13 +714,14 @@ func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLe
 			} else if effectiveContentMaxWidth < 0 {
 				effectiveContentMaxWidth = 0
 			}
-			t.logger.Debugf("calculateContentMaxWidth: Batch col %d, ConstraintTotalCellWidth=%d, PadL=%d, PadR=%d -> EffectiveContentMaxWidth=%d",
-				colIdx, constraintTotalCellWidth, padLeftWidth, padRightWidth, effectiveContentMaxWidth)
+			t.logger.Debugf("calculateContentMaxWidth: ConstraintTotalCellWidth=%d, PadL=%d, PadR=%d -> EffectiveContentMaxWidth=%d",
+				constraintTotalCellWidth, padLeftWidth, padRightWidth, effectiveContentMaxWidth)
 		} else {
 			effectiveContentMaxWidth = 0
-			t.logger.Debugf("calculateContentMaxWidth: Batch col %d, No applicable MaxWidth constraint. EffectiveContentMaxWidth set to 0 (unlimited for this stage).", colIdx)
+			t.logger.Debugf("calculateContentMaxWidth: No width constraints found for column %d", colIdx)
 		}
 	}
+
 	return effectiveContentMaxWidth
 }
 
@@ -1311,7 +1345,7 @@ func (t *Table) updateWidths(row []string, widths tw.Mapper[int, int], padding t
 	for i, cell := range row {
 		colPad := padding.Global
 
-		if i < len(padding.PerColumn) && padding.PerColumn[i].CanSet() {
+		if i < len(padding.PerColumn) && padding.PerColumn[i].Paddable() {
 			colPad = padding.PerColumn[i]
 			t.logger.Debugf("  Col %d: Using per-column padding: L:'%s' R:'%s'", i, colPad.Left, colPad.Right)
 		} else {
