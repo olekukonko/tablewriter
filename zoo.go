@@ -1310,7 +1310,8 @@ func (t *Table) updateWidths(row []string, widths tw.Mapper[int, int], padding t
 	t.logger.Debugf("Updating widths for row: %v", row)
 	for i, cell := range row {
 		colPad := padding.Global
-		if i < len(padding.PerColumn) && padding.PerColumn[i] != (tw.Padding{}) {
+
+		if i < len(padding.PerColumn) && padding.PerColumn[i].CanSet() {
 			colPad = padding.PerColumn[i]
 			t.logger.Debugf("  Col %d: Using per-column padding: L:'%s' R:'%s'", i, colPad.Left, colPad.Right)
 		} else {

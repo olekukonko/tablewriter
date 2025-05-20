@@ -326,7 +326,7 @@ func (m *Markdown) renderMarkdownLine(line []string, ctx tw.Formatting, isHeader
 				Data: tw.Empty, Align: align, Padding: defaultPadding,
 				Width: ctx.Row.Widths.Get(colIndex), Merge: tw.MergeState{},
 			}
-		} else if cellCtx.Padding == (tw.Padding{}) {
+		} else if !cellCtx.Padding.CanSet() {
 			cellCtx.Padding = defaultPadding
 		}
 

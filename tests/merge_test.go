@@ -471,7 +471,7 @@ func TestMergeWithPadding(t *testing.T) {
 		Footer: tw.CellConfig{
 			Padding: tw.CellPadding{
 				Global:    tw.Padding{Left: "*", Right: "*", Top: "", Bottom: ""},
-				PerColumn: []tw.Padding{tw.Padding{}, tw.Padding{}, tw.Padding{Bottom: "^"}, tw.Padding{Bottom: "."}},
+				PerColumn: []tw.Padding{{}, {}, {Bottom: "^"}, {Bottom: "."}},
 			},
 			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft},
 		},

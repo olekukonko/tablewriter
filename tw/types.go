@@ -132,14 +132,6 @@ func (c Caption) WithWidth(width int) Caption {
 	return c
 }
 
-// Padding defines custom padding characters for a cell
-type Padding struct {
-	Left   string
-	Right  string
-	Top    string
-	Bottom string
-}
-
 type Control struct {
 	Hide State
 }
@@ -150,4 +142,48 @@ type Behavior struct {
 	TrimSpace State // Controls whether leading/trailing spaces are trimmed from cell content
 	Header    Control
 	Footer    Control
+}
+
+// Padding defines the spacing characters around cell content in all four directions.
+// A zero-value Padding struct will use the table's default padding unless Overwrite is true.
+type Padding struct {
+	Left   string
+	Right  string
+	Top    string
+	Bottom string
+
+	// Overwrite forces tablewriter to use this padding configuration exactly as specified,
+	// even when empty. When false (default), empty Padding fields will inherit defaults.
+	//
+	// For explicit no-padding, use the PaddingNone constant instead of setting Overwrite.
+	Overwrite bool
+}
+
+// Common padding configurations for convenience
+
+// Equals reports whether two Padding configurations are identical in all fields.
+// This includes comparing the Overwrite flag as part of the equality check.
+func (p Padding) Equals(padding Padding) bool {
+	return p.Left == padding.Left &&
+		p.Right == padding.Right &&
+		p.Top == padding.Top &&
+		p.Bottom == padding.Bottom &&
+		p.Overwrite == padding.Overwrite
+}
+
+// Empty reports whether all padding strings are empty (all fields == "").
+// Note that an Empty padding may still take effect if Overwrite is true.
+func (p Padding) Empty() bool {
+	return p.Left == "" && p.Right == "" && p.Top == "" && p.Bottom == ""
+}
+
+// CanSet reports whether this Padding configuration should override existing padding.
+// Returns true if either:
+//   - Any padding string is non-empty (!p.Empty())
+//   - Overwrite flag is true (even with all strings empty)
+//
+// This is used internally during configuration merging to determine whether to
+// apply the padding settings.
+func (p Padding) CanSet() bool {
+	return !p.Empty() || p.Overwrite
 }

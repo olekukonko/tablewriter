@@ -532,7 +532,7 @@ func (t *Table) buildPadding(padding tw.CellPadding) map[int]tw.Padding {
 	numColsToUse := t.getNumColsToUse()
 	colPadding := make(map[int]tw.Padding)
 	for i := 0; i < numColsToUse; i++ {
-		if i < len(padding.PerColumn) && padding.PerColumn[i] != (tw.Padding{}) {
+		if i < len(padding.PerColumn) && padding.PerColumn[i].CanSet() {
 			colPadding[i] = padding.PerColumn[i]
 		} else {
 			colPadding[i] = padding.Global
@@ -841,7 +841,7 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 		cellContent = t.Trimmer(cellContent)
 
 		colPad := config.Padding.Global
-		if i < len(config.Padding.PerColumn) && config.Padding.PerColumn[i] != (tw.Padding{}) {
+		if i < len(config.Padding.PerColumn) && config.Padding.PerColumn[i].CanSet() {
 			colPad = config.Padding.PerColumn[i]
 		}
 
@@ -1304,6 +1304,7 @@ func (t *Table) prepareWithMerges(content [][]string, config tw.CellConfig, posi
 // No parameters are required.
 // Returns an error if rendering fails in any section.
 func (t *Table) render() error {
+
 	t.ensureInitialized()
 
 	if t.config.Stream.Enable {

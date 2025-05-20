@@ -108,19 +108,12 @@ type Settings struct {
 
 // Border defines the visibility states of table borders.
 type Border struct {
-	Left   State // Left border visibility
-	Right  State // Right border visibility
-	Top    State // Top border visibility
-	Bottom State // Bottom border visibility
+	Left      State // Left border visibility
+	Right     State // Right border visibility
+	Top       State // Top border visibility
+	Bottom    State // Bottom border visibility
+	Overwrite bool
 }
-
-// BorderNone defines a border configuration with all sides disabled.
-var (
-	PaddingNone    = Padding{Left: Empty, Right: Empty, Top: Empty, Bottom: Empty}
-	BorderNone     = Border{Left: Off, Right: Off, Top: Off, Bottom: Off}
-	LinesNone      = Lines{ShowTop: Off, ShowBottom: Off, ShowHeaderLine: Off, ShowFooterLine: Off}
-	SeparatorsNone = Separators{ShowHeader: Off, ShowFooter: Off, BetweenRows: Off, BetweenColumns: Off}
-)
 
 type StreamConfig struct {
 	Enable bool

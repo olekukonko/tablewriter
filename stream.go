@@ -528,7 +528,7 @@ func (t *Table) streamCalculateWidths(sampleDataLines []string, sectionConfigFor
 			sampleContentDisplayWidth := tw.DisplayWidth(sampleContent)
 
 			colPad := paddingForWidthCalc.Global
-			if i < len(paddingForWidthCalc.PerColumn) && paddingForWidthCalc.PerColumn[i] != (tw.Padding{}) {
+			if i < len(paddingForWidthCalc.PerColumn) && paddingForWidthCalc.PerColumn[i].CanSet() {
 				colPad = paddingForWidthCalc.PerColumn[i]
 			}
 			currentPadLWidth := tw.DisplayWidth(colPad.Left)

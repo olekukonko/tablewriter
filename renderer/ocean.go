@@ -340,7 +340,7 @@ func (o *Ocean) renderContentLine(ctx tw.Formatting, lineData []string) {
 			if cellCtx.Align.Validate() == nil && cellCtx.Align != tw.AlignNone {
 				align = cellCtx.Align
 			}
-			if cellCtx.Padding != (tw.Padding{}) {
+			if cellCtx.Padding.CanSet() {
 				padding = cellCtx.Padding
 			}
 		} else if colIdx < len(lineData) {

@@ -70,7 +70,9 @@ tableWithConfig := tablewriter.NewTable(os.Stdout, tablewriter.WithConfig(cfg))
 // With ConfigBuilder
 builder := tablewriter.NewConfigBuilder().
     WithRowAlignment(tw.AlignLeft).
-    Header().Formatting().WithAlignment(tw.AlignCenter)
+    Header().Formatting().
+	WithAlignment(tw.AlignCenter)
+
 tableWithBuilder := tablewriter.NewTable(os.Stdout, tablewriter.WithConfig(builder.Build()))
 
 // With custom renderer and rendition
@@ -333,6 +335,8 @@ builder := tablewriter.NewConfigBuilder().
 	WithAlignment(tw.AlignRight).
     ForColumn(0).
 	WithAlignment(tw.AlignLeft)
+
+// 
 table := tablewriter.NewTable(os.Stdout, tablewriter.WithConfig(builder.Build()))
 
 // Direct Config
@@ -381,6 +385,8 @@ cfg := tablewriter.Config{
         Formatting: tw.CellFormatting{AutoFormat: tw.On},
     },
 }
+
+
 tableDirect := tablewriter.NewTable(os.Stdout, tablewriter.WithConfig(cfg))
 
 // Option
@@ -477,6 +483,8 @@ builder := tablewriter.NewConfigBuilder().
     WithMaxWidth(80).
     WithRowMaxWidth(15).
     ForColumn(0).WithMaxWidth(10)
+
+
 table := tablewriter.NewTable(os.Stdout, tablewriter.WithConfig(builder.Build()))
 
 // Direct Config

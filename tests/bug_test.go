@@ -240,3 +240,63 @@ func TestBug254(t *testing.T) {
 	})
 
 }
+
+func TestBug267(t *testing.T) {
+	var buf bytes.Buffer
+	data := [][]string{
+		{"a", "b", "c"},
+		{"aa", "bb", "cc"},
+	}
+	t.Run("WithoutMaxWith", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf,
+			tablewriter.WithTrimSpace(tw.On),
+			tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Padding: tw.CellPadding{
+				Global: tw.PaddingNone,
+			}}}),
+		)
+		table.Bulk(data)
+		table.Render()
+
+		expected := `
+		┌──┬──┬──┐
+		│a │b │c │
+		│aa│bb│cc│
+		└──┴──┴──┘
+
+`
+		debug := visualCheck(t, "TestBug252-Normal", buf.String(), expected)
+		if !debug {
+			t.Error(table.Debug())
+		}
+
+	})
+
+	t.Run("WithMaxWidth", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf,
+			tablewriter.WithRowMaxWidth(20),
+			tablewriter.WithTrimSpace(tw.Off),
+			tablewriter.WithAlignment(tw.Alignment{tw.AlignCenter, tw.AlignCenter, tw.AlignCenter}),
+			tablewriter.WithDebug(false),
+			tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Padding: tw.CellPadding{
+				Global: tw.PaddingNone,
+			}}}),
+		)
+		table.Bulk(data)
+		table.Render()
+
+		expected := `
+            ┌──┬──┬──┐
+            │a │b │c │
+            │aa│bb│cc│
+            └──┴──┴──┘
+`
+		debug := visualCheck(t, "TestBug252-Mixed", buf.String(), expected)
+		if !debug {
+			t.Error(table.Debug())
+		}
+
+	})
+
+}

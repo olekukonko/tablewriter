@@ -61,7 +61,7 @@ type Config struct {
 	Footer   tw.CellConfig   // Configuration for the footer section
 	Debug    bool            // Enables debug logging when true
 	Stream   tw.StreamConfig // Configuration specific to streaming mode
-	Behavior Behavior        // Behavioral settings like auto-hiding and trimming
+	Behavior tw.Behavior     // Behavioral settings like auto-hiding and trimming
 }
 
 // ConfigBuilder provides a fluent interface for building a Config struct with both direct and nested configuration methods.
@@ -966,7 +966,7 @@ func WithRendition(rendition tw.Rendition) Option {
 
 // defaultConfig returns a default Config with sensible settings for headers, rows, footers, and behavior.
 func defaultConfig() Config {
-	defaultPadding := tw.Padding{Left: tw.Space, Right: tw.Space, Top: tw.Empty, Bottom: tw.Empty}
+
 	return Config{
 		MaxWidth: 0,
 		Header: tw.CellConfig{
@@ -977,7 +977,7 @@ func defaultConfig() Config {
 				MergeMode:  tw.MergeNone,
 			},
 			Padding: tw.CellPadding{
-				Global: defaultPadding,
+				Global: tw.PaddingDefault,
 			},
 		},
 		Row: tw.CellConfig{
@@ -988,7 +988,7 @@ func defaultConfig() Config {
 				MergeMode:  tw.MergeNone,
 			},
 			Padding: tw.CellPadding{
-				Global: defaultPadding,
+				Global: tw.PaddingDefault,
 			},
 		},
 		Footer: tw.CellConfig{
@@ -999,12 +999,12 @@ func defaultConfig() Config {
 				MergeMode:  tw.MergeNone,
 			},
 			Padding: tw.CellPadding{
-				Global: defaultPadding,
+				Global: tw.PaddingDefault,
 			},
 		},
 		Stream: tw.StreamConfig{},
 		Debug:  false,
-		Behavior: Behavior{
+		Behavior: tw.Behavior{
 			AutoHide:  tw.Off,
 			TrimSpace: tw.On,
 		},
@@ -1029,9 +1029,10 @@ func mergeCellConfig(dst, src tw.CellConfig) tw.CellConfig {
 
 	dst.Formatting.AutoFormat = src.Formatting.AutoFormat
 
-	if src.Padding.Global != (tw.Padding{}) {
+	if src.Padding.Global.CanSet() {
 		dst.Padding.Global = src.Padding.Global
 	}
+
 	if len(src.Padding.PerColumn) > 0 {
 		if dst.Padding.PerColumn == nil {
 			dst.Padding.PerColumn = make([]tw.Padding, len(src.Padding.PerColumn))
@@ -1039,7 +1040,7 @@ func mergeCellConfig(dst, src tw.CellConfig) tw.CellConfig {
 			dst.Padding.PerColumn = append(dst.Padding.PerColumn, make([]tw.Padding, len(src.Padding.PerColumn)-len(dst.Padding.PerColumn))...)
 		}
 		for i, pad := range src.Padding.PerColumn {
-			if pad != (tw.Padding{}) {
+			if pad.CanSet() {
 				dst.Padding.PerColumn[i] = pad
 			}
 		}
@@ -1081,7 +1082,7 @@ func mergeCellConfig(dst, src tw.CellConfig) tw.CellConfig {
 			dst.ColumnAligns = append(dst.ColumnAligns, make([]tw.Align, len(src.ColumnAligns)-len(dst.ColumnAligns))...)
 		}
 		for i, align := range src.ColumnAligns {
-			if align != tw.Empty && align != tw.Skip {
+			if align != tw.Skip {
 				dst.ColumnAligns[i] = align
 			}
 		}
@@ -1105,6 +1106,7 @@ func mergeConfig(dst, src Config) Config {
 	if src.MaxWidth != 0 {
 		dst.MaxWidth = src.MaxWidth
 	}
+
 	dst.Debug = src.Debug || dst.Debug
 	dst.Behavior.AutoHide = src.Behavior.AutoHide
 	dst.Behavior.TrimSpace = src.Behavior.TrimSpace
