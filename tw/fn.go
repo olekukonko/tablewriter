@@ -245,9 +245,9 @@ func IsNumeric(s string) bool {
 	return err == nil
 }
 
-// SplitCamelCase splits a camelCase or PascalCase string into separate words.
+// SplitCase splits a camelCase or PascalCase or snake_case string into separate words.
 // It detects transitions between uppercase, lowercase, digits, and other characters.
-func SplitCamelCase(src string) (entries []string) {
+func SplitCase(src string) (entries []string) {
 	// Validate UTF-8 input; return as single entry if invalid
 	if !utf8.ValidString(src) {
 		return []string{src}
@@ -284,10 +284,11 @@ func SplitCamelCase(src string) (entries []string) {
 			runes[i] = runes[i][:len(runes[i])-1]
 		}
 	}
-	// Convert rune groups to strings, excluding empty or whitespace-only groups
+	// Convert rune groups to strings, excluding empty, underscore or whitespace-only groups
 	for _, s := range runes {
-		if len(s) > 0 && strings.TrimSpace(string(s)) != "" {
-			entries = append(entries, string(s))
+		str := string(s)
+		if len(s) > 0 && strings.TrimSpace(str) != "" && str != "_" {
+			entries = append(entries, str)
 		}
 	}
 	return
