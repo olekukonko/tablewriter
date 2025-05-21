@@ -41,8 +41,8 @@ func TestSplitCase(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			if output := SplitCase(tt.input); !reflect.DeepEqual(output, tt.expected) {
-				t.Errorf("SplitCase(%q) = %v, want %v", tt.input, output, tt.expected)
+			if output := SplitCamelCase(tt.input); !reflect.DeepEqual(output, tt.expected) {
+				t.Errorf("SplitCamelCase(%q) = %v, want %v", tt.input, output, tt.expected)
 			}
 		})
 	}

@@ -854,7 +854,7 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 		effectiveContentMaxWidth := t.calculateContentMaxWidth(i, config, padLeftWidth, padRightWidth, isStreaming)
 
 		if config.Formatting.AutoFormat.Enabled() {
-			cellContent = tw.Title(strings.Join(tw.SplitCase(cellContent), tw.Space))
+			cellContent = tw.Title(strings.Join(tw.SplitCamelCase(cellContent), tw.Space))
 		}
 
 		lines := strings.Split(cellContent, "\n")

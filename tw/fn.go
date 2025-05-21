@@ -245,9 +245,9 @@ func IsNumeric(s string) bool {
 	return err == nil
 }
 
-// SplitCase splits a camelCase or PascalCase or snake_case string into separate words.
+// SplitCamelCase splits a camelCase or PascalCase or snake_case string into separate words.
 // It detects transitions between uppercase, lowercase, digits, and other characters.
-func SplitCase(src string) (entries []string) {
+func SplitCamelCase(src string) (entries []string) {
 	// Validate UTF-8 input; return as single entry if invalid
 	if !utf8.ValidString(src) {
 		return []string{src}
