@@ -1122,6 +1122,7 @@ func mergeConfig(dst, src Config) Config {
 	dst.Debug = src.Debug || dst.Debug
 	dst.Behavior.AutoHide = src.Behavior.AutoHide
 	dst.Behavior.TrimSpace = src.Behavior.TrimSpace
+	dst.Behavior.Compact = src.Behavior.Compact
 
 	if src.Widths.Global != 0 {
 		dst.Widths.Global = src.Widths.Global

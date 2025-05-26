@@ -136,12 +136,17 @@ type Control struct {
 	Hide State
 }
 
-// Behavior defines table behavior settings that control features like auto-hiding columns and trimming spaces.
+// Behavior defines settings that control table rendering behaviors, such as column visibility and content formatting.
 type Behavior struct {
-	AutoHide  State // Controls whether empty columns are automatically hidden (ignored in streaming mode)
-	TrimSpace State // Controls whether leading/trailing spaces are trimmed from cell content
-	Header    Control
-	Footer    Control
+	AutoHide  State // AutoHide determines whether empty columns are hidden. Ignored in streaming mode.
+	TrimSpace State // TrimSpace enables trimming of leading and trailing spaces from cell content.
+
+	Header Control // Header specifies control settings for the table header.
+	Footer Control // Footer specifies control settings for the table footer.
+
+	// Compact enables optimized width calculation for merged cells, such as in horizontal merges,
+	// by systematically determining the most efficient width instead of scaling by the number of columns.
+	Compact State
 }
 
 // Padding defines the spacing characters around cell content in all four directions.

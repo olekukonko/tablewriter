@@ -154,7 +154,7 @@ func TestBatchGlobalWidthScaling(t *testing.T) {
 		},
 		Row: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				AutoWrap: tw.WrapTruncate,
+				AutoWrap: tw.WrapNormal,
 			},
 		},
 	}), tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
@@ -178,13 +178,12 @@ func TestBatchGlobalWidthScaling(t *testing.T) {
 	// Col 1: 6 (content=4, pad=1+1, sep=1)
 	// Col 2: 6 (content=4, pad=1+1)
 	expected := `
-	┌──────┬──────┬──────┐
-	│ NAME │ AGE  │ CITY │
-	├──────┼──────┼──────┤
-	│ Alic │ 25   │ New  │
-	│ Bob  │ 30   │ Bost │
-	└──────┴──────┴──────┘
-
+	┌──────┬─────┬───────┐
+	│ NAME │ AGE │ CITY  │
+	├──────┼─────┼───────┤
+	│ Alic │ 25  │ New Y │
+	│ Bob  │ 30  │ Bosto │
+	└──────┴─────┴───────┘
 `
 	if !visualCheck(t, "BatchGlobalWidthScaling", buf.String(), expected) {
 		t.Error(table.Debug())
@@ -281,6 +280,31 @@ func TestWrapBreakWithConstrainedWidthsNoRightPadding(t *testing.T) {
 	└────┴────┴──────┴───────┘
 `
 	if !visualCheck(t, "WrapBreakWithConstrainedWidthsNoRightPadding", buf.String(), expected) {
+		t.Error(table.Debug())
+	}
+}
+
+func TestCompatMode(t *testing.T) {
+	var buf bytes.Buffer
+	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
+		Header:   tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal}},
+		Behavior: tw.Behavior{Compact: tw.On},
+	}))
+
+	x := "This is a long header that makes the table look too wide"
+	table.Header([]string{x, x})
+	table.Append([]string{"Key", "Value"})
+	table.Render()
+
+	expected := `
+	┌──────────────────────────────────────────────────────────┐
+	│ THIS IS A LONG HEADER THAT MAKES THE TABLE LOOK TOO WIDE │
+	├───────────────────────────┬──────────────────────────────┤
+	│ Key                       │ Value                        │
+	└───────────────────────────┴──────────────────────────────┘
+
+`
+	if !visualCheck(t, "BatchGlobalWidthScaling", buf.String(), expected) {
 		t.Error(table.Debug())
 	}
 }
