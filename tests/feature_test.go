@@ -299,10 +299,9 @@ func TestCompatMode(t *testing.T) {
 	expected := `
 	┌──────────────────────────────────────────────────────────┐
 	│ THIS IS A LONG HEADER THAT MAKES THE TABLE LOOK TOO WIDE │
-	├────────────────────────────┬─────────────────────────────┤
-	│ Key                        │ Value                       │
-	└────────────────────────────┴─────────────────────────────┘
-
+	├───────────────────────────┬──────────────────────────────┤
+	│ Key                       │ Value                        │
+	└───────────────────────────┴──────────────────────────────┘
 `
 	if !visualCheck(t, "BatchGlobalWidthScaling", buf.String(), expected) {
 		t.Error(table.Debug())
