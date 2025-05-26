@@ -15,6 +15,8 @@ const (
 	Skip    = ""
 	Space   = " "
 	NewLine = "\n"
+	Column  = ":"
+	Dash    = "-"
 )
 
 // Feature State Constants

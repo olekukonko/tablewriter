@@ -260,3 +260,29 @@ func TestMarkdownWithFooter(t *testing.T) {
 `
 	visualCheck(t, "MarkdownWithFooter", buf.String(), expected)
 }
+
+func TestMarkdownAlignmentNone(t *testing.T) {
+	t.Run("AlignNone", func(t *testing.T) {
+		var buf bytes.Buffer
+		table := tablewriter.NewTable(&buf, tablewriter.WithRenderer(renderer.NewMarkdown()))
+		table.Configure(func(cfg *tablewriter.Config) {
+			cfg.Header.Alignment.PerColumn = []tw.Align{tw.AlignNone}
+			cfg.Row.Alignment.PerColumn = []tw.Align{tw.AlignNone}
+			cfg.Debug = true
+		})
+		table.Header([]string{"Header"})
+		table.Append([]string{"Data"})
+		table.Render()
+
+		expected := `
+            | HEADER |
+            |--------|
+            | Data   |
+
+
+`
+		if !visualCheck(t, "AlignNone", buf.String(), expected) {
+			t.Fatal(table.Debug())
+		}
+	})
+}
