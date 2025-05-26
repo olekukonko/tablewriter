@@ -1875,17 +1875,54 @@ func (t *Table) renderHeader(ctx *renderContext, mctx *mergeContext) error {
 
 	if cfg.Settings.Lines.ShowHeaderLine.Enabled() && (len(ctx.rowLines) > 0 || len(ctx.footerLines) > 0) {
 		ctx.logger.Debug("Rendering header separator line")
-		hctx.rowIdx = 0
-		hctx.lineIdx = len(ctx.headerLines) - 1
-		hctx.line = padLine(ctx.headerLines[hctx.lineIdx], ctx.numCols)
-		hctx.location = tw.LocationMiddle
 		resp := t.buildCellContexts(ctx, mctx, hctx, colAligns, colPadding)
+
+		var nextSectionCells map[int]tw.CellContext
+		var nextSectionWidths tw.Mapper[int, int]
+
+		if len(ctx.rowLines) > 0 {
+			nextSectionWidths = ctx.widths[tw.Row]
+			rowColAligns := t.buildAligns(t.config.Row)
+			rowColPadding := t.buildPadding(t.config.Row.Padding)
+			firstRowHctx := &helperContext{
+				position: tw.Row,
+				rowIdx:   0,
+				lineIdx:  0,
+			}
+			if len(ctx.rowLines[0]) > 0 {
+				firstRowHctx.line = padLine(ctx.rowLines[0][0], ctx.numCols)
+			} else {
+				firstRowHctx.line = make([]string, ctx.numCols)
+			}
+			firstRowResp := t.buildCellContexts(ctx, mctx, firstRowHctx, rowColAligns, rowColPadding)
+			nextSectionCells = firstRowResp.cells
+		} else if len(ctx.footerLines) > 0 {
+			nextSectionWidths = ctx.widths[tw.Row]
+			footerColAligns := t.buildAligns(t.config.Footer)
+			footerColPadding := t.buildPadding(t.config.Footer.Padding)
+			firstFooterHctx := &helperContext{
+				position: tw.Footer,
+				rowIdx:   0,
+				lineIdx:  0,
+			}
+			if len(ctx.footerLines) > 0 {
+				firstFooterHctx.line = padLine(ctx.footerLines[0], ctx.numCols)
+			} else {
+				firstFooterHctx.line = make([]string, ctx.numCols)
+			}
+			firstFooterResp := t.buildCellContexts(ctx, mctx, firstFooterHctx, footerColAligns, footerColPadding)
+			nextSectionCells = firstFooterResp.cells
+		} else {
+			nextSectionWidths = ctx.widths[tw.Header]
+			nextSectionCells = nil
+		}
+
 		f.Line(tw.Formatting{
 			Row: tw.RowContext{
-				Widths:   ctx.widths[tw.Header],
+				Widths:   nextSectionWidths,
 				Current:  resp.cells,
 				Previous: resp.prevCells,
-				Next:     resp.nextCells,
+				Next:     nextSectionCells,
 				Position: tw.Header,
 				Location: tw.LocationMiddle,
 			},
