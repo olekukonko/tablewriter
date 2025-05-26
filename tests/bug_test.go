@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
 	"testing"
 )
@@ -299,4 +300,48 @@ func TestBug267(t *testing.T) {
 
 	})
 
+}
+
+func TestBug271(t *testing.T) {
+	var buf bytes.Buffer
+	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
+		Header: tw.CellConfig{
+			Formatting: tw.CellFormatting{
+				MergeMode: tw.MergeHorizontal,
+			},
+		},
+		Footer: tw.CellConfig{
+			Formatting: tw.CellFormatting{
+				MergeMode: tw.MergeHorizontal,
+			},
+			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft},
+		},
+	}),
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
+			Settings: tw.Settings{
+				Separators: tw.Separators{
+					BetweenRows: tw.On,
+				},
+			},
+		})),
+	)
+	table.Header([]string{"Info", "Info", "Info", "Info"})
+	table.Append([]string{"1/1/2014", "Domain name", "Successful", "Successful"})
+	table.Footer([]string{"", "", "TOTAL", "$145.93"}) // Fixed from Append
+	table.Render()
+
+	expected := `
+        ┌──────────────────────────────────────────────────┐
+        │                       INFO                       │
+        ├──────────┬─────────────┬────────────┬────────────┤
+        │ 1/1/2014 │ Domain name │ Successful │ Successful │
+        ├──────────┴─────────────┴────────────┼────────────┤
+        │                               TOTAL │ $145.93    │
+        └─────────────────────────────────────┴────────────┘
+
+`
+	check := visualCheck(t, "HorizontalMergeAlignFooter", buf.String(), expected)
+	if !check {
+		t.Error(table.Debug())
+	}
 }
