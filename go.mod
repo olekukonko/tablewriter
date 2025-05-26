@@ -11,7 +11,7 @@ require (
 require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
-	github.com/olekukonko/ll v0.0.8-0.20250516010636-22ea57d81985 // indirect
+	github.com/olekukonko/ll v0.0.8 // indirect
 	github.com/olekukonko/ts v0.0.0-20171002115256-78ecb04241c0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	golang.org/x/sys v0.12.0 // indirect
