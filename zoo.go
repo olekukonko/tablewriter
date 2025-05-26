@@ -578,7 +578,7 @@ func (t *Table) buildPaddingLineContents(padChar string, widths tw.Mapper[int, i
 // Returns an error if width calculation fails.
 func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 	ctx.logger.Debugf("calculateAndNormalizeWidths: Computing and normalizing widths for %d columns. Compact: %v",
-		ctx.numCols, t.config.Behavior.Compact.Enabled())
+		ctx.numCols, t.config.Behavior.Compact.Merge.Enabled())
 
 	// Initialize width maps
 	//t.headerWidths = tw.NewMapper[int, int]()
@@ -665,7 +665,7 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 		} else {
 			maxRowFooterWidth := tw.Max(t.rowWidths.Get(i), t.footerWidths.Get(i))
 			headerCellOriginalWidth := t.headerWidths.Get(i)
-			if t.config.Behavior.Compact.Enabled() &&
+			if t.config.Behavior.Compact.Merge.Enabled() &&
 				t.config.Header.Formatting.MergeMode&tw.MergeHorizontal != 0 &&
 				headerMergeSpans != nil {
 				isColInHeaderMerge := false

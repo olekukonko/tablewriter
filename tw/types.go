@@ -136,6 +136,11 @@ type Control struct {
 	Hide State
 }
 
+// Compact configures compact width optimization for merged cells.
+type Compact struct {
+	Merge State // Merge enables compact width calculation during cell merging, optimizing space allocation.
+}
+
 // Behavior defines settings that control table rendering behaviors, such as column visibility and content formatting.
 type Behavior struct {
 	AutoHide  State // AutoHide determines whether empty columns are hidden. Ignored in streaming mode.
@@ -146,7 +151,7 @@ type Behavior struct {
 
 	// Compact enables optimized width calculation for merged cells, such as in horizontal merges,
 	// by systematically determining the most efficient width instead of scaling by the number of columns.
-	Compact State
+	Compact Compact
 }
 
 // Padding defines the spacing characters around cell content in all four directions.
