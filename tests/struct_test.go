@@ -58,19 +58,15 @@ func TestStructTableWithDB(t *testing.T) {
 	config := tablewriter.Config{
 		Header: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				Alignment:  tw.AlignCenter,
 				AutoFormat: tw.On,
 			},
+			Alignment: tw.CellAlignment{Global: tw.AlignCenter},
 		},
 		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				Alignment: tw.AlignLeft,
-			},
+			Alignment: tw.CellAlignment{Global: tw.AlignLeft},
 		},
 		Footer: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				Alignment: tw.AlignRight,
-			},
+			Alignment: tw.CellAlignment{Global: tw.AlignRight},
 		},
 	}
 

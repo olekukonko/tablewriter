@@ -97,9 +97,9 @@ func TestStreamBasic(t *testing.T) {
 		buf.Reset()
 		st := createStreamTable(t, &buf,
 			tablewriter.WithConfig(tablewriter.Config{
-				Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
-				Row:    tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}},
-				Footer: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}}}),
+				Header: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}},
+				Row:    tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignLeft}},
+				Footer: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignLeft}}}),
 			tablewriter.WithDebug(false),
 			tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
 		)
@@ -140,9 +140,9 @@ func TestStreamBasic(t *testing.T) {
 		buf.Reset()
 		st := createStreamTable(t, &buf,
 			tablewriter.WithConfig(tablewriter.Config{
-				Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
-				Row:    tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}},
-				Footer: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignRight}}}),
+				Header: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}},
+				Row:    tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignLeft}},
+				Footer: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignRight}}}),
 			tablewriter.WithDebug(false),
 			tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
 		)
@@ -186,14 +186,18 @@ func TestStreamBasic(t *testing.T) {
 func TestStreamWithFooterAlign(t *testing.T) {
 	var buf bytes.Buffer
 	st := createStreamTable(t, &buf, tablewriter.WithConfig(tablewriter.Config{
-		Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
+		Header: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}},
 		Row: tw.CellConfig{
-			Formatting:   tw.CellFormatting{Alignment: tw.AlignLeft},
-			ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignCenter, tw.AlignRight},
+			Alignment: tw.CellAlignment{
+				Global:    tw.AlignLeft,
+				PerColumn: []tw.Align{tw.AlignLeft, tw.AlignCenter, tw.AlignRight},
+			},
 		},
 		Footer: tw.CellConfig{
-			Formatting:   tw.CellFormatting{Alignment: tw.AlignRight},
-			ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignCenter, tw.AlignRight},
+			Alignment: tw.CellAlignment{
+				Global:    tw.AlignRight,
+				PerColumn: []tw.Align{tw.AlignLeft, tw.AlignCenter, tw.AlignRight},
+			},
 		},
 	}),
 		tablewriter.WithDebug(false),
@@ -234,7 +238,7 @@ func TestStreamWithFooterAlign(t *testing.T) {
 func TestStreamNoHeaderASCII(t *testing.T) {
 	var buf bytes.Buffer
 	st := tablewriter.NewTable(&buf,
-		tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}}}),
+		tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignLeft}}}),
 		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{Symbols: tw.NewSymbols(tw.StyleASCII)})),
 		tablewriter.WithDebug(false),
 		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
@@ -328,7 +332,7 @@ C │ D
 				},
 			)
 			st := tablewriter.NewTable(&buf,
-				tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}}}),
+				tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignLeft}}}),
 				tablewriter.WithRenderer(r),
 				tablewriter.WithDebug(false),
 			)
@@ -355,9 +359,12 @@ func TestStreamTruncation(t *testing.T) {
 	st := createStreamTable(t, &buf,
 		tablewriter.WithConfig(
 			tablewriter.Config{
-				Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
+				Header: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}},
 				Row: tw.CellConfig{
-					Formatting:   tw.CellFormatting{Alignment: tw.AlignLeft, AutoWrap: tw.WrapTruncate},
+					Alignment: tw.CellAlignment{
+						Global: tw.AlignLeft,
+					},
+					Formatting:   tw.CellFormatting{AutoWrap: tw.WrapTruncate},
 					ColMaxWidths: tw.CellWidth{Global: 13},
 				},
 				Stream: tw.StreamConfig{
@@ -446,8 +453,8 @@ func TestStreamCustomPadding(t *testing.T) {
 func TestStreamEmptyCells(t *testing.T) {
 	var buf bytes.Buffer
 	st := createStreamTable(t, &buf, tablewriter.WithConfig(tablewriter.Config{
-		Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
-		Row:    tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}},
+		Header: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}},
+		Row:    tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignLeft}},
 		Stream: tw.StreamConfig{
 			Enable: true,
 		},
@@ -490,7 +497,7 @@ func TestStreamEmptyCells(t *testing.T) {
 func TestStreamOnlyHeader(t *testing.T) {
 	var buf bytes.Buffer
 	st := createStreamTable(t, &buf, tablewriter.WithConfig(tablewriter.Config{
-		Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
+		Header: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}},
 	}),
 		tablewriter.WithDebug(false),
 		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}))
@@ -521,7 +528,7 @@ func TestStreamOnlyHeader(t *testing.T) {
 func TestStreamOnlyHeaderNoHeaderLine(t *testing.T) {
 	var buf bytes.Buffer
 	st := createStreamTable(t, &buf, tablewriter.WithConfig(tablewriter.Config{
-		Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
+		Header: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}},
 	}),
 		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
 	)
@@ -551,8 +558,8 @@ func TestStreamOnlyHeaderNoHeaderLine(t *testing.T) {
 func TestStreamSlowOutput(t *testing.T) {
 	var buf bytes.Buffer
 	st := createStreamTable(t, &buf, tablewriter.WithConfig(tablewriter.Config{
-		Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
-		Row:    tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}},
+		Header: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}},
+		Row:    tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignLeft}},
 	}),
 		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
 	)
@@ -599,9 +606,9 @@ func TestStreamFormating(t *testing.T) {
 
 	st := createStreamTable(t, &buf,
 		tablewriter.WithConfig(tablewriter.Config{
-			Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
-			Row:    tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}},
-			Footer: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}},
+			Header: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}},
+			Row:    tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignLeft}},
+			Footer: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignLeft}},
 			Widths: tw.CellWidth{PerColumn: map[int]int{0: 12, 1: 8, 2: 10}}}),
 
 		tablewriter.WithDebug(false),

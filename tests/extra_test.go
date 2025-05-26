@@ -70,12 +70,13 @@ func TestFilterMasking(t *testing.T) {
 			var buf bytes.Buffer
 			table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 				Header: tw.CellConfig{
-					Formatting: tw.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: tw.On},
+					Formatting: tw.CellFormatting{AutoFormat: tw.On},
+					Alignment:  tw.CellAlignment{Global: tw.AlignCenter},
 					Padding:    tw.CellPadding{Global: tw.Padding{Left: " ", Right: " "}},
 				},
 				Row: tw.CellConfig{
-					Formatting: tw.CellFormatting{Alignment: tw.AlignLeft},
-					Padding:    tw.CellPadding{Global: tw.Padding{Left: " ", Right: " "}},
+					Alignment: tw.CellAlignment{Global: tw.AlignLeft},
+					Padding:   tw.CellPadding{Global: tw.Padding{Left: " ", Right: " "}},
 					Filter: tw.CellFilter{
 						Global: tt.filter,
 					},
@@ -102,9 +103,7 @@ func TestMasterClass(t *testing.T) {
 	littleConfig := tablewriter.Config{
 		MaxWidth: 30,
 		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				Alignment: tw.AlignCenter,
-			},
+			Alignment: tw.CellAlignment{Global: tw.AlignCenter},
 			Padding: tw.CellPadding{
 				Global: tw.Padding{Left: tw.Skip, Right: tw.Skip, Top: tw.Skip, Bottom: tw.Skip},
 			},
@@ -117,9 +116,7 @@ func TestMasterClass(t *testing.T) {
 			AutoWrap: tw.WrapTruncate,
 		}},
 		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				Alignment: tw.AlignCenter,
-			},
+			Alignment: tw.CellAlignment{Global: tw.AlignCenter},
 			Padding: tw.CellPadding{
 				Global: tw.Padding{Left: tw.Skip, Right: tw.Skip, Top: tw.Skip, Bottom: tw.Skip},
 			},
@@ -353,8 +350,8 @@ func TestEmojiTable(t *testing.T) {
 	table.Bulk(data)
 	table.Footer([]string{"", "Total 👥", "3"})
 	table.Configure(func(config *tablewriter.Config) {
-		config.Row.Formatting.Alignment = tw.AlignLeft
-		config.Footer.Formatting.Alignment = tw.AlignRight
+		config.Row.Alignment.Global = tw.AlignLeft
+		config.Footer.Alignment.Global = tw.AlignRight
 	})
 	table.Render()
 

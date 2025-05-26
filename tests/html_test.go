@@ -42,15 +42,15 @@ func TestHTMLWithFooterAndAlignment(t *testing.T) {
 		tablewriter.WithRenderer(renderer.NewHTML()),
 		tablewriter.WithHeaderConfig(tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				Alignment:  tw.AlignCenter,
 				AutoFormat: tw.Off,
 			},
+			Alignment: tw.CellAlignment{Global: tw.AlignCenter},
 		}),
 		tablewriter.WithRowConfig(tw.CellConfig{
-			ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignRight, tw.AlignCenter},
+			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignLeft, tw.AlignRight, tw.AlignCenter}},
 		}),
 		tablewriter.WithFooterConfig(tw.CellConfig{
-			Formatting: tw.CellFormatting{Alignment: tw.AlignRight},
+			Alignment: tw.CellAlignment{Global: tw.AlignRight},
 		}),
 	)
 	table.Header([]string{"Item", "Qty", "Price"})
@@ -289,8 +289,8 @@ func TestHTMLHierarchicalMerge(t *testing.T) {
 		tablewriter.WithHeaderConfig(tw.CellConfig{
 			Formatting: tw.CellFormatting{
 				AutoFormat: tw.Off,
-				Alignment:  tw.AlignCenter,
 			},
+			Alignment: tw.CellAlignment{Global: tw.AlignCenter},
 		}),
 	)
 	table.Header([]string{"L1", "L2", "L3"})
@@ -364,7 +364,8 @@ func TestHTMLCSSClasses(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewHTML(htmlCfg)),
 		tablewriter.WithHeaderConfig(tw.CellConfig{
-			Formatting: tw.CellFormatting{AutoFormat: tw.Off, Alignment: tw.AlignCenter},
+			Formatting: tw.CellFormatting{AutoFormat: tw.Off},
+			Alignment:  tw.CellAlignment{Global: tw.AlignCenter},
 		}),
 	)
 	table.Header([]string{"H1"})

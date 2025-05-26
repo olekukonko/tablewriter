@@ -88,7 +88,7 @@ func TestColorizedCustomColors(t *testing.T) {
 			},
 		})),
 		tablewriter.WithFooterConfig(tw.CellConfig{
-			ColumnAligns: []tw.Align{tw.AlignRight, tw.AlignCenter}, // Align "1" to center
+			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignRight, tw.AlignCenter}},
 		}),
 	)
 	table.Header([]string{"Name", "Age"})
@@ -116,9 +116,9 @@ func TestColorizedLongValues(t *testing.T) {
 	c := tablewriter.Config{
 		Row: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				AutoWrap:  tw.WrapNormal,
-				Alignment: tw.AlignLeft,
+				AutoWrap: tw.WrapNormal,
 			},
+			Alignment:    tw.CellAlignment{Global: tw.AlignLeft},
 			ColMaxWidths: tw.CellWidth{Global: 20},
 		},
 	}

@@ -418,23 +418,23 @@ func TestLongValues(t *testing.T) {
 	c := tablewriter.Config{
 		Header: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				Alignment:  tw.AlignCenter,
 				AutoFormat: tw.On,
 			},
+			Alignment:    tw.CellAlignment{Global: tw.AlignCenter},
 			ColMaxWidths: tw.CellWidth{Global: 30},
 		},
 		Row: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				AutoWrap:  tw.WrapNormal,
-				Alignment: tw.AlignLeft,
+				AutoWrap: tw.WrapNormal,
 			},
+			Alignment:    tw.CellAlignment{Global: tw.AlignLeft},
 			ColMaxWidths: tw.CellWidth{Global: 30},
 		},
 		Footer: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				Alignment: tw.AlignRight,
+			Alignment: tw.CellAlignment{
+				Global:    tw.AlignRight,
+				PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.Skip, tw.AlignLeft},
 			},
-			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.Skip, tw.AlignLeft},
 		},
 	}
 
@@ -487,21 +487,19 @@ func TestWrapping(t *testing.T) {
 	c := tablewriter.Config{
 		Header: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				Alignment:  tw.AlignCenter,
 				AutoFormat: tw.On,
 			},
+			Alignment: tw.CellAlignment{Global: tw.AlignCenter},
 		},
 		Row: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				AutoWrap:  tw.WrapBreak,
-				Alignment: tw.AlignLeft,
+				AutoWrap: tw.WrapBreak,
 			},
+			Alignment:    tw.CellAlignment{Global: tw.AlignLeft},
 			ColMaxWidths: tw.CellWidth{Global: 33},
 		},
 		Footer: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				Alignment: tw.AlignRight,
-			},
+			Alignment:    tw.CellAlignment{Global: tw.AlignRight},
 			ColMaxWidths: tw.CellWidth{Global: 30},
 		},
 	}
@@ -537,26 +535,24 @@ func TestTableWithCustomPadding(t *testing.T) {
 	c := tablewriter.Config{
 		Header: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				Alignment:  tw.AlignCenter,
 				AutoFormat: tw.On,
 			},
+			Alignment: tw.CellAlignment{Global: tw.AlignCenter},
 			Padding: tw.CellPadding{
 				Global: tw.Padding{Left: " ", Right: " ", Top: "^", Bottom: "^"},
 			},
 		},
 		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				Alignment: tw.AlignCenter,
-			},
+			Alignment: tw.CellAlignment{Global: tw.AlignCenter},
 			Padding: tw.CellPadding{
 				Global: tw.Padding{Left: "L", Right: "R", Top: "T", Bottom: "B"},
 			},
 		},
 		Footer: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				Alignment:  tw.AlignCenter,
 				AutoFormat: tw.On,
 			},
+			Alignment: tw.CellAlignment{Global: tw.AlignCenter},
 			Padding: tw.CellPadding{
 				Global: tw.Padding{Left: "*", Right: "*", Top: "", Bottom: ""},
 			},
@@ -653,7 +649,11 @@ C │ D
 				},
 			)
 			st := tablewriter.NewTable(&buf,
-				tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}}, Widths: tw.CellWidth{PerColumn: widths}}),
+				tablewriter.WithConfig(tablewriter.Config{
+					Row: tw.CellConfig{
+						Alignment: tw.CellAlignment{Global: tw.AlignLeft},
+					},
+					Widths: tw.CellWidth{PerColumn: widths}}),
 				tablewriter.WithRenderer(r),
 				tablewriter.WithDebug(false),
 				tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
@@ -784,7 +784,7 @@ func TestAlignmentMigration(t *testing.T) {
 		buf.Reset()
 		table := tablewriter.NewTable(buf)
 		table.Configure(func(cfg *tablewriter.Config) {
-			cfg.Footer.Formatting.Alignment = tw.AlignRight
+			cfg.Footer.Alignment.Global = tw.AlignRight
 			cfg.Stream.Enable = true
 		})
 		table.Start()
@@ -809,5 +809,4 @@ func TestAlignmentMigration(t *testing.T) {
 			t.Fatal("StreamBasic rendering failed")
 		}
 	})
-
 }

@@ -35,7 +35,7 @@ func TestMarkdownAlignment(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewMarkdown()),
 		tablewriter.WithConfig(tablewriter.Config{Header: tw.CellConfig{
-			ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignRight, tw.AlignRight, tw.AlignCenter}},
+			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignLeft, tw.AlignRight, tw.AlignRight, tw.AlignCenter}}},
 		}),
 	)
 	table.Header([]string{"Name", "Age", "City", "Status"})
@@ -61,7 +61,7 @@ func TestMarkdownNoBorders(t *testing.T) {
 			Borders: tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
 		})),
 		tablewriter.WithConfig(tablewriter.Config{Header: tw.CellConfig{
-			ColumnAligns: []tw.Align{tw.AlignLeft}},
+			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignLeft}}},
 		}),
 	)
 
@@ -134,9 +134,9 @@ func TestMarkdownLongValues(t *testing.T) {
 	c := tablewriter.Config{
 		Row: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				AutoWrap:  tw.WrapNormal,
-				Alignment: tw.AlignLeft,
+				AutoWrap: tw.WrapNormal,
 			},
+			Alignment:    tw.CellAlignment{Global: tw.AlignLeft},
 			ColMaxWidths: tw.CellWidth{Global: 20},
 		},
 	}
@@ -238,9 +238,7 @@ func TestMarkdownWithFooter(t *testing.T) {
 	var buf bytes.Buffer
 	c := tablewriter.Config{
 		Footer: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				Alignment: tw.AlignRight,
-			},
+			Alignment: tw.CellAlignment{Global: tw.AlignRight},
 		},
 	}
 	table := tablewriter.NewTable(&buf,

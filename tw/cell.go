@@ -10,6 +10,7 @@ type CellFormatting struct {
 	AutoFormat State // Enables automatic formatting (e.g., title case for headers)
 
 	// Deprecated: kept for compatibility
+	// will be removed soon
 	Alignment Align // Text alignment within the cell (e.g., Left, Right, Center)
 
 }
@@ -49,6 +50,7 @@ type CellConfig struct {
 	ColMaxWidths CellWidth      // Per-column maximum width overrides
 
 	// Deprecated: use Alignment.PerColumn instead. Will be removed in a future version.
+	// will be removed soon
 	ColumnAligns []Align // Per-column alignment overrides
 }
 
