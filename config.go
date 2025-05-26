@@ -960,13 +960,13 @@ func WithPadding(padding tw.Padding) Option {
 // WithRendition allows updating the active renderer's rendition configuration
 // by merging the provided rendition.
 // If the renderer does not implement tw.Renditioning, a warning is logged.
+// This should be used with Option as it requires renderer to be initiated and set first
 func WithRendition(rendition tw.Rendition) Option {
 	return func(target *Table) {
 		if target.renderer == nil {
 			target.logger.Warn("Option: WithRendition: No renderer set on table.")
 			return
 		}
-
 		if ru, ok := target.renderer.(tw.Renditioning); ok {
 			ru.Rendition(rendition)
 			target.logger.Debugf("Option: WithRendition: Applied to renderer via Renditioning.SetRendition(): %+v", rendition)
