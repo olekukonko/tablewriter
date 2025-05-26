@@ -2,13 +2,16 @@ package tw
 
 // CellFormatting holds formatting options for table cells.
 type CellFormatting struct {
-	Alignment Align // Text alignment within the cell (e.g., Left, Right, Center)
-	AutoWrap  int   // Wrapping behavior (e.g., WrapTruncate, WrapNormal)
-	MergeMode int   // Bitmask for merge behavior (e.g., MergeHorizontal, MergeVertical)
+	AutoWrap  int // Wrapping behavior (e.g., WrapTruncate, WrapNormal)
+	MergeMode int // Bitmask for merge behavior (e.g., MergeHorizontal, MergeVertical)
 
 	// Changed form bool to State
 	// See https://github.com/olekukonko/tablewriter/issues/261
 	AutoFormat State // Enables automatic formatting (e.g., title case for headers)
+
+	// Deprecated: kept for compatibility
+	Alignment Align // Text alignment within the cell (e.g., Left, Right, Center)
+
 }
 
 // CellPadding defines padding settings for table cells.
@@ -30,14 +33,23 @@ type CellCallbacks struct {
 	PerColumn []func() // Column-specific callbacks
 }
 
+// CellAlignment defines alignment settings for table cells.
+type CellAlignment struct {
+	Global    Align   // Default alignment applied to all cells
+	PerColumn []Align // Column-specific alignment overrides
+}
+
 // CellConfig combines formatting, padding, and callback settings for a table section.
 type CellConfig struct {
 	Formatting   CellFormatting // Cell formatting options
 	Padding      CellPadding    // Padding configuration
 	Callbacks    CellCallbacks  // Callback functions (unused)
 	Filter       CellFilter     // Function to filter cell content (renamed from Filter Filter)
-	ColumnAligns []Align        // Per-column alignment overrides
+	Alignment    CellAlignment  // Alignment configuration for cells
 	ColMaxWidths CellWidth      // Per-column maximum width overrides
+
+	// Deprecated: use Alignment.PerColumn instead. Will be removed in a future version.
+	ColumnAligns []Align // Per-column alignment overrides
 }
 
 type CellWidth struct {

@@ -38,3 +38,36 @@ func WithRendererSettings(settings tw.Settings) Option {
 		}
 	}
 }
+
+// Deprecated: this will remove in the next version
+// WithAlignment sets the text alignment for footer cells.
+// Invalid alignments are ignored.
+func (ff *FooterFormattingBuilder) WithAlignment(align tw.Align) *FooterFormattingBuilder {
+	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
+		return ff
+	}
+	ff.config.Alignment = align
+	return ff
+}
+
+// Deprecated: this will remove in the next version
+// WithAlignment sets the text alignment for header cells.
+// Invalid alignments are ignored.
+func (hf *HeaderFormattingBuilder) WithAlignment(align tw.Align) *HeaderFormattingBuilder {
+	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
+		return hf
+	}
+	hf.config.Alignment = align
+	return hf
+}
+
+// Deprecated: this will remove in the next version
+// WithAlignment sets the text alignment for row cells.
+// Invalid alignments are ignored.
+func (rf *RowFormattingBuilder) WithAlignment(align tw.Align) *RowFormattingBuilder {
+	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
+		return rf
+	}
+	rf.config.Alignment = align
+	return rf
+}

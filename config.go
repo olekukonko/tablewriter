@@ -37,13 +37,22 @@ func (c *ColumnConfigBuilder) WithAlignment(align tw.Align) *ColumnConfigBuilder
 	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
 		return c
 	}
-	// Ensure the ColumnAligns slice is large enough to accommodate the column index
-	if len(c.parent.config.Header.ColumnAligns) <= c.col {
+	// Update new Alignment.PerColumn
+	if len(c.parent.config.Header.Alignment.PerColumn) <= c.col {
 		newAligns := make([]tw.Align, c.col+1)
-		copy(newAligns, c.parent.config.Header.ColumnAligns)
-		c.parent.config.Header.ColumnAligns = newAligns
+		copy(newAligns, c.parent.config.Header.Alignment.PerColumn)
+		c.parent.config.Header.Alignment.PerColumn = newAligns
 	}
-	c.parent.config.Header.ColumnAligns[c.col] = align
+	c.parent.config.Header.Alignment.PerColumn[c.col] = align
+
+	// Update deprecated ColumnAligns for compatibility
+	//if len(c.parent.config.Header.ColumnAligns) <= c.col {
+	//	newAligns := make([]tw.Align, c.col+1)
+	//	copy(newAligns, c.parent.config.Header.ColumnAligns)
+	//	c.parent.config.Header.ColumnAligns = newAligns
+	//}
+	//c.parent.config.Header.ColumnAligns[c.col] = align
+	// c.parent.logger.Warnf("Setting ColumnAligns for column %d is deprecated. Use Alignment.PerColumn instead.", c.col)
 	return c
 }
 
@@ -128,7 +137,8 @@ func (b *ConfigBuilder) WithFooterAlignment(align tw.Align) *ConfigBuilder {
 	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
 		return b
 	}
-	b.config.Footer.Formatting.Alignment = align
+	//b.config.Footer.Formatting.Alignment = align
+	b.config.Footer.Alignment.Global = align
 	return b
 }
 
@@ -180,7 +190,12 @@ func (b *ConfigBuilder) WithHeaderAlignment(align tw.Align) *ConfigBuilder {
 	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
 		return b
 	}
-	b.config.Header.Formatting.Alignment = align
+
+	// Update new Alignment.Global
+	b.config.Header.Alignment.Global = align
+
+	// Update deprecated Formatting.Alignment for compatibility
+	// b.config.Header.Formatting.Alignment = align
 	return b
 }
 
@@ -243,7 +258,8 @@ func (b *ConfigBuilder) WithRowAlignment(align tw.Align) *ConfigBuilder {
 	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
 		return b
 	}
-	b.config.Row.Formatting.Alignment = align
+	// b.config.Row.Formatting.Alignment = align
+	b.config.Row.Alignment.Global = align
 	return b
 }
 
@@ -336,16 +352,6 @@ type FooterFormattingBuilder struct {
 // Build returns the parent FooterConfigBuilder for chaining.
 func (ff *FooterFormattingBuilder) Build() *FooterConfigBuilder {
 	return ff.parent
-}
-
-// WithAlignment sets the text alignment for footer cells.
-// Invalid alignments are ignored.
-func (ff *FooterFormattingBuilder) WithAlignment(align tw.Align) *FooterFormattingBuilder {
-	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
-		return ff
-	}
-	ff.config.Alignment = align
-	return ff
 }
 
 // WithAutoFormat enables or disables automatic formatting for footer cells.
@@ -454,16 +460,6 @@ type HeaderFormattingBuilder struct {
 // Build returns the parent HeaderConfigBuilder for chaining.
 func (hf *HeaderFormattingBuilder) Build() *HeaderConfigBuilder {
 	return hf.parent
-}
-
-// WithAlignment sets the text alignment for header cells.
-// Invalid alignments are ignored.
-func (hf *HeaderFormattingBuilder) WithAlignment(align tw.Align) *HeaderFormattingBuilder {
-	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
-		return hf
-	}
-	hf.config.Alignment = align
-	return hf
 }
 
 // WithAutoFormat enables or disables automatic formatting for header cells.
@@ -575,16 +571,6 @@ type RowFormattingBuilder struct {
 // Build returns the parent RowConfigBuilder for chaining.
 func (rf *RowFormattingBuilder) Build() *RowConfigBuilder {
 	return rf.parent
-}
-
-// WithAlignment sets the text alignment for row cells.
-// Invalid alignments are ignored.
-func (rf *RowFormattingBuilder) WithAlignment(align tw.Align) *RowFormattingBuilder {
-	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
-		return rf
-	}
-	rf.config.Alignment = align
-	return rf
 }
 
 // WithAutoFormat enables or disables automatic formatting for row cells.
@@ -787,7 +773,7 @@ func WithHeaderAlignment(align tw.Align) Option {
 		if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
 			return
 		}
-		target.config.Header.Formatting.Alignment = align
+		target.config.Header.Alignment.Global = align
 		if target.logger != nil {
 			target.logger.Debugf("Option: WithHeaderAlignment applied to Table: %v", align)
 		}
@@ -942,9 +928,9 @@ func WithFooterControl(control tw.Control) Option {
 // WithAlignment sets the default column alignment for the header, rows, and footer.
 func WithAlignment(alignment tw.Alignment) Option {
 	return func(target *Table) {
-		target.config.Header.ColumnAligns = alignment
-		target.config.Row.ColumnAligns = alignment
-		target.config.Footer.ColumnAligns = alignment
+		target.config.Header.Alignment.PerColumn = alignment
+		target.config.Row.Alignment.PerColumn = alignment
+		target.config.Footer.Alignment.PerColumn = alignment
 	}
 }
 
@@ -978,40 +964,48 @@ func WithRendition(rendition tw.Rendition) Option {
 
 // defaultConfig returns a default Config with sensible settings for headers, rows, footers, and behavior.
 func defaultConfig() Config {
-
 	return Config{
 		MaxWidth: 0,
 		Header: tw.CellConfig{
 			Formatting: tw.CellFormatting{
 				AutoWrap:   tw.WrapTruncate,
-				Alignment:  tw.AlignCenter,
 				AutoFormat: tw.On,
 				MergeMode:  tw.MergeNone,
 			},
 			Padding: tw.CellPadding{
 				Global: tw.PaddingDefault,
 			},
+			Alignment: tw.CellAlignment{
+				Global:    tw.AlignCenter,
+				PerColumn: []tw.Align{},
+			},
 		},
 		Row: tw.CellConfig{
 			Formatting: tw.CellFormatting{
 				AutoWrap:   tw.WrapNormal,
-				Alignment:  tw.AlignLeft,
 				AutoFormat: tw.Off,
 				MergeMode:  tw.MergeNone,
 			},
 			Padding: tw.CellPadding{
 				Global: tw.PaddingDefault,
+			},
+			Alignment: tw.CellAlignment{
+				Global:    tw.AlignLeft,
+				PerColumn: []tw.Align{},
 			},
 		},
 		Footer: tw.CellConfig{
 			Formatting: tw.CellFormatting{
 				AutoWrap:   tw.WrapNormal,
-				Alignment:  tw.AlignRight,
 				AutoFormat: tw.Off,
 				MergeMode:  tw.MergeNone,
 			},
 			Padding: tw.CellPadding{
 				Global: tw.PaddingDefault,
+			},
+			Alignment: tw.CellAlignment{
+				Global:    tw.AlignRight,
+				PerColumn: []tw.Align{},
 			},
 		},
 		Stream: tw.StreamConfig{},
@@ -1029,6 +1023,7 @@ func mergeCellConfig(dst, src tw.CellConfig) tw.CellConfig {
 	if src.Formatting.Alignment != tw.Empty {
 		dst.Formatting.Alignment = src.Formatting.Alignment
 	}
+
 	if src.Formatting.AutoWrap != 0 {
 		dst.Formatting.AutoWrap = src.Formatting.AutoWrap
 	}
@@ -1087,6 +1082,25 @@ func mergeCellConfig(dst, src tw.CellConfig) tw.CellConfig {
 			}
 		}
 	}
+
+	// Merge Alignment
+	if src.Alignment.Global != tw.Empty {
+		dst.Alignment.Global = src.Alignment.Global
+	}
+
+	if len(src.Alignment.PerColumn) > 0 {
+		if dst.Alignment.PerColumn == nil {
+			dst.Alignment.PerColumn = make([]tw.Align, len(src.Alignment.PerColumn))
+		} else if len(src.Alignment.PerColumn) > len(dst.Alignment.PerColumn) {
+			dst.Alignment.PerColumn = append(dst.Alignment.PerColumn, make([]tw.Align, len(src.Alignment.PerColumn)-len(dst.Alignment.PerColumn))...)
+		}
+		for i, align := range src.Alignment.PerColumn {
+			if align != tw.Skip {
+				dst.Alignment.PerColumn[i] = align
+			}
+		}
+	}
+
 	if len(src.ColumnAligns) > 0 {
 		if dst.ColumnAligns == nil {
 			dst.ColumnAligns = make([]tw.Align, len(src.ColumnAligns))
@@ -1099,6 +1113,7 @@ func mergeCellConfig(dst, src tw.CellConfig) tw.CellConfig {
 			}
 		}
 	}
+
 	if len(src.ColMaxWidths.PerColumn) > 0 {
 		if dst.ColMaxWidths.PerColumn == nil {
 			dst.ColMaxWidths.PerColumn = make(map[int]int)

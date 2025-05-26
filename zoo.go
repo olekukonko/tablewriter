@@ -756,19 +756,17 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 					overDistributed := (finalSumAfterExpansion + numSeparatorsInFullSpan) - actualMergedHeaderContentPhysicalWidth
 					if overDistributed > 0 {
 						ctx.logger.Debugf("Correcting over-distribution of %d", overDistributed)
+						// Sort columns for deterministic reduction
+						sortedCols := workingWidths.SortedKeys()
 						for i := 0; i < overDistributed; i++ {
-							foundColToReduce := -1
-							workingWidths.Slicer().Filter(func(p tw.KeyValuePair[int, int]) bool {
-								return p.Value > 1 && (naturalColumnWidths.Get(p.Key) < p.Value)
-							}).Each(func(p tw.KeyValuePair[int, int]) {
-								if foundColToReduce == -1 {
-									foundColToReduce = p.Key
+							// Reduce from highest-indexed column
+							for j := len(sortedCols) - 1; j >= 0; j-- {
+								col := sortedCols[j]
+								if workingWidths.Get(col) > 1 && naturalColumnWidths.Get(col) < workingWidths.Get(col) {
+									workingWidths.Set(col, workingWidths.Get(col)-1)
+									ctx.logger.Debugf("Reduced col %d by 1 to %d", col, workingWidths.Get(col))
+									break
 								}
-							})
-							if foundColToReduce != -1 {
-								workingWidths.Set(foundColToReduce, workingWidths.Get(foundColToReduce)-1)
-							} else {
-								break
 							}
 						}
 					}

@@ -33,8 +33,8 @@ func TestTable_Configure_Basic(t *testing.T) {
 	}
 
 	// Check initial default config values (examples)
-	if table.Config().Header.Formatting.Alignment != tw.AlignCenter {
-		t.Errorf("Expected initial header alignment to be Center, got %s", table.Config().Header.Formatting.Alignment)
+	if table.Config().Header.Alignment.Global != tw.AlignCenter {
+		t.Errorf("Expected initial header alignment to be Center, got %s", table.Config().Header.Alignment.Global)
 	}
 	if table.Config().Behavior.TrimSpace != tw.On { // Default from defaultConfig()
 		t.Errorf("Expected initial TrimSpace to be On, got %s", table.Config().Behavior.TrimSpace)
