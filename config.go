@@ -1,4 +1,3 @@
-// Package tablewriter provides functionality for creating and formatting tables with customizable configurations.
 package tablewriter
 
 import (
@@ -31,13 +30,13 @@ func (c *ColumnConfigBuilder) Build() *ConfigBuilder {
 	return c.parent
 }
 
-// WithAlignment sets the text alignment for a specific column in the header section only.
+// WithAlignment sets the text alignment for a specific column across all sections.
 // Invalid alignments are ignored, and the method returns the builder for chaining.
 func (c *ColumnConfigBuilder) WithAlignment(align tw.Align) *ColumnConfigBuilder {
 	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
 		return c
 	}
-	// Update new Alignment.PerColumn
+	// Update new Alignment.PerColumn for header
 	if len(c.parent.config.Header.Alignment.PerColumn) <= c.col {
 		newAligns := make([]tw.Align, c.col+1)
 		copy(newAligns, c.parent.config.Header.Alignment.PerColumn)
@@ -45,14 +44,22 @@ func (c *ColumnConfigBuilder) WithAlignment(align tw.Align) *ColumnConfigBuilder
 	}
 	c.parent.config.Header.Alignment.PerColumn[c.col] = align
 
-	// Update deprecated ColumnAligns for compatibility
-	//if len(c.parent.config.Header.ColumnAligns) <= c.col {
-	//	newAligns := make([]tw.Align, c.col+1)
-	//	copy(newAligns, c.parent.config.Header.ColumnAligns)
-	//	c.parent.config.Header.ColumnAligns = newAligns
-	//}
-	//c.parent.config.Header.ColumnAligns[c.col] = align
-	// c.parent.logger.Warnf("Setting ColumnAligns for column %d is deprecated. Use Alignment.PerColumn instead.", c.col)
+	// Update new Alignment.PerColumn for row
+	if len(c.parent.config.Row.Alignment.PerColumn) <= c.col {
+		newAligns := make([]tw.Align, c.col+1)
+		copy(newAligns, c.parent.config.Row.Alignment.PerColumn)
+		c.parent.config.Row.Alignment.PerColumn = newAligns
+	}
+	c.parent.config.Row.Alignment.PerColumn[c.col] = align
+
+	// Update new Alignment.PerColumn for footer
+	if len(c.parent.config.Footer.Alignment.PerColumn) <= c.col {
+		newAligns := make([]tw.Align, c.col+1)
+		copy(newAligns, c.parent.config.Footer.Alignment.PerColumn)
+		c.parent.config.Footer.Alignment.PerColumn = newAligns
+	}
+	c.parent.config.Footer.Alignment.PerColumn[c.col] = align
+
 	return c
 }
 
@@ -82,6 +89,14 @@ type ConfigBuilder struct {
 // Build finalizes and returns the Config struct after all modifications.
 func (b *ConfigBuilder) Build() Config {
 	return b.config
+}
+
+// Behavior returns a builder for configuring behavior settings.
+func (b *ConfigBuilder) Behavior() *BehaviorConfigBuilder {
+	return &BehaviorConfigBuilder{
+		parent: b,
+		config: &b.config.Behavior,
+	}
 }
 
 // Footer returns a builder for advanced configuration of the footer section.
@@ -137,7 +152,6 @@ func (b *ConfigBuilder) WithFooterAlignment(align tw.Align) *ConfigBuilder {
 	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
 		return b
 	}
-	//b.config.Footer.Formatting.Alignment = align
 	b.config.Footer.Alignment.Global = align
 	return b
 }
@@ -190,12 +204,7 @@ func (b *ConfigBuilder) WithHeaderAlignment(align tw.Align) *ConfigBuilder {
 	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
 		return b
 	}
-
-	// Update new Alignment.Global
 	b.config.Header.Alignment.Global = align
-
-	// Update deprecated Formatting.Alignment for compatibility
-	// b.config.Header.Formatting.Alignment = align
 	return b
 }
 
@@ -258,7 +267,6 @@ func (b *ConfigBuilder) WithRowAlignment(align tw.Align) *ConfigBuilder {
 	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
 		return b
 	}
-	// b.config.Row.Formatting.Alignment = align
 	b.config.Row.Alignment.Global = align
 	return b
 }
@@ -312,6 +320,88 @@ func (b *ConfigBuilder) WithTrimSpace(state tw.State) *ConfigBuilder {
 	return b
 }
 
+// AlignmentConfigBuilder configures alignment options for a table section.
+type AlignmentConfigBuilder struct {
+	parent  interface{}       // Reference to the parent builder (HeaderConfigBuilder, RowConfigBuilder, or FooterConfigBuilder)
+	config  *tw.CellAlignment // Alignment configuration being modified
+	section string            // Section name for logging/debugging
+}
+
+// Build returns the parent builder for chaining.
+func (a *AlignmentConfigBuilder) Build() interface{} {
+	return a.parent
+}
+
+// WithGlobal sets the global alignment for all cells in the section.
+// Invalid alignments are ignored.
+func (a *AlignmentConfigBuilder) WithGlobal(align tw.Align) *AlignmentConfigBuilder {
+	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
+		return a
+	}
+	a.config.Global = align
+	return a
+}
+
+// WithPerColumn sets per-column alignments for the section.
+// Invalid alignments are ignored.
+func (a *AlignmentConfigBuilder) WithPerColumn(alignments []tw.Align) *AlignmentConfigBuilder {
+	if len(alignments) == 0 {
+		return a
+	}
+	// Filter out invalid alignments
+	validAlignments := make([]tw.Align, len(alignments))
+	for i, align := range alignments {
+		if align == tw.AlignLeft || align == tw.AlignRight || align == tw.AlignCenter || align == tw.AlignNone {
+			validAlignments[i] = align
+		} else {
+			validAlignments[i] = tw.AlignDefault
+		}
+	}
+	a.config.PerColumn = validAlignments
+	return a
+}
+
+// BehaviorConfigBuilder configures behavior options for the table.
+type BehaviorConfigBuilder struct {
+	parent *ConfigBuilder // Reference to the parent ConfigBuilder
+	config *tw.Behavior   // Behavior configuration being modified
+}
+
+// Build returns the parent ConfigBuilder for chaining.
+func (b *BehaviorConfigBuilder) Build() *ConfigBuilder {
+	return b.parent
+}
+
+// WithAutoHide enables or disables automatic hiding of empty columns.
+func (b *BehaviorConfigBuilder) WithAutoHide(state tw.State) *BehaviorConfigBuilder {
+	b.config.AutoHide = state
+	return b
+}
+
+// WithTrimSpace enables or disables automatic trimming of leading/trailing spaces.
+func (b *BehaviorConfigBuilder) WithTrimSpace(state tw.State) *BehaviorConfigBuilder {
+	b.config.TrimSpace = state
+	return b
+}
+
+// WithHeaderControl sets the control behavior for the table header.
+func (b *BehaviorConfigBuilder) WithHeaderControl(control tw.Control) *BehaviorConfigBuilder {
+	b.config.Header = control
+	return b
+}
+
+// WithFooterControl sets the control behavior for the table footer.
+func (b *BehaviorConfigBuilder) WithFooterControl(control tw.Control) *BehaviorConfigBuilder {
+	b.config.Footer = control
+	return b
+}
+
+// WithCompactMerge enables or disables compact width optimization for merged cells.
+func (b *BehaviorConfigBuilder) WithCompactMerge(state tw.State) *BehaviorConfigBuilder {
+	b.config.Compact.Merge = state
+	return b
+}
+
 // FooterConfigBuilder provides advanced configuration options for the footer section.
 type FooterConfigBuilder struct {
 	parent  *ConfigBuilder // Reference to the parent ConfigBuilder
@@ -322,6 +412,15 @@ type FooterConfigBuilder struct {
 // Build returns the parent ConfigBuilder for chaining.
 func (f *FooterConfigBuilder) Build() *ConfigBuilder {
 	return f.parent
+}
+
+// Alignment returns a builder for configuring footer alignment settings.
+func (f *FooterConfigBuilder) Alignment() *AlignmentConfigBuilder {
+	return &AlignmentConfigBuilder{
+		parent:  f,
+		config:  &f.config.Alignment,
+		section: f.section,
+	}
 }
 
 // Formatting returns a builder for configuring footer formatting settings.
@@ -369,16 +468,6 @@ func (ff *FooterFormattingBuilder) WithAutoWrap(autoWrap int) *FooterFormattingB
 	ff.config.AutoWrap = autoWrap
 	return ff
 }
-
-// WithMaxWidth sets the maximum content width for footer cells.
-// Negative values are ignored.
-//func (ff *FooterFormattingBuilder) WithMaxWidth(maxWidth int) *FooterFormattingBuilder {
-//	if maxWidth < 0 {
-//		return ff
-//	}
-//	ff.config.Foo = maxWidth
-//	return ff
-//}
 
 // WithNewarkMode sets the merge behavior for footer cells (likely a typo, should be WithMergeMode).
 // Invalid merge modes are ignored.
@@ -432,6 +521,15 @@ func (h *HeaderConfigBuilder) Build() *ConfigBuilder {
 	return h.parent
 }
 
+// Alignment returns a builder for configuring header alignment settings.
+func (h *HeaderConfigBuilder) Alignment() *AlignmentConfigBuilder {
+	return &AlignmentConfigBuilder{
+		parent:  h,
+		config:  &h.config.Alignment,
+		section: h.section,
+	}
+}
+
 // Formatting returns a builder for configuring header formatting settings.
 func (h *HeaderConfigBuilder) Formatting() *HeaderFormattingBuilder {
 	return &HeaderFormattingBuilder{
@@ -477,16 +575,6 @@ func (hf *HeaderFormattingBuilder) WithAutoWrap(autoWrap int) *HeaderFormattingB
 	hf.config.AutoWrap = autoWrap
 	return hf
 }
-
-// WithMaxWidth sets the maximum content width for header cells.
-// Negative values are ignored.
-//func (hf *HeaderFormattingBuilder) WithMaxWidth(maxWidth int) *HeaderFormattingBuilder {
-//	if maxWidth < 0 {
-//		return hf
-//	}
-//	hf.config.MaxWidth = maxWidth
-//	return hf
-//}
 
 // WithMergeMode sets the merge behavior for header cells.
 // Invalid merge modes are ignored.
@@ -541,6 +629,15 @@ type RowConfigBuilder struct {
 // Build returns the parent ConfigBuilder for chaining.
 func (r *RowConfigBuilder) Build() *ConfigBuilder {
 	return r.parent
+}
+
+// Alignment returns a builder for configuring row alignment settings.
+func (r *RowConfigBuilder) Alignment() *AlignmentConfigBuilder {
+	return &AlignmentConfigBuilder{
+		parent:  r,
+		config:  &r.config.Alignment,
+		section: r.section,
+	}
 }
 
 // Formatting returns a builder for configuring row formatting settings.
@@ -671,7 +768,7 @@ func WithColumnMax(width int) Option {
 	}
 }
 
-// WithTableMax sets a global maximum table width for the table
+// WithTableMax sets a global maximum table width for the table.
 // Negative values are ignored, and the change is logged if debugging is enabled.
 func WithTableMax(width int) Option {
 	return func(target *Table) {
@@ -685,7 +782,7 @@ func WithTableMax(width int) Option {
 	}
 }
 
-// WithWidths sets per-column widths for the table
+// WithWidths sets per-column widths for the table.
 // Negative widths are removed, and the change is logged if debugging is enabled.
 func WithWidths(width tw.CellWidth) Option {
 	return func(target *Table) {
@@ -696,7 +793,7 @@ func WithWidths(width tw.CellWidth) Option {
 	}
 }
 
-// WithColumnWidths sets per-column widths for the table
+// WithColumnWidths sets per-column widths for the table.
 // Negative widths are removed, and the change is logged if debugging is enabled.
 func WithColumnWidths(widths tw.Mapper[int, int]) Option {
 	return func(target *Table) {
@@ -745,6 +842,17 @@ func WithFooterConfig(config tw.CellConfig) Option {
 	}
 }
 
+// WithFooterAlignmentConfig applies a footer alignment configuration to the table.
+// Logs the change if debugging is enabled.
+func WithFooterAlignmentConfig(alignment tw.CellAlignment) Option {
+	return func(target *Table) {
+		target.config.Footer.Alignment = alignment
+		if target.logger != nil {
+			target.logger.Debugf("Option: WithFooterAlignmentConfig applied to Table: %+v", alignment)
+		}
+	}
+}
+
 // WithFooterMergeMode sets the merge mode for footer cells.
 // Invalid merge modes are ignored, and the change is logged if debugging is enabled.
 func WithFooterMergeMode(mergeMode int) Option {
@@ -776,6 +884,17 @@ func WithHeaderAlignment(align tw.Align) Option {
 		target.config.Header.Alignment.Global = align
 		if target.logger != nil {
 			target.logger.Debugf("Option: WithHeaderAlignment applied to Table: %v", align)
+		}
+	}
+}
+
+// WithHeaderAlignmentConfig applies a header alignment configuration to the table.
+// Logs the change if debugging is enabled.
+func WithHeaderAlignmentConfig(alignment tw.CellAlignment) Option {
+	return func(target *Table) {
+		target.config.Header.Alignment = alignment
+		if target.logger != nil {
+			target.logger.Debugf("Option: WithHeaderAlignmentConfig applied to Table: %+v", alignment)
 		}
 	}
 }
@@ -824,6 +943,17 @@ func WithRowConfig(config tw.CellConfig) Option {
 		target.config.Row = config
 		if target.logger != nil {
 			target.logger.Debug("Option: WithRowConfig applied to Table.")
+		}
+	}
+}
+
+// WithRowAlignmentConfig applies a row alignment configuration to the table.
+// Logs the change if debugging is enabled.
+func WithRowAlignmentConfig(alignment tw.CellAlignment) Option {
+	return func(target *Table) {
+		target.config.Row.Alignment = alignment
+		if target.logger != nil {
+			target.logger.Debugf("Option: WithRowAlignmentConfig applied to Table: %+v", alignment)
 		}
 	}
 }
@@ -897,6 +1027,7 @@ func WithTrimSpace(state tw.State) Option {
 	}
 }
 
+// WithHeaderAutoFormat enables or disables automatic formatting for header cells.
 func WithHeaderAutoFormat(state tw.State) Option {
 	return func(target *Table) {
 		target.config.Header.Formatting.AutoFormat = state
@@ -909,7 +1040,7 @@ func WithHeaderControl(control tw.Control) Option {
 	return func(target *Table) {
 		target.config.Behavior.Header = control
 		if target.logger != nil {
-			target.logger.Debugf("Option: WithHeaderControl applied to Table: %v", control) // Fixed 'state' to 'control'
+			target.logger.Debugf("Option: WithHeaderControl applied to Table: %v", control)
 		}
 	}
 }
@@ -920,7 +1051,7 @@ func WithFooterControl(control tw.Control) Option {
 	return func(target *Table) {
 		target.config.Behavior.Footer = control
 		if target.logger != nil {
-			target.logger.Debugf("Option: WithFooterControl applied to Table: %v", control) // Fixed log message and 'state' to 'control'
+			target.logger.Debugf("Option: WithFooterControl applied to Table: %v", control)
 		}
 	}
 }
@@ -931,6 +1062,17 @@ func WithAlignment(alignment tw.Alignment) Option {
 		target.config.Header.Alignment.PerColumn = alignment
 		target.config.Row.Alignment.PerColumn = alignment
 		target.config.Footer.Alignment.PerColumn = alignment
+	}
+}
+
+// WithBehavior applies a behavior configuration to the table.
+// Logs the change if debugging is enabled.
+func WithBehavior(behavior tw.Behavior) Option {
+	return func(target *Table) {
+		target.config.Behavior = behavior
+		if target.logger != nil {
+			target.logger.Debugf("Option: WithBehavior applied to Table: %+v", behavior)
+		}
 	}
 }
 
@@ -946,7 +1088,7 @@ func WithPadding(padding tw.Padding) Option {
 // WithRendition allows updating the active renderer's rendition configuration
 // by merging the provided rendition.
 // If the renderer does not implement tw.Renditioning, a warning is logged.
-// This should be used with Option as it requires renderer to be initiated and set first
+// This should be used with Option as it requires renderer to be initiated and set first.
 func WithRendition(rendition tw.Rendition) Option {
 	return func(target *Table) {
 		if target.renderer == nil {
@@ -1138,6 +1280,8 @@ func mergeConfig(dst, src Config) Config {
 	dst.Behavior.AutoHide = src.Behavior.AutoHide
 	dst.Behavior.TrimSpace = src.Behavior.TrimSpace
 	dst.Behavior.Compact = src.Behavior.Compact
+	dst.Behavior.Header = src.Behavior.Header
+	dst.Behavior.Footer = src.Behavior.Footer
 
 	if src.Widths.Global != 0 {
 		dst.Widths.Global = src.Widths.Global
