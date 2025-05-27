@@ -28,14 +28,14 @@ go get github.com/olekukonko/tablewriter@v0.0.5
 #### Latest  Version
 The latest stable version
 ```bash
-go get github.com/olekukonko/tablewriter@v1.0.6
+go get github.com/olekukonko/tablewriter@v1.0.7
 ```
 
 **Warning:** Version `v1.0.0` contains missing functionality and should not be used.
 
 
 > **Version Guidance**
-> - Production: Use `v0.0.5` (stable)
+> - Legacy: Use `v0.0.5` (stable)
 > - New Features: Use `@latest` (includes generics, super fast streaming APIs)
 > - Legacy Docs: See [README_LEGACY.md](README_LEGACY.md)
 
@@ -62,7 +62,7 @@ func main() {
 	data := [][]string{
 		{"Package", "Version", "Status"},
 		{"tablewriter", "v0.0.5", "legacy"},
-		{"tablewriter", "v1.0.6", "latest"},
+		{"tablewriter", "v1.0.7", "latest"},
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)
@@ -77,7 +77,7 @@ func main() {
 │   PACKAGE   │ VERSION │ STATUS │
 ├─────────────┼─────────┼────────┤
 │ tablewriter │ v0.0.5  │ legacy │
-│ tablewriter │ v1.0.6  │ latest │
+│ tablewriter │ v1.0.7  │ latest │
 └─────────────┴─────────┴────────┘
 ```
 
@@ -297,7 +297,7 @@ func main() {
 	}
 
 	table.Configure(func(config *tablewriter.Config) {
-		config.Row.Formatting.Alignment = tw.AlignLeft
+		config.Row.Alignment.Global = tw.AlignLeft
 	})
 	table.Render()
 }
@@ -368,14 +368,12 @@ func main() {
 		tablewriter.WithRenderer(renderer.NewColorized(colorCfg)),
 		tablewriter.WithConfig(tablewriter.Config{
 			Row: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					AutoWrap:  tw.WrapNormal, // Wrap long content
-					Alignment: tw.AlignLeft,  // Left-align rows
-				},
+				Formatting:   tw.CellFormatting{AutoWrap: tw.WrapNormal}, // Wrap long content
+				Alignment:    tw.CellAlignment{Global: tw.AlignLeft},     // Left-align rows
 				ColMaxWidths: tw.CellWidth{Global: 25},
 			},
 			Footer: tw.CellConfig{
-				Formatting: tw.CellFormatting{Alignment: tw.AlignRight},
+				Alignment: tw.CellAlignment{Global: tw.AlignRight},
 			},
 		}),
 	)
@@ -480,19 +478,13 @@ func main() {
 
 	table := tablewriter.NewTable(os.Stdout,
 		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
-			Settings: tw.Settings{
-				Separators: tw.Separators{BetweenRows: tw.On},
-			},
+			Settings: tw.Settings{Separators: tw.Separators{BetweenRows: tw.On}},
 		})),
 		tablewriter.WithConfig(tablewriter.Config{
-			Header: tw.CellConfig{
-				Formatting: tw.CellFormatting{Alignment: tw.AlignCenter},
-			},
+			Header: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}},
 			Row: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					MergeMode: tw.MergeHierarchical,
-					Alignment: tw.AlignLeft,
-				},
+				Formatting: tw.CellFormatting{MergeMode: tw.MergeHierarchical},
+				Alignment:  tw.CellAlignment{Global: tw.AlignLeft},
 			},
 		}),
 	)
@@ -546,21 +538,20 @@ func main() {
 
 	table := tablewriter.NewTable(os.Stdout,
 		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
-			Settings: tw.Settings{
-				Separators: tw.Separators{BetweenRows: tw.On},
-			},
+			Settings: tw.Settings{Separators: tw.Separators{BetweenRows: tw.On}},
 		})),
 		tablewriter.WithConfig(tablewriter.Config{
 			Row: tw.CellConfig{
-				Formatting:   tw.CellFormatting{MergeMode: tw.MergeBoth},
-				ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft},
+				Formatting: tw.CellFormatting{MergeMode: tw.MergeBoth},
+				Alignment:  tw.CellAlignment{PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft}},
 			},
+
 			Footer: tw.CellConfig{
 				Padding: tw.CellPadding{
 					Global:    tw.Padding{Left: "*", Right: "*"},
 					PerColumn: []tw.Padding{{}, {}, {Bottom: "^"}, {Bottom: "^"}},
 				},
-				ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft},
+				Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft}},
 			},
 		}),
 	)
@@ -617,9 +608,7 @@ func main() {
 			})),
 			tablewriter.WithConfig(tablewriter.Config{
 				MaxWidth: 10,
-				Row: tw.CellConfig{
-					Formatting: tw.CellFormatting{Alignment: tw.AlignCenter},
-				},
+				Row:      tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}},
 			}),
 		)
 		table.Append([]string{s, s})
@@ -631,16 +620,12 @@ func main() {
 	// Main table
 	table := tablewriter.NewTable(os.Stdout,
 		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
-			Borders: tw.BorderNone,
-			Settings: tw.Settings{
-				Separators: tw.Separators{BetweenColumns: tw.On},
-			},
+			Borders:  tw.BorderNone,
+			Settings: tw.Settings{Separators: tw.Separators{BetweenColumns: tw.On}},
 		})),
 		tablewriter.WithConfig(tablewriter.Config{
 			MaxWidth: 30,
-			Row: tw.CellConfig{
-				Formatting: tw.CellFormatting{Alignment: tw.AlignCenter},
-			},
+			Row:      tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}},
 		}),
 	)
 	table.Append([]string{createSubTable("A"), createSubTable("B")})
@@ -711,14 +696,11 @@ func main() {
 		tablewriter.WithStringer(employeeStringer),
 		tablewriter.WithConfig(tablewriter.Config{
 			Header: tw.CellConfig{
-				Formatting: tw.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: tw.On},
+				Formatting: tw.CellFormatting{AutoFormat: tw.On},
+				Alignment:  tw.CellAlignment{Global: tw.AlignCenter},
 			},
-			Row: tw.CellConfig{
-				Formatting: tw.CellFormatting{Alignment: tw.AlignLeft},
-			},
-			Footer: tw.CellConfig{
-				Formatting: tw.CellFormatting{Alignment: tw.AlignRight},
-			},
+			Row:    tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignLeft}},
+			Footer: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignRight}},
 		}),
 	)
 	table.Header([]string{"ID", "Name", "Age", "Department", "Salary"})
@@ -784,23 +766,17 @@ func main() {
 	}
 
 	table := tablewriter.NewTable(os.Stdout,
-		tablewriter.WithRenderer(renderer.NewHTML(os.Stdout, false, htmlCfg)),
+		tablewriter.WithRenderer(renderer.NewHTML(htmlCfg)),
 		tablewriter.WithConfig(tablewriter.Config{
 			Header: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					Alignment: tw.AlignCenter,
-					MergeMode: tw.MergeHorizontal, // Merge identical header cells
-				},
+				Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal}, // Merge identical header cells
+				Alignment:  tw.CellAlignment{Global: tw.AlignCenter},
 			},
 			Row: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					MergeMode: tw.MergeHorizontal, // Merge identical row cells
-					Alignment: tw.AlignLeft,
-				},
+				Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal}, // Merge identical row cells
+				Alignment:  tw.CellAlignment{Global: tw.AlignLeft},
 			},
-			Footer: tw.CellConfig{
-				Formatting: tw.CellFormatting{Alignment: tw.AlignRight},
-			},
+			Footer: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignRight}},
 		}),
 	)
 
