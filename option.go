@@ -3,19 +3,8 @@ package tablewriter
 import (
 	"github.com/olekukonko/ll"
 	"github.com/olekukonko/tablewriter/tw"
-	"io"
 	"reflect"
 )
-
-// NewWriter creates a new table with default settings for backward compatibility.
-// It logs the creation if debugging is enabled.
-func NewWriter(w io.Writer) *Table {
-	t := NewTable(w)
-	if t.logger != nil {
-		t.logger.Debug("NewWriter created buffered Table")
-	}
-	return t
-}
 
 // Option defines a function type for configuring a Table instance.
 type Option func(target *Table)
@@ -619,6 +608,29 @@ func WithRendition(rendition tw.Rendition) Option {
 		} else {
 			if target.logger != nil {
 				target.logger.Warnf("Option: WithRendition: Current renderer type %T does not implement tw.Renditioning. Rendition may not be applied as expected.", target.renderer)
+			}
+		}
+	}
+}
+
+// WithSymbols sets the symbols used for drawing table borders and separators.
+// The symbols are applied to the table's renderer configuration, if a renderer is set.
+// If no renderer is set (target.renderer is nil), this option has no effect. .
+func WithSymbols(symbols tw.Symbols) Option {
+	return func(target *Table) {
+		if target.renderer != nil {
+			cfg := target.renderer.Config()
+			cfg.Symbols = symbols
+
+			if ru, ok := target.renderer.(tw.Renditioning); ok {
+				ru.Rendition(cfg)
+				if target.logger != nil {
+					target.logger.Debugf("Option: WithRendition: Applied to renderer via Renditioning.SetRendition(): %+v", cfg)
+				}
+			} else {
+				if target.logger != nil {
+					target.logger.Warnf("Option: WithRendition: Current renderer type %T does not implement tw.Renditioning. Rendition may not be applied as expected.", target.renderer)
+				}
 			}
 		}
 	}

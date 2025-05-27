@@ -133,6 +133,16 @@ func NewTable(w io.Writer, opts ...Option) *Table {
 	return t
 }
 
+// NewWriter creates a new table with default settings for backward compatibility.
+// It logs the creation if debugging is enabled.
+func NewWriter(w io.Writer) *Table {
+	t := NewTable(w)
+	if t.logger != nil {
+		t.logger.Debug("NewWriter created buffered Table")
+	}
+	return t
+}
+
 // Caption sets the table caption (legacy method).
 // Defaults to BottomCenter alignment, wrapping to table width.
 // Use SetCaptionOptions for more control.

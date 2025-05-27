@@ -195,9 +195,16 @@ func (rf *RowFormattingBuilder) WithAlignment(align tw.Align) *RowFormattingBuil
 	return rf
 }
 
-// Deprecated:Use WithMaxWidth instead.
-// WithTableMax sets a global maximum table width for the table.
+// WithTableMax sets the maximum width of the entire table in characters.
 // Negative values are ignored, and the change is logged if debugging is enabled.
+// The width constrains the table's rendering, potentially causing text wrapping or truncation
+// based on the configuration's wrapping settings (e.g., tw.WrapTruncate).
+// If debug logging is enabled via WithDebug(true), the applied width is logged.
+//
+// Deprecated: Use WithMaxWidth instead, which provides the same functionality with a clearer name
+// and consistent naming across the package. For example:
+//
+//	tablewriter.NewTable(os.Stdout, tablewriter.WithMaxWidth(80))
 func WithTableMax(width int) Option {
 	return func(target *Table) {
 		if width < 0 {
@@ -206,22 +213,6 @@ func WithTableMax(width int) Option {
 		target.config.MaxWidth = width
 		if target.logger != nil {
 			target.logger.Debugf("Option: WithTableMax applied to Table: %v", width)
-		}
-	}
-}
-
-// Deprecated:Use Rederer setting directly
-// not al lrenderes have symboms or support Renditions
-// WithSymbols sets the symbols used for table drawing and updates the renderer's configuration.
-// Logs the change if debugging is enabled.
-func WithSymbols(symbols tw.Symbols) Option {
-	return func(target *Table) {
-		if target.renderer != nil {
-			cfg := target.renderer.Config()
-			cfg.Symbols = symbols
-			if target.logger != nil {
-				target.logger.Debug("Option: WithSymbols applied to Table.")
-			}
 		}
 	}
 }
