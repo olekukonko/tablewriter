@@ -418,23 +418,23 @@ func TestLongValues(t *testing.T) {
 	c := tablewriter.Config{
 		Header: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				Alignment:  tw.AlignCenter,
 				AutoFormat: tw.On,
 			},
+			Alignment:    tw.CellAlignment{Global: tw.AlignCenter},
 			ColMaxWidths: tw.CellWidth{Global: 30},
 		},
 		Row: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				AutoWrap:  tw.WrapNormal,
-				Alignment: tw.AlignLeft,
+				AutoWrap: tw.WrapNormal,
 			},
+			Alignment:    tw.CellAlignment{Global: tw.AlignLeft},
 			ColMaxWidths: tw.CellWidth{Global: 30},
 		},
 		Footer: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				Alignment: tw.AlignRight,
+			Alignment: tw.CellAlignment{
+				Global:    tw.AlignRight,
+				PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.Skip, tw.AlignLeft},
 			},
-			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.Skip, tw.AlignLeft},
 		},
 	}
 
@@ -487,21 +487,19 @@ func TestWrapping(t *testing.T) {
 	c := tablewriter.Config{
 		Header: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				Alignment:  tw.AlignCenter,
 				AutoFormat: tw.On,
 			},
+			Alignment: tw.CellAlignment{Global: tw.AlignCenter},
 		},
 		Row: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				AutoWrap:  tw.WrapBreak,
-				Alignment: tw.AlignLeft,
+				AutoWrap: tw.WrapBreak,
 			},
+			Alignment:    tw.CellAlignment{Global: tw.AlignLeft},
 			ColMaxWidths: tw.CellWidth{Global: 33},
 		},
 		Footer: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				Alignment: tw.AlignRight,
-			},
+			Alignment:    tw.CellAlignment{Global: tw.AlignRight},
 			ColMaxWidths: tw.CellWidth{Global: 30},
 		},
 	}
@@ -537,26 +535,24 @@ func TestTableWithCustomPadding(t *testing.T) {
 	c := tablewriter.Config{
 		Header: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				Alignment:  tw.AlignCenter,
 				AutoFormat: tw.On,
 			},
+			Alignment: tw.CellAlignment{Global: tw.AlignCenter},
 			Padding: tw.CellPadding{
 				Global: tw.Padding{Left: " ", Right: " ", Top: "^", Bottom: "^"},
 			},
 		},
 		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				Alignment: tw.AlignCenter,
-			},
+			Alignment: tw.CellAlignment{Global: tw.AlignCenter},
 			Padding: tw.CellPadding{
 				Global: tw.Padding{Left: "L", Right: "R", Top: "T", Bottom: "B"},
 			},
 		},
 		Footer: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				Alignment:  tw.AlignCenter,
 				AutoFormat: tw.On,
 			},
+			Alignment: tw.CellAlignment{Global: tw.AlignCenter},
 			Padding: tw.CellPadding{
 				Global: tw.Padding{Left: "*", Right: "*", Top: "", Bottom: ""},
 			},
@@ -653,7 +649,11 @@ C │ D
 				},
 			)
 			st := tablewriter.NewTable(&buf,
-				tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignLeft}}, Widths: tw.CellWidth{PerColumn: widths}}),
+				tablewriter.WithConfig(tablewriter.Config{
+					Row: tw.CellConfig{
+						Alignment: tw.CellAlignment{Global: tw.AlignLeft},
+					},
+					Widths: tw.CellWidth{PerColumn: widths}}),
 				tablewriter.WithRenderer(r),
 				tablewriter.WithDebug(false),
 				tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
@@ -676,4 +676,137 @@ C │ D
 			}
 		})
 	}
+}
+
+func TestAlignmentMigration(t *testing.T) {
+	// Test new CellAlignment
+	buf := &bytes.Buffer{}
+
+	t.Run("NewCellAlignment", func(t *testing.T) {
+		table := tablewriter.NewTable(buf)
+		table.Configure(func(cfg *tablewriter.Config) {
+			cfg.Header.Alignment.Global = tw.AlignCenter
+			cfg.Row.Alignment.PerColumn = []tw.Align{tw.AlignLeft, tw.AlignRight}
+		})
+		table.Header([]string{"Name", "Age Of User"})
+		table.Append([]string{"Alice Samsung", "30"})
+		table.Render()
+
+		expected := `
+        ┌───────────────┬─────────────┐
+        │     NAME      │ AGE OF USER │
+        ├───────────────┼─────────────┤
+        │ Alice Samsung │          30 │
+        └───────────────┴─────────────┘
+`
+		if !visualCheck(t, "New CellAlignment", buf.String(), expected) {
+			t.Fatal("New CellAlignment rendering failed")
+		}
+	})
+
+	t.Run("DeprecatedAlignment", func(t *testing.T) {
+		buf.Reset()
+
+		table := tablewriter.NewTable(buf)
+		table.Configure(func(cfg *tablewriter.Config) {
+			cfg.Header.Formatting.Alignment = tw.AlignCenter
+			cfg.Row.ColumnAligns = []tw.Align{tw.AlignLeft, tw.AlignRight}
+		})
+		table.Header([]string{"Name", "Age Of User"})
+		table.Append([]string{"Alice Samsung", "30"})
+		table.Render()
+
+		expected := `
+        ┌───────────────┬─────────────┐
+        │     NAME      │ AGE OF USER │
+        ├───────────────┼─────────────┤
+        │ Alice Samsung │          30 │
+        └───────────────┴─────────────┘
+`
+
+		if !visualCheck(t, "Deprecated Alignment Fields", buf.String(), expected) {
+			t.Fatal("Deprecated ColumnAligns and Formatting.Alignment rendering failed")
+		}
+
+	})
+
+	t.Run("TableConfigureBasic", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(buf)
+		table.Configure(func(cfg *tablewriter.Config) {
+			cfg.Header.Formatting.Alignment = tw.AlignLeft
+			cfg.Row.Formatting.Alignment = tw.AlignRight
+		})
+		table.Header([]string{"NAME", "DEPARTMENT", "SALARY"})
+		table.Append([]string{"Alice", "Engineering", "120000"})
+		table.Append([]string{"Bob", "Marketing", "85000"})
+		table.Render()
+
+		expectedConfigure := `
+        ┌───────┬─────────────┬────────┐
+        │ NAME  │ DEPARTMENT  │ SALARY │
+        ├───────┼─────────────┼────────┤
+        │ Alice │ Engineering │ 120000 │
+        │   Bob │   Marketing │  85000 │
+        └───────┴─────────────┴────────┘
+
+`
+		if !visualCheck(t, "Table_Configure_Basic", buf.String(), expectedConfigure) {
+			t.Fatal("Table_Configure_Basic rendering failed")
+		}
+	})
+
+	t.Run("HorizontalMergeEachLineCenter", func(t *testing.T) {
+		// Test HorizontalMergeEachLineCenter scenario
+		buf.Reset()
+		table := tablewriter.NewTable(buf)
+		table.Configure(func(cfg *tablewriter.Config) {
+			cfg.Row.Formatting.Alignment = tw.AlignCenter
+			cfg.Row.Formatting.MergeMode = tw.MergeHorizontal
+		})
+		table.Header([]string{"DATE", "SECTION A", "SECTION B", "SECTION C", "SECTION D", "SECTION E"})
+		table.Append([]string{"1/1/2014", "apple", "boy", "cat", "dog", "elephant"})
+		table.Render()
+
+		expectedMerge := `
+┌──────────┬───────────┬───────────┬───────────┬───────────┬───────────┐
+│   DATE   │ SECTION A │ SECTION B │ SECTION C │ SECTION D │ SECTION E │
+├──────────┼───────────┼───────────┼───────────┼───────────┼───────────┤
+│ 1/1/2014 │   apple   │    boy    │    cat    │    dog    │ elephant  │
+└──────────┴───────────┴───────────┴───────────┴───────────┴───────────┘
+`
+		if !visualCheck(t, "HorizontalMergeEachLineCenter", buf.String(), expectedMerge) {
+			t.Fatal("HorizontalMergeEachLineCenter rendering failed")
+		}
+	})
+
+	t.Run("StreamBasic", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(buf)
+		table.Configure(func(cfg *tablewriter.Config) {
+			cfg.Footer.Alignment.Global = tw.AlignRight
+			cfg.Stream.Enable = true
+		})
+		table.Start()
+		table.Header([]string{"NAME", "AGE", "CITY"})
+		table.Append([]string{"Alice", "25", "New York"})
+		table.Append([]string{"Bob", "30", "Boston"})
+		table.Footer([]string{"Total", "55", "*"})
+		table.Close()
+
+		expectedStream := `
+            ┌────────┬────────┬────────┐
+            │  NAME  │  AGE   │  CITY  │
+            ├────────┼────────┼────────┤
+            │ Alice  │ 25     │ New    │
+            │        │        │ York   │
+            │ Bob    │ 30     │ Boston │
+            ├────────┼────────┼────────┤
+            │  Total │     55 │      * │
+            └────────┴────────┴────────┘
+`
+		if !visualCheck(t, "StreamBasic", buf.String(), expectedStream) {
+			t.Fatal("StreamBasic rendering failed")
+		}
+	})
 }

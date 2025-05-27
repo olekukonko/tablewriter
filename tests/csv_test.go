@@ -33,26 +33,26 @@ func TestTable_Configure_Basic(t *testing.T) {
 	}
 
 	// Check initial default config values (examples)
-	if table.Config().Header.Formatting.Alignment != tw.AlignCenter {
-		t.Errorf("Expected initial header alignment to be Center, got %s", table.Config().Header.Formatting.Alignment)
+	if table.Config().Header.Alignment.Global != tw.AlignCenter {
+		t.Errorf("Expected initial header alignment to be Center, got %s", table.Config().Header.Alignment.Global)
 	}
 	if table.Config().Behavior.TrimSpace != tw.On { // Default from defaultConfig()
 		t.Errorf("Expected initial TrimSpace to be On, got %s", table.Config().Behavior.TrimSpace)
 	}
 
 	table.Configure(func(cfg *tablewriter.Config) {
-		cfg.Header.Formatting.Alignment = tw.AlignLeft
-		cfg.Row.Formatting.Alignment = tw.AlignRight
+		cfg.Header.Alignment.Global = tw.AlignLeft
+		cfg.Row.Alignment.Global = tw.AlignRight
 		cfg.Behavior.TrimSpace = tw.Off
 		cfg.Debug = true // This should enable the logger
 	})
 
 	// Check that Table.config was updated
-	if table.Config().Header.Formatting.Alignment != tw.AlignLeft {
-		t.Errorf("Expected configured header alignment to be Left, got %s", table.Config().Header.Formatting.Alignment)
+	if table.Config().Header.Alignment.Global != tw.AlignLeft {
+		t.Errorf("Expected configured header alignment to be Left, got %s", table.Config().Header.Alignment.Global)
 	}
-	if table.Config().Row.Formatting.Alignment != tw.AlignRight {
-		t.Errorf("Expected configured row alignment to be Right, got %s", table.Config().Row.Formatting.Alignment)
+	if table.Config().Row.Alignment.Global != tw.AlignRight {
+		t.Errorf("Expected configured row alignment to be Right, got %s", table.Config().Row.Alignment.Global)
 	}
 	if table.Config().Behavior.TrimSpace != tw.Off {
 		t.Errorf("Expected configured TrimSpace to be Off, got %s", table.Config().Behavior.TrimSpace)

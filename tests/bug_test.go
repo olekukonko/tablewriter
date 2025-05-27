@@ -314,7 +314,7 @@ func TestBug271(t *testing.T) {
 			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeHorizontal,
 			},
-			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft},
+			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft}},
 		},
 	}),
 		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{

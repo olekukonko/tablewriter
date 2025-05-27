@@ -133,6 +133,16 @@ func NewTable(w io.Writer, opts ...Option) *Table {
 	return t
 }
 
+// NewWriter creates a new table with default settings for backward compatibility.
+// It logs the creation if debugging is enabled.
+func NewWriter(w io.Writer) *Table {
+	t := NewTable(w)
+	if t.logger != nil {
+		t.logger.Debug("NewWriter created buffered Table")
+	}
+	return t
+}
+
 // Caption sets the table caption (legacy method).
 // Defaults to BottomCenter alignment, wrapping to table width.
 // Use SetCaptionOptions for more control.
@@ -513,19 +523,40 @@ func (t *Table) appendSingle(row interface{}) error {
 // Parameter config provides alignment settings for the section.
 // Returns a map of column indices to alignment settings.
 func (t *Table) buildAligns(config tw.CellConfig) map[int]tw.Align {
-	t.logger.Debugf("buildAligns INPUT: config.Formatting.Align=%s, config.ColumnAligns=%v", config.Formatting.Alignment, config.ColumnAligns)
+	// Start with global alignment, preferring deprecated Formatting.Alignment
+	effectiveGlobalAlign := config.Formatting.Alignment
+	if effectiveGlobalAlign == tw.Empty || effectiveGlobalAlign == tw.Skip {
+		effectiveGlobalAlign = config.Alignment.Global
+		if config.Formatting.Alignment != tw.Empty && config.Formatting.Alignment != tw.Skip {
+			t.logger.Warnf("Using deprecated CellFormatting.Alignment (%s). Migrate to CellConfig.Alignment.Global.", config.Formatting.Alignment)
+		}
+	}
+
+	// Use per-column alignments, preferring deprecated ColumnAligns
+	effectivePerColumn := config.ColumnAligns
+	if len(effectivePerColumn) == 0 && len(config.Alignment.PerColumn) > 0 {
+		effectivePerColumn = make([]tw.Align, len(config.Alignment.PerColumn))
+		copy(effectivePerColumn, config.Alignment.PerColumn)
+		if len(config.ColumnAligns) > 0 {
+			t.logger.Warnf("Using deprecated CellConfig.ColumnAligns (%v). Migrate to CellConfig.Alignment.PerColumn.", config.ColumnAligns)
+		}
+	}
+
+	// Log input for debugging
+	t.logger.Debugf("buildAligns INPUT: deprecated Formatting.Alignment=%s, deprecated ColumnAligns=%v, config.Alignment.Global=%s, config.Alignment.PerColumn=%v",
+		config.Formatting.Alignment, config.ColumnAligns, config.Alignment.Global, config.Alignment.PerColumn)
+
 	numColsToUse := t.getNumColsToUse()
 	colAlignsResult := make(map[int]tw.Align)
 	for i := 0; i < numColsToUse; i++ {
-		currentAlign := config.Formatting.Alignment
-		if i < len(config.ColumnAligns) {
-			colSpecificAlign := config.ColumnAligns[i]
-			if colSpecificAlign != tw.Empty && colSpecificAlign != tw.Skip {
-				currentAlign = colSpecificAlign
-			}
+		currentAlign := effectiveGlobalAlign
+		if i < len(effectivePerColumn) && effectivePerColumn[i] != tw.Empty && effectivePerColumn[i] != tw.Skip {
+			currentAlign = effectivePerColumn[i]
 		}
+		// Skip validation here; rely on rendering to handle invalid alignments
 		colAlignsResult[i] = currentAlign
 	}
+
 	t.logger.Debugf("Aligns built: %v (length %d)", colAlignsResult, len(colAlignsResult))
 	return colAlignsResult
 }

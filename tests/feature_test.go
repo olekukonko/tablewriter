@@ -289,6 +289,7 @@ func TestCompatMode(t *testing.T) {
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 		Header:   tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal}},
 		Behavior: tw.Behavior{Compact: tw.Compact{Merge: tw.On}},
+		Debug:    true,
 	}))
 
 	x := "This is a long header that makes the table look too wide"
@@ -297,13 +298,13 @@ func TestCompatMode(t *testing.T) {
 	table.Render()
 
 	expected := `
-	┌──────────────────────────────────────────────────────────┐
-	│ THIS IS A LONG HEADER THAT MAKES THE TABLE LOOK TOO WIDE │
-	├───────────────────────────┬──────────────────────────────┤
-	│ Key                       │ Value                        │
-	└───────────────────────────┴──────────────────────────────┘
+        ┌──────────────────────────────────────────────────────────┐
+        │ THIS IS A LONG HEADER THAT MAKES THE TABLE LOOK TOO WIDE │
+        ├────────────────────────────┬─────────────────────────────┤
+        │ Key                        │ Value                       │
+        └────────────────────────────┴─────────────────────────────┘
 `
-	if !visualCheck(t, "BatchGlobalWidthScaling", buf.String(), expected) {
+	if !visualCheck(t, "TestCompatMode", buf.String(), expected) {
 		t.Error(table.Debug())
 	}
 }

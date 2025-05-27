@@ -246,7 +246,7 @@ func TestSVGHierarchicalMerge(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewSVG(svgCfg)),
 		tablewriter.WithConfig(tablewriter.Config{
-			Header: tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter}},
+			Header: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}},
 			Row:    tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHierarchical}},
 		}),
 	)
@@ -326,13 +326,14 @@ func TestSVGWithFooterAndAlignment(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewSVG(svgCfg)),
 		tablewriter.WithHeaderConfig(tw.CellConfig{
-			Formatting: tw.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: tw.On},
+			Formatting: tw.CellFormatting{AutoFormat: tw.On},
+			Alignment:  tw.CellAlignment{Global: tw.AlignCenter},
 		}),
 		tablewriter.WithRowConfig(tw.CellConfig{
-			ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignRight, tw.AlignCenter},
+			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignLeft, tw.AlignRight, tw.AlignCenter}},
 		}),
 		tablewriter.WithFooterConfig(tw.CellConfig{
-			Formatting: tw.CellFormatting{Alignment: tw.AlignRight},
+			Alignment: tw.CellAlignment{Global: tw.AlignRight},
 		}),
 	)
 	table.Header([]string{"Item", "Qty", "Price"})
@@ -355,9 +356,9 @@ func TestSVGColumnAlignmentOverride(t *testing.T) {
 	svgCfg := defaultSVGConfigForTests(false)
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewSVG(svgCfg)),
-		tablewriter.WithHeaderConfig(tw.CellConfig{Formatting: tw.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: tw.Off}}),
+		tablewriter.WithHeaderConfig(tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}, Formatting: tw.CellFormatting{AutoFormat: tw.Off}}),
 		tablewriter.WithRowConfig(tw.CellConfig{
-			ColumnAligns: []tw.Align{tw.AlignRight, tw.AlignCenter, tw.AlignLeft},
+			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignRight, tw.AlignCenter, tw.AlignLeft}},
 		}),
 	)
 	table.Header([]string{"H1", "H2", "H3"})
@@ -379,9 +380,10 @@ func TestSVGHorizontalMerge(t *testing.T) {
 		tablewriter.WithRenderer(renderer.NewSVG(svgCfg)),
 		tablewriter.WithConfig(tablewriter.Config{
 			Header: tw.CellConfig{
-				Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal, Alignment: tw.AlignCenter},
+				Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal},
+				Alignment:  tw.CellAlignment{Global: tw.AlignCenter},
 			},
-			Row: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal, Alignment: tw.AlignLeft}},
+			Row: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal}, Alignment: tw.CellAlignment{Global: tw.AlignLeft}},
 		}),
 	)
 	table.Header([]string{"A", "Merged Header", "Merged Header"})

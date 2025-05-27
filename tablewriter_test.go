@@ -419,7 +419,7 @@ func TestMergeCellConfig(t *testing.T) {
 				Build().Header, // Src AutoFormat = tw.On (1) from defaultConfig().Header
 			expectedConfig: func() tw.CellConfig {
 				cfg := getTestSectionDefaultConfig("row")
-				cfg.Formatting.Alignment = tw.AlignCenter
+				cfg.Alignment.Global = tw.AlignCenter
 				cfg.Formatting.AutoWrap = tw.WrapTruncate // from defaultConfig().Header
 				cfg.Formatting.AutoFormat = tw.On         // from src (Builder's Header)
 				cfg.Formatting.MergeMode = tw.MergeHorizontal

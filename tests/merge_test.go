@@ -15,7 +15,7 @@ func TestVerticalMerge(t *testing.T) {
 			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeVertical,
 			},
-			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignRight},
+			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignRight}},
 		},
 	}), tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 		Settings: tw.Settings{
@@ -55,7 +55,7 @@ func TestHorizontalMerge(t *testing.T) {
 			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeHorizontal,
 			},
-			ColumnAligns: []tw.Align{tw.AlignCenter, tw.AlignCenter, tw.AlignCenter, tw.AlignCenter},
+			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignCenter, tw.AlignCenter, tw.AlignCenter, tw.AlignCenter}},
 		},
 	}), tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 		Settings: tw.Settings{
@@ -105,7 +105,7 @@ func TestHorizontalMergeEachLine(t *testing.T) {
 			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeHorizontal,
 			},
-			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft},
+			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft}},
 		},
 	}),
 		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
@@ -150,9 +150,9 @@ func TestHorizontalMergeEachLineCenter(t *testing.T) {
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 		Row: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				Alignment: tw.AlignCenter,
 				MergeMode: tw.MergeHorizontal,
 			},
+			Alignment: tw.CellAlignment{Global: tw.AlignCenter},
 		},
 	}),
 		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
@@ -203,7 +203,7 @@ func TestHorizontalMergeAlignFooter(t *testing.T) {
 			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeHorizontal,
 			},
-			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft},
+			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft}},
 		},
 	}),
 		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
@@ -247,7 +247,7 @@ func TestVerticalMergeLines(t *testing.T) {
 			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeVertical,
 			},
-			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignRight},
+			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignRight}},
 		},
 	}), tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 		// Symbols: tw.NewSymbols(tw.StyleMerger),
@@ -296,7 +296,7 @@ func TestMergeBoth(t *testing.T) {
 			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeHorizontal,
 			},
-			ColumnAligns: []tw.Align{tw.AlignRight, tw.AlignRight, tw.AlignRight, tw.AlignLeft},
+			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignRight, tw.AlignRight, tw.AlignRight, tw.AlignLeft}},
 		},
 	}
 
@@ -466,14 +466,14 @@ func TestMergeWithPadding(t *testing.T) {
 			Formatting: tw.CellFormatting{
 				MergeMode: tw.MergeBoth,
 			},
-			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft},
+			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft}},
 		},
 		Footer: tw.CellConfig{
 			Padding: tw.CellPadding{
 				Global:    tw.Padding{Left: "*", Right: "*", Top: "", Bottom: ""},
 				PerColumn: []tw.Padding{{}, {}, {Bottom: "^"}, {Bottom: "."}},
 			},
-			ColumnAligns: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft},
+			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft}},
 		},
 	}), tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 		//Symbols: tw.NewSymbols(tw.StyleASCII),
@@ -528,7 +528,7 @@ func TestMergeWithMultipleLines(t *testing.T) {
 				Formatting: tw.CellFormatting{
 					MergeMode: tw.MergeHorizontal,
 				},
-				ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignLeft, tw.AlignLeft, tw.AlignLeft},
+				Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignLeft, tw.AlignLeft, tw.AlignLeft, tw.AlignLeft}},
 			},
 		}), tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 			Settings: tw.Settings{
@@ -574,7 +574,7 @@ func TestMergeWithMultipleLines(t *testing.T) {
 				Formatting: tw.CellFormatting{
 					MergeMode: tw.MergeVertical,
 				},
-				ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignLeft, tw.AlignLeft, tw.AlignLeft},
+				Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignLeft, tw.AlignLeft, tw.AlignLeft, tw.AlignLeft}},
 			},
 			Debug: true,
 		}), tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
@@ -619,7 +619,7 @@ func TestMergeWithMultipleLines(t *testing.T) {
 				Formatting: tw.CellFormatting{
 					MergeMode: tw.MergeHierarchical,
 				},
-				ColumnAligns: []tw.Align{tw.AlignLeft, tw.AlignLeft, tw.AlignLeft, tw.AlignLeft},
+				Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignLeft, tw.AlignLeft, tw.AlignLeft, tw.AlignLeft}},
 			},
 		}), tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
 			Settings: tw.Settings{
