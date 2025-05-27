@@ -536,42 +536,38 @@ func main() {
 	_ = tableWithConfig // Avoid "declared but not used"
 
 	// Using ConfigBuilder for Fluent, Complex Configuration
-	builder := tablewriter.NewConfigBuilder()
-	builder.Header().
-		Alignment().WithGlobal(tw.AlignCenter).Build(). // End Alignment, return to HeaderConfigBuilder
-		Formatting().WithAutoFormat(tw.On).Build().     // Title case headers
-		Padding().WithGlobal(tw.Padding{Left: "[", Right: "]"}).Build(). // Custom padding
-		Build() // End Header, return to ConfigBuilder
-	builder.Row().
-		Alignment().WithGlobal(tw.AlignLeft).Build().   // Left-align row cells
-		// Example: Alignment().WithPerColumn([]tw.Align{tw.AlignLeft, tw.AlignRight}).Build().
-		Formatting().WithAutoWrap(tw.WrapNormal).Build().
-		Build()
-	builder.Footer().
-		Alignment().WithGlobal(tw.AlignRight).Build().
-		Build()
-	// ForColumn example:
-	// builder.ForColumn(0).WithAlignment(tw.AlignLeft).Build()
-	// builder.ForColumn(0).WithMaxWidth(15).Build()
-	builder.WithMaxWidth(80).
+	builder := tablewriter.NewConfigBuilder().
+		WithMaxWidth(80).
 		WithAutoHide(tw.Off).
-		WithTrimSpace(tw.On)
-	tableWithBuilder := tablewriter.NewTable(os.Stdout, tablewriter.WithConfig(builder.Build()))
-	_ = tableWithBuilder // Avoid "declared but not used"
+		WithTrimSpace(tw.On).
+		WithDebug(true). // Enable debug logging
+		Header().
+		Alignment().
+		WithGlobal(tw.AlignCenter).
+		Build(). // Returns *ConfigBuilder
+		Header().
+		Formatting().
+		WithAutoFormat(tw.On).
+		WithAutoWrap(tw.WrapTruncate). // Test truncation
+		WithMergeMode(tw.MergeNone).   // Explicit merge mode
+		Build().                       // Returns *HeaderConfigBuilder
+		Padding().
+		WithGlobal(tw.Padding{Left: "[", Right: "]", Overwrite: true}).
+		Build(). // Returns *HeaderConfigBuilder
+		Build(). // Returns *ConfigBuilder
+		Row().
+		Formatting().
+		WithAutoFormat(tw.On). // Uppercase rows
+		Build().               // Returns *RowConfigBuilder
+		Build().               // Returns *ConfigBuilder
+		Row().
+		Alignment().
+		WithGlobal(tw.AlignLeft).
+		Build(). // Returns *ConfigBuilder
+		Build()  // Finalize Config
 
-	// With Custom Renderer and Visual Styling
-	tableWithRenderer := tablewriter.NewTable(os.Stdout,
-		tablewriter.WithRenderer(renderer.NewBlueprint()), // Default text renderer
-		tablewriter.WithRendition(tw.Rendition{           // Visual styles
-			Symbols: tw.NewSymbols(tw.StyleRounded),      // Rounded corners
-			Borders: tw.Border{Top: tw.On, Bottom: tw.On, Left: tw.On, Right: tw.On},
-			Settings: tw.Settings{
-				Separators: tw.Separators{BetweenRows: tw.On}, // Row separators
-				Lines:      tw.Lines{ShowHeaderLine: tw.On},       // Header line
-			},
-		}),
-	)
-	_ = tableWithRenderer // Avoid "declared but not used"
+	tableWithFluent := tablewriter.NewTable(os.Stdout, tablewriter.WithConfig(builder))
+	_ = tableWithFluent // Avoid "declared but not used"
 }
 ```
 
@@ -1197,24 +1193,47 @@ func main() {
 	table.Render()
 
 	// Borderless Table (kubectl-style, No Lines or Separators)
+	// Configure the table with a borderless, kubectl-style layout
+	config := tablewriter.NewConfigBuilder().
+		Header().
+		Padding().
+		WithGlobal(tw.PaddingNone). // No header padding
+		Build().
+		Alignment().
+		WithGlobal(tw.AlignLeft). // Left-align header
+		Build().
+		Row().
+		Padding().
+		WithGlobal(tw.PaddingNone). // No row padding
+		Build().
+		Alignment().
+		WithGlobal(tw.AlignLeft). // Left-align rows
+		Build().
+		Footer().
+		Padding().
+		WithGlobal(tw.PaddingNone). // No footer padding
+		Build().
+		Alignment().
+		WithGlobal(tw.AlignLeft). // Left-align footer (if used)
+		Build().
+		WithDebug(true). // Enable debug logging
+		Build()
+
+	// Create borderless table
 	tableBorderless := tablewriter.NewTable(os.Stdout,
-		tablewriter.WithRenderer(renderer.NewBlueprint()),
+		tablewriter.WithRenderer(renderer.NewBlueprint()), // Assumes valid renderer
 		tablewriter.WithRendition(tw.Rendition{
-			Borders: tw.BorderNone, // Preset: all borders off
+			Borders: tw.BorderNone,               // No borders
+			Symbols: tw.NewSymbols(tw.StyleNone), // No border symbols
 			Settings: tw.Settings{
-				Lines:      tw.LinesNone,     // No header/footer lines
+				Lines:      tw.LinesNone,      // No header/footer lines
 				Separators: tw.SeparatorsNone, // No row/column separators
 			},
 		}),
-		tablewriter.WithConfig( // Additional config for layout
-			tablewriter.NewConfigBuilder().
-				Header().Padding().WithGlobal(tw.PaddingNone).Build(). // No header padding
-				Row().Padding().WithGlobal(tw.PaddingNone).Build().    // No row padding
-				Footer().Padding().WithGlobal(tw.PaddingNone).Build(). // No footer padding
-				WithAlignment(tw.MakeAlign(2, tw.AlignLeft)). // Left-align all columns in all sections
-				Build(),
-		),
+		tablewriter.WithConfig(config),
 	)
+
+	// Set headers and data
 	tableBorderless.Header("Name", "Status")
 	tableBorderless.Append("Node1", "Ready")
 	tableBorderless.Render()
@@ -1484,14 +1503,14 @@ import (
 func main() {
 	// Using Option Functions for Quick Wrapping Settings on a specific section (e.g., Row)
 	// To actually see wrapping, a MaxWidth for the table or columns is needed.
-	tableOpt := tablewriter.NewTable(os.Stdout,
+	table := tablewriter.NewTable(os.Stdout,
 		tablewriter.WithRowAutoWrap(tw.WrapNormal),      // Set row wrapping
 		tablewriter.WithHeaderAutoWrap(tw.WrapTruncate), // Header truncates (default)
 		tablewriter.WithMaxWidth(30),                    // Force wrapping by setting table max width
 	)
-	tableOpt.Header("Long Header Text", "Status")
-	tableOpt.Append("This is a very long cell content", "Ready")
-	tableOpt.Footer("Summary", "Active")
+	table.Header("Long Header Text", "Status")
+	table.Append("This is a very long cell content", "Ready")
+	table.Footer("Summary", "Active")
 	table.Render()
 
 	// For more fine-grained control (e.g., different wrapping for header, row, footer):
@@ -1838,16 +1857,20 @@ func main() {
 	tableWithFilters := tablewriter.NewTable(os.Stdout,
 		tablewriter.WithConfig(
 			tablewriter.NewConfigBuilder().
-				Row().Filter().WithPerColumn([]func(string) string{
-				nil, // No filter for Name column
-				func(s string) string { // Status column: apply color
-					if s == "Ready" || s == "Active" {
-						return FgGreen + s + Reset
-					}
-					return FgRed + s + Reset
-				},
-			}).Build(). // Build PerColumn filter, then Row filter
-				Build(), // Build Config
+				Row().
+				Filter().
+				WithPerColumn([]func(string) string{
+					nil, // No filter for Item column
+					func(s string) string { // Status column: apply color
+						if s == "Ready" || s == "Active" {
+							return FgGreen + s + Reset
+						}
+						return FgRed + s + Reset
+					},
+				}).
+				Build(). // Return to RowConfigBuilder
+				Build(). // Return to ConfigBuilder
+				Build(), // Finalize Config
 		),
 	)
 	tableWithFilters.Header("Item", "Availability")
@@ -2566,51 +2589,44 @@ Creates a borderless, minimal table similar to `kubectl` command output, emphasi
 package main
 
 import (
+	"os"
+	"sync"
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
-	"log" // For error handling
-	"os"
 )
+
+var wg sync.WaitGroup
 
 func main() {
 	data := [][]any{
-		{"node1.example.com", "Ready", "compute", "1.21.3"},
-		{"node2.example.com", "Ready", "infra", "1.21.3"},
-		{"node3.example.com", "NotReady", "compute", "1.20.7"},
+		{"node1.example.com", "Ready", "compute", "1.11"},
+		{"node2.example.com", "Ready", "compute", "1.11"},
+		{"node3.example.com", "Ready", "compute", "1.11"},
+		{"node4.example.com", "NotReady", "compute", "1.11"},
 	}
 
 	table := tablewriter.NewTable(os.Stdout,
-		tablewriter.WithRenderer(renderer.NewBlueprint()), // Use Blueprint renderer
-		tablewriter.WithRendition(tw.Rendition{
-			Borders:  tw.BorderNone, // No outer borders
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
+			Borders: tw.BorderNone,
 			Settings: tw.Settings{
-				Lines:      tw.LinesNone,      // No header/footer lines
-				Separators: tw.SeparatorsNone, // No row/column lines
+				Separators: tw.SeparatorsNone,
+				Lines:      tw.LinesNone,
 			},
-			Symbols: tw.NewSymbols(tw.StyleNone), // Ensure no symbols are drawn
+		})),
+		tablewriter.WithConfig(tablewriter.Config{
+			Header: tw.CellConfig{
+				Formatting: tw.CellFormatting{Alignment: tw.AlignLeft},
+			},
+			Row: tw.CellConfig{
+				Formatting: tw.CellFormatting{Alignment: tw.AlignLeft},
+				Padding:    tw.CellPadding{Global: tw.PaddingNone},
+			},
 		}),
-		tablewriter.WithConfig(
-			tablewriter.NewConfigBuilder().
-				WithTrimSpace(tw.Off). // Preserve spacing for kubectl-like feel
-				Header().
-					Alignment().WithGlobal(tw.AlignLeft).Build().
-					Padding().WithGlobal(tw.Padding{Right: "  "}).Build(). // Space between header columns
-				Build().
-				Row().
-					Alignment().WithGlobal(tw.AlignLeft).Build().
-					Padding().WithGlobal(tw.Padding{Right: "  "}).Build(). // Space between row columns
-				Build().
-				Build(), // Final build for Config
-		),
 	)
-	table.Header("NAME", "STATUS", "ROLE", "VERSION")
-	if err := table.Bulk(data); err != nil {
-		log.Fatalf("Bulk append failed: %v", err)
-	}
-	if err := table.Render(); err != nil {
-		log.Fatalf("Render failed: %v", err)
-	}
+	table.Header("Name", "Status", "Role", "Version")
+	table.Bulk(data)
+	table.Render()
 }
 ```
 
