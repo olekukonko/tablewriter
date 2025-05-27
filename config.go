@@ -1,97 +1,63 @@
 package tablewriter
 
 import (
-	"github.com/olekukonko/ll"             // Logging library for debug output
-	"github.com/olekukonko/tablewriter/tw" // Table writer core types and utilities
-	"io"                                   // Input/output interfaces
-	"reflect"                              // Reflection for type handling
+	"github.com/olekukonko/tablewriter/tw"
 )
 
-// Config represents the overall configuration for a table, including settings for header, rows, footer, and behavior.
+// Config represents the table configuration
 type Config struct {
-	MaxWidth int             // Maximum width of the entire table (0 for unlimited)
-	Header   tw.CellConfig   // Configuration for the header section
-	Row      tw.CellConfig   // Configuration for the row section
-	Footer   tw.CellConfig   // Configuration for the footer section
-	Debug    bool            // Enables debug logging when true
-	Stream   tw.StreamConfig // Configuration specific to streaming mode
-	Behavior tw.Behavior     // Behavioral settings like auto-hiding and trimming
-	Widths   tw.CellWidth    // New: Global/per-column fixed width settings for the table
+	MaxWidth int
+	Header   tw.CellConfig
+	Row      tw.CellConfig
+	Footer   tw.CellConfig
+	Debug    bool
+	Stream   tw.StreamConfig
+	Behavior tw.Behavior
+	Widths   tw.CellWidth
 }
 
-// ColumnConfigBuilder is used to configure settings for a specific column across all table sections (header, row, footer).
-type ColumnConfigBuilder struct {
-	parent *ConfigBuilder // Reference to the parent ConfigBuilder for chaining
-	col    int            // Index of the column being configured
-}
-
-// Build returns the parent ConfigBuilder to allow method chaining.
-func (c *ColumnConfigBuilder) Build() *ConfigBuilder {
-	return c.parent
-}
-
-// WithAlignment sets the text alignment for a specific column across all sections.
-// Invalid alignments are ignored, and the method returns the builder for chaining.
-func (c *ColumnConfigBuilder) WithAlignment(align tw.Align) *ColumnConfigBuilder {
-	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
-		return c
-	}
-	// Update new Alignment.PerColumn for header
-	if len(c.parent.config.Header.Alignment.PerColumn) <= c.col {
-		newAligns := make([]tw.Align, c.col+1)
-		copy(newAligns, c.parent.config.Header.Alignment.PerColumn)
-		c.parent.config.Header.Alignment.PerColumn = newAligns
-	}
-	c.parent.config.Header.Alignment.PerColumn[c.col] = align
-
-	// Update new Alignment.PerColumn for row
-	if len(c.parent.config.Row.Alignment.PerColumn) <= c.col {
-		newAligns := make([]tw.Align, c.col+1)
-		copy(newAligns, c.parent.config.Row.Alignment.PerColumn)
-		c.parent.config.Row.Alignment.PerColumn = newAligns
-	}
-	c.parent.config.Row.Alignment.PerColumn[c.col] = align
-
-	// Update new Alignment.PerColumn for footer
-	if len(c.parent.config.Footer.Alignment.PerColumn) <= c.col {
-		newAligns := make([]tw.Align, c.col+1)
-		copy(newAligns, c.parent.config.Footer.Alignment.PerColumn)
-		c.parent.config.Footer.Alignment.PerColumn = newAligns
-	}
-	c.parent.config.Footer.Alignment.PerColumn[c.col] = align
-
-	return c
-}
-
-// WithMaxWidth sets the maximum width for a specific column across all sections (header, row, footer).
-// Negative widths are ignored, and the method returns the builder for chaining.
-func (c *ColumnConfigBuilder) WithMaxWidth(width int) *ColumnConfigBuilder {
-	if width < 0 {
-		return c
-	}
-	// Initialize PerColumn maps if they don't exist
-	if c.parent.config.Header.ColMaxWidths.PerColumn == nil {
-		c.parent.config.Header.ColMaxWidths.PerColumn = make(map[int]int)
-		c.parent.config.Row.ColMaxWidths.PerColumn = make(map[int]int)
-		c.parent.config.Footer.ColMaxWidths.PerColumn = make(map[int]int)
-	}
-	c.parent.config.Header.ColMaxWidths.PerColumn[c.col] = width
-	c.parent.config.Row.ColMaxWidths.PerColumn[c.col] = width
-	c.parent.config.Footer.ColMaxWidths.PerColumn[c.col] = width
-	return c
-}
-
-// ConfigBuilder provides a fluent interface for building a Config struct with both direct and nested configuration methods.
+// ConfigBuilder provides a fluent interface for building Config
 type ConfigBuilder struct {
-	config Config // The configuration being built
+	config Config
 }
 
-// Build finalizes and returns the Config struct after all modifications.
+// NewConfigBuilder creates a new ConfigBuilder with defaults
+func NewConfigBuilder() *ConfigBuilder {
+	return &ConfigBuilder{
+		config: defaultConfig(),
+	}
+}
+
+// Build returns the built Config
 func (b *ConfigBuilder) Build() Config {
 	return b.config
 }
 
-// Behavior returns a builder for configuring behavior settings.
+// Header returns a HeaderConfigBuilder for header configuration
+func (b *ConfigBuilder) Header() *HeaderConfigBuilder {
+	return &HeaderConfigBuilder{
+		parent: b,
+		config: &b.config.Header,
+	}
+}
+
+// Row returns a RowConfigBuilder for row configuration
+func (b *ConfigBuilder) Row() *RowConfigBuilder {
+	return &RowConfigBuilder{
+		parent: b,
+		config: &b.config.Row,
+	}
+}
+
+// Footer returns a FooterConfigBuilder for footer configuration
+func (b *ConfigBuilder) Footer() *FooterConfigBuilder {
+	return &FooterConfigBuilder{
+		parent: b,
+		config: &b.config.Footer,
+	}
+}
+
+// Behavior returns a BehaviorConfigBuilder for behavior configuration
 func (b *ConfigBuilder) Behavior() *BehaviorConfigBuilder {
 	return &BehaviorConfigBuilder{
 		parent: b,
@@ -99,16 +65,7 @@ func (b *ConfigBuilder) Behavior() *BehaviorConfigBuilder {
 	}
 }
 
-// Footer returns a builder for advanced configuration of the footer section.
-func (b *ConfigBuilder) Footer() *FooterConfigBuilder {
-	return &FooterConfigBuilder{
-		parent:  b,
-		config:  &b.config.Footer,
-		section: "footer",
-	}
-}
-
-// ForColumn returns a builder for configuring a specific column across all sections.
+// ForColumn returns a ColumnConfigBuilder for column-specific configuration
 func (b *ConfigBuilder) ForColumn(col int) *ColumnConfigBuilder {
 	return &ColumnConfigBuilder{
 		parent: b,
@@ -116,33 +73,22 @@ func (b *ConfigBuilder) ForColumn(col int) *ColumnConfigBuilder {
 	}
 }
 
-// Header returns a builder for advanced configuration of the header section.
-func (b *ConfigBuilder) Header() *HeaderConfigBuilder {
-	return &HeaderConfigBuilder{
-		parent:  b,
-		config:  &b.config.Header,
-		section: "header",
-	}
+// WithTrimSpace enables or disables automatic trimming of leading/trailing spaces.
+// Ignored in streaming mode.
+func (b *ConfigBuilder) WithTrimSpace(state tw.State) *ConfigBuilder {
+	b.config.Behavior.TrimSpace = state
+	return b
 }
 
-// Row returns a builder for advanced configuration of the row section.
-func (b *ConfigBuilder) Row() *RowConfigBuilder {
-	return &RowConfigBuilder{
-		parent:  b,
-		config:  &b.config.Row,
-		section: "row",
-	}
+// WithDebug enables/disables debug logging
+func (b *ConfigBuilder) WithDebug(debug bool) *ConfigBuilder {
+	b.config.Debug = debug
+	return b
 }
 
 // WithAutoHide enables or disables automatic hiding of empty columns (ignored in streaming mode).
 func (b *ConfigBuilder) WithAutoHide(state tw.State) *ConfigBuilder {
 	b.config.Behavior.AutoHide = state
-	return b
-}
-
-// WithDebug enables or disables debug logging for the table.
-func (b *ConfigBuilder) WithDebug(debug bool) *ConfigBuilder {
-	b.config.Debug = debug
 	return b
 }
 
@@ -313,1015 +259,702 @@ func (b *ConfigBuilder) WithRowMergeMode(mergeMode int) *ConfigBuilder {
 	return b
 }
 
-// WithTrimSpace enables or disables automatic trimming of leading/trailing spaces.
-// Ignored in streaming mode.
-func (b *ConfigBuilder) WithTrimSpace(state tw.State) *ConfigBuilder {
-	b.config.Behavior.TrimSpace = state
-	return b
-}
-
-// AlignmentConfigBuilder configures alignment options for a table section.
-type AlignmentConfigBuilder struct {
-	parent  interface{}       // Reference to the parent builder (HeaderConfigBuilder, RowConfigBuilder, or FooterConfigBuilder)
-	config  *tw.CellAlignment // Alignment configuration being modified
-	section string            // Section name for logging/debugging
-}
-
-// Build returns the parent builder for chaining.
-func (a *AlignmentConfigBuilder) Build() interface{} {
-	return a.parent
-}
-
-// WithGlobal sets the global alignment for all cells in the section.
-// Invalid alignments are ignored.
-func (a *AlignmentConfigBuilder) WithGlobal(align tw.Align) *AlignmentConfigBuilder {
-	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
-		return a
-	}
-	a.config.Global = align
-	return a
-}
-
-// WithPerColumn sets per-column alignments for the section.
-// Invalid alignments are ignored.
-func (a *AlignmentConfigBuilder) WithPerColumn(alignments []tw.Align) *AlignmentConfigBuilder {
-	if len(alignments) == 0 {
-		return a
-	}
-	// Filter out invalid alignments
-	validAlignments := make([]tw.Align, len(alignments))
-	for i, align := range alignments {
-		if align == tw.AlignLeft || align == tw.AlignRight || align == tw.AlignCenter || align == tw.AlignNone {
-			validAlignments[i] = align
-		} else {
-			validAlignments[i] = tw.AlignDefault
-		}
-	}
-	a.config.PerColumn = validAlignments
-	return a
-}
-
-// BehaviorConfigBuilder configures behavior options for the table.
-type BehaviorConfigBuilder struct {
-	parent *ConfigBuilder // Reference to the parent ConfigBuilder
-	config *tw.Behavior   // Behavior configuration being modified
-}
-
-// Build returns the parent ConfigBuilder for chaining.
-func (b *BehaviorConfigBuilder) Build() *ConfigBuilder {
-	return b.parent
-}
-
-// WithAutoHide enables or disables automatic hiding of empty columns.
-func (b *BehaviorConfigBuilder) WithAutoHide(state tw.State) *BehaviorConfigBuilder {
-	b.config.AutoHide = state
-	return b
-}
-
-// WithTrimSpace enables or disables automatic trimming of leading/trailing spaces.
-func (b *BehaviorConfigBuilder) WithTrimSpace(state tw.State) *BehaviorConfigBuilder {
-	b.config.TrimSpace = state
-	return b
-}
-
-// WithHeaderControl sets the control behavior for the table header.
-func (b *BehaviorConfigBuilder) WithHeaderControl(control tw.Control) *BehaviorConfigBuilder {
-	b.config.Header = control
-	return b
-}
-
-// WithFooterControl sets the control behavior for the table footer.
-func (b *BehaviorConfigBuilder) WithFooterControl(control tw.Control) *BehaviorConfigBuilder {
-	b.config.Footer = control
-	return b
-}
-
-// WithCompactMerge enables or disables compact width optimization for merged cells.
-func (b *BehaviorConfigBuilder) WithCompactMerge(state tw.State) *BehaviorConfigBuilder {
-	b.config.Compact.Merge = state
-	return b
-}
-
-// FooterConfigBuilder provides advanced configuration options for the footer section.
-type FooterConfigBuilder struct {
-	parent  *ConfigBuilder // Reference to the parent ConfigBuilder
-	config  *tw.CellConfig // Footer configuration being modified
-	section string         // Section name for logging/debugging
-}
-
-// Build returns the parent ConfigBuilder for chaining.
-func (f *FooterConfigBuilder) Build() *ConfigBuilder {
-	return f.parent
-}
-
-// Alignment returns a builder for configuring footer alignment settings.
-func (f *FooterConfigBuilder) Alignment() *AlignmentConfigBuilder {
-	return &AlignmentConfigBuilder{
-		parent:  f,
-		config:  &f.config.Alignment,
-		section: f.section,
-	}
-}
-
-// Formatting returns a builder for configuring footer formatting settings.
-func (f *FooterConfigBuilder) Formatting() *FooterFormattingBuilder {
-	return &FooterFormattingBuilder{
-		parent:  f,
-		config:  &f.config.Formatting,
-		section: f.section,
-	}
-}
-
-// Padding returns a builder for configuring footer padding settings.
-func (f *FooterConfigBuilder) Padding() *FooterPaddingBuilder {
-	return &FooterPaddingBuilder{
-		parent:  f,
-		config:  &f.config.Padding,
-		section: f.section,
-	}
-}
-
-// FooterFormattingBuilder configures formatting options for the footer section.
-type FooterFormattingBuilder struct {
-	parent  *FooterConfigBuilder // Reference to the parent FooterConfigBuilder
-	config  *tw.CellFormatting   // Formatting configuration being modified
-	section string               // Section name for logging/debugging
-}
-
-// Build returns the parent FooterConfigBuilder for chaining.
-func (ff *FooterFormattingBuilder) Build() *FooterConfigBuilder {
-	return ff.parent
-}
-
-// WithAutoFormat enables or disables automatic formatting for footer cells.
-func (ff *FooterFormattingBuilder) WithAutoFormat(autoFormat tw.State) *FooterFormattingBuilder {
-	ff.config.AutoFormat = autoFormat
-	return ff
-}
-
-// WithAutoWrap sets the wrapping behavior for footer cells.
-// Invalid wrap modes are ignored.
-func (ff *FooterFormattingBuilder) WithAutoWrap(autoWrap int) *FooterFormattingBuilder {
-	if autoWrap < tw.WrapNone || autoWrap > tw.WrapBreak {
-		return ff
-	}
-	ff.config.AutoWrap = autoWrap
-	return ff
-}
-
-// WithNewarkMode sets the merge behavior for footer cells (likely a typo, should be WithMergeMode).
-// Invalid merge modes are ignored.
-func (ff *FooterFormattingBuilder) WithNewarkMode(mergeMode int) *FooterFormattingBuilder {
-	if mergeMode < tw.MergeNone || mergeMode > tw.MergeHierarchical {
-		return ff
-	}
-	ff.config.MergeMode = mergeMode
-	return ff
-}
-
-// FooterPaddingBuilder configures padding options for the footer section.
-type FooterPaddingBuilder struct {
-	parent  *FooterConfigBuilder // Reference to the parent FooterConfigBuilder
-	config  *tw.CellPadding      // Padding configuration being modified
-	section string               // Section name for logging/debugging
-}
-
-// AddColumnPadding adds padding for a specific column in the footer.
-func (fp *FooterPaddingBuilder) AddColumnPadding(padding tw.Padding) *FooterPaddingBuilder {
-	fp.config.PerColumn = append(fp.config.PerColumn, padding)
-	return fp
-}
-
-// Build returns the parent FooterConfigBuilder for chaining.
-func (fp *FooterPaddingBuilder) Build() *FooterConfigBuilder {
-	return fp.parent
-}
-
-// WithGlobal sets the global padding for all footer cells.
-func (fp *FooterPaddingBuilder) WithGlobal(padding tw.Padding) *FooterPaddingBuilder {
-	fp.config.Global = padding
-	return fp
-}
-
-// WithPerColumn sets per-column padding for the footer.
-func (fp *FooterPaddingBuilder) WithPerColumn(padding []tw.Padding) *FooterPaddingBuilder {
-	fp.config.PerColumn = padding
-	return fp
-}
-
-// HeaderConfigBuilder provides advanced configuration options for the header section.
+// HeaderConfigBuilder configures header settings
 type HeaderConfigBuilder struct {
-	parent  *ConfigBuilder // Reference to the parent ConfigBuilder
-	config  *tw.CellConfig // Header configuration being modified
-	section string         // Section name for logging/debugging
+	parent *ConfigBuilder
+	config *tw.CellConfig
 }
 
-// Build returns the parent ConfigBuilder for chaining.
+// Build returns the parent ConfigBuilder
 func (h *HeaderConfigBuilder) Build() *ConfigBuilder {
 	return h.parent
 }
 
-// Alignment returns a builder for configuring header alignment settings.
+// Alignment returns an AlignmentConfigBuilder for header alignment
 func (h *HeaderConfigBuilder) Alignment() *AlignmentConfigBuilder {
 	return &AlignmentConfigBuilder{
-		parent:  h,
+		parent:  h.parent,
 		config:  &h.config.Alignment,
-		section: h.section,
+		section: "header",
 	}
 }
 
-// Formatting returns a builder for configuring header formatting settings.
+// Formatting returns a HeaderFormattingBuilder for header formatting
 func (h *HeaderConfigBuilder) Formatting() *HeaderFormattingBuilder {
 	return &HeaderFormattingBuilder{
 		parent:  h,
 		config:  &h.config.Formatting,
-		section: h.section,
+		section: "header",
 	}
 }
 
-// Padding returns a builder for configuring header padding settings.
+// Padding returns a HeaderPaddingBuilder for header padding
 func (h *HeaderConfigBuilder) Padding() *HeaderPaddingBuilder {
 	return &HeaderPaddingBuilder{
 		parent:  h,
 		config:  &h.config.Padding,
-		section: h.section,
+		section: "header",
 	}
 }
 
-// HeaderFormattingBuilder configures formatting options for the header section.
-type HeaderFormattingBuilder struct {
-	parent  *HeaderConfigBuilder // Reference to the parent HeaderConfigBuilder
-	config  *tw.CellFormatting   // Formatting configuration being modified
-	section string               // Section name for logging/debugging
+// Filter returns a HeaderFilterBuilder for header filtering
+func (h *HeaderConfigBuilder) Filter() *HeaderFilterBuilder {
+	return &HeaderFilterBuilder{
+		parent:  h,
+		config:  &h.config.Filter,
+		section: "header",
+	}
 }
 
-// Build returns the parent HeaderConfigBuilder for chaining.
+// Callbacks returns a HeaderCallbacksBuilder for header callbacks
+func (h *HeaderConfigBuilder) Callbacks() *HeaderCallbacksBuilder {
+	return &HeaderCallbacksBuilder{
+		parent:  h,
+		config:  &h.config.Callbacks,
+		section: "header",
+	}
+}
+
+// RowConfigBuilder configures row settings
+type RowConfigBuilder struct {
+	parent *ConfigBuilder
+	config *tw.CellConfig
+}
+
+// Build returns the parent ConfigBuilder
+func (r *RowConfigBuilder) Build() *ConfigBuilder {
+	return r.parent
+}
+
+// Alignment returns an AlignmentConfigBuilder for row alignment
+func (r *RowConfigBuilder) Alignment() *AlignmentConfigBuilder {
+	return &AlignmentConfigBuilder{
+		parent:  r.parent,
+		config:  &r.config.Alignment,
+		section: "row",
+	}
+}
+
+// Formatting returns a RowFormattingBuilder for row formatting
+func (r *RowConfigBuilder) Formatting() *RowFormattingBuilder {
+	return &RowFormattingBuilder{
+		parent:  r,
+		config:  &r.config.Formatting,
+		section: "row",
+	}
+}
+
+// Padding returns a RowPaddingBuilder for row padding
+func (r *RowConfigBuilder) Padding() *RowPaddingBuilder {
+	return &RowPaddingBuilder{
+		parent:  r,
+		config:  &r.config.Padding,
+		section: "row",
+	}
+}
+
+// Filter returns a RowFilterBuilder for row filtering
+func (r *RowConfigBuilder) Filter() *RowFilterBuilder {
+	return &RowFilterBuilder{
+		parent:  r,
+		config:  &r.config.Filter,
+		section: "row",
+	}
+}
+
+// Callbacks returns a RowCallbacksBuilder for row callbacks
+func (r *RowConfigBuilder) Callbacks() *RowCallbacksBuilder {
+	return &RowCallbacksBuilder{
+		parent:  r,
+		config:  &r.config.Callbacks,
+		section: "row",
+	}
+}
+
+// FooterConfigBuilder configures footer settings
+type FooterConfigBuilder struct {
+	parent *ConfigBuilder
+	config *tw.CellConfig
+}
+
+// Build returns the parent ConfigBuilder
+func (f *FooterConfigBuilder) Build() *ConfigBuilder {
+	return f.parent
+}
+
+// Alignment returns an AlignmentConfigBuilder for footer alignment
+func (f *FooterConfigBuilder) Alignment() *AlignmentConfigBuilder {
+	return &AlignmentConfigBuilder{
+		parent:  f.parent,
+		config:  &f.config.Alignment,
+		section: "footer",
+	}
+}
+
+// Formatting returns a FooterFormattingBuilder for footer formatting
+func (f *FooterConfigBuilder) Formatting() *FooterFormattingBuilder {
+	return &FooterFormattingBuilder{
+		parent:  f,
+		config:  &f.config.Formatting,
+		section: "footer",
+	}
+}
+
+// Padding returns a FooterPaddingBuilder for footer padding
+func (f *FooterConfigBuilder) Padding() *FooterPaddingBuilder {
+	return &FooterPaddingBuilder{
+		parent:  f,
+		config:  &f.config.Padding,
+		section: "footer",
+	}
+}
+
+// Filter returns a FooterFilterBuilder for footer filtering
+func (f *FooterConfigBuilder) Filter() *FooterFilterBuilder {
+	return &FooterFilterBuilder{
+		parent:  f,
+		config:  &f.config.Filter,
+		section: "footer",
+	}
+}
+
+// Callbacks returns a FooterCallbacksBuilder for footer callbacks
+func (f *FooterConfigBuilder) Callbacks() *FooterCallbacksBuilder {
+	return &FooterCallbacksBuilder{
+		parent:  f,
+		config:  &f.config.Callbacks,
+		section: "footer",
+	}
+}
+
+// AlignmentConfigBuilder configures alignment settings
+type AlignmentConfigBuilder struct {
+	parent  *ConfigBuilder
+	config  *tw.CellAlignment
+	section string
+}
+
+// Build returns the parent ConfigBuilder
+func (a *AlignmentConfigBuilder) Build() *ConfigBuilder {
+	return a.parent
+}
+
+// WithGlobal sets global alignment
+func (a *AlignmentConfigBuilder) WithGlobal(align tw.Align) *AlignmentConfigBuilder {
+	if err := align.Validate(); err == nil {
+		a.config.Global = align
+	}
+	return a
+}
+
+// WithPerColumn sets per-column alignments
+func (a *AlignmentConfigBuilder) WithPerColumn(alignments []tw.Align) *AlignmentConfigBuilder {
+	if len(alignments) > 0 {
+		a.config.PerColumn = alignments
+	}
+	return a
+}
+
+// HeaderFormattingBuilder configures header formatting
+type HeaderFormattingBuilder struct {
+	parent  *HeaderConfigBuilder
+	config  *tw.CellFormatting
+	section string
+}
+
+// Build returns the parent HeaderConfigBuilder
 func (hf *HeaderFormattingBuilder) Build() *HeaderConfigBuilder {
 	return hf.parent
 }
 
-// WithAutoFormat enables or disables automatic formatting for header cells.
+// WithAutoFormat enables/disables auto formatting
 func (hf *HeaderFormattingBuilder) WithAutoFormat(autoFormat tw.State) *HeaderFormattingBuilder {
 	hf.config.AutoFormat = autoFormat
 	return hf
 }
 
-// WithAutoWrap sets the wrapping behavior for header cells.
-// Invalid wrap modes are ignored.
+// WithAutoWrap sets auto wrap mode
 func (hf *HeaderFormattingBuilder) WithAutoWrap(autoWrap int) *HeaderFormattingBuilder {
-	if autoWrap < tw.WrapNone || autoWrap > tw.WrapBreak {
-		return hf
+	if autoWrap >= tw.WrapNone && autoWrap <= tw.WrapBreak {
+		hf.config.AutoWrap = autoWrap
 	}
-	hf.config.AutoWrap = autoWrap
 	return hf
 }
 
-// WithMergeMode sets the merge behavior for header cells.
-// Invalid merge modes are ignored.
+// WithMergeMode sets merge mode
 func (hf *HeaderFormattingBuilder) WithMergeMode(mergeMode int) *HeaderFormattingBuilder {
-	if mergeMode < tw.MergeNone || mergeMode > tw.MergeHierarchical {
-		return hf
+	if mergeMode >= tw.MergeNone && mergeMode <= tw.MergeHierarchical {
+		hf.config.MergeMode = mergeMode
 	}
-	hf.config.MergeMode = mergeMode
 	return hf
 }
 
-// HeaderPaddingBuilder configures padding options for the header section.
-type HeaderPaddingBuilder struct {
-	parent  *HeaderConfigBuilder // Reference to the parent HeaderConfigBuilder
-	config  *tw.CellPadding      // Padding configuration being modified
-	section string               // Section name for logging/debugging
-}
-
-// AddColumnPadding adds padding for a specific column in the header.
-func (hp *HeaderPaddingBuilder) AddColumnPadding(padding tw.Padding) *HeaderPaddingBuilder {
-	hp.config.PerColumn = append(hp.config.PerColumn, padding)
-	return hp
-}
-
-// Build returns the parent HeaderConfigBuilder for chaining.
-func (hp *HeaderPaddingBuilder) Build() *HeaderConfigBuilder {
-	return hp.parent
-}
-
-// WithGlobal sets the global padding for all header cells.
-func (hp *HeaderPaddingBuilder) WithGlobal(padding tw.Padding) *HeaderPaddingBuilder {
-	hp.config.Global = padding
-	return hp
-}
-
-// WithPerColumn sets per-column padding for the header.
-func (hp *HeaderPaddingBuilder) WithPerColumn(padding []tw.Padding) *HeaderPaddingBuilder {
-	hp.config.PerColumn = padding
-	return hp
-}
-
-// Option defines a function type for configuring a Table instance.
-type Option func(target *Table)
-
-// RowConfigBuilder provides advanced configuration options for the row section.
-type RowConfigBuilder struct {
-	parent  *ConfigBuilder // Reference to the parent ConfigBuilder
-	config  *tw.CellConfig // Row configuration being modified
-	section string         // Section name for logging/debugging
-}
-
-// Build returns the parent ConfigBuilder for chaining.
-func (r *RowConfigBuilder) Build() *ConfigBuilder {
-	return r.parent
-}
-
-// Alignment returns a builder for configuring row alignment settings.
-func (r *RowConfigBuilder) Alignment() *AlignmentConfigBuilder {
-	return &AlignmentConfigBuilder{
-		parent:  r,
-		config:  &r.config.Alignment,
-		section: r.section,
-	}
-}
-
-// Formatting returns a builder for configuring row formatting settings.
-func (r *RowConfigBuilder) Formatting() *RowFormattingBuilder {
-	return &RowFormattingBuilder{
-		parent:  r,
-		config:  &r.config.Formatting,
-		section: r.section,
-	}
-}
-
-// Padding returns a builder for configuring row padding settings.
-func (r *RowConfigBuilder) Padding() *RowPaddingBuilder {
-	return &RowPaddingBuilder{
-		parent:  r,
-		config:  &r.config.Padding,
-		section: r.section,
-	}
-}
-
-// RowFormattingBuilder configures formatting options for the row section.
+// RowFormattingBuilder configures row formatting
 type RowFormattingBuilder struct {
-	parent  *RowConfigBuilder  // Reference to the parent RowConfigBuilder
-	config  *tw.CellFormatting // Formatting configuration being modified
-	section string             // Section name for logging/debugging
+	parent  *RowConfigBuilder
+	config  *tw.CellFormatting
+	section string
 }
 
-// Build returns the parent RowConfigBuilder for chaining.
+// Build returns the parent RowConfigBuilder
 func (rf *RowFormattingBuilder) Build() *RowConfigBuilder {
 	return rf.parent
 }
 
-// WithAutoFormat enables or disables automatic formatting for row cells.
+// WithAutoFormat enables/disables auto formatting
 func (rf *RowFormattingBuilder) WithAutoFormat(autoFormat tw.State) *RowFormattingBuilder {
 	rf.config.AutoFormat = autoFormat
 	return rf
 }
 
-// WithAutoWrap sets the wrapping behavior for row cells.
-// Invalid wrap modes are ignored.
+// WithAutoWrap sets auto wrap mode
 func (rf *RowFormattingBuilder) WithAutoWrap(autoWrap int) *RowFormattingBuilder {
-	if autoWrap < tw.WrapNone || autoWrap > tw.WrapBreak {
-		return rf
+	if autoWrap >= tw.WrapNone && autoWrap <= tw.WrapBreak {
+		rf.config.AutoWrap = autoWrap
 	}
-	rf.config.AutoWrap = autoWrap
 	return rf
 }
 
-// WithMergeMode sets the merge behavior for row cells.
-// Invalid merge modes are ignored.
+// WithMergeMode sets merge mode
 func (rf *RowFormattingBuilder) WithMergeMode(mergeMode int) *RowFormattingBuilder {
-	if mergeMode < tw.MergeNone || mergeMode > tw.MergeHierarchical {
-		return rf
+	if mergeMode >= tw.MergeNone && mergeMode <= tw.MergeHierarchical {
+		rf.config.MergeMode = mergeMode
 	}
-	rf.config.MergeMode = mergeMode
 	return rf
 }
 
-// RowPaddingBuilder configures padding options for the row section.
+// FooterFormattingBuilder configures footer formatting
+type FooterFormattingBuilder struct {
+	parent  *FooterConfigBuilder
+	config  *tw.CellFormatting
+	section string
+}
+
+// Build returns the parent FooterConfigBuilder
+func (ff *FooterFormattingBuilder) Build() *FooterConfigBuilder {
+	return ff.parent
+}
+
+// WithAutoFormat enables/disables auto formatting
+func (ff *FooterFormattingBuilder) WithAutoFormat(autoFormat tw.State) *FooterFormattingBuilder {
+	ff.config.AutoFormat = autoFormat
+	return ff
+}
+
+// WithAutoWrap sets auto wrap mode
+func (ff *FooterFormattingBuilder) WithAutoWrap(autoWrap int) *FooterFormattingBuilder {
+	if autoWrap >= tw.WrapNone && autoWrap <= tw.WrapBreak {
+		ff.config.AutoWrap = autoWrap
+	}
+	return ff
+}
+
+// WithMergeMode sets merge mode
+func (ff *FooterFormattingBuilder) WithMergeMode(mergeMode int) *FooterFormattingBuilder {
+	if mergeMode >= tw.MergeNone && mergeMode <= tw.MergeHierarchical {
+		ff.config.MergeMode = mergeMode
+	}
+	return ff
+}
+
+// HeaderPaddingBuilder configures header padding
+type HeaderPaddingBuilder struct {
+	parent  *HeaderConfigBuilder
+	config  *tw.CellPadding
+	section string
+}
+
+// Build returns the parent HeaderConfigBuilder
+func (hp *HeaderPaddingBuilder) Build() *HeaderConfigBuilder {
+	return hp.parent
+}
+
+// WithGlobal sets global padding
+func (hp *HeaderPaddingBuilder) WithGlobal(padding tw.Padding) *HeaderPaddingBuilder {
+	hp.config.Global = padding
+	return hp
+}
+
+// WithPerColumn sets per-column padding
+func (hp *HeaderPaddingBuilder) WithPerColumn(padding []tw.Padding) *HeaderPaddingBuilder {
+	hp.config.PerColumn = padding
+	return hp
+}
+
+// AddColumnPadding adds padding for a specific column in the header
+func (hp *HeaderPaddingBuilder) AddColumnPadding(padding tw.Padding) *HeaderPaddingBuilder {
+	hp.config.PerColumn = append(hp.config.PerColumn, padding)
+	return hp
+}
+
+// RowPaddingBuilder configures row padding
 type RowPaddingBuilder struct {
-	parent  *RowConfigBuilder // Reference to the parent RowConfigBuilder
-	config  *tw.CellPadding   // Padding configuration being modified
-	section string            // Section name for logging/debugging
+	parent  *RowConfigBuilder
+	config  *tw.CellPadding
+	section string
 }
 
-// AddColumnPadding adds padding for a specific column in the rows.
-func (rp *RowPaddingBuilder) AddColumnPadding(padding tw.Padding) *RowPaddingBuilder {
-	rp.config.PerColumn = append(rp.config.PerColumn, padding)
-	return rp
-}
-
-// Build returns the parent RowConfigBuilder for chaining.
+// Build returns the parent RowConfigBuilder
 func (rp *RowPaddingBuilder) Build() *RowConfigBuilder {
 	return rp.parent
 }
 
-// WithGlobal sets the global padding for all row cells.
+// WithGlobal sets global padding
 func (rp *RowPaddingBuilder) WithGlobal(padding tw.Padding) *RowPaddingBuilder {
 	rp.config.Global = padding
 	return rp
 }
 
-// WithPerColumn sets per-column padding for the rows.
+// WithPerColumn sets per-column padding
 func (rp *RowPaddingBuilder) WithPerColumn(padding []tw.Padding) *RowPaddingBuilder {
 	rp.config.PerColumn = padding
 	return rp
 }
 
-// NewConfigBuilder creates a new ConfigBuilder initialized with default settings.
-func NewConfigBuilder() *ConfigBuilder {
-	return &ConfigBuilder{
-		config: defaultConfig(),
-	}
+// AddColumnPadding adds padding for a specific column in the rows
+func (rp *RowPaddingBuilder) AddColumnPadding(padding tw.Padding) *RowPaddingBuilder {
+	rp.config.PerColumn = append(rp.config.PerColumn, padding)
+	return rp
 }
 
-// NewWriter creates a new table with default settings for backward compatibility.
-// It logs the creation if debugging is enabled.
-func NewWriter(w io.Writer) *Table {
-	t := NewTable(w)
-	if t.logger != nil {
-		t.logger.Debug("NewWriter created buffered Table")
-	}
-	return t
+// FooterPaddingBuilder configures footer padding
+type FooterPaddingBuilder struct {
+	parent  *FooterConfigBuilder
+	config  *tw.CellPadding
+	section string
 }
 
-// WithAutoHide enables or disables automatic hiding of columns with empty data rows.
-// Logs the change if debugging is enabled.
-func WithAutoHide(state tw.State) Option {
-	return func(target *Table) {
-		target.config.Behavior.AutoHide = state
-		if target.logger != nil {
-			target.logger.Debugf("Option: WithAutoHide applied to Table: %v", state)
-		}
-	}
+// Build returns the parent FooterConfigBuilder
+func (fp *FooterPaddingBuilder) Build() *FooterConfigBuilder {
+	return fp.parent
 }
 
-// WithColumnMax sets a global maximum column width for the table in streaming mode.
-// Negative values are ignored, and the change is logged if debugging is enabled.
-func WithColumnMax(width int) Option {
-	return func(target *Table) {
-		if width < 0 {
-			return
-		}
-		target.config.Widths.Global = width
-		if target.logger != nil {
-			target.logger.Debugf("Option: WithColumnMax applied to Table: %v", width)
-		}
-	}
+// WithGlobal sets global padding
+func (fp *FooterPaddingBuilder) WithGlobal(padding tw.Padding) *FooterPaddingBuilder {
+	fp.config.Global = padding
+	return fp
 }
 
-// WithTableMax sets a global maximum table width for the table.
-// Negative values are ignored, and the change is logged if debugging is enabled.
-func WithTableMax(width int) Option {
-	return func(target *Table) {
-		if width < 0 {
-			return
-		}
-		target.config.MaxWidth = width
-		if target.logger != nil {
-			target.logger.Debugf("Option: WithTableMax applied to Table: %v", width)
-		}
-	}
+// WithPerColumn sets per-column padding
+func (fp *FooterPaddingBuilder) WithPerColumn(padding []tw.Padding) *FooterPaddingBuilder {
+	fp.config.PerColumn = padding
+	return fp
 }
 
-// WithWidths sets per-column widths for the table.
-// Negative widths are removed, and the change is logged if debugging is enabled.
-func WithWidths(width tw.CellWidth) Option {
-	return func(target *Table) {
-		target.config.Widths = width
-		if target.logger != nil {
-			target.logger.Debugf("Option: WithColumnWidths applied to Table: %v", width)
-		}
-	}
+// AddColumnPadding adds padding for a specific column in the footer
+func (fp *FooterPaddingBuilder) AddColumnPadding(padding tw.Padding) *FooterPaddingBuilder {
+	fp.config.PerColumn = append(fp.config.PerColumn, padding)
+	return fp
 }
 
-// WithColumnWidths sets per-column widths for the table.
-// Negative widths are removed, and the change is logged if debugging is enabled.
-func WithColumnWidths(widths tw.Mapper[int, int]) Option {
-	return func(target *Table) {
-		for k, v := range widths {
-			if v < 0 {
-				delete(widths, k)
-			}
-		}
-		target.config.Widths.PerColumn = widths
-		if target.logger != nil {
-			target.logger.Debugf("Option: WithColumnWidths applied to Table: %v", widths)
-		}
-	}
+// BehaviorConfigBuilder configures behavior settings
+type BehaviorConfigBuilder struct {
+	parent *ConfigBuilder
+	config *tw.Behavior
 }
 
-// WithConfig applies a custom configuration to the table by merging it with the default configuration.
-func WithConfig(cfg Config) Option {
-	return func(target *Table) {
-		target.config = mergeConfig(defaultConfig(), cfg)
-	}
+// Build returns the parent ConfigBuilder
+func (bb *BehaviorConfigBuilder) Build() *ConfigBuilder {
+	return bb.parent
 }
 
-// WithDebug enables or disables debug logging and adjusts the logger level accordingly.
-// Logs the change if debugging is enabled.
-func WithDebug(debug bool) Option {
-	return func(target *Table) {
-		target.config.Debug = debug
-	}
+// WithAutoHide enables/disables auto-hide
+func (bb *BehaviorConfigBuilder) WithAutoHide(state tw.State) *BehaviorConfigBuilder {
+	bb.config.AutoHide = state
+	return bb
 }
 
-// WithFooter sets the table footers by calling the Footer method.
-func WithFooter(footers []string) Option {
-	return func(target *Table) {
-		target.Footer(footers)
-	}
+// WithTrimSpace enables/disables trim space
+func (bb *BehaviorConfigBuilder) WithTrimSpace(state tw.State) *BehaviorConfigBuilder {
+	bb.config.TrimSpace = state
+	return bb
 }
 
-// WithFooterConfig applies a full footer configuration to the table.
-// Logs the change if debugging is enabled.
-func WithFooterConfig(config tw.CellConfig) Option {
-	return func(target *Table) {
-		target.config.Footer = config
-		if target.logger != nil {
-			target.logger.Debug("Option: WithFooterConfig applied to Table.")
-		}
-	}
+// WithHeaderHide enables/disables header visibility
+func (bb *BehaviorConfigBuilder) WithHeaderHide(state tw.State) *BehaviorConfigBuilder {
+	bb.config.Header.Hide = state
+	return bb
 }
 
-// WithFooterAlignmentConfig applies a footer alignment configuration to the table.
-// Logs the change if debugging is enabled.
-func WithFooterAlignmentConfig(alignment tw.CellAlignment) Option {
-	return func(target *Table) {
-		target.config.Footer.Alignment = alignment
-		if target.logger != nil {
-			target.logger.Debugf("Option: WithFooterAlignmentConfig applied to Table: %+v", alignment)
-		}
-	}
+// WithFooterHide enables/disables footer visibility
+func (bb *BehaviorConfigBuilder) WithFooterHide(state tw.State) *BehaviorConfigBuilder {
+	bb.config.Footer.Hide = state
+	return bb
 }
 
-// WithFooterMergeMode sets the merge mode for footer cells.
-// Invalid merge modes are ignored, and the change is logged if debugging is enabled.
-func WithFooterMergeMode(mergeMode int) Option {
-	return func(target *Table) {
-		if mergeMode < tw.MergeNone || mergeMode > tw.MergeHierarchical {
-			return
-		}
-		target.config.Footer.Formatting.MergeMode = mergeMode
-		if target.logger != nil {
-			target.logger.Debugf("Option: WithFooterMergeMode applied to Table: %v", mergeMode)
-		}
-	}
+// WithCompactMerge enables/disables compact width optimization for merged cells
+func (bb *BehaviorConfigBuilder) WithCompactMerge(state tw.State) *BehaviorConfigBuilder {
+	bb.config.Compact.Merge = state
+	return bb
 }
 
-// WithHeader sets the table headers by calling the Header method.
-func WithHeader(headers []string) Option {
-	return func(target *Table) {
-		target.Header(headers)
-	}
+// ColumnConfigBuilder configures column-specific settings
+type ColumnConfigBuilder struct {
+	parent *ConfigBuilder
+	col    int
 }
 
-// WithHeaderAlignment sets the text alignment for header cells.
-// Invalid alignments are ignored, and the change is logged if debugging is enabled.
-func WithHeaderAlignment(align tw.Align) Option {
-	return func(target *Table) {
-		if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
-			return
-		}
-		target.config.Header.Alignment.Global = align
-		if target.logger != nil {
-			target.logger.Debugf("Option: WithHeaderAlignment applied to Table: %v", align)
-		}
-	}
+// Build returns the parent ConfigBuilder
+func (c *ColumnConfigBuilder) Build() *ConfigBuilder {
+	return c.parent
 }
 
-// WithHeaderAlignmentConfig applies a header alignment configuration to the table.
-// Logs the change if debugging is enabled.
-func WithHeaderAlignmentConfig(alignment tw.CellAlignment) Option {
-	return func(target *Table) {
-		target.config.Header.Alignment = alignment
-		if target.logger != nil {
-			target.logger.Debugf("Option: WithHeaderAlignmentConfig applied to Table: %+v", alignment)
+// WithAlignment sets alignment for the column
+func (c *ColumnConfigBuilder) WithAlignment(align tw.Align) *ColumnConfigBuilder {
+	if err := align.Validate(); err == nil {
+		// Ensure slices are large enough
+		if len(c.parent.config.Header.Alignment.PerColumn) <= c.col {
+			newAligns := make([]tw.Align, c.col+1)
+			copy(newAligns, c.parent.config.Header.Alignment.PerColumn)
+			c.parent.config.Header.Alignment.PerColumn = newAligns
 		}
+		c.parent.config.Header.Alignment.PerColumn[c.col] = align
+
+		if len(c.parent.config.Row.Alignment.PerColumn) <= c.col {
+			newAligns := make([]tw.Align, c.col+1)
+			copy(newAligns, c.parent.config.Row.Alignment.PerColumn)
+			c.parent.config.Row.Alignment.PerColumn = newAligns
+		}
+		c.parent.config.Row.Alignment.PerColumn[c.col] = align
+
+		if len(c.parent.config.Footer.Alignment.PerColumn) <= c.col {
+			newAligns := make([]tw.Align, c.col+1)
+			copy(newAligns, c.parent.config.Footer.Alignment.PerColumn)
+			c.parent.config.Footer.Alignment.PerColumn = newAligns
+		}
+		c.parent.config.Footer.Alignment.PerColumn[c.col] = align
 	}
+	return c
 }
 
-// WithHeaderConfig applies a full header configuration to the table.
-// Logs the change if debugging is enabled.
-func WithHeaderConfig(config tw.CellConfig) Option {
-	return func(target *Table) {
-		target.config.Header = config
-		if target.logger != nil {
-			target.logger.Debug("Option: WithHeaderConfig applied to Table.")
+// WithMaxWidth sets max width for the column
+func (c *ColumnConfigBuilder) WithMaxWidth(width int) *ColumnConfigBuilder {
+	if width >= 0 {
+		// Initialize maps if needed
+		if c.parent.config.Header.ColMaxWidths.PerColumn == nil {
+			c.parent.config.Header.ColMaxWidths.PerColumn = make(tw.Mapper[int, int])
+			c.parent.config.Row.ColMaxWidths.PerColumn = make(tw.Mapper[int, int])
+			c.parent.config.Footer.ColMaxWidths.PerColumn = make(tw.Mapper[int, int])
 		}
+		c.parent.config.Header.ColMaxWidths.PerColumn[c.col] = width
+		c.parent.config.Row.ColMaxWidths.PerColumn[c.col] = width
+		c.parent.config.Footer.ColMaxWidths.PerColumn[c.col] = width
 	}
+	return c
 }
 
-// WithLogger sets a custom logger for the table and updates the renderer if present.
-// Logs the change if debugging is enabled.
-func WithLogger(logger *ll.Logger) Option {
-	return func(target *Table) {
-		target.logger = logger
-		if target.logger != nil {
-			target.logger.Debug("Option: WithLogger applied to Table.")
-			if target.renderer != nil {
-				target.renderer.Logger(target.logger)
-			}
-		}
-	}
+// HeaderFilterBuilder configures header filtering
+type HeaderFilterBuilder struct {
+	parent  *HeaderConfigBuilder
+	config  *tw.CellFilter
+	section string
 }
 
-// WithRenderer sets a custom renderer for the table and attaches the logger if present.
-// Logs the change if debugging is enabled.
-func WithRenderer(f tw.Renderer) Option {
-	return func(target *Table) {
-		target.renderer = f
-		if target.logger != nil {
-			target.logger.Debugf("Option: WithRenderer applied to Table: %T", f)
-			f.Logger(target.logger)
-		}
-	}
+// Build returns the parent HeaderConfigBuilder
+func (hf *HeaderFilterBuilder) Build() *HeaderConfigBuilder {
+	return hf.parent
 }
 
-// WithRowConfig applies a full row configuration to the table.
-// Logs the change if debugging is enabled.
-func WithRowConfig(config tw.CellConfig) Option {
-	return func(target *Table) {
-		target.config.Row = config
-		if target.logger != nil {
-			target.logger.Debug("Option: WithRowConfig applied to Table.")
-		}
+// WithGlobal sets the global filter function for the header
+func (hf *HeaderFilterBuilder) WithGlobal(filter func([]string) []string) *HeaderFilterBuilder {
+	if filter != nil {
+		hf.config.Global = filter
 	}
+	return hf
 }
 
-// WithRowAlignmentConfig applies a row alignment configuration to the table.
-// Logs the change if debugging is enabled.
-func WithRowAlignmentConfig(alignment tw.CellAlignment) Option {
-	return func(target *Table) {
-		target.config.Row.Alignment = alignment
-		if target.logger != nil {
-			target.logger.Debugf("Option: WithRowAlignmentConfig applied to Table: %+v", alignment)
-		}
+// WithPerColumn sets per-column filter functions for the header
+func (hf *HeaderFilterBuilder) WithPerColumn(filters []func(string) string) *HeaderFilterBuilder {
+	if len(filters) > 0 {
+		hf.config.PerColumn = filters
 	}
+	return hf
 }
 
-// WithRowMaxWidth sets the maximum content width for row cells.
-// Negative values are ignored, and the change is logged if debugging is enabled.
-func WithRowMaxWidth(maxWidth int) Option {
-	return func(target *Table) {
-		if maxWidth < 0 {
-			return
-		}
-		target.config.Row.ColMaxWidths.Global = maxWidth
-		if target.logger != nil {
-			target.logger.Debugf("Option: WithRowMaxWidth applied to Table: %v", maxWidth)
-		}
+// AddColumnFilter adds a filter function for a specific column in the header
+func (hf *HeaderFilterBuilder) AddColumnFilter(filter func(string) string) *HeaderFilterBuilder {
+	if filter != nil {
+		hf.config.PerColumn = append(hf.config.PerColumn, filter)
 	}
+	return hf
 }
 
-// WithStreaming applies a streaming configuration to the table by merging it with the existing configuration.
-// Logs the change if debugging is enabled.
-func WithStreaming(c tw.StreamConfig) Option {
-	return func(target *Table) {
-		target.config.Stream = mergeStreamConfig(target.config.Stream, c)
-		if target.logger != nil {
-			target.logger.Debug("Option: WithStreaming applied to Table.")
-		}
-	}
+// RowFilterBuilder configures row filtering
+type RowFilterBuilder struct {
+	parent  *RowConfigBuilder
+	config  *tw.CellFilter
+	section string
 }
 
-// WithStringer sets a custom stringer function for converting row data and clears the stringer cache.
-// Logs the change if debugging is enabled.
-func WithStringer(stringer interface{}) Option {
-	return func(t *Table) {
-		t.stringer = stringer
-		t.stringerCacheMu.Lock()
-		t.stringerCache = make(map[reflect.Type]reflect.Value)
-		t.stringerCacheMu.Unlock()
-		t.logger.Debug("Stringer updated, cache cleared")
-	}
+// Build returns the parent RowConfigBuilder
+func (rf *RowFilterBuilder) Build() *RowConfigBuilder {
+	return rf.parent
 }
 
-// WithStringerCache enables caching for the stringer function.
-func WithStringerCache() Option {
-	return func(t *Table) {
-		t.stringerCacheEnabled = true
+// WithGlobal sets the global filter function for the rows
+func (rf *RowFilterBuilder) WithGlobal(filter func([]string) []string) *RowFilterBuilder {
+	if filter != nil {
+		rf.config.Global = filter
 	}
+	return rf
 }
 
-// WithSymbols sets the symbols used for table drawing and updates the renderer's configuration.
-// Logs the change if debugging is enabled.
-func WithSymbols(symbols tw.Symbols) Option {
-	return func(target *Table) {
-		if target.renderer != nil {
-			cfg := target.renderer.Config()
-			cfg.Symbols = symbols
-			if target.logger != nil {
-				target.logger.Debug("Option: WithSymbols applied to Table.")
-			}
-		}
+// WithPerColumn sets per-column filter functions for the rows
+func (rf *RowFilterBuilder) WithPerColumn(filters []func(string) string) *RowFilterBuilder {
+	if len(filters) > 0 {
+		rf.config.PerColumn = filters
 	}
+	return rf
 }
 
-// WithTrimSpace sets whether leading and trailing spaces are automatically trimmed.
-// Logs the change if debugging is enabled.
-func WithTrimSpace(state tw.State) Option {
-	return func(target *Table) {
-		target.config.Behavior.TrimSpace = state
-		if target.logger != nil {
-			target.logger.Debugf("Option: WithTrimSpace applied to Table: %v", state)
-		}
+// AddColumnFilter adds a filter function for a specific column in the rows
+func (rf *RowFilterBuilder) AddColumnFilter(filter func(string) string) *RowFilterBuilder {
+	if filter != nil {
+		rf.config.PerColumn = append(rf.config.PerColumn, filter)
 	}
+	return rf
 }
 
-// WithHeaderAutoFormat enables or disables automatic formatting for header cells.
-func WithHeaderAutoFormat(state tw.State) Option {
-	return func(target *Table) {
-		target.config.Header.Formatting.AutoFormat = state
-	}
+// FooterFilterBuilder configures footer filtering
+type FooterFilterBuilder struct {
+	parent  *FooterConfigBuilder
+	config  *tw.CellFilter
+	section string
 }
 
-// WithHeaderControl sets the control behavior for the table header.
-// Logs the change if debugging is enabled.
-func WithHeaderControl(control tw.Control) Option {
-	return func(target *Table) {
-		target.config.Behavior.Header = control
-		if target.logger != nil {
-			target.logger.Debugf("Option: WithHeaderControl applied to Table: %v", control)
-		}
-	}
+// Build returns the parent FooterConfigBuilder
+func (ff *FooterFilterBuilder) Build() *FooterConfigBuilder {
+	return ff.parent
 }
 
-// WithFooterControl sets the control behavior for the table footer.
-// Logs the change if debugging is enabled.
-func WithFooterControl(control tw.Control) Option {
-	return func(target *Table) {
-		target.config.Behavior.Footer = control
-		if target.logger != nil {
-			target.logger.Debugf("Option: WithFooterControl applied to Table: %v", control)
-		}
+// WithGlobal sets the global filter function for the footer
+func (ff *FooterFilterBuilder) WithGlobal(filter func([]string) []string) *FooterFilterBuilder {
+	if filter != nil {
+		ff.config.Global = filter
 	}
+	return ff
 }
 
-// WithAlignment sets the default column alignment for the header, rows, and footer.
-func WithAlignment(alignment tw.Alignment) Option {
-	return func(target *Table) {
-		target.config.Header.Alignment.PerColumn = alignment
-		target.config.Row.Alignment.PerColumn = alignment
-		target.config.Footer.Alignment.PerColumn = alignment
+// WithPerColumn sets per-column filter functions for the footer
+func (ff *FooterFilterBuilder) WithPerColumn(filters []func(string) string) *FooterFilterBuilder {
+	if len(filters) > 0 {
+		ff.config.PerColumn = filters
 	}
+	return ff
 }
 
-// WithBehavior applies a behavior configuration to the table.
-// Logs the change if debugging is enabled.
-func WithBehavior(behavior tw.Behavior) Option {
-	return func(target *Table) {
-		target.config.Behavior = behavior
-		if target.logger != nil {
-			target.logger.Debugf("Option: WithBehavior applied to Table: %+v", behavior)
-		}
+// AddColumnFilter adds a filter function for a specific column in the footer
+func (ff *FooterFilterBuilder) AddColumnFilter(filter func(string) string) *FooterFilterBuilder {
+	if filter != nil {
+		ff.config.PerColumn = append(ff.config.PerColumn, filter)
 	}
+	return ff
 }
 
-// WithPadding sets the global padding for the header, rows, and footer.
-func WithPadding(padding tw.Padding) Option {
-	return func(target *Table) {
-		target.config.Header.Padding.Global = padding
-		target.config.Row.Padding.Global = padding
-		target.config.Footer.Padding.Global = padding
-	}
+// HeaderCallbacksBuilder configures header callbacks
+type HeaderCallbacksBuilder struct {
+	parent  *HeaderConfigBuilder
+	config  *tw.CellCallbacks
+	section string
 }
 
-// WithRendition allows updating the active renderer's rendition configuration
-// by merging the provided rendition.
-// If the renderer does not implement tw.Renditioning, a warning is logged.
-// This should be used with Option as it requires renderer to be initiated and set first.
-func WithRendition(rendition tw.Rendition) Option {
-	return func(target *Table) {
-		if target.renderer == nil {
-			target.logger.Warn("Option: WithRendition: No renderer set on table.")
-			return
-		}
-		if ru, ok := target.renderer.(tw.Renditioning); ok {
-			ru.Rendition(rendition)
-			target.logger.Debugf("Option: WithRendition: Applied to renderer via Renditioning.SetRendition(): %+v", rendition)
-		} else {
-			target.logger.Warnf("Option: WithRendition: Current renderer type %T does not implement tw.Renditioning. Rendition may not be applied as expected.", target.renderer)
-		}
-	}
+// Build returns the parent HeaderConfigBuilder
+func (hc *HeaderCallbacksBuilder) Build() *HeaderConfigBuilder {
+	return hc.parent
 }
 
-// defaultConfig returns a default Config with sensible settings for headers, rows, footers, and behavior.
-func defaultConfig() Config {
-	return Config{
-		MaxWidth: 0,
-		Header: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				AutoWrap:   tw.WrapTruncate,
-				AutoFormat: tw.On,
-				MergeMode:  tw.MergeNone,
-			},
-			Padding: tw.CellPadding{
-				Global: tw.PaddingDefault,
-			},
-			Alignment: tw.CellAlignment{
-				Global:    tw.AlignCenter,
-				PerColumn: []tw.Align{},
-			},
-		},
-		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				AutoWrap:   tw.WrapNormal,
-				AutoFormat: tw.Off,
-				MergeMode:  tw.MergeNone,
-			},
-			Padding: tw.CellPadding{
-				Global: tw.PaddingDefault,
-			},
-			Alignment: tw.CellAlignment{
-				Global:    tw.AlignLeft,
-				PerColumn: []tw.Align{},
-			},
-		},
-		Footer: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				AutoWrap:   tw.WrapNormal,
-				AutoFormat: tw.Off,
-				MergeMode:  tw.MergeNone,
-			},
-			Padding: tw.CellPadding{
-				Global: tw.PaddingDefault,
-			},
-			Alignment: tw.CellAlignment{
-				Global:    tw.AlignRight,
-				PerColumn: []tw.Align{},
-			},
-		},
-		Stream: tw.StreamConfig{},
-		Debug:  false,
-		Behavior: tw.Behavior{
-			AutoHide:  tw.Off,
-			TrimSpace: tw.On,
-		},
+// WithGlobal sets the global callback function for the header
+func (hc *HeaderCallbacksBuilder) WithGlobal(callback func()) *HeaderCallbacksBuilder {
+	if callback != nil {
+		hc.config.Global = callback
 	}
+	return hc
 }
 
-// mergeCellConfig merges a source CellConfig into a destination CellConfig, prioritizing non-default source values.
-// It handles deep merging for complex fields like padding and callbacks.
-func mergeCellConfig(dst, src tw.CellConfig) tw.CellConfig {
-	if src.Formatting.Alignment != tw.Empty {
-		dst.Formatting.Alignment = src.Formatting.Alignment
+// WithPerColumn sets per-column callback functions for the header
+func (hc *HeaderCallbacksBuilder) WithPerColumn(callbacks []func()) *HeaderCallbacksBuilder {
+	if len(callbacks) > 0 {
+		hc.config.PerColumn = callbacks
 	}
-
-	if src.Formatting.AutoWrap != 0 {
-		dst.Formatting.AutoWrap = src.Formatting.AutoWrap
-	}
-	if src.ColMaxWidths.Global != 0 {
-		dst.ColMaxWidths.Global = src.ColMaxWidths.Global
-	}
-	if src.Formatting.MergeMode != 0 {
-		dst.Formatting.MergeMode = src.Formatting.MergeMode
-	}
-
-	dst.Formatting.AutoFormat = src.Formatting.AutoFormat
-
-	if src.Padding.Global.Paddable() {
-		dst.Padding.Global = src.Padding.Global
-	}
-
-	if len(src.Padding.PerColumn) > 0 {
-		if dst.Padding.PerColumn == nil {
-			dst.Padding.PerColumn = make([]tw.Padding, len(src.Padding.PerColumn))
-		} else if len(src.Padding.PerColumn) > len(dst.Padding.PerColumn) {
-			dst.Padding.PerColumn = append(dst.Padding.PerColumn, make([]tw.Padding, len(src.Padding.PerColumn)-len(dst.Padding.PerColumn))...)
-		}
-		for i, pad := range src.Padding.PerColumn {
-			if pad.Paddable() {
-				dst.Padding.PerColumn[i] = pad
-			}
-		}
-	}
-	if src.Callbacks.Global != nil {
-		dst.Callbacks.Global = src.Callbacks.Global
-	}
-	if len(src.Callbacks.PerColumn) > 0 {
-		if dst.Callbacks.PerColumn == nil {
-			dst.Callbacks.PerColumn = make([]func(), len(src.Callbacks.PerColumn))
-		} else if len(src.Callbacks.PerColumn) > len(dst.Callbacks.PerColumn) {
-			dst.Callbacks.PerColumn = append(dst.Callbacks.PerColumn, make([]func(), len(src.Callbacks.PerColumn)-len(dst.Callbacks.PerColumn))...)
-		}
-		for i, cb := range src.Callbacks.PerColumn {
-			if cb != nil {
-				dst.Callbacks.PerColumn[i] = cb
-			}
-		}
-	}
-	if src.Filter.Global != nil {
-		dst.Filter.Global = src.Filter.Global
-	}
-	if len(src.Filter.PerColumn) > 0 {
-		if dst.Filter.PerColumn == nil {
-			dst.Filter.PerColumn = make([]func(string) string, len(src.Filter.PerColumn))
-		} else if len(src.Filter.PerColumn) > len(dst.Filter.PerColumn) {
-			dst.Filter.PerColumn = append(dst.Filter.PerColumn, make([]func(string) string, len(src.Filter.PerColumn)-len(dst.Filter.PerColumn))...)
-		}
-		for i, filter := range src.Filter.PerColumn {
-			if filter != nil {
-				dst.Filter.PerColumn[i] = filter
-			}
-		}
-	}
-
-	// Merge Alignment
-	if src.Alignment.Global != tw.Empty {
-		dst.Alignment.Global = src.Alignment.Global
-	}
-
-	if len(src.Alignment.PerColumn) > 0 {
-		if dst.Alignment.PerColumn == nil {
-			dst.Alignment.PerColumn = make([]tw.Align, len(src.Alignment.PerColumn))
-		} else if len(src.Alignment.PerColumn) > len(dst.Alignment.PerColumn) {
-			dst.Alignment.PerColumn = append(dst.Alignment.PerColumn, make([]tw.Align, len(src.Alignment.PerColumn)-len(dst.Alignment.PerColumn))...)
-		}
-		for i, align := range src.Alignment.PerColumn {
-			if align != tw.Skip {
-				dst.Alignment.PerColumn[i] = align
-			}
-		}
-	}
-
-	if len(src.ColumnAligns) > 0 {
-		if dst.ColumnAligns == nil {
-			dst.ColumnAligns = make([]tw.Align, len(src.ColumnAligns))
-		} else if len(src.ColumnAligns) > len(dst.ColumnAligns) {
-			dst.ColumnAligns = append(dst.ColumnAligns, make([]tw.Align, len(src.ColumnAligns)-len(dst.ColumnAligns))...)
-		}
-		for i, align := range src.ColumnAligns {
-			if align != tw.Skip {
-				dst.ColumnAligns[i] = align
-			}
-		}
-	}
-
-	if len(src.ColMaxWidths.PerColumn) > 0 {
-		if dst.ColMaxWidths.PerColumn == nil {
-			dst.ColMaxWidths.PerColumn = make(map[int]int)
-		}
-		for k, v := range src.ColMaxWidths.PerColumn {
-			if v != 0 {
-				dst.ColMaxWidths.PerColumn[k] = v
-			}
-		}
-	}
-	return dst
+	return hc
 }
 
-// mergeConfig merges a source Config into a destination Config, prioritizing non-default source values.
-// It performs deep merging for complex types like Header, Row, Footer, and Stream.
-func mergeConfig(dst, src Config) Config {
-	if src.MaxWidth != 0 {
-		dst.MaxWidth = src.MaxWidth
+// AddColumnCallback adds a callback function for a specific column in the header
+func (hc *HeaderCallbacksBuilder) AddColumnCallback(callback func()) *HeaderCallbacksBuilder {
+	if callback != nil {
+		hc.config.PerColumn = append(hc.config.PerColumn, callback)
 	}
-
-	dst.Debug = src.Debug || dst.Debug
-	dst.Behavior.AutoHide = src.Behavior.AutoHide
-	dst.Behavior.TrimSpace = src.Behavior.TrimSpace
-	dst.Behavior.Compact = src.Behavior.Compact
-	dst.Behavior.Header = src.Behavior.Header
-	dst.Behavior.Footer = src.Behavior.Footer
-
-	if src.Widths.Global != 0 {
-		dst.Widths.Global = src.Widths.Global
-	}
-	if len(src.Widths.PerColumn) > 0 {
-		if dst.Widths.PerColumn == nil {
-			dst.Widths.PerColumn = make(map[int]int)
-		}
-		for k, v := range src.Widths.PerColumn {
-			if v != 0 {
-				dst.Widths.PerColumn[k] = v
-			}
-		}
-	}
-
-	dst.Header = mergeCellConfig(dst.Header, src.Header)
-	dst.Row = mergeCellConfig(dst.Row, src.Row)
-	dst.Footer = mergeCellConfig(dst.Footer, src.Footer)
-	dst.Stream = mergeStreamConfig(dst.Stream, src.Stream)
-
-	return dst
+	return hc
 }
 
-// mergeStreamConfig merges a source StreamConfig into a destination StreamConfig, prioritizing non-default source values.
-func mergeStreamConfig(dst, src tw.StreamConfig) tw.StreamConfig {
-	if src.Enable {
-		dst.Enable = true
-	}
-	return dst
+// RowCallbacksBuilder configures row callbacks
+type RowCallbacksBuilder struct {
+	parent  *RowConfigBuilder
+	config  *tw.CellCallbacks
+	section string
 }
 
-// padLine pads a line to the specified column count by appending empty strings as needed.
-func padLine(line []string, numCols int) []string {
-	if len(line) >= numCols {
-		return line
+// Build returns the parent RowConfigBuilder
+func (rc *RowCallbacksBuilder) Build() *RowConfigBuilder {
+	return rc.parent
+}
+
+// WithGlobal sets the global callback function for the rows
+func (rc *RowCallbacksBuilder) WithGlobal(callback func()) *RowCallbacksBuilder {
+	if callback != nil {
+		rc.config.Global = callback
 	}
-	padded := make([]string, numCols)
-	copy(padded, line)
-	for i := len(line); i < numCols; i++ {
-		padded[i] = tw.Empty
+	return rc
+}
+
+// WithPerColumn sets per-column callback functions for the rows
+func (rc *RowCallbacksBuilder) WithPerColumn(callbacks []func()) *RowCallbacksBuilder {
+	if len(callbacks) > 0 {
+		rc.config.PerColumn = callbacks
 	}
-	return padded
+	return rc
+}
+
+// AddColumnCallback adds a callback function for a specific column in the rows
+func (rc *RowCallbacksBuilder) AddColumnCallback(callback func()) *RowCallbacksBuilder {
+	if callback != nil {
+		rc.config.PerColumn = append(rc.config.PerColumn, callback)
+	}
+	return rc
+}
+
+// FooterCallbacksBuilder configures footer callbacks
+type FooterCallbacksBuilder struct {
+	parent  *FooterConfigBuilder
+	config  *tw.CellCallbacks
+	section string
+}
+
+// Build returns the parent FooterConfigBuilder
+func (fc *FooterCallbacksBuilder) Build() *FooterConfigBuilder {
+	return fc.parent
+}
+
+// WithGlobal sets the global callback function for the footer
+func (fc *FooterCallbacksBuilder) WithGlobal(callback func()) *FooterCallbacksBuilder {
+	if callback != nil {
+		fc.config.Global = callback
+	}
+	return fc
+}
+
+// WithPerColumn sets per-column callback functions for the footer
+func (fc *FooterCallbacksBuilder) WithPerColumn(callbacks []func()) *FooterCallbacksBuilder {
+	if len(callbacks) > 0 {
+		fc.config.PerColumn = callbacks
+	}
+	return fc
+}
+
+// AddColumnCallback adds a callback function for a specific column in the footer
+func (fc *FooterCallbacksBuilder) AddColumnCallback(callback func()) *FooterCallbacksBuilder {
+	if callback != nil {
+		fc.config.PerColumn = append(fc.config.PerColumn, callback)
+	}
+	return fc
 }
