@@ -2,9 +2,27 @@ package tablewriter
 
 import "github.com/olekukonko/tablewriter/tw"
 
-// Deprecated: WithBorders is no longer used.
-// Border control has been moved to the renderer, which now manages its own borders.
-// This Option has no effect on the Table and may be removed in future versions.
+// WithBorders configures the table's border settings by updating the renderer's border configuration.
+// This function is deprecated and will be removed in a future version.
+//
+// Deprecated: Use [WithRendition] to configure border settings for renderers that support
+// [tw.Renditioning], or update the renderer's [tw.RenderConfig] directly via its Config() method.
+// This function has no effect if no renderer is set on the table.
+//
+// Example migration:
+//
+//	// Old (deprecated)
+//	table.Options(WithBorders(tw.Border{Top: true, Bottom: true}))
+//	// New (recommended)
+//	table.Options(WithRendition(tw.Rendition{Borders: tw.Border{Top: true, Bottom: true}}))
+//
+// Parameters:
+//   - borders: The [tw.Border] configuration to apply to the renderer's borders.
+//
+// Returns:
+//
+//	An [Option] that updates the renderer's border settings if a renderer is set.
+//	Logs a debug message if debugging is enabled and a renderer is present.
 func WithBorders(borders tw.Border) Option {
 	return func(target *Table) {
 		if target.renderer != nil {
@@ -17,16 +35,55 @@ func WithBorders(borders tw.Border) Option {
 	}
 }
 
-// Deprecated: WithBorders is no longer supported.
-// Use [tw.Behavior] directly to configure border settings.
+// Behavior is an alias for [tw.Behavior] to configure table behavior settings.
+// This type is deprecated and will be removed in a future version.
+//
+// Deprecated: Use [tw.Behavior] directly to configure settings such as auto-hiding empty
+// columns, trimming spaces, or controlling header/footer visibility.
+//
+// Example migration:
+//
+//	// Old (deprecated)
+//	var b tablewriter.Behavior = tablewriter.Behavior{AutoHide: tw.On}
+//	// New (recommended)
+//	var b tw.Behavior = tw.Behavior{AutoHide: tw.On}
 type Behavior tw.Behavior
 
-// Deprecated: WithRendererSettings i sno longer supported.
+// Settings is an alias for [tw.Settings] to configure renderer settings.
+// This type is deprecated and will be removed in a future version.
+//
+// Deprecated: Use [tw.Settings] directly to configure renderer settings, such as
+// separators and line styles.
+//
+// Example migration:
+//
+//	// Old (deprecated)
+//	var s tablewriter.Settings = tablewriter.Settings{Separator: "|"}
+//	// New (recommended)
+//	var s tw.Settings = tw.Settings{Separator: "|"}
 type Settings tw.Settings
 
-// WithRendererSettings updates the renderer's settings (e.g., separators, lines).
-// Render setting has move to renders directly
-// you can also use WithRendition for renders that have rendition support
+// WithRendererSettings updates the renderer's settings, such as separators and line styles.
+// This function is deprecated and will be removed in a future version.
+//
+// Deprecated: Use [WithRendition] to update renderer settings for renderers that implement
+// [tw.Renditioning], or configure the renderer's [tw.Settings] directly via its
+// [tw.Renderer.Config] method. This function has no effect if no renderer is set.
+//
+// Example migration:
+//
+//	// Old (deprecated)
+//	table.Options(WithRendererSettings(tw.Settings{Separator: "|"}))
+//	// New (recommended)
+//	table.Options(WithRendition(tw.Rendition{Settings: tw.Settings{Separator: "|"}}))
+//
+// Parameters:
+//   - settings: The [tw.Settings] configuration to apply to the renderer.
+//
+// Returns:
+//
+//	An [Option] that updates the renderer's settings if a renderer is set.
+//	Logs a debug message if debugging is enabled and a renderer is present.
 func WithRendererSettings(settings tw.Settings) Option {
 	return func(target *Table) {
 		if target.renderer != nil {
@@ -39,9 +96,31 @@ func WithRendererSettings(settings tw.Settings) Option {
 	}
 }
 
-// Deprecated: this will remove in the next version
-// WithAlignment sets the text alignment for footer cells.
-// Invalid alignments are ignored.
+// WithAlignment sets the text alignment for footer cells within the formatting configuration.
+// This method is deprecated and will be removed in the next version.
+//
+// Deprecated: Use [FooterConfigBuilder.Alignment] with [AlignmentConfigBuilder.WithGlobal]
+// or [AlignmentConfigBuilder.WithPerColumn] to configure footer alignments.
+// Alternatively, apply a complete [tw.CellAlignment] configuration using
+// [WithFooterAlignmentConfig].
+//
+// Example migration:
+//
+//	// Old (deprecated)
+//	builder.Footer().Formatting().WithAlignment(tw.AlignRight)
+//	// New (recommended)
+//	builder.Footer().Alignment().WithGlobal(tw.AlignRight)
+//	// Or
+//	table.Options(WithFooterAlignmentConfig(tw.CellAlignment{Global: tw.AlignRight}))
+//
+// Parameters:
+//   - align: The [tw.Align] value to set for footer cells. Valid values are
+//     [tw.AlignLeft], [tw.AlignRight], [tw.AlignCenter], and [tw.AlignNone].
+//     Invalid alignments are ignored.
+//
+// Returns:
+//
+//	The [FooterFormattingBuilder] instance for method chaining.
 func (ff *FooterFormattingBuilder) WithAlignment(align tw.Align) *FooterFormattingBuilder {
 	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
 		return ff
@@ -50,9 +129,31 @@ func (ff *FooterFormattingBuilder) WithAlignment(align tw.Align) *FooterFormatti
 	return ff
 }
 
-// Deprecated: this will remove in the next version
-// WithAlignment sets the text alignment for header cells.
-// Invalid alignments are ignored.
+// WithAlignment sets the text alignment for header cells within the formatting configuration.
+// This method is deprecated and will be removed in the next version.
+//
+// Deprecated: Use [HeaderConfigBuilder.Alignment] with [AlignmentConfigBuilder.WithGlobal]
+// or [AlignmentConfigBuilder.WithPerColumn] to configure header alignments.
+// Alternatively, apply a complete [tw.CellAlignment] configuration using
+// [WithHeaderAlignmentConfig].
+//
+// Example migration:
+//
+//	// Old (deprecated)
+//	builder.Header().Formatting().WithAlignment(tw.AlignCenter)
+//	// New (recommended)
+//	builder.Header().Alignment().WithGlobal(tw.AlignCenter)
+//	// Or
+//	table.Options(WithHeaderAlignmentConfig(tw.CellAlignment{Global: tw.AlignCenter}))
+//
+// Parameters:
+//   - align: The [tw.Align] value to set for header cells. Valid values are
+//     [tw.AlignLeft], [tw.AlignRight], [tw.AlignCenter], and [tw.AlignNone].
+//     Invalid alignments are ignored.
+//
+// Returns:
+//
+//	The [HeaderFormattingBuilder] instance for method chaining.
 func (hf *HeaderFormattingBuilder) WithAlignment(align tw.Align) *HeaderFormattingBuilder {
 	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
 		return hf
@@ -61,13 +162,66 @@ func (hf *HeaderFormattingBuilder) WithAlignment(align tw.Align) *HeaderFormatti
 	return hf
 }
 
-// Deprecated: this will remove in the next version
-// WithAlignment sets the text alignment for row cells.
-// Invalid alignments are ignored.
+// WithAlignment sets the text alignment for row cells within the formatting configuration.
+// This method is deprecated and will be removed in the next version.
+//
+// Deprecated: Use [RowConfigBuilder.Alignment] with [AlignmentConfigBuilder.WithGlobal]
+// or [AlignmentConfigBuilder.WithPerColumn] to configure row alignments.
+// Alternatively, apply a complete [tw.CellAlignment] configuration using
+// [WithRowAlignmentConfig].
+//
+// Example migration:
+//
+//	// Old (deprecated)
+//	builder.Row().Formatting().WithAlignment(tw.AlignLeft)
+//	// New (recommended)
+//	builder.Row().Alignment().WithGlobal(tw.AlignLeft)
+//	// Or
+//	table.Options(WithRowAlignmentConfig(tw.CellAlignment{Global: tw.AlignLeft}))
+//
+// Parameters:
+//   - align: The [tw.Align] value to set for row cells. Valid values are
+//     [tw.AlignLeft], [tw.AlignRight], [tw.AlignCenter], and [tw.AlignNone].
+//     Invalid alignments are ignored.
+//
+// Returns:
+//
+//	The [RowFormattingBuilder] instance for method chaining.
 func (rf *RowFormattingBuilder) WithAlignment(align tw.Align) *RowFormattingBuilder {
 	if align != tw.AlignLeft && align != tw.AlignRight && align != tw.AlignCenter && align != tw.AlignNone {
 		return rf
 	}
 	rf.config.Alignment = align
 	return rf
+}
+
+// Deprecated:Use WithMaxWidth instead.
+// WithTableMax sets a global maximum table width for the table.
+// Negative values are ignored, and the change is logged if debugging is enabled.
+func WithTableMax(width int) Option {
+	return func(target *Table) {
+		if width < 0 {
+			return
+		}
+		target.config.MaxWidth = width
+		if target.logger != nil {
+			target.logger.Debugf("Option: WithTableMax applied to Table: %v", width)
+		}
+	}
+}
+
+// Deprecated:Use Rederer setting directly
+// not al lrenderes have symboms or support Renditions
+// WithSymbols sets the symbols used for table drawing and updates the renderer's configuration.
+// Logs the change if debugging is enabled.
+func WithSymbols(symbols tw.Symbols) Option {
+	return func(target *Table) {
+		if target.renderer != nil {
+			cfg := target.renderer.Config()
+			cfg.Symbols = symbols
+			if target.logger != nil {
+				target.logger.Debug("Option: WithSymbols applied to Table.")
+			}
+		}
+	}
 }
