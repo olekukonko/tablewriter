@@ -1033,6 +1033,8 @@ func (t *Table) convertToStringer(input interface{}) ([]string, error) {
 		return nil, errors.New("internal error: convertToStringer called with nil t.stringer")
 	}
 
+	t.logger.Debugf("convertToString attempt %v using %v", input, t.stringer)
+
 	inputType := reflect.TypeOf(input)
 	stringerFuncVal := reflect.ValueOf(t.stringer)
 	stringerFuncType := stringerFuncVal.Type()
