@@ -571,7 +571,9 @@ func (f *Blueprint) renderLine(ctx tw.Formatting) {
 
 func (f *Blueprint) Rendition(config tw.Rendition) {
 	f.config = mergeRendition(f.config, config)
-	f.logger.Debugf("Blueprint.Rendition updated. New internal config: %+v", f.config)
+	if f.logger != nil {
+		f.logger.Debugf("Blueprint.Rendition updated. New config: %+v", f.config)
+	}
 }
 
 // Ensure Blueprint implements tw.Renditioning
