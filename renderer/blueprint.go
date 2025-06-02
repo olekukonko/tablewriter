@@ -42,7 +42,7 @@ func NewBlueprint(configs ...tw.Rendition) *Blueprint {
 		// Merge user settings with default settings
 		cfg.Settings = mergeSettings(cfg.Settings, userCfg.Settings)
 	}
-	return &Blueprint{config: cfg}
+	return &Blueprint{config: cfg, logger: ll.New("blueprint")}
 }
 
 // Close performs cleanup (no-op in this implementation).
@@ -569,11 +569,11 @@ func (f *Blueprint) renderLine(ctx tw.Formatting) {
 	f.logger.Debugf("renderLine: Final rendered line: '%s' (total width %d)", strings.TrimSuffix(output.String(), tw.NewLine), totalLineWidth)
 }
 
+// Rendition updates the Blueprint's configuration.
 func (f *Blueprint) Rendition(config tw.Rendition) {
 	f.config = mergeRendition(f.config, config)
-	if f.logger != nil {
-		f.logger.Debugf("Blueprint.Rendition updated. New config: %+v", f.config)
-	}
+	f.logger.Debugf("Blueprint.Rendition updated. New config: %+v", f.config)
+
 }
 
 // Ensure Blueprint implements tw.Renditioning

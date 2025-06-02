@@ -693,8 +693,7 @@ func (c *Colorized) renderLine(ctx tw.Formatting, line []string, tint Tint) {
 // Rendition updates the parts of ColorizedConfig that correspond to tw.Rendition
 // by merging the provided newRendition. Color-specific Tints are not modified.
 func (c *Colorized) Rendition(newRendition tw.Rendition) { // Method name matches interface
-	c.logger.Debug("Colorized.Rendition called. Current B/Sym/Set: B:%+v, Sym:%T, S:%+v. Override: %+v",
-		c.config.Borders, c.config.Symbols, c.config.Settings, newRendition)
+	c.logger.Debug("Colorized.Rendition called. Current B/Sym/Set: B:%+v, Sym:%T, S:%+v. Override: %+v", c.config.Borders, c.config.Symbols, c.config.Settings, newRendition)
 
 	currentRenditionPart := tw.Rendition{
 		Borders:  c.config.Borders,

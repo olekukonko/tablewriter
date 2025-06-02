@@ -63,6 +63,7 @@ func NewHTML(configs ...HTMLConfig) *HTML {
 		tableStarted: false,
 		tbodyStarted: false,
 		tfootStarted: false,
+		logger:       ll.New("html"),
 	}
 }
 
