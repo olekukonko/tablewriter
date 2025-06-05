@@ -11,7 +11,9 @@ import (
 	"github.com/olekukonko/tablewriter/tw"
 	"io"
 	"math"
+	"os"
 	"reflect"
+	"runtime"
 	"strings"
 	"sync"
 )
@@ -407,10 +409,14 @@ func (t *Table) Options(opts ...Option) *Table {
 		t.logger.Suspend()
 	}
 
-	// help resolve from deprecation
-	//if t.config.Stream.Enable {
-	//	t.config.Widths = t.config.Stream.Widths
-	//}
+	// Get additional system information for debugging
+	goVersion := runtime.Version()
+	goOS := runtime.GOOS
+	goArch := runtime.GOARCH
+	numCPU := runtime.NumCPU()
+
+	t.logger.Infof("Environment: LC_CTYPE=%s, LANG=%s, TERM=%s", os.Getenv("LC_CTYPE"), os.Getenv("LANG"), os.Getenv("TERM"))
+	t.logger.Infof("Go Runtime: Version=%s, OS=%s, Arch=%s, CPUs=%d", goVersion, goOS, goArch, numCPU)
 
 	// send logger to renderer
 	// this will overwrite the default logger
