@@ -3,145 +3,13 @@
 package tw
 
 import (
-	"bytes"                         // For buffering string output
-	"github.com/mattn/go-runewidth" // For calculating display width of Unicode characters
-	"math"                          // For mathematical operations like ceiling
-	"regexp"                        // For regular expression handling of ANSI codes
-	"strconv"                       // For string-to-number conversions
-	"strings"                       // For string manipulation utilities
-	"unicode"                       // For Unicode character classification
-	"unicode/utf8"                  // For UTF-8 rune handling
+	"github.com/olekukonko/tablewriter/pkg/twwidth"
+	"math"         // For mathematical operations like ceiling
+	"strconv"      // For string-to-number conversions
+	"strings"      // For string manipulation utilities
+	"unicode"      // For Unicode character classification
+	"unicode/utf8" // For UTF-8 rune handling
 )
-
-// ansi is a compiled regex pattern used to strip ANSI escape codes.
-// These codes are used in terminal output for styling and are invisible in rendered text.
-var ansi = CompileANSIFilter()
-
-// CompileANSIFilter constructs and compiles a regex for matching ANSI sequences.
-// It supports both control sequences (CSI) and operating system commands (OSC) like hyperlinks.
-func CompileANSIFilter() *regexp.Regexp {
-	var regESC = "\x1b" // ASCII escape character
-	var regBEL = "\x07" // ASCII bell character
-
-	// ANSI string terminator: either ESC+\ or BEL
-	var regST = "(" + regexp.QuoteMeta(regESC+"\\") + "|" + regexp.QuoteMeta(regBEL) + ")"
-	// Control Sequence Introducer (CSI): ESC[ followed by parameters and a final byte
-	var regCSI = regexp.QuoteMeta(regESC+"[") + "[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]"
-	// Operating System Command (OSC): ESC] followed by arbitrary content until a terminator
-	var regOSC = regexp.QuoteMeta(regESC+"]") + ".*?" + regST
-
-	// Combine CSI and OSC patterns into a single regex
-	return regexp.MustCompile("(" + regCSI + "|" + regOSC + ")")
-}
-
-// DisplayWidth calculates the visual width of a string, excluding ANSI escape sequences.
-// It uses go-runewidth to handle Unicode characters correctly.
-func DisplayWidth(str string) int {
-	// Strip ANSI codes before calculating width to avoid counting invisible characters
-	return runewidth.StringWidth(ansi.ReplaceAllLiteralString(str, ""))
-}
-
-// TruncateString shortens a string to a specified maximum display width while preserving ANSI color codes.
-// An optional suffix (e.g., "...") is appended if truncation occurs.
-func TruncateString(s string, maxWidth int, suffix ...string) string {
-	// If maxWidth is 0 or negative, return an empty string
-	if maxWidth <= 0 {
-		return ""
-	}
-
-	// Join suffix slices into a single string and calculate its display width
-	suffixStr := strings.Join(suffix, " ")
-	suffixDisplayWidth := 0
-	if len(suffixStr) > 0 {
-		// Strip ANSI from suffix for accurate width calculation
-		suffixDisplayWidth = runewidth.StringWidth(ansi.ReplaceAllLiteralString(suffixStr, ""))
-	}
-
-	// Check if the string (without ANSI) plus suffix fits within maxWidth
-	strippedS := ansi.ReplaceAllLiteralString(s, "")
-	if runewidth.StringWidth(strippedS)+suffixDisplayWidth <= maxWidth {
-		// If it fits, return the original string (with ANSI) plus suffix
-		return s + suffixStr
-	}
-
-	// Handle edge case: maxWidth is too small for even the suffix
-	if maxWidth < suffixDisplayWidth {
-		// Try truncating the string without suffix
-		return TruncateString(s, maxWidth) // Recursive call without suffix
-	}
-	// Handle edge case: maxWidth exactly equals suffix width
-	if maxWidth == suffixDisplayWidth {
-		if runewidth.StringWidth(strippedS) > 0 {
-			// If there's content, it's fully truncated; return suffix
-			return suffixStr
-		}
-		return "" // No content and no space for content; return empty string
-	}
-
-	// Calculate the maximum width available for the content (excluding suffix)
-	targetContentDisplayWidth := maxWidth - suffixDisplayWidth
-
-	var contentBuf bytes.Buffer        // Buffer for building truncated content
-	var currentContentDisplayWidth int // Tracks display width of content
-	var ansiSeqBuf bytes.Buffer        // Buffer for collecting ANSI sequences
-	inAnsiSequence := false            // Tracks if we're inside an ANSI sequence
-
-	// Iterate over runes to build content while respecting maxWidth
-	for _, r := range s {
-		if r == '\x1b' { // Start of ANSI escape sequence
-			if inAnsiSequence {
-				// Unexpected new ESC; flush existing sequence
-				contentBuf.Write(ansiSeqBuf.Bytes())
-				ansiSeqBuf.Reset()
-			}
-			inAnsiSequence = true
-			ansiSeqBuf.WriteRune(r)
-		} else if inAnsiSequence {
-			ansiSeqBuf.WriteRune(r)
-			// Detect end of common ANSI sequences (e.g., SGR 'm' or CSI terminators)
-			if r == 'm' || (ansiSeqBuf.Len() > 2 && ansiSeqBuf.Bytes()[1] == '[' && r >= '@' && r <= '~') {
-				inAnsiSequence = false
-				contentBuf.Write(ansiSeqBuf.Bytes()) // Append completed sequence
-				ansiSeqBuf.Reset()
-			} else if ansiSeqBuf.Len() > 128 { // Prevent buffer overflow for malformed sequences
-				inAnsiSequence = false
-				contentBuf.Write(ansiSeqBuf.Bytes())
-				ansiSeqBuf.Reset()
-			}
-		} else {
-			// Handle displayable characters
-			runeDisplayWidth := runewidth.RuneWidth(r)
-			if currentContentDisplayWidth+runeDisplayWidth > targetContentDisplayWidth {
-				// Adding this rune would exceed the content width; stop here
-				break
-			}
-			contentBuf.WriteRune(r)
-			currentContentDisplayWidth += runeDisplayWidth
-		}
-	}
-
-	// Append any unterminated ANSI sequence
-	if ansiSeqBuf.Len() > 0 {
-		contentBuf.Write(ansiSeqBuf.Bytes())
-	}
-
-	finalContent := contentBuf.String()
-
-	// Append suffix if content was truncated or if suffix is provided and content exists
-	if runewidth.StringWidth(ansi.ReplaceAllLiteralString(finalContent, "")) < runewidth.StringWidth(strippedS) {
-		// Content was truncated; append suffix
-		return finalContent + suffixStr
-	} else if len(suffixStr) > 0 && len(finalContent) > 0 {
-		// No truncation but suffix exists; append it
-		return finalContent + suffixStr
-	} else if len(suffixStr) > 0 && len(strippedS) == 0 {
-		// Original string was empty; return suffix
-		return suffixStr
-	}
-
-	// Return content as is (with preserved ANSI codes)
-	return finalContent
-}
 
 // Title normalizes and uppercases a label string for use in headers.
 // It replaces underscores and certain dots with spaces and trims whitespace.
@@ -172,7 +40,7 @@ func Title(name string) string {
 // PadCenter centers a string within a specified width using a padding character.
 // Extra padding is split between left and right, with slight preference to left if uneven.
 func PadCenter(s, pad string, width int) string {
-	gap := width - DisplayWidth(s)
+	gap := width - twwidth.Width(s)
 	if gap > 0 {
 		// Calculate left and right padding; ceil ensures left gets extra if gap is odd
 		gapLeft := int(math.Ceil(float64(gap) / 2))
@@ -185,7 +53,7 @@ func PadCenter(s, pad string, width int) string {
 
 // PadRight left-aligns a string within a specified width, filling remaining space on the right with padding.
 func PadRight(s, pad string, width int) string {
-	gap := width - DisplayWidth(s)
+	gap := width - twwidth.Width(s)
 	if gap > 0 {
 		// Append padding to the right
 		return s + strings.Repeat(pad, gap)
@@ -196,7 +64,7 @@ func PadRight(s, pad string, width int) string {
 
 // PadLeft right-aligns a string within a specified width, filling remaining space on the left with padding.
 func PadLeft(s, pad string, width int) string {
-	gap := width - DisplayWidth(s)
+	gap := width - twwidth.Width(s)
 	if gap > 0 {
 		// Prepend padding to the left
 		return strings.Repeat(pad, gap) + s
@@ -208,9 +76,9 @@ func PadLeft(s, pad string, width int) string {
 // Pad aligns a string within a specified width using a padding character.
 // It truncates if the string is wider than the target width.
 func Pad(s string, padChar string, totalWidth int, alignment Align) string {
-	sDisplayWidth := DisplayWidth(s)
+	sDisplayWidth := twwidth.Width(s)
 	if sDisplayWidth > totalWidth {
-		return TruncateString(s, totalWidth) // Only truncate if necessary
+		return twwidth.Truncate(s, totalWidth) // Only truncate if necessary
 	}
 	switch alignment {
 	case AlignLeft:
@@ -334,7 +202,7 @@ func BreakPoint(s string, limit int) int {
 	runeCount := 0
 	// Iterate over runes, accumulating display width
 	for _, r := range s {
-		runeWidth := DisplayWidth(string(r)) // Calculate width of individual rune
+		runeWidth := twwidth.Width(string(r)) // Calculate width of individual rune
 		if currentWidth+runeWidth > limit {
 			// Adding this rune would exceed the limit; breakpoint is before this rune
 			if currentWidth == 0 {
