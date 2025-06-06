@@ -19,7 +19,6 @@ var ansi = Filter()
 
 func init() {
 	condition = runewidth.NewCondition()
-
 	widthCache = make(map[cacheKey]int)
 }
 
@@ -64,6 +63,22 @@ func SetEastAsian(enable bool) {
 		condition.EastAsianWidth = enable
 		widthCache = make(map[cacheKey]int) // Clear cache on setting change
 	}
+}
+
+// SetCondition updates the global runewidth.Condition used for width calculations.
+// When the condition is changed, the width cache is cleared.
+// This function is thread-safe.
+//
+// Example:
+//
+//	newCond := runewidth.NewCondition()
+//	newCond.EastAsianWidth = true
+//	twdw.SetCondition(newCond)
+func SetCondition(newCond *runewidth.Condition) {
+	mu.Lock()
+	defer mu.Unlock()
+	condition = newCond
+	widthCache = make(map[cacheKey]int) // Clear cache on setting change
 }
 
 // Width calculates the visual width of a string, excluding ANSI escape sequences,
