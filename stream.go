@@ -3,6 +3,7 @@ package tablewriter
 import (
 	"fmt"
 	"github.com/olekukonko/errors"
+	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"github.com/olekukonko/tablewriter/tw"
 	"math"
 )
@@ -511,7 +512,7 @@ func (t *Table) streamCalculateWidths(sampling []string, config tw.CellConfig) i
 
 		ellipsisWidthBuffer := 0
 		if autoWrapForWidthCalc == tw.WrapTruncate {
-			ellipsisWidthBuffer = tw.DisplayWidth(tw.CharEllipsis)
+			ellipsisWidthBuffer = twwidth.Width(tw.CharEllipsis)
 		}
 		varianceBuffer := 2 // Your suggested variance
 		minTotalColWidth := tw.MinimumColumnWidth
@@ -525,14 +526,14 @@ func (t *Table) streamCalculateWidths(sampling []string, config tw.CellConfig) i
 			if i < len(sampling) {
 				sampleContent = t.Trimmer(sampling[i])
 			}
-			sampleContentDisplayWidth := tw.DisplayWidth(sampleContent)
+			sampleContentDisplayWidth := twwidth.Width(sampleContent)
 
 			colPad := paddingForWidthCalc.Global
 			if i < len(paddingForWidthCalc.PerColumn) && paddingForWidthCalc.PerColumn[i].Paddable() {
 				colPad = paddingForWidthCalc.PerColumn[i]
 			}
-			currentPadLWidth := tw.DisplayWidth(colPad.Left)
-			currentPadRWidth := tw.DisplayWidth(colPad.Right)
+			currentPadLWidth := twwidth.Width(colPad.Left)
+			currentPadRWidth := twwidth.Width(colPad.Right)
 			currentTotalPaddingWidth := currentPadLWidth + currentPadRWidth
 
 			// Start with the target content width logic
@@ -595,7 +596,7 @@ func (t *Table) streamCalculateWidths(sampling []string, config tw.CellConfig) i
 		if t.renderer != nil {
 			rendererConfig := t.renderer.Config()
 			if rendererConfig.Settings.Separators.BetweenColumns.Enabled() {
-				separatorWidth = tw.DisplayWidth(rendererConfig.Symbols.Column())
+				separatorWidth = twwidth.Width(rendererConfig.Symbols.Column())
 			}
 		} else {
 			separatorWidth = 1 // Default if renderer not available yet

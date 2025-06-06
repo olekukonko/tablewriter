@@ -4,6 +4,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/olekukonko/ll"
 	"github.com/olekukonko/ll/lh"
+	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"io"
 	"strings"
 
@@ -254,7 +255,7 @@ func (c *Colorized) Line(ctx tw.Formatting) {
 			line.WriteString(strings.Repeat(tw.Space, colWidth))
 		} else {
 			// Calculate how many times to repeat the segment
-			segmentWidth := tw.DisplayWidth(segment)
+			segmentWidth := twwidth.Width(segment)
 			if segmentWidth <= 0 {
 				segmentWidth = 1
 			}
@@ -266,7 +267,7 @@ func (c *Colorized) Line(ctx tw.Formatting) {
 			line.WriteString(drawnSegment)
 
 			// Adjust for width discrepancies
-			actualDrawnWidth := tw.DisplayWidth(drawnSegment)
+			actualDrawnWidth := twwidth.Width(drawnSegment)
 			if actualDrawnWidth < colWidth {
 				missingWidth := colWidth - actualDrawnWidth
 				spaces := strings.Repeat(tw.Space, missingWidth)
@@ -373,7 +374,7 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 	}
 
 	// Calculate visual width of content
-	contentVisualWidth := tw.DisplayWidth(content)
+	contentVisualWidth := twwidth.Width(content)
 
 	// Set default padding characters
 	padLeftCharStr := padding.Left
@@ -386,8 +387,8 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 	}
 
 	// Calculate padding widths
-	definedPadLeftWidth := tw.DisplayWidth(padLeftCharStr)
-	definedPadRightWidth := tw.DisplayWidth(padRightCharStr)
+	definedPadLeftWidth := twwidth.Width(padLeftCharStr)
+	definedPadRightWidth := twwidth.Width(padRightCharStr)
 	// Calculate available width for content and alignment
 	availableForContentAndAlign := width - definedPadLeftWidth - definedPadRightWidth
 	if availableForContentAndAlign < 0 {
@@ -396,8 +397,8 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 
 	// Truncate content if it exceeds available width
 	if contentVisualWidth > availableForContentAndAlign {
-		content = tw.TruncateString(content, availableForContentAndAlign)
-		contentVisualWidth = tw.DisplayWidth(content)
+		content = twwidth.Truncate(content, availableForContentAndAlign)
+		contentVisualWidth = twwidth.Width(content)
 		c.logger.Debugf("Truncated content to fit %d: '%s' (new width %d)", availableForContentAndAlign, content, contentVisualWidth)
 	}
 
@@ -472,12 +473,12 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 	output := sb.String()
 
 	// Adjust output width if necessary
-	currentVisualWidth := tw.DisplayWidth(output)
+	currentVisualWidth := twwidth.Width(output)
 	if currentVisualWidth != width {
 		c.logger.Debugf("formatCell MISMATCH: content='%s', target_w=%d. Calculated parts width = %d. String: '%s'",
 			content, width, currentVisualWidth, output)
 		if currentVisualWidth > width {
-			output = tw.TruncateString(output, width)
+			output = twwidth.Truncate(output, width)
 		} else {
 			paddingSpacesStr := strings.Repeat(tw.Space, width-currentVisualWidth)
 			if len(tint.BG) > 0 {
@@ -486,10 +487,10 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 				output += paddingSpacesStr
 			}
 		}
-		c.logger.Debugf("formatCell Post-Correction: Target %d, New Visual width %d. Output: '%s'", width, tw.DisplayWidth(output), output)
+		c.logger.Debugf("formatCell Post-Correction: Target %d, New Visual width %d. Output: '%s'", width, twwidth.Width(output), output)
 	}
 
-	c.logger.Debugf("Formatted cell final result: '%s' (target width %d, display width %d)", output, width, tw.DisplayWidth(output))
+	c.logger.Debugf("Formatted cell final result: '%s' (target width %d, display width %d)", output, width, twwidth.Width(output))
 	return output
 }
 
@@ -529,7 +530,7 @@ func (c *Colorized) renderLine(ctx tw.Formatting, line []string, tint Tint) {
 	separatorString := tw.Empty
 	if c.config.Settings.Separators.BetweenColumns.Enabled() {
 		separatorString = c.config.Separator.Apply(c.config.Symbols.Column())
-		separatorDisplayWidth = tw.DisplayWidth(c.config.Symbols.Column())
+		separatorDisplayWidth = twwidth.Width(c.config.Symbols.Column())
 	}
 
 	// Process each column

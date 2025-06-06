@@ -7,6 +7,7 @@ import (
 	"github.com/olekukonko/ll"
 	"github.com/olekukonko/ll/lh"
 	"github.com/olekukonko/tablewriter/pkg/twwarp"
+	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
 	"io"
@@ -762,7 +763,7 @@ func (t *Table) printTopBottomCaption(w io.Writer, actualTableWidth int) {
 		captionWrapWidth = t.caption.Width
 		t.logger.Debugf("[printCaption] Using user-defined caption.Width %d for wrapping.", captionWrapWidth)
 	} else if actualTableWidth <= 4 {
-		captionWrapWidth = tw.DisplayWidth(t.caption.Text)
+		captionWrapWidth = twwidth.Width(t.caption.Text)
 		t.logger.Debugf("[printCaption] Empty table, no user caption.Width: Using natural caption width %d.", captionWrapWidth)
 	} else {
 		captionWrapWidth = actualTableWidth
@@ -885,8 +886,8 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 			colPad = config.Padding.PerColumn[i]
 		}
 
-		padLeftWidth := tw.DisplayWidth(colPad.Left)
-		padRightWidth := tw.DisplayWidth(colPad.Right)
+		padLeftWidth := twwidth.Width(colPad.Left)
+		padRightWidth := twwidth.Width(colPad.Right)
 
 		effectiveContentMaxWidth := t.calculateContentMaxWidth(i, config, padLeftWidth, padRightWidth, isStreaming)
 
@@ -908,12 +909,12 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 					}
 					finalLinesForCell = append(finalLinesForCell, wrapped...)
 				case tw.WrapTruncate:
-					if tw.DisplayWidth(line) > effectiveContentMaxWidth {
-						ellipsisWidth := tw.DisplayWidth(tw.CharEllipsis)
+					if twwidth.Width(line) > effectiveContentMaxWidth {
+						ellipsisWidth := twwidth.Width(tw.CharEllipsis)
 						if effectiveContentMaxWidth >= ellipsisWidth {
-							finalLinesForCell = append(finalLinesForCell, tw.TruncateString(line, effectiveContentMaxWidth-ellipsisWidth, tw.CharEllipsis))
+							finalLinesForCell = append(finalLinesForCell, twwidth.Truncate(line, effectiveContentMaxWidth-ellipsisWidth, tw.CharEllipsis))
 						} else {
-							finalLinesForCell = append(finalLinesForCell, tw.TruncateString(line, effectiveContentMaxWidth, ""))
+							finalLinesForCell = append(finalLinesForCell, twwidth.Truncate(line, effectiveContentMaxWidth, ""))
 						}
 					} else {
 						finalLinesForCell = append(finalLinesForCell, line)
@@ -921,8 +922,8 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 				case tw.WrapBreak:
 					wrapped := make([]string, 0)
 					currentLine := line
-					breakCharWidth := tw.DisplayWidth(tw.CharBreak)
-					for tw.DisplayWidth(currentLine) > effectiveContentMaxWidth {
+					breakCharWidth := twwidth.Width(tw.CharBreak)
+					for twwidth.Width(currentLine) > effectiveContentMaxWidth {
 						targetWidth := effectiveContentMaxWidth - breakCharWidth
 						if targetWidth < 0 {
 							targetWidth = 0
@@ -935,7 +936,7 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 							tempWidth := 0
 							for charIdx, r := range runes {
 								runeStr := string(r)
-								rw := tw.DisplayWidth(runeStr)
+								rw := twwidth.Width(runeStr)
 								if tempWidth+rw > targetWidth && charIdx > 0 {
 									break
 								}
@@ -962,10 +963,10 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 							currentLine = string(runes[breakPoint:])
 						}
 					}
-					if tw.DisplayWidth(currentLine) > 0 {
+					if twwidth.Width(currentLine) > 0 {
 						wrapped = append(wrapped, currentLine)
 					}
-					if len(wrapped) == 0 && tw.DisplayWidth(line) > 0 && len(finalLinesForCell) == 0 {
+					if len(wrapped) == 0 && twwidth.Width(line) > 0 && len(finalLinesForCell) == 0 {
 						finalLinesForCell = append(finalLinesForCell, line)
 					} else {
 						finalLinesForCell = append(finalLinesForCell, wrapped...)
@@ -1447,7 +1448,7 @@ func (t *Table) render() error {
 		actualTableWidth := 0
 		trimmedBuffer := strings.TrimRight(renderedTableContent, "\r\n \t")
 		for _, line := range strings.Split(trimmedBuffer, "\n") {
-			w := tw.DisplayWidth(line)
+			w := twwidth.Width(line)
 			if w > actualTableWidth {
 				actualTableWidth = w
 			}
@@ -1719,7 +1720,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 			if j == 0 || representativePadChar == " " {
 				representativePadChar = padChar
 			}
-			padWidth := tw.DisplayWidth(padChar)
+			padWidth := twwidth.Width(padChar)
 			if padWidth < 1 {
 				padWidth = 1
 			}
@@ -1734,12 +1735,12 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 				repeatCount = 0
 			}
 			rawPaddingContent := strings.Repeat(padChar, repeatCount)
-			currentWd := tw.DisplayWidth(rawPaddingContent)
+			currentWd := twwidth.Width(rawPaddingContent)
 			if currentWd < colWd {
 				rawPaddingContent += strings.Repeat(" ", colWd-currentWd)
 			}
 			if currentWd > colWd && colWd > 0 {
-				rawPaddingContent = tw.TruncateString(rawPaddingContent, colWd)
+				rawPaddingContent = twwidth.Truncate(rawPaddingContent, colWd)
 			}
 			if colWd == 0 {
 				rawPaddingContent = ""

@@ -1,6 +1,7 @@
 package renderer
 
 import (
+	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"io"
 	"strings"
 
@@ -262,7 +263,7 @@ func (o *Ocean) Line(ctx tw.Formatting) {
 			if segmentChar == tw.Empty {
 				segmentChar = o.config.Symbols.Row()
 			}
-			segmentDisplayWidth := tw.DisplayWidth(segmentChar)
+			segmentDisplayWidth := twwidth.Width(segmentChar)
 			if segmentDisplayWidth <= 0 {
 				segmentDisplayWidth = 1
 			}
@@ -374,7 +375,7 @@ func (o *Ocean) renderContentLine(ctx tw.Formatting, lineData []string) {
 					}
 
 					if k < hSpan-1 && o.config.Settings.Separators.BetweenColumns.Enabled() {
-						currentMergeTotalRenderWidth += tw.DisplayWidth(o.config.Symbols.Column())
+						currentMergeTotalRenderWidth += twwidth.Width(o.config.Symbols.Column())
 					}
 				}
 				actualCellWidthToRender = currentMergeTotalRenderWidth
@@ -428,7 +429,7 @@ func (o *Ocean) formatCellContent(content string, cellVisualWidth int, padding t
 		return tw.Empty
 	}
 
-	contentDisplayWidth := tw.DisplayWidth(content)
+	contentDisplayWidth := twwidth.Width(content)
 
 	padLeftChar := padding.Left
 	if padLeftChar == tw.Empty {
@@ -439,8 +440,8 @@ func (o *Ocean) formatCellContent(content string, cellVisualWidth int, padding t
 		padRightChar = tw.Space
 	}
 
-	padLeftDisplayWidth := tw.DisplayWidth(padLeftChar)
-	padRightDisplayWidth := tw.DisplayWidth(padRightChar)
+	padLeftDisplayWidth := twwidth.Width(padLeftChar)
+	padRightDisplayWidth := twwidth.Width(padRightChar)
 
 	spaceForContentAndAlignment := cellVisualWidth - padLeftDisplayWidth - padRightDisplayWidth
 	if spaceForContentAndAlignment < 0 {
@@ -448,8 +449,8 @@ func (o *Ocean) formatCellContent(content string, cellVisualWidth int, padding t
 	}
 
 	if contentDisplayWidth > spaceForContentAndAlignment {
-		content = tw.TruncateString(content, spaceForContentAndAlignment)
-		contentDisplayWidth = tw.DisplayWidth(content)
+		content = twwidth.Truncate(content, spaceForContentAndAlignment)
+		contentDisplayWidth = twwidth.Width(content)
 	}
 
 	remainingSpace := spaceForContentAndAlignment - contentDisplayWidth
@@ -477,7 +478,7 @@ func (o *Ocean) formatCellContent(content string, cellVisualWidth int, padding t
 	sb.WriteString(PR)
 	sb.WriteString(padRightChar)
 
-	currentFormattedWidth := tw.DisplayWidth(sb.String())
+	currentFormattedWidth := twwidth.Width(sb.String())
 	if currentFormattedWidth < cellVisualWidth {
 		if align == tw.AlignRight {
 			prefixSpaces := strings.Repeat(tw.Space, cellVisualWidth-currentFormattedWidth)
@@ -490,7 +491,7 @@ func (o *Ocean) formatCellContent(content string, cellVisualWidth int, padding t
 	} else if currentFormattedWidth > cellVisualWidth {
 		tempStr := sb.String()
 		sb.Reset()
-		sb.WriteString(tw.TruncateString(tempStr, cellVisualWidth))
+		sb.WriteString(twwidth.Truncate(tempStr, cellVisualWidth))
 		o.logger.Warnf("formatCellContent: Final string '%s' (width %d) exceeded target %d. Force truncated.", tempStr, currentFormattedWidth, cellVisualWidth)
 	}
 	return sb.String()

@@ -2,6 +2,7 @@ package renderer
 
 import (
 	"github.com/olekukonko/ll"
+	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"io"
 	"strings"
 
@@ -157,7 +158,7 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 	//if m.config.Settings.TrimWhitespace.Enabled() {
 	//	content = strings.TrimSpace(content)
 	//}
-	contentVisualWidth := tw.DisplayWidth(content)
+	contentVisualWidth := twwidth.Width(content)
 
 	// Use specified padding characters or default to spaces
 	padLeftChar := padding.Left
@@ -170,8 +171,8 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 	}
 
 	// Calculate padding widths
-	padLeftCharWidth := tw.DisplayWidth(padLeftChar)
-	padRightCharWidth := tw.DisplayWidth(padRightChar)
+	padLeftCharWidth := twwidth.Width(padLeftChar)
+	padRightCharWidth := twwidth.Width(padRightChar)
 	minWidth := tw.Max(3, contentVisualWidth+padLeftCharWidth+padRightCharWidth)
 	targetWidth := tw.Max(width, minWidth)
 
@@ -212,7 +213,7 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 	result := leftPadStr + content + rightPadStr
 
 	// Adjust width if needed
-	finalWidth := tw.DisplayWidth(result)
+	finalWidth := twwidth.Width(result)
 	if finalWidth != targetWidth {
 		m.logger.Debugf("Markdown formatCell MISMATCH: content='%s', target_w=%d, paddingL='%s', paddingR='%s', align=%s -> result='%s', result_w=%d",
 			content, targetWidth, padding.Left, padding.Right, align, result, finalWidth)
@@ -229,9 +230,9 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 				result += adjStr
 			}
 		} else {
-			result = tw.TruncateString(result, targetWidth)
+			result = twwidth.Truncate(result, targetWidth)
 		}
-		m.logger.Debugf("Markdown formatCell Corrected: target_w=%d, result='%s', new_w=%d", targetWidth, result, tw.DisplayWidth(result))
+		m.logger.Debugf("Markdown formatCell Corrected: target_w=%d, result='%s', new_w=%d", targetWidth, result, twwidth.Width(result))
 	}
 
 	m.logger.Debugf("Markdown formatCell: content='%s', width=%d, align=%s, paddingL='%s', paddingR='%s' -> '%s' (target %d)",
@@ -262,11 +263,11 @@ func (m *Markdown) formatSeparator(width int, align tw.Align) string {
 	}
 
 	result := sb.String()
-	currentLen := tw.DisplayWidth(result)
+	currentLen := twwidth.Width(result)
 	if currentLen < targetWidth {
 		result += strings.Repeat("-", targetWidth-currentLen)
 	} else if currentLen > targetWidth {
-		result = tw.TruncateString(result, targetWidth)
+		result = twwidth.Truncate(result, targetWidth)
 	}
 
 	m.logger.Debugf("Markdown formatSeparator: width=%d, align=%s -> '%s'", width, align, result)
@@ -314,7 +315,7 @@ func (m *Markdown) renderMarkdownLine(line []string, ctx tw.Formatting, isHeader
 	output.WriteString(prefix)
 
 	colIndex := 0
-	separatorWidth := tw.DisplayWidth(separator)
+	separatorWidth := twwidth.Width(separator)
 
 	for colIndex < numCols {
 		cellCtx, ok := ctx.Row.Current[colIndex]

@@ -352,10 +352,9 @@ func TestLongHeaders(t *testing.T) {
 			},
 				ColMaxWidths: tw.CellWidth{Global: 30},
 			},
-			Debug: false,
 		}
 		buf.Reset()
-		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c), tablewriter.WithDebug(false))
+		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c), tablewriter.WithDebug(true))
 		table.Header([]string{"Name", "Age", "This is a very long header, let see if this will be properly wrapped"})
 		table.Append([]string{"Alice", "25", "New York"})
 		table.Append([]string{"Bob", "30", "Boston"})

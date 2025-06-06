@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/olekukonko/errors"
+	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"github.com/olekukonko/tablewriter/tw"
 	"io"
 	"math"
@@ -165,7 +166,7 @@ func (t *Table) applyHorizontalMergeWidths(position tw.Position, ctx *renderCont
 	if t.renderer != nil {
 		rendererConfig := t.renderer.Config()
 		if rendererConfig.Settings.Separators.BetweenColumns.Enabled() {
-			separatorWidth = tw.DisplayWidth(rendererConfig.Symbols.Column())
+			separatorWidth = twwidth.Width(rendererConfig.Symbols.Column())
 		}
 	}
 
@@ -541,7 +542,7 @@ func (t *Table) buildCoreCellContexts(line []string, merges map[int]tw.MergeStat
 // It generates a []string where each element is the padding content for a column, using the specified padChar.
 func (t *Table) buildPaddingLineContents(padChar string, widths tw.Mapper[int, int], numCols int, merges map[int]tw.MergeState) []string {
 	line := make([]string, numCols)
-	padWidth := tw.DisplayWidth(padChar)
+	padWidth := twwidth.Width(padChar)
 	if padWidth < 1 {
 		padWidth = 1
 	}
@@ -715,15 +716,15 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 			if 0 < len(t.config.Header.Padding.PerColumn) && t.config.Header.Padding.PerColumn[0].Paddable() {
 				headerCellPadding = t.config.Header.Padding.PerColumn[0]
 			}
-			actualMergedHeaderContentPhysicalWidth := tw.DisplayWidth(mergedContentString) +
-				tw.DisplayWidth(headerCellPadding.Left) +
-				tw.DisplayWidth(headerCellPadding.Right)
+			actualMergedHeaderContentPhysicalWidth := twwidth.Width(mergedContentString) +
+				twwidth.Width(headerCellPadding.Left) +
+				twwidth.Width(headerCellPadding.Right)
 			currentSumOfColumnWidths := 0
 			workingWidths.Each(func(_ int, w int) { currentSumOfColumnWidths += w })
 			numSeparatorsInFullSpan := 0
 			if ctx.numCols > 1 {
 				if t.renderer != nil && t.renderer.Config().Settings.Separators.BetweenColumns.Enabled() {
-					numSeparatorsInFullSpan = (ctx.numCols - 1) * tw.DisplayWidth(t.renderer.Config().Symbols.Column())
+					numSeparatorsInFullSpan = (ctx.numCols - 1) * twwidth.Width(t.renderer.Config().Symbols.Column())
 				}
 			}
 			totalCurrentSpanPhysicalWidth := currentSumOfColumnWidths + numSeparatorsInFullSpan
@@ -784,7 +785,7 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 		finalWidths.Each(func(_ int, w int) { currentSumOfFinalColWidths += w })
 		numSeparators := 0
 		if ctx.numCols > 1 && t.renderer != nil && t.renderer.Config().Settings.Separators.BetweenColumns.Enabled() {
-			numSeparators = (ctx.numCols - 1) * tw.DisplayWidth(t.renderer.Config().Symbols.Column())
+			numSeparators = (ctx.numCols - 1) * twwidth.Width(t.renderer.Config().Symbols.Column())
 		}
 		totalCurrentTablePhysicalWidth := currentSumOfFinalColWidths + numSeparators
 		if totalCurrentTablePhysicalWidth > t.config.Widths.Global {
@@ -1655,16 +1656,16 @@ func (t *Table) updateWidths(row []string, widths tw.Mapper[int, int], padding t
 			t.logger.Debugf("  Col %d: Using global padding: L:'%s' R:'%s'", i, padding.Global.Left, padding.Global.Right)
 		}
 
-		padLeftWidth := tw.DisplayWidth(colPad.Left)
-		padRightWidth := tw.DisplayWidth(colPad.Right)
+		padLeftWidth := twwidth.Width(colPad.Left)
+		padRightWidth := twwidth.Width(colPad.Right)
 
 		// Split cell into lines and find maximum content width
 		lines := strings.Split(cell, tw.NewLine)
 		contentWidth := 0
 		for _, line := range lines {
-			lineWidth := tw.DisplayWidth(line)
+			lineWidth := twwidth.Width(line)
 			if t.config.Behavior.TrimSpace.Enabled() {
-				lineWidth = tw.DisplayWidth(t.Trimmer(line))
+				lineWidth = twwidth.Width(t.Trimmer(line))
 			}
 			if lineWidth > contentWidth {
 				contentWidth = lineWidth
