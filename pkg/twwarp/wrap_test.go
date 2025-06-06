@@ -10,6 +10,7 @@ package twwarp
 import (
 	"bytes"
 	"fmt"
+	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"github.com/olekukonko/tablewriter/tw"
 	"os"
 	"reflect"
@@ -72,14 +73,14 @@ func TestDisplayWidth(t *testing.T) {
 	if runewidth.IsEastAsian() {
 		want = 14
 	}
-	if n := tw.DisplayWidth(input); n != want {
+	if n := twwidth.Width(input); n != want {
 		t.Errorf("Wants: %d Got: %d", want, n)
 	}
 	input = "\033[43;30m" + input + "\033[00m"
-	checkEqual(t, tw.DisplayWidth(input), want)
+	checkEqual(t, twwidth.Width(input), want)
 
 	input = "\033]8;;idea://open/?file=/path/somefile.php&line=12\033\\some URL\033]8;;\033\\"
-	checkEqual(t, tw.DisplayWidth(input), 8)
+	checkEqual(t, twwidth.Width(input), 8)
 
 }
 
