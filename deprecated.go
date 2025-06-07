@@ -1,6 +1,8 @@
 package tablewriter
 
-import "github.com/olekukonko/tablewriter/tw"
+import (
+	"github.com/olekukonko/tablewriter/tw"
+)
 
 // WithBorders configures the table's border settings by updating the renderer's border configuration.
 // This function is deprecated and will be removed in a future version.

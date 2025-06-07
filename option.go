@@ -1,7 +1,9 @@
 package tablewriter
 
 import (
+	"github.com/mattn/go-runewidth"
 	"github.com/olekukonko/ll"
+	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"github.com/olekukonko/tablewriter/tw"
 	"reflect"
 )
@@ -610,6 +612,31 @@ func WithRendition(rendition tw.Rendition) Option {
 				target.logger.Warnf("Option: WithRendition: Current renderer type %T does not implement tw.Renditioning. Rendition may not be applied as expected.", target.renderer)
 			}
 		}
+	}
+}
+
+// WithEastAsian configures the global East Asian width calculation setting.
+//   - enable=true: Enables East Asian width calculations. CJK and ambiguous characters
+//     are typically measured as double width.
+//   - enable=false: Disables East Asian width calculations. Characters are generally
+//     measured as single width, subject to Unicode standards.
+//
+// This setting affects all subsequent display width calculations using the twdw package.
+func WithEastAsian(enable bool) Option {
+	return func(target *Table) {
+		twwidth.SetEastAsian(enable)
+	}
+}
+
+// WithCondition provides a way to set a custom global runewidth.Condition
+// that will be used for all subsequent display width calculations by the twwidth (twdw) package.
+//
+// The runewidth.Condition object allows for more fine-grained control over how rune widths
+// are determined, beyond just toggling EastAsianWidth. This could include settings for
+// ambiguous width characters or other future properties of runewidth.Condition.
+func WithCondition(condition *runewidth.Condition) Option {
+	return func(target *Table) {
+		twwidth.SetCondition(condition)
 	}
 }
 

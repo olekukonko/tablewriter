@@ -8,12 +8,13 @@
 package twwarp
 
 import (
-	"github.com/rivo/uniseg"
 	"math"
 	"strings"
 	"unicode"
 
-	"github.com/mattn/go-runewidth"
+	"github.com/olekukonko/tablewriter/pkg/twwidth" // IMPORT YOUR NEW PACKAGE
+	"github.com/rivo/uniseg"
+	// "github.com/mattn/go-runewidth" // This can be removed if all direct uses are gone
 )
 
 const (
@@ -59,7 +60,8 @@ func WrapString(s string, lim int) ([]string, int) {
 	var lines []string
 	max := 0
 	for _, v := range words {
-		max = runewidth.StringWidth(v)
+		// max = runewidth.StringWidth(v) // OLD
+		max = twwidth.Width(v) // NEW: Use twdw.Width
 		if max > lim {
 			lim = max
 		}
@@ -82,12 +84,13 @@ func WrapStringWithSpaces(s string, lim int) ([]string, int) {
 		return []string{""}, lim
 	}
 	if strings.TrimSpace(s) == "" { // All spaces
-		if runewidth.StringWidth(s) <= lim {
-			return []string{s}, runewidth.StringWidth(s)
+		// if runewidth.StringWidth(s) <= lim { // OLD
+		if twwidth.Width(s) <= lim { // NEW: Use twdw.Width
+			// return []string{s}, runewidth.StringWidth(s) // OLD
+			return []string{s}, twwidth.Width(s) // NEW: Use twdw.Width
 		}
 		// For very long all-space strings, "wrap" by truncating to the limit.
 		if lim > 0 {
-			// Use our new helper function to get a substring of the correct display width
 			substring, _ := stringToDisplayWidth(s, lim)
 			return []string{substring}, lim
 		}
@@ -96,7 +99,6 @@ func WrapStringWithSpaces(s string, lim int) ([]string, int) {
 
 	var leadingSpaces, trailingSpaces, coreContent string
 	firstNonSpace := strings.IndexFunc(s, func(r rune) bool { return !unicode.IsSpace(r) })
-	// firstNonSpace will not be -1 due to TrimSpace check above.
 	leadingSpaces = s[:firstNonSpace]
 	lastNonSpace := strings.LastIndexFunc(s, func(r rune) bool { return !unicode.IsSpace(r) })
 	trailingSpaces = s[lastNonSpace+1:]
@@ -116,7 +118,8 @@ func WrapStringWithSpaces(s string, lim int) ([]string, int) {
 
 	maxCoreWordWidth := 0
 	for _, v := range words {
-		w := runewidth.StringWidth(v)
+		// w := runewidth.StringWidth(v) // OLD
+		w := twwidth.Width(v) // NEW: Use twdw.Width
 		if w > maxCoreWordWidth {
 			maxCoreWordWidth = w
 		}
@@ -153,15 +156,14 @@ func stringToDisplayWidth(s string, targetWidth int) (substring string, actualWi
 	g := uniseg.NewGraphemes(s)
 	for g.Next() {
 		grapheme := g.Str()
-		graphemeWidth := runewidth.StringWidth(grapheme) // Get width of the current grapheme cluster
+		// graphemeWidth := runewidth.StringWidth(grapheme) // OLD
+		graphemeWidth := twwidth.Width(grapheme) // NEW: Use twdw.Width
 
 		if currentWidth+graphemeWidth > targetWidth {
-			// Adding this grapheme would exceed the target width
 			break
 		}
 
 		currentWidth += graphemeWidth
-		// Get the end byte position of the current grapheme cluster
 		_, e := g.Positions()
 		endIndex = e
 	}
@@ -186,14 +188,15 @@ func WrapWords(words []string, spc, lim, pen int) [][]string {
 	}
 	lengths := make([]int, n)
 	for i := 0; i < n; i++ {
-		lengths[i] = runewidth.StringWidth(words[i])
+		// lengths[i] = runewidth.StringWidth(words[i]) // OLD
+		lengths[i] = twwidth.Width(words[i]) // NEW: Use twdw.Width
 	}
 	nbrk := make([]int, n)
 	cost := make([]int, n)
 	for i := range cost {
 		cost[i] = math.MaxInt32
 	}
-	remainderLen := lengths[n-1]
+	remainderLen := lengths[n-1] // Uses updated lengths
 	for i := n - 1; i >= 0; i-- {
 		if i < n-1 {
 			remainderLen += spc + lengths[i]

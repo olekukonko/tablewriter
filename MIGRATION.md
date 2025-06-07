@@ -1914,7 +1914,7 @@ func main() {
     - **Direct ANSI Codes**: Embed codes (e.g., `\033[32m` for green) in strings for manual control (`zoo.go:convertCellsToStrings`).
     - **tw.Formatter**: Implement `Format() string` on custom types to control cell output, including colors (`tw/types.go:Formatter`).
     - **tw.CellFilter**: Use `Config.<Section>.Filter.Global` or `PerColumn` to apply transformations like coloring dynamically (`tw/cell.go:CellFilter`).
-- **Width Handling**: `tw.DisplayWidth()` correctly calculates display width of ANSI-coded strings, ignoring escape sequences (`tw/fn.go:DisplayWidth`).
+- **Width Handling**: `twdw.Width()` correctly calculates display width of ANSI-coded strings, ignoring escape sequences (`tw/fn.go:DisplayWidth`).
 - **No Built-In Color Presets**: Unlike v0.0.5’s potential `tablewriter.Colors`, v1.0.x requires manual ANSI code management or external libraries for color constants.
 
 **Migration Tips**:
@@ -1928,7 +1928,7 @@ func main() {
 **Potential Pitfalls**:
 - **Terminal Support**: Some terminals may not support ANSI codes, causing artifacts; test in your environment or provide a non-colored fallback.
 - **Filter Overlap**: Combining `tw.CellFilter` with `AutoFormat` or other transformations can lead to unexpected results; prioritize filters for coloring (`zoo.go`).
-- **Width Miscalculation**: Incorrect ANSI code handling (e.g., missing `Reset`) can skew width calculations; use `tw.DisplayWidth` (`tw/fn.go`).
+- **Width Miscalculation**: Incorrect ANSI code handling (e.g., missing `Reset`) can skew width calculations; use `twdw.Width` (`tw/fn.go`).
 - **Streaming Consistency**: In streaming mode, ensure color codes are applied consistently across rows to avoid visual discrepancies (`stream.go`).
 - **Performance**: Applying filters to large datasets may add overhead; optimize filter logic for efficiency (`zoo.go`).
 
@@ -2818,7 +2818,7 @@ func main() {
 **Notes**:
 - **Configuration**: Uses `tw.CellFilter` for per-column coloring, embedding ANSI codes (`tw/cell.go`).
 - **Migration from v0.0.5**: Replaces `SetColumnColor` with dynamic filters (`tablewriter.go`).
-- **Key Features**: Flexible color application; `tw.DisplayWidth` handles ANSI codes correctly (`tw/fn.go`).
+- **Key Features**: Flexible color application; `twdw.Width` handles ANSI codes correctly (`tw/fn.go`).
 - **Best Practices**: Test in ANSI-compatible terminals; use constants for code clarity.
 - **Potential Issues**: Non-ANSI terminals may show artifacts; provide fallbacks (`tw/fn.go`).
 
@@ -3005,7 +3005,7 @@ This section addresses common migration issues with detailed solutions, covering
 | Merging not working                       | **Cause**: Streaming mode or mismatched data. **Solution**: Use batch mode for vertical/hierarchical merging; ensure identical content (`zoo.go`). |
 | Alignment ignored                         | **Cause**: `PerColumn` overrides `Global`. **Solution**: Check `Config.Section.Alignment.PerColumn` settings or `ConfigBuilder` calls (`tw/cell.go`). |
 | Padding affects widths                    | **Cause**: Padding included in `Config.Widths`. **Solution**: Adjust `Config.Widths` to account for `tw.CellPadding` (`zoo.go`). |
-| Colors not rendering                      | **Cause**: Non-ANSI terminal or incorrect codes. **Solution**: Test in ANSI-compatible terminal; use `tw.DisplayWidth` (`tw/fn.go`). |
+| Colors not rendering                      | **Cause**: Non-ANSI terminal or incorrect codes. **Solution**: Test in ANSI-compatible terminal; use `twdw.Width` (`tw/fn.go`). |
 | Caption missing                           | **Cause**: `Close()` not called in streaming or incorrect `Spot`. **Solution**: Ensure `Close()`; verify `tw.Caption.Spot` (`tablewriter.go`). |
 | Filters not applied                       | **Cause**: Incorrect `PerColumn` indexing or nil filters. **Solution**: Set filters correctly; test with sample data (`tw/cell.go`). |
 | Stringer cache overhead                   | **Cause**: Large datasets with diverse types. **Solution**: Disable `WithStringerCache` for small tables if not using `WithStringer` or if types vary greatly (`tablewriter.go`). |
