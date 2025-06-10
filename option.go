@@ -709,8 +709,11 @@ func defaultConfig() Config {
 				PerColumn: []tw.Align{},
 			},
 		},
-		Stream: tw.StreamConfig{},
-		Debug:  false,
+		Stream: tw.StreamConfig{
+			Enable:        false,
+			StrictColumns: false,
+		},
+		Debug: false,
 		Behavior: tw.Behavior{
 			AutoHide:  tw.Off,
 			TrimSpace: tw.On,
@@ -869,6 +872,8 @@ func mergeStreamConfig(dst, src tw.StreamConfig) tw.StreamConfig {
 	if src.Enable {
 		dst.Enable = true
 	}
+
+	dst.StrictColumns = src.StrictColumns
 	return dst
 }
 
