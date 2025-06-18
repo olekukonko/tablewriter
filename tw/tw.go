@@ -56,7 +56,7 @@ const (
 )
 
 const (
-	SectionHeader = "heder"
+	SectionHeader = "header"
 	SectionRow    = "row"
 	SectionFooter = "footer"
 )
