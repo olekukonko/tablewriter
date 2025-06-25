@@ -416,6 +416,244 @@ func main() {
 </table>
 ```
 
+
+#### Custom Invoice Renderer
+
+```go
+
+package main
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"strings"
+
+	"github.com/olekukonko/ll"
+	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/tw"
+)
+
+// InvoiceRenderer implements tw.Renderer for a basic invoice style.
+type InvoiceRenderer struct {
+	writer    io.Writer
+	logger    *ll.Logger
+	rendition tw.Rendition
+}
+
+func NewInvoiceRenderer() *InvoiceRenderer {
+	rendition := tw.Rendition{
+		Borders:   tw.BorderNone,
+		Symbols:   tw.NewSymbols(tw.StyleNone),
+		Settings:  tw.Settings{Separators: tw.SeparatorsNone, Lines: tw.LinesNone},
+		Streaming: false,
+	}
+	defaultLogger := ll.New("simple-invoice-renderer")
+	return &InvoiceRenderer{logger: defaultLogger, rendition: rendition}
+}
+
+func (r *InvoiceRenderer) Logger(logger *ll.Logger) {
+	if logger != nil {
+		r.logger = logger
+	}
+}
+
+func (r *InvoiceRenderer) Config() tw.Rendition {
+	return r.rendition
+}
+
+func (r *InvoiceRenderer) Start(w io.Writer) error {
+	r.writer = w
+	r.logger.Debug("InvoiceRenderer: Start")
+	return nil
+}
+
+func (r *InvoiceRenderer) formatLine(cells []string, widths tw.Mapper[int, int], cellContexts map[int]tw.CellContext) string {
+	var sb strings.Builder
+	numCols := 0
+	if widths != nil { // Ensure widths is not nil before calling Len
+		numCols = widths.Len()
+	}
+
+	for i := 0; i < numCols; i++ {
+		data := ""
+		if i < len(cells) {
+			data = cells[i]
+		}
+
+		width := 0
+		if widths != nil { // Check again before Get
+			width = widths.Get(i)
+		}
+
+		align := tw.AlignDefault
+		if cellContexts != nil { // Check cellContexts
+			if ctx, ok := cellContexts[i]; ok {
+				align = ctx.Align
+			}
+		}
+
+		paddedCell := tw.Pad(data, " ", width, align)
+		sb.WriteString(paddedCell)
+
+		if i < numCols-1 {
+			sb.WriteString("   ") // Column separator
+		}
+	}
+	return sb.String()
+}
+
+func (r *InvoiceRenderer) Header(headers [][]string, ctx tw.Formatting) {
+	if r.writer == nil {
+		return
+	}
+	r.logger.Debugf("InvoiceRenderer: Header (lines: %d)", len(headers))
+
+	for _, headerLineCells := range headers {
+		lineStr := r.formatLine(headerLineCells, ctx.Row.Widths, ctx.Row.Current)
+		fmt.Fprintln(r.writer, lineStr)
+	}
+
+	if len(headers) > 0 {
+		totalWidth := 0
+		if ctx.Row.Widths != nil {
+			ctx.Row.Widths.Each(func(_ int, w int) { totalWidth += w })
+			if ctx.Row.Widths.Len() > 1 {
+				totalWidth += (ctx.Row.Widths.Len() - 1) * 3 // Separator spaces
+			}
+		}
+		if totalWidth > 0 {
+			fmt.Fprintln(r.writer, strings.Repeat("-", totalWidth))
+		}
+	}
+}
+
+func (r *InvoiceRenderer) Row(row []string, ctx tw.Formatting) {
+	if r.writer == nil {
+		return
+	}
+	r.logger.Debug("InvoiceRenderer: Row")
+	lineStr := r.formatLine(row, ctx.Row.Widths, ctx.Row.Current)
+	fmt.Fprintln(r.writer, lineStr)
+}
+
+func (r *InvoiceRenderer) Footer(footers [][]string, ctx tw.Formatting) {
+	if r.writer == nil {
+		return
+	}
+	r.logger.Debugf("InvoiceRenderer: Footer (lines: %d)", len(footers))
+
+	if len(footers) > 0 {
+		totalWidth := 0
+		if ctx.Row.Widths != nil {
+			ctx.Row.Widths.Each(func(_ int, w int) { totalWidth += w })
+			if ctx.Row.Widths.Len() > 1 {
+				totalWidth += (ctx.Row.Widths.Len() - 1) * 3
+			}
+		}
+		if totalWidth > 0 {
+			fmt.Fprintln(r.writer, strings.Repeat("-", totalWidth))
+		}
+	}
+
+	for _, footerLineCells := range footers {
+		lineStr := r.formatLine(footerLineCells, ctx.Row.Widths, ctx.Row.Current)
+		fmt.Fprintln(r.writer, lineStr)
+	}
+}
+
+func (r *InvoiceRenderer) Line(ctx tw.Formatting) {
+	r.logger.Debug("InvoiceRenderer: Line (no-op)")
+	// This simple renderer draws its own lines in Header/Footer.
+}
+
+func (r *InvoiceRenderer) Close() error {
+	r.logger.Debug("InvoiceRenderer: Close")
+	r.writer = nil
+	return nil
+}
+
+func main() {
+	data := [][]string{
+		{"Product A", "2", "10.00", "20.00"},
+		{"Super Long Product Name B", "1", "125.50", "125.50"},
+		{"Item C", "10", "1.99", "19.90"},
+	}
+
+	header := []string{"Description", "Qty", "Unit Price", "Total Price"}
+	footer := []string{"", "", "Subtotal:\nTax (10%):\nGRAND TOTAL:", "165.40\n16.54\n181.94"}
+	invoiceRenderer := NewInvoiceRenderer()
+
+	// Create table and set custom renderer using Options
+	table := tablewriter.NewTable(os.Stdout,
+		tablewriter.WithRenderer(invoiceRenderer),
+		tablewriter.WithAlignment([]tw.Align{
+			tw.AlignLeft, tw.AlignCenter, tw.AlignRight, tw.AlignRight,
+		}),
+	)
+
+	table.Header(header)
+	for _, v := range data {
+		table.Append(v)
+	}
+
+	// Use the Footer method with strings containing newlines for multi-line cells
+	table.Footer(footer)
+
+	fmt.Println("Rendering with InvoiceRenderer:")
+	table.Render()
+
+	// For comparison, render with default Blueprint renderer
+	// Re-create the table or reset it to use a different renderer
+	table2 := tablewriter.NewTable(os.Stdout,
+		tablewriter.WithAlignment([]tw.Align{
+			tw.AlignLeft, tw.AlignCenter, tw.AlignRight, tw.AlignRight,
+		}),
+	)
+
+	table2.Header(header)
+	for _, v := range data {
+		table2.Append(v)
+	}
+	table2.Footer(footer)
+	fmt.Println("\nRendering with Default Blueprint Renderer (for comparison):")
+	table2.Render()
+}
+
+```
+
+
+```
+Rendering with InvoiceRenderer:
+DESCRIPTION                    QTY        UNIT PRICE     TOTAL PRICE
+--------------------------------------------------------------------
+Product A                       2              10.00           20.00
+Super Long Product Name B       1             125.50          125.50
+Item C                          10              1.99           19.90
+--------------------------------------------------------------------
+                                           Subtotal:          165.40
+--------------------------------------------------------------------
+                                          Tax (10%):           16.54
+--------------------------------------------------------------------
+                                        GRAND TOTAL:          181.94
+```
+
+
+```
+Rendering with Default Blueprint Renderer (for comparison):
+┌───────────────────────────┬─────┬──────────────┬─────────────┐
+│ DESCRIPTION               │ QTY │   UNIT PRICE │ TOTAL PRICE │
+├───────────────────────────┼─────┼──────────────┼─────────────┤
+│ Product A                 │  2  │        10.00 │       20.00 │
+│ Super Long Product Name B │  1  │       125.50 │      125.50 │
+│ Item C                    │ 10  │         1.99 │       19.90 │
+├───────────────────────────┼─────┼──────────────┼─────────────┤
+│                           │     │    Subtotal: │      165.40 │
+│                           │     │   Tax (10%): │       16.54 │
+│                           │     │ GRAND TOTAL: │      181.94 │
+└───────────────────────────┴─────┴──────────────┴─────────────┘
+
+```
 **Notes**:
 - The `renderer.NewBlueprint()` is sufficient for most text-based use cases.
 - Custom renderers require implementing all interface methods to handle table structure correctly. `tw.Formatting` (which includes `tw.RowContext`) provides cell content and metadata.
