@@ -86,6 +86,43 @@ func main() {
 
 Create a table with `NewTable` or `NewWriter`, configure it using options or a `Config` struct, add data with `Append` or `Bulk`, and render to an `io.Writer`. Use renderers like `Blueprint` (ASCII), `HTML`, `Markdown`, `Colorized`, or `Ocean` (streaming).
 
+Here's how the API primitives map to the generated ASCII table:
+
+```
+API Call                                  ASCII Table Component
+--------                                  ---------------------
+
+table.Header([]string{"NAME", "AGE"})     ┌──────┬─────┐  ← Borders.Top
+                                          │ NAME │ AGE │  ← Header row
+                                          ├──────┼─────┤  ← Lines.ShowTop (header separator)
+
+table.Append([]string{"Alice", "25"})     │ Alice│ 25  │  ← Data row
+                                          ├──────┼─────┤  ← Separators.BetweenRows
+
+table.Append([]string{"Bob", "30"})       │ Bob  │ 30  │  ← Data row
+                                          ├──────┼─────┤  ← Lines.ShowBottom (footer separator)
+
+table.Footer([]string{"Total", "2"})      │ Total│ 2   │  ← Footer row
+                                          └──────┴─────┘  ← Borders.Bottom
+```
+
+The core components include:
+
+- **Renderer** - Implements the core interface for converting table data into output formats. Available renderers include Blueprint (ASCII), HTML, Markdown, Colorized (ASCII with color), Ocean (streaming ASCII), and SVG.
+
+- **Config** - The root configuration struct that controls all table behavior and appearance
+  - **Behavior** - Controls high-level rendering behaviors including auto-hiding empty columns, trimming row whitespace, header/footer visibility, and compact mode for optimized merged cell calculations
+  - **CellConfig** - The comprehensive configuration template used for table sections (header, row, footer). Combines formatting, padding, alignment, filtering, callbacks, and width constraints with global and per-column control
+  - **StreamConfig** - Configuration for streaming mode including enable/disable state and strict column validation
+
+- **Rendition** - Defines how a renderer formats tables and contains the complete visual styling configuration
+  - **Borders** - Control the outer frame visibility (top, bottom, left, right edges) of the table
+  - **Lines** - Control horizontal boundary lines (above/below headers, above footers) that separate different table sections
+  - **Separators** - Control the visibility of separators between rows and between columns within the table content
+  - **Symbols** - Define the characters used for drawing table borders, corners, and junctions
+
+These components can be configured with various `tablewriter.With*()` functional options when creating a new table.
+
 ## Examples
 
 ### Basic Examples
