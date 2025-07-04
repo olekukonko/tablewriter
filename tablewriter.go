@@ -642,7 +642,7 @@ func (t *Table) finalizeHierarchicalMergeBlock(ctx *renderContext, mctx *mergeCo
 		startState.Hierarchical.Present = true
 		startState.Hierarchical.Start = true
 		startState.Hierarchical.Span = finalSpan
-		startState.Hierarchical.End = (finalSpan == 1)
+		startState.Hierarchical.End = finalSpan == 1
 		mctx.rowMerges[startRow][col] = startState
 	}
 
