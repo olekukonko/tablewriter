@@ -184,12 +184,13 @@ func (t *Table) Append(rows ...interface{}) error {
 	t.ensureInitialized()
 
 	if t.config.Stream.Enable && t.hasPrinted {
+		// Streaming logic remains unchanged, as AutoHeader is a batch-mode concept.
 		t.logger.Debugf("Append() called in streaming mode with %d items for a single row", len(rows))
 		var rowItemForStream interface{}
 		if len(rows) == 1 {
 			rowItemForStream = rows[0]
 		} else {
-			rowItemForStream = rows // Pass the slice of items if multiple args
+			rowItemForStream = rows
 		}
 		if err := t.streamAppendRow(rowItemForStream); err != nil {
 			t.logger.Errorf("Error rendering streaming row: %v", err)
@@ -204,13 +205,22 @@ func (t *Table) Append(rows ...interface{}) error {
 	var cellsSource interface{}
 	if len(rows) == 1 {
 		cellsSource = rows[0]
-		t.logger.Debug("Append (Batch): Single argument provided. Treating it as the source for row cells.")
 	} else {
-		cellsSource = rows // 'rows' is []interface{} containing all arguments
-		t.logger.Debug("Append (Batch): Multiple arguments provided. Treating them directly as cells for one row.")
+		cellsSource = rows
+	}
+	// Check if we should attempt to auto-generate headers from this append operation.
+	// Conditions: AutoHeader is on, no headers are set yet, and this is the first data row.
+	isFirstRow := len(t.rows) == 0
+	if t.config.Behavior.Struct.AutoHeader.Enabled() && len(t.headers) == 0 && isFirstRow {
+		t.logger.Debug("Append: Triggering AutoHeader for the first row.")
+		headers := t.extractHeadersFromStruct(cellsSource)
+		if len(headers) > 0 {
+			// Set the extracted headers. The Header() method handles the rest.
+			t.Header(headers)
+		}
 	}
 
-	// Delegate to the robust toStringLines, which now correctly handles structs via the new parser.
+	// The rest of the function proceeds as before, converting the data to string lines.
 	lines, err := t.toStringLines(cellsSource, t.config.Row)
 	if err != nil {
 		t.logger.Errorf("Append (Batch) failed for cellsSource %v: %v", cellsSource, err)
