@@ -180,7 +180,7 @@ func (t *Table) Caption(caption tw.Caption) *Table { // This is the one we modif
 // This method always contributes to a single logical row in the table.
 // To add multiple distinct rows, call Append multiple times (once for each row's data)
 // or use the Bulk() method if providing a slice where each element is a row.
-func (t *Table) Append(rows ...interface{}) error { // rows is already []interface{}
+func (t *Table) Append(rows ...interface{}) error {
 	t.ensureInitialized()
 
 	if t.config.Stream.Enable && t.hasPrinted {
@@ -198,7 +198,7 @@ func (t *Table) Append(rows ...interface{}) error { // rows is already []interfa
 		return nil
 	}
 
-	//Batch Mode Logic
+	// Batch Mode Logic
 	t.logger.Debugf("Append (Batch) received %d arguments: %v", len(rows), rows)
 
 	var cellsSource interface{}
@@ -210,10 +210,13 @@ func (t *Table) Append(rows ...interface{}) error { // rows is already []interfa
 		t.logger.Debug("Append (Batch): Multiple arguments provided. Treating them directly as cells for one row.")
 	}
 
-	if err := t.appendSingle(cellsSource); err != nil {
+	// Delegate to the robust toStringLines, which now correctly handles structs via the new parser.
+	lines, err := t.toStringLines(cellsSource, t.config.Row)
+	if err != nil {
 		t.logger.Errorf("Append (Batch) failed for cellsSource %v: %v", cellsSource, err)
 		return err
 	}
+	t.rows = append(t.rows, lines)
 
 	t.logger.Debugf("Append (Batch) completed for one row, total rows in table: %d", len(t.rows))
 	return nil
@@ -231,19 +234,20 @@ func (t *Table) Bulk(rows interface{}) error {
 		return nil
 	}
 
-	if t.config.Behavior.AutoHeader.Enabled() && len(t.headers) == 0 {
+	// AutoHeader logic remains here, as it's a "Bulk" operation concept.
+	if t.config.Behavior.Struct.AutoHeader.Enabled() && len(t.headers) == 0 {
 		first := rv.Index(0).Interface()
-		if reflect.TypeOf(first).Kind() == reflect.Struct {
-			headers := t.extractHeadersFromStruct(first)
-			if len(headers) > 0 {
-				t.Header(headers)
-			}
+		// We can now correctly get headers from pointers or embedded structs
+		headers := t.extractHeadersFromStruct(first)
+		if len(headers) > 0 {
+			t.Header(headers)
 		}
 	}
 
+	// The rest of the logic is now just a loop over Append.
 	for i := 0; i < rv.Len(); i++ {
 		row := rv.Index(i).Interface()
-		if err := t.appendSingle(row); err != nil {
+		if err := t.Append(row); err != nil { // Use Append
 			return err
 		}
 	}
