@@ -132,3 +132,218 @@ func TestStructTableWithDB(t *testing.T) {
 		t.Log(table.Debug())
 	}
 }
+
+func TestAutoHeaderScenarios(t *testing.T) {
+	type Basic struct {
+		Foo int
+		Bar string
+		baz bool // unexported
+	}
+
+	type WithTags struct {
+		ID   int    `json:"id"`
+		Name string `json:"name,omitempty"`
+		Age  int    `json:"-"`
+		City string `json:"location"`
+	}
+
+	type Omitted struct {
+		SkipMe string `json:"-"`
+		KeepMe string
+	}
+
+	type NoTags struct {
+		Field1 string
+		field2 int // unexported
+	}
+
+	type Embedded struct {
+		WithTags
+		Extra string
+	}
+
+	type PointerTest struct {
+		Value string
+	}
+
+	tests := []struct {
+		name       string
+		data       interface{}
+		enable     bool
+		preHeaders []string
+		expected   string
+	}{
+		{
+			name:   "BasicStruct",
+			data:   []Basic{{1, "test", true}, {2, "test2", false}},
+			enable: true,
+			expected: `
+			┌─────┬───────┐
+			│ FOO │  BAR  │
+			├─────┼───────┤
+			│ 1   │ test  │
+			│ 2   │ test2 │
+			└─────┴───────┘
+
+`,
+		},
+		{
+			name:   "WithTags",
+			data:   []WithTags{{1, "John", 30, "NY"}, {2, "", 0, "LA"}},
+			enable: true,
+			expected: `
+			┌────┬──────┬──────────┐
+			│ ID │ NAME │ LOCATION │
+			├────┼──────┼──────────┤
+			│ 1  │ John │ NY       │
+			│ 2  │      │ LA       │
+			└────┴──────┴──────────┘
+`,
+		},
+		{
+			name:   "OmittedFields",
+			data:   []Omitted{{"skip", "keep"}, {"skip2", "keep2"}},
+			enable: true,
+			expected: `
+			┌────────┐
+			│ KEEPME │
+			├────────┤
+			│ keep   │
+			│ keep2  │
+			└────────┘
+
+`,
+		},
+		{
+			name:   "NoTags",
+			data:   []NoTags{{"val1", 42}, {"val2", 43}},
+			enable: true,
+			expected: `
+			┌─────────┐
+			│ FIELD 1 │
+			├─────────┤
+			│ val1    │
+			│ val2    │
+			└─────────┘
+
+`,
+		},
+		{
+			name:   "Embedded",
+			data:   []Embedded{{WithTags{1, "John", 30, "NY"}, "Extra"}, {WithTags{2, "Doe", 25, "LA"}, "Value"}},
+			enable: true,
+			expected: `
+		┌────┬──────┬──────────┬───────┐
+		│ ID │ NAME │ LOCATION │ EXTRA │
+		├────┼──────┼──────────┼───────┤
+		│ 1  │ John │ NY       │ Extra │
+		│ 2  │ Doe  │ LA       │ Value │
+		└────┴──────┴──────────┴───────┘
+`,
+		},
+		{
+			name:   "PointerToStruct",
+			data:   []*PointerTest{{"Value1"}, {"Value2"}},
+			enable: true,
+			expected: `
+			┌────────┐
+			│ VALUE  │
+			├────────┤
+			│ Value1 │
+			│ Value2 │
+			└────────┘
+`,
+		},
+		{
+			name:   "SliceOfPointers",
+			data:   []*WithTags{{1, "John", 30, "NY"}, {2, "Doe", 25, "LA"}},
+			enable: true,
+			expected: `
+			┌────┬──────┬──────────┐
+			│ ID │ NAME │ LOCATION │
+			├────┼──────┼──────────┤
+			│ 1  │ John │ NY       │
+			│ 2  │ Doe  │ LA       │
+			└────┴──────┴──────────┘
+`,
+		},
+		{
+			name:   "NonStruct",
+			data:   [][]string{{"A", "B"}, {"C", "D"}},
+			enable: false,
+			expected: `
+┌───┬───┐
+│ A │ B │
+│ C │ D │
+└───┴───┘
+`,
+		},
+		{
+			name:     "EmptySlice",
+			data:     []WithTags{},
+			expected: ``,
+		},
+		{
+			name:   "enabled",
+			data:   []WithTags{{1, "John", 30, "NY"}},
+			enable: true,
+			expected: `
+			┌────┬──────┬──────────┐
+			│ ID │ NAME │ LOCATION │
+			├────┼──────┼──────────┤
+			│ 1  │ John │ NY       │
+			└────┴──────┴──────────┘
+
+
+`, // No header, falls back to string reps
+		},
+		{
+			name:   "Disabled",
+			data:   []WithTags{{1, "John", 30, "NY"}},
+			enable: false,
+			expected: `
+			┌───┬──────┬────┐
+			│ 1 │ John │ NY │
+			└───┴──────┴────┘
+
+`, // No header, falls back to string reps
+		},
+		{
+			name:       "PreExistingHeaders",
+			data:       []WithTags{{1, "John", 30, "NY"}},
+			preHeaders: []string{"CustomID", "CustomName", "CustomCity"},
+			enable:     true,
+			expected: `
+            ┌───────────┬─────────────┬─────────────┐
+            │ CUSTOM ID │ CUSTOM NAME │ CUSTOM CITY │
+            ├───────────┼─────────────┼─────────────┤
+            │ 1         │ John        │ NY          │
+            └───────────┴─────────────┴─────────────┘
+
+`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			table := tablewriter.NewTable(&buf)
+			if tt.enable {
+				table.Configure(func(cfg *tablewriter.Config) {
+					cfg.Behavior.Struct.AutoHeader = tw.On
+				})
+			}
+
+			if len(tt.preHeaders) > 0 {
+				table.Header(tt.preHeaders)
+			}
+			err := table.Bulk(tt.data)
+			if err != nil {
+				t.Fatalf("Bulk failed: %v", err)
+			}
+			table.Render()
+
+			visualCheck(t, tt.name, buf.String(), tt.expected)
+		})
+	}
+}
