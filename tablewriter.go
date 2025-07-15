@@ -211,7 +211,7 @@ func (t *Table) Append(rows ...interface{}) error {
 	// Check if we should attempt to auto-generate headers from this append operation.
 	// Conditions: AutoHeader is on, no headers are set yet, and this is the first data row.
 	isFirstRow := len(t.rows) == 0
-	if t.config.Behavior.Struct.AutoHeader.Enabled() && len(t.headers) == 0 && isFirstRow {
+	if t.config.Behavior.Structs.AutoHeader.Enabled() && len(t.headers) == 0 && isFirstRow {
 		t.logger.Debug("Append: Triggering AutoHeader for the first row.")
 		headers := t.extractHeadersFromStruct(cellsSource)
 		if len(headers) > 0 {
@@ -245,7 +245,7 @@ func (t *Table) Bulk(rows interface{}) error {
 	}
 
 	// AutoHeader logic remains here, as it's a "Bulk" operation concept.
-	if t.config.Behavior.Struct.AutoHeader.Enabled() && len(t.headers) == 0 {
+	if t.config.Behavior.Structs.AutoHeader.Enabled() && len(t.headers) == 0 {
 		first := rv.Index(0).Interface()
 		// We can now correctly get headers from pointers or embedded structs
 		headers := t.extractHeadersFromStruct(first)

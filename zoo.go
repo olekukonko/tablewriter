@@ -1224,7 +1224,7 @@ func (t *Table) convertItemToCells(item interface{}) ([]string, error) {
 	// We only care about the values it returns.
 	_, values := t.extractFieldsAndValuesFromStruct(item)
 	if values != nil {
-		t.logger.Debugf("convertItemToCells: Struct %T reflected into %d cells: %v", item, len(values), values)
+		t.logger.Debugf("convertItemToCells: Structs %T reflected into %d cells: %v", item, len(values), values)
 		return values, nil
 	}
 
@@ -1690,7 +1690,7 @@ func (t *Table) extractFieldsAndValuesFromStruct(sample interface{}) ([]string, 
 		skipField := false
 
 		// Loop through the priority list of configured tags (e.g., ["json", "db"])
-		for _, tagKey := range t.config.Behavior.Struct.Tags {
+		for _, tagKey := range t.config.Behavior.Structs.Tags {
 			tagValue := field.Tag.Get(tagKey)
 
 			// If a tag is found...

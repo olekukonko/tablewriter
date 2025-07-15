@@ -165,8 +165,8 @@ type Behavior struct {
 	// by systematically determining the most efficient width instead of scaling by the number of columns.
 	Compact Compact
 
-	// Struct contains settings for how struct data is processed.
-	Struct Struct
+	// Structs contains settings for how struct data is processed.
+	Structs Struct
 }
 
 // Padding defines the spacing characters around cell content in all four directions.

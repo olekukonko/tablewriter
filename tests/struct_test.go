@@ -330,7 +330,7 @@ func TestAutoHeaderScenarios(t *testing.T) {
 			table := tablewriter.NewTable(&buf)
 			if tt.enable {
 				table.Configure(func(cfg *tablewriter.Config) {
-					cfg.Behavior.Struct.AutoHeader = tw.On
+					cfg.Behavior.Structs.AutoHeader = tw.On
 				})
 			}
 

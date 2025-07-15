@@ -690,7 +690,7 @@ func (bb *BehaviorConfigBuilder) WithCompactMerge(state tw.State) *BehaviorConfi
 
 // WithAutoHeader enables/disables automatic header extraction for structs in Bulk.
 func (bb *BehaviorConfigBuilder) WithAutoHeader(state tw.State) *BehaviorConfigBuilder {
-	bb.config.Struct.AutoHeader = state
+	bb.config.Structs.AutoHeader = state
 	return bb
 }
 
