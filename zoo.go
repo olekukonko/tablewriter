@@ -1694,3 +1694,34 @@ func (t *Table) updateWidths(row []string, widths tw.Mapper[int, int], padding t
 		}
 	}
 }
+
+// extractHeadersFromStruct generates table headers from a sample struct.
+// Internal: Uses JSON tags if available (splitting on ","), falls back to field name (title-cased).
+// Skips unexported or json:"-" fields.
+func (t *Table) extractHeadersFromStruct(sample interface{}) []string {
+	v := reflect.ValueOf(sample)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	if v.Kind() != reflect.Struct {
+		return nil
+	}
+	typ := v.Type()
+	headers := make([]string, 0, typ.NumField())
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		if field.PkgPath != "" { // Unexported
+			continue
+		}
+		jsonTag := field.Tag.Get("json")
+		if jsonTag == "-" {
+			continue
+		}
+		name := field.Name
+		if jsonTag != "" {
+			name = strings.Split(jsonTag, ",")[0]
+		}
+		headers = append(headers, tw.Title(name))
+	}
+	return headers
+}

@@ -152,6 +152,11 @@ type Behavior struct {
 	// Compact enables optimized width calculation for merged cells, such as in horizontal merges,
 	// by systematically determining the most efficient width instead of scaling by the number of columns.
 	Compact Compact
+
+	// AutoHeader automatically extracts and sets headers from struct fields when Bulk is called with a slice of structs.
+	// Uses JSON tags if present, falls back to field names (title-cased). Skips unexported or json:"-" fields.
+	// Enabled by default for convenience.
+	AutoHeader State
 }
 
 // Padding defines the spacing characters around cell content in all four directions.

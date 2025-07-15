@@ -715,8 +715,9 @@ func defaultConfig() Config {
 		},
 		Debug: false,
 		Behavior: tw.Behavior{
-			AutoHide:  tw.Off,
-			TrimSpace: tw.On,
+			AutoHide:   tw.Off,
+			TrimSpace:  tw.On,
+			AutoHeader: tw.Off,
 		},
 	}
 }

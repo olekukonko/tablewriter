@@ -219,26 +219,34 @@ func (t *Table) Append(rows ...interface{}) error { // rows is already []interfa
 	return nil
 }
 
-// Bulk adds multiple rows from a slice to the table (legacy method).
-// Parameter rows must be a slice compatible with stringer or []string.
-// Returns an error if the input is invalid or appending fails.
+// Bulk adds multiple rows from a slice to the table.
+// If Behavior.AutoHeader is enabled, no headers set, and rows is a slice of structs,
+// automatically extracts/sets headers from the first struct.
 func (t *Table) Bulk(rows interface{}) error {
-	t.logger.Debug("Starting Bulk operation")
 	rv := reflect.ValueOf(rows)
 	if rv.Kind() != reflect.Slice {
-		err := errors.Newf("Bulk expects a slice, got %T", rows)
-		t.logger.Debugf("Bulk error: %v", err)
-		return err
+		return errors.Newf("Bulk expects a slice, got %T", rows)
 	}
+	if rv.Len() == 0 {
+		return nil
+	}
+
+	if t.config.Behavior.AutoHeader.Enabled() && len(t.headers) == 0 {
+		first := rv.Index(0).Interface()
+		if reflect.TypeOf(first).Kind() == reflect.Struct {
+			headers := t.extractHeadersFromStruct(first)
+			if len(headers) > 0 {
+				t.Header(headers)
+			}
+		}
+	}
+
 	for i := 0; i < rv.Len(); i++ {
 		row := rv.Index(i).Interface()
-		t.logger.Debugf("Processing bulk row %d: %v", i, row)
 		if err := t.appendSingle(row); err != nil {
-			t.logger.Debugf("Bulk append failed at index %d: %v", i, err)
 			return err
 		}
 	}
-	t.logger.Debugf("Bulk completed, processed %d rows", rv.Len())
 	return nil
 }
 
