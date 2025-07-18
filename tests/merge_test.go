@@ -656,3 +656,61 @@ func TestMergeWithMultipleLines(t *testing.T) {
 		}
 	})
 }
+
+func TestMergeHierarchicalCombined(t *testing.T) {
+	var buf bytes.Buffer
+	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
+		Header: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}},
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{MergeMode: tw.MergeHierarchical},
+			Alignment:  tw.CellAlignment{Global: tw.AlignLeft},
+		},
+		Footer: tw.CellConfig{
+			Alignment: tw.CellAlignment{Global: tw.AlignLeft},
+			Formatting: tw.CellFormatting{
+				MergeMode: tw.MergeHorizontal,
+			},
+		},
+		Debug: true,
+	}),
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
+			Settings: tw.Settings{Separators: tw.Separators{BetweenRows: tw.On}},
+		})),
+	)
+
+	data := [][]string{
+		{"Engineering", "Backend", "API Team", "Alice"},
+		{"Engineering", "Backend", "Database Team", "Bob"},
+		{"Engineering", "Frontend", "UI Team", "Charlie"},
+		{"Marketing", "Digital", "SEO Team", "Dave"},
+		{"Marketing", "Digital", "Content Team", "Eve"},
+	}
+
+	table.Header([]string{"Department", "Division", "Team", "Lead"})
+	table.Bulk(data)
+	table.Footer([]string{"Total Teams", "5", "5", "5"})
+	table.Render()
+
+	expected := `
+		┌─────────────┬──────────┬───────────────┬─────────┐
+		│ DEPARTMENT  │ DIVISION │     TEAM      │  LEAD   │
+		├─────────────┼──────────┼───────────────┼─────────┤
+		│ Engineering │ Backend  │ API Team      │ Alice   │
+		│             │          ├───────────────┼─────────┤
+		│             │          │ Database Team │ Bob     │
+		│             ├──────────┼───────────────┼─────────┤
+		│             │ Frontend │ UI Team       │ Charlie │
+		├─────────────┼──────────┼───────────────┼─────────┤
+		│ Marketing   │ Digital  │ SEO Team      │ Dave    │
+		│             │          ├───────────────┼─────────┤
+		│             │          │ Content Team  │ Eve     │
+		├─────────────┼──────────┴───────────────┴─────────┤
+		│ Total Teams │ 5                                  │
+		└─────────────┴────────────────────────────────────┘
+
+`
+	check := visualCheck(t, "MergeHierarchical", buf.String(), expected)
+	if !check {
+		t.Error(table.Debug())
+	}
+}
