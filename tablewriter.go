@@ -2,7 +2,6 @@ package tablewriter
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/olekukonko/errors"
 	"github.com/olekukonko/ll"
 	"github.com/olekukonko/ll/lh"
@@ -194,7 +193,7 @@ func (t *Table) Append(rows ...interface{}) error {
 		}
 		if err := t.streamAppendRow(rowItemForStream); err != nil {
 			t.logger.Errorf("Error rendering streaming row: %v", err)
-			return fmt.Errorf("failed to stream append row: %w", err)
+			return errors.Newf("failed to stream append row").Wrap(err)
 		}
 		return nil
 	}
@@ -1405,13 +1404,13 @@ func (t *Table) render() error {
 	if err != nil {
 		t.writer = originalWriter
 		t.logger.Errorf("prepareContexts failed: %v", err)
-		return fmt.Errorf("failed to prepare table contexts: %w", err)
+		return errors.Newf("failed to prepare table contexts").Wrap(err)
 	}
 
 	if err := ctx.renderer.Start(t.writer); err != nil {
 		t.writer = originalWriter
 		t.logger.Errorf("Renderer Start() error: %v", err)
-		return fmt.Errorf("renderer start failed: %w", err)
+		return errors.Newf("renderer start failed").Wrap(err)
 	}
 
 	renderError := false
@@ -1426,7 +1425,7 @@ func (t *Table) render() error {
 		if renderErr := renderFn(ctx, mctx); renderErr != nil {
 			t.logger.Errorf("Renderer section error (%s): %v", sectionName, renderErr)
 			if !renderError {
-				firstRenderErr = fmt.Errorf("failed to render %s section: %w", sectionName, renderErr)
+				firstRenderErr = errors.Newf("failed to render %s section", sectionName).Wrap(renderErr)
 			}
 			renderError = true
 			break
@@ -1436,7 +1435,7 @@ func (t *Table) render() error {
 	if closeErr := ctx.renderer.Close(); closeErr != nil {
 		t.logger.Errorf("Renderer Close() error: %v", closeErr)
 		if !renderError {
-			firstRenderErr = fmt.Errorf("renderer close failed: %w", closeErr)
+			firstRenderErr = errors.Newf("renderer close failed").Wrap(closeErr)
 		}
 		renderError = true
 	}
