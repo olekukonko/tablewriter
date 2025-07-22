@@ -513,10 +513,7 @@ func (s *SVG) renderVisualLine(visualLineData []string, ctx tw.Formatting, posit
 			}
 			s.dataRowCounter++
 		} else {
-			parentDataRowStripeIndex := s.dataRowCounter - 1
-			if parentDataRowStripeIndex < 0 {
-				parentDataRowStripeIndex = 0
-			}
+			parentDataRowStripeIndex := max(s.dataRowCounter-1, 0)
 			if s.config.RowAltBG != tw.Empty && parentDataRowStripeIndex%2 != 0 {
 				bgColor = s.config.RowAltBG
 			} else {

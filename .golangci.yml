@@ -26,10 +26,22 @@ linters:
     - staticcheck
     - govet
     - gocritic
+    - unused # TODO: There are many unused functions, should I directly remove those ?
+    - ineffassign
+    - unconvert
+    - mirror
+    - usestdlibvars
+    - loggercheck
+    - exptostd
+    - godot
+    - perfsprint
+    
 
   # See: https://golangci-lint.run/usage/false-positives/
   # exclusion:
   #   paths:
   #   rules:
 
-  # settings:
+  settings:
+    godot:
+      period: false

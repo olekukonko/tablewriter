@@ -3,7 +3,7 @@
 package tw
 
 import (
-	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/olekukonko/errors"
@@ -53,7 +53,7 @@ func (a Alignment) String() string {
 		if i > 0 {
 			str.WriteString("; ")
 		}
-		str.WriteString(fmt.Sprint(i))
+		str.WriteString(strconv.Itoa(i))
 		str.WriteString("=")
 		str.WriteString(string(a))
 	}

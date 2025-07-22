@@ -3,6 +3,7 @@ package tablewriter
 import (
 	"bytes"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -259,7 +260,7 @@ func TestConvertToString(t *testing.T) {
 		{nil, ""},
 		{"test", "test"},
 		{[]byte("bytes"), "bytes"},
-		{fmt.Errorf("err"), "err"},
+		{errors.New("err"), "err"},
 		{sql.NullString{String: "valid", Valid: true}, "valid"},
 		{sql.NullString{Valid: false}, ""},
 		// Add more cases
