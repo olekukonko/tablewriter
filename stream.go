@@ -332,7 +332,7 @@ func (t *Table) streamAppendRow(row interface{}) error {
 		t.logger.Debug("streamAppendRow: Separator line rendered. Updated lastRenderedPosition to 'separator'.")
 	} else {
 		details := ""
-		if !(shouldDrawHeaderRowSeparator || shouldDrawRowRowSeparator) {
+		if !shouldDrawHeaderRowSeparator && !shouldDrawRowRowSeparator {
 			details = "neither header/row nor row/row separator was flagged true"
 		} else if t.lastRenderedPosition == tw.Position("separator") {
 			details = "lastRenderedPosition is already 'separator'"
@@ -859,7 +859,7 @@ func (t *Table) streamRenderFooter(processedFooterLines [][]string) error {
 		// If this is the last line of the last content block (footer), and no bottom border will be drawn,
 		// its Location should be End.
 		isLastLineOfTableContent := (i == totalFooterLines-1) &&
-			!(cfg.Borders.Bottom.Enabled() && cfg.Settings.Lines.ShowBottom.Enabled())
+			(!cfg.Borders.Bottom.Enabled() || !cfg.Settings.Lines.ShowBottom.Enabled())
 		if isLastLineOfTableContent {
 			resp.location = tw.LocationEnd
 			t.logger.Debug("streamRenderFooter: Setting LocationEnd for last footer line as no bottom border will follow.")

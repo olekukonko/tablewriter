@@ -540,7 +540,7 @@ func (c *Colorized) renderLine(ctx tw.Formatting, line []string, tint Tint) {
 		shouldAddSeparator := false
 		if i > 0 && c.config.Settings.Separators.BetweenColumns.Enabled() {
 			cellCtx, ok := ctx.Row.Current[i]
-			if !ok || !(cellCtx.Merge.Horizontal.Present && !cellCtx.Merge.Horizontal.Start) {
+			if !ok || (!cellCtx.Merge.Horizontal.Present || cellCtx.Merge.Horizontal.Start) {
 				shouldAddSeparator = true
 			}
 		}

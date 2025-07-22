@@ -220,13 +220,14 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 		adjNeeded := targetWidth - finalWidth
 		if adjNeeded > 0 {
 			adjStr := strings.Repeat(tw.Space, adjNeeded)
-			if align == tw.AlignRight {
+			switch align {
+			case tw.AlignRight:
 				result = adjStr + result
-			} else if align == tw.AlignCenter {
+			case tw.AlignCenter:
 				leftAdj := adjNeeded / 2
 				rightAdj := adjNeeded - leftAdj
 				result = strings.Repeat(tw.Space, leftAdj) + result + strings.Repeat(tw.Space, rightAdj)
-			} else {
+			default:
 				result += adjStr
 			}
 		} else {
@@ -388,17 +389,18 @@ func (m *Markdown) renderMarkdownLine(line []string, ctx tw.Formatting, isHeader
 				}
 				// For rows, use the header's alignment if specified
 				rowAlign := align
-				if headerCellCtx, headerOK := ctx.Row.Previous[colIndex]; headerOK && isHeaderSep == false {
+				if headerCellCtx, headerOK := ctx.Row.Previous[colIndex]; headerOK && !isHeaderSep {
 					if headerCellCtx.Align != tw.AlignNone && headerCellCtx.Align != tw.Empty {
 						rowAlign = headerCellCtx.Align
 					}
 				}
 				if rowAlign == tw.AlignNone || rowAlign == tw.Empty {
-					if ctx.Row.Position == tw.Header {
+					switch ctx.Row.Position {
+					case tw.Header:
 						rowAlign = tw.AlignCenter
-					} else if ctx.Row.Position == tw.Footer {
+					case tw.Footer:
 						rowAlign = tw.AlignRight
-					} else {
+					default:
 						rowAlign = tw.AlignLeft
 					}
 					m.logger.Debugf("renderMarkdownLine: Col %d using default align '%s'", colIndex, rowAlign)

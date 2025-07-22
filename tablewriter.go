@@ -423,7 +423,7 @@ func (t *Table) Options(opts ...Option) *Table {
 
 	// force debugging mode if set
 	// This should  be move away form WithDebug
-	if t.config.Debug == true {
+	if t.config.Debug {
 		t.logger.Enable()
 		t.logger.Resume()
 	} else {
@@ -1676,7 +1676,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 	if hasTopPadding {
 		hctx.rowIdx = 0
 		hctx.lineIdx = -1
-		if !(hasContentAbove && cfg.Settings.Lines.ShowFooterLine.Enabled()) {
+		if !hasContentAbove || !cfg.Settings.Lines.ShowFooterLine.Enabled() {
 			hctx.location = tw.LocationFirst
 		} else {
 			hctx.location = tw.LocationMiddle
@@ -1698,7 +1698,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 		hctx.line = padLine(line, ctx.numCols)
 		isFirstContentLine := i == 0
 		isLastContentLine := i == len(ctx.footerLines)-1
-		if isFirstContentLine && !hasTopPadding && !(hasContentAbove && cfg.Settings.Lines.ShowFooterLine.Enabled()) {
+		if isFirstContentLine && !hasTopPadding && (!hasContentAbove || !cfg.Settings.Lines.ShowFooterLine.Enabled()) {
 			hctx.location = tw.LocationFirst
 		} else if isLastContentLine && !hasBottomPaddingConfig {
 			hctx.location = tw.LocationEnd
@@ -1715,7 +1715,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 	if hasBottomPaddingConfig {
 		paddingLineContentForContext = make([]string, ctx.numCols)
 		formattedPaddingCells := make([]string, ctx.numCols)
-		var representativePadChar string = " "
+		representativePadChar := " "
 		ctx.logger.Debugf("Constructing Footer Bottom Padding line content strings")
 		for j := 0; j < ctx.numCols; j++ {
 			colWd := ctx.widths[tw.Footer].Get(j)

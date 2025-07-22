@@ -84,11 +84,12 @@ func TestFilterMasking(t *testing.T) {
 				},
 			}))
 			header := []string{"Name", tt.name, "Age"}
-			if tt.name == "MaskEmail" {
+			switch tt.name {
+			case "MaskEmail":
 				header[1] = "Email"
-			} else if tt.name == "MaskPassword" {
+			case "MaskPassword":
 				header[1] = "Password"
-			} else if tt.name == "MaskCard" {
+			case "MaskCard":
 				header[1] = "Credit Card"
 			}
 			table.Header(header)

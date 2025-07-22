@@ -800,7 +800,7 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 			}
 			hardMinimums := tw.NewMapper[int, int]()
 			sumOfHardMinimums := 0
-			isHeaderContentHardToWrap := !(t.config.Header.Formatting.AutoWrap == tw.WrapNormal || t.config.Header.Formatting.AutoWrap == tw.WrapBreak)
+			isHeaderContentHardToWrap := t.config.Header.Formatting.AutoWrap != tw.WrapNormal && t.config.Header.Formatting.AutoWrap != tw.WrapBreak
 			for i := 0; i < ctx.numCols; i++ {
 				minW := 1
 				if isHeaderContentHardToWrap && len(ctx.headerLines) > 0 {
@@ -895,7 +895,7 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 								if errorInDist < 0 {
 									adj = -1
 								}
-								if !(adj < 0 && w+adj < hardMinimums.Get(colToAdjust)) {
+								if adj >= 0 || w+adj >= hardMinimums.Get(colToAdjust) {
 									finalWidths.Set(colToAdjust, w+adj)
 								} else if adj > 0 {
 									finalWidths.Set(colToAdjust, w+adj)

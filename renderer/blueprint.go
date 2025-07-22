@@ -436,7 +436,7 @@ func (f *Blueprint) renderLine(ctx tw.Formatting) {
 			prevWidth := ctx.Row.Widths.Get(colIndex - 1)
 			prevCellCtx, prevOk := ctx.Row.Current[colIndex-1]
 			prevIsHMergeEnd := prevOk && prevCellCtx.Merge.Horizontal.Present && prevCellCtx.Merge.Horizontal.End
-			if (prevWidth > 0 || prevIsHMergeEnd) && (!ok || !(cellCtx.Merge.Horizontal.Present && !cellCtx.Merge.Horizontal.Start)) {
+			if (prevWidth > 0 || prevIsHMergeEnd) && (!ok || (!cellCtx.Merge.Horizontal.Present || cellCtx.Merge.Horizontal.Start)) {
 				shouldAddSeparator = true
 			}
 		}
@@ -502,21 +502,24 @@ func (f *Blueprint) renderLine(ctx tw.Formatting) {
 		// Set cell padding and alignment
 		padding := cellCtx.Padding
 		align := cellCtx.Align
-		if align == tw.AlignNone {
-			if ctx.Row.Position == tw.Header {
+		switch align {
+		case tw.AlignNone:
+			switch ctx.Row.Position {
+			case tw.Header:
 				align = tw.AlignCenter
-			} else if ctx.Row.Position == tw.Footer {
+			case tw.Footer:
 				align = tw.AlignRight
-			} else {
+			default:
 				align = tw.AlignLeft
 			}
 			f.logger.Debugf("renderLine: col %d (data: '%s') using renderer default align '%s' for position %s.", colIndex, cellCtx.Data, align, ctx.Row.Position)
-		} else if align == tw.Skip {
-			if ctx.Row.Position == tw.Header {
+		case tw.Skip:
+			switch ctx.Row.Position {
+			case tw.Header:
 				align = tw.AlignCenter
-			} else if ctx.Row.Position == tw.Footer {
+			case tw.Footer:
 				align = tw.AlignRight
-			} else {
+			default:
 				align = tw.AlignLeft
 			}
 			f.logger.Debugf("renderLine: col %d (data: '%s') cellCtx.Align was Skip/empty, falling back to basic default '%s'.", colIndex, cellCtx.Data, align)

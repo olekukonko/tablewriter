@@ -258,11 +258,12 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 			terminated := false
 			if seqLen >= 2 {
 				introducer := seqBytes[1]
-				if introducer == '[' {
+				switch introducer {
+				case '[':
 					if seqLen >= 3 && r >= 0x40 && r <= 0x7E {
 						terminated = true
 					}
-				} else if introducer == ']' {
+				case ']':
 					if r == '\x07' {
 						terminated = true
 					} else if seqLen > 1 && seqBytes[seqLen-2] == '\x1b' && r == '\\' { // Check for ST: \x1b\

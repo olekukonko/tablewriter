@@ -36,7 +36,7 @@ func checkEqual(t *testing.T, got, want interface{}, msgs ...interface{}) {
 		for _, v := range msgs {
 			buf.WriteString(fmt.Sprint(v))
 		}
-		t.Errorf(buf.String())
+		t.Error(buf.String())
 	}
 }
 
