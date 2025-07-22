@@ -945,10 +945,7 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 					currentLine := line
 					breakCharWidth := twwidth.Width(tw.CharBreak)
 					for twwidth.Width(currentLine) > effectiveContentMaxWidth {
-						targetWidth := effectiveContentMaxWidth - breakCharWidth
-						if targetWidth < 0 {
-							targetWidth = 0
-						}
+						targetWidth := max(effectiveContentMaxWidth-breakCharWidth, 0)
 						breakPoint := tw.BreakPoint(currentLine, targetWidth)
 						runes := []rune(currentLine)
 						if breakPoint <= 0 || breakPoint > len(runes) {
@@ -1740,10 +1737,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 			if j == 0 || representativePadChar == " " {
 				representativePadChar = padChar
 			}
-			padWidth := twwidth.Width(padChar)
-			if padWidth < 1 {
-				padWidth = 1
-			}
+			padWidth := max(twwidth.Width(padChar), 1)
 			repeatCount := 0
 			if colWd > 0 && padWidth > 0 {
 				repeatCount = colWd / padWidth

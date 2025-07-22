@@ -543,10 +543,7 @@ func (t *Table) buildCoreCellContexts(line []string, merges map[int]tw.MergeStat
 // It generates a []string where each element is the padding content for a column, using the specified padChar.
 func (t *Table) buildPaddingLineContents(padChar string, widths tw.Mapper[int, int], numCols int, merges map[int]tw.MergeState) []string {
 	line := make([]string, numCols)
-	padWidth := twwidth.Width(padChar)
-	if padWidth < 1 {
-		padWidth = 1
-	}
+	padWidth := max(twwidth.Width(padChar), 1)
 	for j := 0; j < numCols; j++ {
 		mergeState := tw.MergeState{}
 		if merges != nil {
@@ -791,10 +788,7 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 		totalCurrentTablePhysicalWidth := currentSumOfFinalColWidths + numSeparators
 		if totalCurrentTablePhysicalWidth > t.config.Widths.Global {
 			ctx.logger.Debugf("Table width %d exceeds global limit %d. Shrinking.", totalCurrentTablePhysicalWidth, t.config.Widths.Global)
-			targetTotalColumnContentWidth := t.config.Widths.Global - numSeparators
-			if targetTotalColumnContentWidth < 0 {
-				targetTotalColumnContentWidth = 0
-			}
+			targetTotalColumnContentWidth := max(t.config.Widths.Global-numSeparators, 0)
 			if ctx.numCols > 0 && targetTotalColumnContentWidth < ctx.numCols {
 				targetTotalColumnContentWidth = ctx.numCols
 			}
@@ -944,10 +938,7 @@ func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLe
 
 	if isStreaming {
 		// Existing streaming logic remains unchanged
-		totalColumnWidthFromStream := t.streamWidths.Get(colIdx)
-		if totalColumnWidthFromStream < 0 {
-			totalColumnWidthFromStream = 0
-		}
+		totalColumnWidthFromStream := max(t.streamWidths.Get(colIdx), 0)
 		effectiveContentMaxWidth = totalColumnWidthFromStream - padLeftWidth - padRightWidth
 		if effectiveContentMaxWidth < 1 && totalColumnWidthFromStream > (padLeftWidth+padRightWidth) {
 			effectiveContentMaxWidth = 1
@@ -1577,7 +1568,7 @@ func (t *Table) processVariadic(elements []any) []any {
 }
 
 // toStringLines converts raw cells to formatted lines for table output
-func (t *Table) toStringLines(row interface{}, config tw.CellConfig) ([][]string, error) {
+func (t *Table) toStringLines(row any, config tw.CellConfig) ([][]string, error) {
 	cells, err := t.convertCellsToStrings(row, config)
 	if err != nil {
 		return nil, err

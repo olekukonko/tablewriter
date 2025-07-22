@@ -177,10 +177,7 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 	targetWidth := tw.Max(width, minWidth)
 
 	// Calculate padding
-	totalPaddingNeeded := targetWidth - contentVisualWidth
-	if totalPaddingNeeded < 0 {
-		totalPaddingNeeded = 0
-	}
+	totalPaddingNeeded := max(targetWidth-contentVisualWidth, 0)
 
 	var leftPadStr, rightPadStr string
 	switch align {
@@ -347,10 +344,7 @@ func (m *Markdown) renderMarkdownLine(line []string, ctx tw.Formatting, isHeader
 			span = cellCtx.Merge.Horizontal.Span
 			totalWidth := 0
 			for k := 0; k < span && colIndex+k < numCols; k++ {
-				colWidth := ctx.NormalizedWidths.Get(colIndex + k)
-				if colWidth < 0 {
-					colWidth = 0
-				}
+				colWidth := max(ctx.NormalizedWidths.Get(colIndex+k), 0)
 				totalWidth += colWidth
 				if k > 0 && separatorWidth > 0 {
 					totalWidth += separatorWidth

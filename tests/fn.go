@@ -247,10 +247,7 @@ func visualCheckCaption(t *testing.T, testName, got, expected string) bool {
 func getDiff(expected, actual string) string {
 	expectedLines := strings.Split(expected, "\n")
 	actualLines := strings.Split(actual, "\n")
-	maxLen := len(expectedLines)
-	if len(actualLines) > maxLen {
-		maxLen = len(actualLines)
-	}
+	maxLen := max(len(actualLines), len(expectedLines))
 	var diff strings.Builder
 	diff.WriteString("Line | Expected                         | Actual\n")
 	diff.WriteString("-----|----------------------------------|----------------------------------\n")

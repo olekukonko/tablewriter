@@ -298,10 +298,7 @@ func (f *Blueprint) formatCell(content string, width int, padding tw.Padding, al
 	padRightWidth := twwidth.Width(rightPadChar)
 
 	// Calculate available width for content
-	availableContentWidth := width - padLeftWidth - padRightWidth
-	if availableContentWidth < 0 {
-		availableContentWidth = 0
-	}
+	availableContentWidth := max(width-padLeftWidth-padRightWidth, 0)
 	f.logger.Debugf("Available content width: %d", availableContentWidth)
 
 	// Truncate content if it exceeds available width
@@ -312,10 +309,7 @@ func (f *Blueprint) formatCell(content string, width int, padding tw.Padding, al
 	}
 
 	// Calculate total padding needed
-	totalPaddingWidth := width - runeWidth
-	if totalPaddingWidth < 0 {
-		totalPaddingWidth = 0
-	}
+	totalPaddingWidth := max(width-runeWidth, 0)
 	f.logger.Debugf("Total padding width: %d", totalPaddingWidth)
 
 	var result strings.Builder
@@ -455,10 +449,7 @@ func (f *Blueprint) renderLine(ctx tw.Formatting) {
 			if ctx.Row.Position == tw.Row {
 				dynamicTotalWidth := 0
 				for k := 0; k < span && colIndex+k < numCols; k++ {
-					normWidth := ctx.NormalizedWidths.Get(colIndex + k)
-					if normWidth < 0 {
-						normWidth = 0
-					}
+					normWidth := max(ctx.NormalizedWidths.Get(colIndex+k), 0)
 					dynamicTotalWidth += normWidth
 					if k > 0 && separatorDisplayWidth > 0 && ctx.NormalizedWidths.Get(colIndex+k) > 0 {
 						dynamicTotalWidth += separatorDisplayWidth
