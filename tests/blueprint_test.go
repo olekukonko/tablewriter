@@ -1,9 +1,10 @@
 package tests
 
 import (
+	"testing"
+
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
-	"testing"
 )
 
 func TestDefaultConfigMerging(t *testing.T) {

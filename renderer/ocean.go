@@ -1,17 +1,17 @@
 package renderer
 
 import (
-	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"io"
 	"strings"
+
+	"github.com/olekukonko/tablewriter/pkg/twwidth"
 
 	"github.com/olekukonko/ll"
 	"github.com/olekukonko/tablewriter/tw"
 )
 
 // OceanConfig defines configuration specific to the Ocean renderer.
-type OceanConfig struct {
-}
+type OceanConfig struct{}
 
 // Ocean is a streaming table renderer that writes ASCII tables.
 type Ocean struct {

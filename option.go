@@ -1,11 +1,12 @@
 package tablewriter
 
 import (
+	"reflect"
+
 	"github.com/mattn/go-runewidth"
 	"github.com/olekukonko/ll"
 	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"github.com/olekukonko/tablewriter/tw"
-	"reflect"
 )
 
 // Option defines a function type for configuring a Table instance.

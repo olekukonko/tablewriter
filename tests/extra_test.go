@@ -2,10 +2,11 @@ package tests
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
-	"testing"
 )
 
 func TestFilterMasking(t *testing.T) {
@@ -186,7 +187,6 @@ func TestMasterClass(t *testing.T) {
           C C   │  D D  
 `
 	visualCheck(t, "Master Class", buf.String(), expected)
-
 }
 
 func TestConfigAutoHideDefault(t *testing.T) {
@@ -401,7 +401,7 @@ func TestUnicodeTableDefault(t *testing.T) {
 
 func TestSpaces(t *testing.T) {
 	var buf bytes.Buffer
-	var data = [][]string{
+	data := [][]string{
 		{"No", "Age", "    City"},
 		{"    1", "25", "New York"},
 		{"2", "30", "x"},
@@ -447,12 +447,11 @@ func TestSpaces(t *testing.T) {
 `
 		visualCheck(t, "UnicodeTableRendering", buf.String(), expected)
 	})
-
 }
 
 func TestControl(t *testing.T) {
 	var buf bytes.Buffer
-	var data = [][]string{
+	data := [][]string{
 		{"No", "Age", "    City"},
 		{"    1", "25", "New York"},
 		{"2", "30", "x"},
@@ -505,5 +504,4 @@ func TestControl(t *testing.T) {
 `
 		visualCheck(t, "UnicodeTableRendering", buf.String(), expected)
 	})
-
 }

@@ -2,10 +2,11 @@ package tests
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
-	"testing"
 )
 
 func TestVerticalMerge(t *testing.T) {
@@ -336,7 +337,6 @@ func TestMergeBoth(t *testing.T) {
 		if !check {
 			t.Log(table.Debug())
 		}
-
 	})
 
 	t.Run("mixed-2", func(t *testing.T) {
@@ -366,7 +366,6 @@ func TestMergeBoth(t *testing.T) {
 		if !check {
 			t.Log(table.Debug())
 		}
-
 	})
 }
 
@@ -476,7 +475,7 @@ func TestMergeWithPadding(t *testing.T) {
 			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft}},
 		},
 	}), tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
-		//Symbols: tw.NewSymbols(tw.StyleASCII),
+		// Symbols: tw.NewSymbols(tw.StyleASCII),
 		Settings: tw.Settings{
 			Separators: tw.Separators{
 				BetweenRows: tw.On,
@@ -506,7 +505,6 @@ func TestMergeWithPadding(t *testing.T) {
 	└──────────┴─────────────┴────────────┴────────────┘
 `
 	visualCheck(t, "MergeWithPadding", buf.String(), expected)
-
 }
 
 func TestMergeWithMultipleLines(t *testing.T) {

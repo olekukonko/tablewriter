@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"github.com/olekukonko/ll"
-	"github.com/olekukonko/tablewriter/tw"
 	"os"
 	"reflect"
 	"sync"
 	"testing"
+
+	"github.com/olekukonko/ll"
+	"github.com/olekukonko/tablewriter/tw"
 )
 
 // TestBuildPaddingLineContents tests the buildPaddingLineContents function with various configurations.

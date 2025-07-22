@@ -2,10 +2,11 @@ package renderer
 
 import (
 	"fmt"
-	"github.com/olekukonko/ll"
 	"html"
 	"io"
 	"strings"
+
+	"github.com/olekukonko/ll"
 
 	"github.com/olekukonko/tablewriter/tw"
 )

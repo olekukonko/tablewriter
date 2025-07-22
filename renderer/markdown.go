@@ -1,10 +1,11 @@
 package renderer
 
 import (
-	"github.com/olekukonko/ll"
-	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"io"
 	"strings"
+
+	"github.com/olekukonko/ll"
+	"github.com/olekukonko/tablewriter/pkg/twwidth"
 
 	"github.com/olekukonko/tablewriter/tw"
 )
@@ -95,7 +96,6 @@ func (m *Markdown) Row(row []string, ctx tw.Formatting) {
 	m.resolveAlignment(ctx)
 	m.logger.Debugf("Rendering row with data=%v, widths=%v, previous=%v, current=%v, next=%v", row, ctx.Row.Widths, ctx.Row.Previous, ctx.Row.Current, ctx.Row.Next)
 	m.renderMarkdownLine(row, ctx, false)
-
 }
 
 // Footer renders the Markdown table footer.

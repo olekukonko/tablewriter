@@ -3,10 +3,11 @@ package tests
 import (
 	"bytes"
 	"fmt"
+	"testing"
+
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
-	"testing"
 )
 
 // Employee represents a struct for employee data, simulating a database record.

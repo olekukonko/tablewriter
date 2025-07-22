@@ -2,10 +2,11 @@ package tests // Assuming your tests are in a _test package
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
-	"testing"
 )
 
 func TestOceanTableDefault(t *testing.T) { // You already have this, keep it

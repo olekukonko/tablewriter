@@ -66,7 +66,7 @@ func MaskCard(cells []string) []string {
 
 // visualCheck compares rendered output against expected lines, reporting mismatches in a test.
 // It normalizes line endings, strips ANSI colors, and trims empty lines before comparison.
-func visualCheck(t *testing.T, name string, output string, expected string) bool {
+func visualCheck(t *testing.T, name, output, expected string) bool {
 	t.Helper()
 
 	// Normalize line endings and split into lines
@@ -131,7 +131,7 @@ func visualCheck(t *testing.T, name string, output string, expected string) bool
 
 // visualCheckHTML compares rendered HTML output against expected lines,
 // trimming whitespace per line and ignoring blank lines.
-func visualCheckHTML(t *testing.T, name string, output string, expected string) bool {
+func visualCheckHTML(t *testing.T, name, output, expected string) bool {
 	t.Helper()
 
 	normalizeHTML := func(s string) []string {
@@ -196,8 +196,10 @@ func StripColors(s string) string {
 }
 
 // Regex to remove leading/trailing whitespace from lines AND blank lines for HTML comparison
-var htmlWhitespaceRegex = regexp.MustCompile(`(?m)^\s+|\s+$`)
-var blankLineRegex = regexp.MustCompile(`(?m)^\s*\n`)
+var (
+	htmlWhitespaceRegex = regexp.MustCompile(`(?m)^\s+|\s+$`)
+	blankLineRegex      = regexp.MustCompile(`(?m)^\s*\n`)
+)
 
 func normalizeHTMLStrict(s string) string {
 	s = strings.ReplaceAll(s, "\r\n", "\n")

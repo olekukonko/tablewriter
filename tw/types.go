@@ -4,8 +4,9 @@ package tw
 
 import (
 	"fmt"
-	"github.com/olekukonko/errors"
 	"strings"
+
+	"github.com/olekukonko/errors"
 ) // Custom error handling library
 
 // Position defines where formatting applies in the table (e.g., header, footer, or rows).

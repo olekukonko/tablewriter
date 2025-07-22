@@ -3,8 +3,9 @@ package tests
 
 import (
 	"bytes"
-	"github.com/olekukonko/tablewriter/renderer"
 	"testing"
+
+	"github.com/olekukonko/tablewriter/renderer"
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/tw" // Assuming your tw types (CaptionPosition, Align) are here

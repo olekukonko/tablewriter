@@ -1,10 +1,11 @@
 package renderer
 
 import (
-	"github.com/olekukonko/ll"
-	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"io"
 	"strings"
+
+	"github.com/olekukonko/ll"
+	"github.com/olekukonko/tablewriter/pkg/twwidth"
 
 	"github.com/olekukonko/tablewriter/tw"
 )
@@ -587,7 +588,6 @@ func (f *Blueprint) renderLine(ctx tw.Formatting) {
 func (f *Blueprint) Rendition(config tw.Rendition) {
 	f.config = mergeRendition(f.config, config)
 	f.logger.Debugf("Blueprint.Rendition updated. New config: %+v", f.config)
-
 }
 
 // Ensure Blueprint implements tw.Renditioning

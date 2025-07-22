@@ -3,12 +3,13 @@ package tests
 import (
 	"bytes"
 	"fmt"
-	"github.com/olekukonko/tablewriter"
-	"github.com/olekukonko/tablewriter/renderer"
-	"github.com/olekukonko/tablewriter/tw"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/renderer"
+	"github.com/olekukonko/tablewriter/tw"
 )
 
 // createStreamTable creates a TableStream with the  renderer for testing.
@@ -86,7 +87,6 @@ func TestStreamTableDefault(t *testing.T) {
 			t.Error(table.Debug())
 		}
 	})
-
 }
 
 // TestStreamBasic tests basic streaming table rendering with header, rows, and footer.
@@ -99,7 +99,8 @@ func TestStreamBasic(t *testing.T) {
 			tablewriter.WithConfig(tablewriter.Config{
 				Header: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}},
 				Row:    tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignLeft}},
-				Footer: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignLeft}}}),
+				Footer: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignLeft}},
+			}),
 			tablewriter.WithDebug(false),
 			tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
 		)
@@ -133,7 +134,6 @@ func TestStreamBasic(t *testing.T) {
 			fmt.Println(st.Debug())
 			t.Fail()
 		}
-
 	})
 
 	t.Run("TestStreamBasicGlobal", func(t *testing.T) {
@@ -142,7 +142,8 @@ func TestStreamBasic(t *testing.T) {
 			tablewriter.WithConfig(tablewriter.Config{
 				Header: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}},
 				Row:    tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignLeft}},
-				Footer: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignRight}}}),
+				Footer: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignRight}},
+			}),
 			tablewriter.WithDebug(false),
 			tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
 		)
@@ -177,9 +178,7 @@ func TestStreamBasic(t *testing.T) {
 			fmt.Println(st.Debug())
 			t.Fail()
 		}
-
 	})
-
 }
 
 // TestStreamWithFooterAlign tests streaming table with footer and custom alignments.
@@ -269,7 +268,7 @@ func TestStreamNoHeaderASCII(t *testing.T) {
 
 func TestBorders(t *testing.T) {
 	data := [][]string{{"A", "B"}, {"C", "D"}}
-	//widths := map[int]int{0: 3, 1: 3} // Content (1) + padding (1+1) = 3
+	// widths := map[int]int{0: 3, 1: 3} // Content (1) + padding (1+1) = 3
 
 	tests := []struct {
 		name     string
@@ -460,7 +459,8 @@ func TestStreamEmptyCells(t *testing.T) {
 		},
 		Widths: tw.CellWidth{
 			Global: 20,
-		}}),
+		},
+	}),
 		tablewriter.WithDebug(false))
 
 	err := st.Start()
@@ -564,14 +564,14 @@ func TestStreamSlowOutput(t *testing.T) {
 		tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
 	)
 
-	//Test Start()
+	// Test Start()
 	err := st.Start()
 	if err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
 	buf.Reset()
 
-	//Test Header()
+	// Test Header()
 	time.Sleep(100 * time.Millisecond)
 	st.Header([]string{"Event", "Timestamp"})
 	lastLine := getLastContentLine(&buf)
@@ -580,7 +580,7 @@ func TestStreamSlowOutput(t *testing.T) {
 	}
 	buf.Reset()
 
-	//Test Rows
+	// Test Rows
 	for i := 1; i <= 3; i++ {
 		time.Sleep(100 * time.Millisecond)
 		err = st.Append([]string{fmt.Sprintf("Row %d", i), time.Now().Format("15:04:05.000")})
@@ -609,7 +609,8 @@ func TestStreamFormating(t *testing.T) {
 			Header: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}},
 			Row:    tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignLeft}},
 			Footer: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignLeft}},
-			Widths: tw.CellWidth{PerColumn: map[int]int{0: 12, 1: 8, 2: 10}}}),
+			Widths: tw.CellWidth{PerColumn: map[int]int{0: 12, 1: 8, 2: 10}},
+		}),
 
 		tablewriter.WithDebug(false),
 		tablewriter.WithStreaming(tw.StreamConfig{
@@ -648,5 +649,4 @@ func TestStreamFormating(t *testing.T) {
 		fmt.Println(st.Debug())
 		t.Fail()
 	}
-
 }

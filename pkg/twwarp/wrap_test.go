@@ -10,13 +10,14 @@ package twwarp
 import (
 	"bytes"
 	"fmt"
-	"github.com/olekukonko/tablewriter/pkg/twwidth"
-	"github.com/olekukonko/tablewriter/tw"
 	"os"
 	"reflect"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/olekukonko/tablewriter/pkg/twwidth"
+	"github.com/olekukonko/tablewriter/tw"
 
 	"github.com/mattn/go-runewidth"
 )
@@ -42,7 +43,8 @@ func checkEqual(t *testing.T, got, want interface{}, msgs ...interface{}) {
 func TestWrap(t *testing.T) {
 	exp := []string{
 		"The", "quick", "brown", "fox",
-		"jumps", "over", "the", "lazy", "dog."}
+		"jumps", "over", "the", "lazy", "dog.",
+	}
 
 	got, _ := WrapString(text, 6)
 	checkEqual(t, len(got), len(exp))
@@ -52,7 +54,6 @@ func TestWrapOneLine(t *testing.T) {
 	exp := "The quick brown fox jumps over the lazy dog."
 	words, _ := WrapString(text, 500)
 	checkEqual(t, strings.Join(words, string(tw.Space)), exp)
-
 }
 
 func TestUnicode(t *testing.T) {
@@ -81,7 +82,6 @@ func TestDisplayWidth(t *testing.T) {
 
 	input = "\033]8;;idea://open/?file=/path/somefile.php&line=12\033\\some URL\033]8;;\033\\"
 	checkEqual(t, twwidth.Width(input), 8)
-
 }
 
 // WrapString was extremely memory greedy, it performed insane number of

@@ -2,13 +2,6 @@ package tablewriter
 
 import (
 	"bytes"
-	"github.com/olekukonko/errors"
-	"github.com/olekukonko/ll"
-	"github.com/olekukonko/ll/lh"
-	"github.com/olekukonko/tablewriter/pkg/twwarp"
-	"github.com/olekukonko/tablewriter/pkg/twwidth"
-	"github.com/olekukonko/tablewriter/renderer"
-	"github.com/olekukonko/tablewriter/tw"
 	"io"
 	"math"
 	"os"
@@ -16,6 +9,14 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+
+	"github.com/olekukonko/errors"
+	"github.com/olekukonko/ll"
+	"github.com/olekukonko/ll/lh"
+	"github.com/olekukonko/tablewriter/pkg/twwarp"
+	"github.com/olekukonko/tablewriter/pkg/twwidth"
+	"github.com/olekukonko/tablewriter/renderer"
+	"github.com/olekukonko/tablewriter/tw"
 )
 
 // Table represents a table instance with content and rendering capabilities.
@@ -410,7 +411,6 @@ func (t *Table) Footer(elements ...any) {
 // Parameter opts is a function that modifies the Table struct.
 // Returns the Table instance for method chaining.
 func (t *Table) Options(opts ...Option) *Table {
-
 	// add logger
 	if t.logger == nil {
 		t.logger = ll.New("table").Handler(lh.NewTextHandler(t.trace))
@@ -1362,7 +1362,6 @@ func (t *Table) prepareWithMerges(content [][]string, config tw.CellConfig, posi
 // No parameters are required.
 // Returns an error if rendering fails in any section.
 func (t *Table) render() error {
-
 	t.ensureInitialized()
 
 	if t.config.Stream.Enable {
@@ -1398,7 +1397,7 @@ func (t *Table) render() error {
 		t.logger.Debugf("No caption detected. Rendering table core directly to writer.")
 	}
 
-	//Render Table Core
+	// Render Table Core
 	t.writer = targetWriter
 	ctx, mctx, err := t.prepareContexts()
 	if err != nil {
@@ -1446,7 +1445,7 @@ func (t *Table) render() error {
 		return firstRenderErr // Return error from core rendering if any
 	}
 
-	//Caption Handling & Final Output ---
+	// Caption Handling & Final Output ---
 	if isTopOrBottomCaption {
 		renderedTableContent := tableStringBuffer.String()
 		t.logger.Debugf("[Render] Table core buffer length: %d", len(renderedTableContent))
