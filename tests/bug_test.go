@@ -3,10 +3,11 @@ package tests
 import (
 	"bytes"
 	"fmt"
+	"testing"
+
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
-	"testing"
 )
 
 type Cleaner string
@@ -67,7 +68,6 @@ func TestBug252(t *testing.T) {
 		if !debug {
 			t.Error(table.Debug())
 		}
-
 	})
 
 	t.Run("Mixed", func(t *testing.T) {
@@ -90,7 +90,6 @@ func TestBug252(t *testing.T) {
 		if !debug {
 			// t.Error(table.Debug())
 		}
-
 	})
 
 	t.Run("Profile", func(t *testing.T) {
@@ -187,7 +186,6 @@ func TestBug252(t *testing.T) {
 			// t.Error(table.Debug())
 		}
 	})
-
 }
 
 func TestBug254(t *testing.T) {
@@ -215,7 +213,6 @@ func TestBug254(t *testing.T) {
 		if !debug {
 			t.Error(table.Debug())
 		}
-
 	})
 
 	t.Run("Mixed", func(t *testing.T) {
@@ -237,9 +234,7 @@ func TestBug254(t *testing.T) {
 		if !debug {
 			t.Error(table.Debug())
 		}
-
 	})
-
 }
 
 func TestBug267(t *testing.T) {
@@ -270,7 +265,6 @@ func TestBug267(t *testing.T) {
 		if !debug {
 			t.Error(table.Debug())
 		}
-
 	})
 
 	t.Run("WithMaxWidth", func(t *testing.T) {
@@ -297,9 +291,7 @@ func TestBug267(t *testing.T) {
 		if !debug {
 			t.Error(table.Debug())
 		}
-
 	})
-
 }
 
 func TestBug271(t *testing.T) {

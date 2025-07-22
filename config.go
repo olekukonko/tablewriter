@@ -199,11 +199,7 @@ func (b *ConfigBuilder) WithHeaderMergeMode(mergeMode int) *ConfigBuilder {
 // WithMaxWidth sets the maximum width for the entire table (0 means unlimited).
 // Negative values are treated as 0.
 func (b *ConfigBuilder) WithMaxWidth(width int) *ConfigBuilder {
-	if width < 0 {
-		b.config.MaxWidth = 0
-	} else {
-		b.config.MaxWidth = width
-	}
+	b.config.MaxWidth = max(width, 0)
 	return b
 }
 

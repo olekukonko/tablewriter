@@ -3,10 +3,11 @@ package tests
 import (
 	"bytes"
 	"fmt"
+	"testing"
+
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
-	"testing"
 )
 
 func TestBasicTableDefault(t *testing.T) {
@@ -56,7 +57,6 @@ func TestBasicTableDefaultBorder(t *testing.T) {
 `
 
 		visualCheck(t, "TestBasicTableDefaultBorder-top-off", buf.String(), expected)
-
 	})
 
 	t.Run("top-on", func(t *testing.T) {
@@ -107,7 +107,6 @@ func TestBasicTableDefaultBorder(t *testing.T) {
 
 `
 		visualCheck(t, "TestBasicTableDefaultBorder-mix", buf.String(), expected)
-
 	})
 }
 
@@ -347,9 +346,10 @@ func TestLongHeaders(t *testing.T) {
 
 	t.Run("long-headers", func(t *testing.T) {
 		c := tablewriter.Config{
-			Header: tw.CellConfig{Formatting: tw.CellFormatting{
-				AutoWrap: tw.WrapTruncate,
-			},
+			Header: tw.CellConfig{
+				Formatting: tw.CellFormatting{
+					AutoWrap: tw.WrapTruncate,
+				},
 				ColMaxWidths: tw.CellWidth{Global: 30},
 			},
 		}
@@ -371,17 +371,18 @@ func TestLongHeaders(t *testing.T) {
 		if !visualCheck(t, "TestLongHeaders", buf.String(), expected) {
 			t.Log(table.Debug())
 		}
-
 	})
 
 	t.Run("long-headers-no-truncate", func(t *testing.T) {
 		buf.Reset()
 
 		c := tablewriter.Config{
-			Header: tw.CellConfig{Formatting: tw.CellFormatting{
-				AutoWrap: tw.WrapNormal,
+			Header: tw.CellConfig{
+				Formatting: tw.CellFormatting{
+					AutoWrap: tw.WrapNormal,
+				},
+				ColMaxWidths: tw.CellWidth{Global: 30},
 			},
-				ColMaxWidths: tw.CellWidth{Global: 30}},
 		}
 
 		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c))
@@ -402,7 +403,6 @@ func TestLongHeaders(t *testing.T) {
 		if !visualCheck(t, "LongHeaders", buf.String(), expected) {
 			t.Log(table.Debug())
 		}
-
 	})
 }
 
@@ -652,7 +652,8 @@ C │ D
 					Row: tw.CellConfig{
 						Alignment: tw.CellAlignment{Global: tw.AlignLeft},
 					},
-					Widths: tw.CellWidth{PerColumn: widths}}),
+					Widths: tw.CellWidth{PerColumn: widths},
+				}),
 				tablewriter.WithRenderer(r),
 				tablewriter.WithDebug(false),
 				tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
@@ -726,7 +727,6 @@ func TestAlignmentMigration(t *testing.T) {
 		if !visualCheck(t, "Deprecated Alignment Fields", buf.String(), expected) {
 			t.Fatal("Deprecated ColumnAligns and Formatting.Alignment rendering failed")
 		}
-
 	})
 
 	t.Run("TableConfigureBasic", func(t *testing.T) {

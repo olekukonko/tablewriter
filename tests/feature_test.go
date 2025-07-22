@@ -2,10 +2,11 @@ package tests
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
-	"testing"
 )
 
 func TestBug260(t *testing.T) {
@@ -36,7 +37,8 @@ func TestBug260(t *testing.T) {
 			tablewriter.WithPadding(tw.PaddingNone),
 		)
 
-		table.Append([]string{"INFO:",
+		table.Append([]string{
+			"INFO:",
 			"The original machine had a base-plate of prefabulated aluminite, surmounted by a malleable logarithmic casing in such a way that the two main spurving bearings were in a direct line with the pentametric fan.",
 		})
 
@@ -60,7 +62,6 @@ func TestBug260(t *testing.T) {
 		if !debug {
 			t.Error(table.Debug())
 		}
-
 	})
 
 	t.Run("Mixed", func(t *testing.T) {
@@ -75,7 +76,8 @@ func TestBug260(t *testing.T) {
 			tablewriter.WithPadding(tw.PaddingNone),
 		)
 
-		table.Append([]string{"INFO:",
+		table.Append([]string{
+			"INFO:",
 			"The original machine had a base-plate of prefabulated aluminite, surmounted by a malleable logarithmic casing in such a way that the two main spurving bearings were in a direct line with the pentametric fan.",
 		})
 
@@ -99,9 +101,7 @@ func TestBug260(t *testing.T) {
 		if !debug {
 			t.Error(table.Debug())
 		}
-
 	})
-
 }
 
 func TestBatchPerColumnWidths(t *testing.T) {

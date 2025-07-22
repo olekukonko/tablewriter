@@ -2,10 +2,11 @@ package tests
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
-	"testing"
 )
 
 func TestFilterMasking(t *testing.T) {
@@ -83,11 +84,12 @@ func TestFilterMasking(t *testing.T) {
 				},
 			}))
 			header := []string{"Name", tt.name, "Age"}
-			if tt.name == "MaskEmail" {
+			switch tt.name {
+			case "MaskEmail":
 				header[1] = "Email"
-			} else if tt.name == "MaskPassword" {
+			case "MaskPassword":
 				header[1] = "Password"
-			} else if tt.name == "MaskCard" {
+			case "MaskCard":
 				header[1] = "Credit Card"
 			}
 			table.Header(header)
@@ -186,7 +188,6 @@ func TestMasterClass(t *testing.T) {
           C C   │  D D  
 `
 	visualCheck(t, "Master Class", buf.String(), expected)
-
 }
 
 func TestConfigAutoHideDefault(t *testing.T) {
@@ -401,7 +402,7 @@ func TestUnicodeTableDefault(t *testing.T) {
 
 func TestSpaces(t *testing.T) {
 	var buf bytes.Buffer
-	var data = [][]string{
+	data := [][]string{
 		{"No", "Age", "    City"},
 		{"    1", "25", "New York"},
 		{"2", "30", "x"},
@@ -447,12 +448,11 @@ func TestSpaces(t *testing.T) {
 `
 		visualCheck(t, "UnicodeTableRendering", buf.String(), expected)
 	})
-
 }
 
 func TestControl(t *testing.T) {
 	var buf bytes.Buffer
-	var data = [][]string{
+	data := [][]string{
 		{"No", "Age", "    City"},
 		{"    1", "25", "New York"},
 		{"2", "30", "x"},
@@ -505,5 +505,4 @@ func TestControl(t *testing.T) {
 `
 		visualCheck(t, "UnicodeTableRendering", buf.String(), expected)
 	})
-
 }
