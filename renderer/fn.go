@@ -190,7 +190,7 @@ func mergeSettings(defaults, overrides tw.Settings) tw.Settings {
 		defaults.CompactMode = overrides.CompactMode
 	}
 
-	//if overrides.Cushion != tw.Unknown {
+	// if overrides.Cushion != tw.Unknown {
 	//	defaults.Cushion = overrides.Cushion
 	//}
 

@@ -155,7 +155,7 @@ func (m *Markdown) resolveAlignment(ctx tw.Formatting) tw.Alignment {
 
 // formatCell formats a Markdown cell's content with padding and alignment, ensuring at least 3 characters wide.
 func (m *Markdown) formatCell(content string, width int, align tw.Align, padding tw.Padding) string {
-	//if m.config.Settings.TrimWhitespace.Enabled() {
+	// if m.config.Settings.TrimWhitespace.Enabled() {
 	//	content = strings.TrimSpace(content)
 	//}
 	contentVisualWidth := twwidth.Width(content)

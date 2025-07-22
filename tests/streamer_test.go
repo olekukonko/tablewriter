@@ -26,8 +26,8 @@ func TestStreamTableDefault(t *testing.T) {
 		buf.Reset()
 		table := tablewriter.NewTable(&buf, tablewriter.WithStreaming(tw.StreamConfig{Enable: false}))
 
-		//err := table.Start()
-		//if err != nil {
+		// err := table.Start()
+		// if err != nil {
 		//	t.Fatalf("Start failed: %v", err)
 		//}
 
@@ -35,8 +35,8 @@ func TestStreamTableDefault(t *testing.T) {
 		table.Append([]string{"Alice", "25", "New York"})
 		table.Append([]string{"Bob", "30", "Boston"})
 
-		//err = table.Close()
-		//if err != nil {
+		// err = table.Close()
+		// if err != nil {
 		//	t.Fatalf("End failed: %v", err)
 		//}
 

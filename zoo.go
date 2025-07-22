@@ -902,18 +902,16 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 								}
 							}
 						}
-					} else {
-						if ctx.numCols > 0 {
-							extraPerCol := remainingWidthToDistribute / ctx.numCols
-							rem := remainingWidthToDistribute % ctx.numCols
-							for i := 0; i < ctx.numCols; i++ {
-								currentW := finalWidths.Get(i)
-								add := extraPerCol
-								if i < rem {
-									add++
-								}
-								finalWidths.Set(i, currentW+add)
+					} else if ctx.numCols > 0 {
+						extraPerCol := remainingWidthToDistribute / ctx.numCols
+						rem := remainingWidthToDistribute % ctx.numCols
+						for i := 0; i < ctx.numCols; i++ {
+							currentW := finalWidths.Get(i)
+							add := extraPerCol
+							if i < rem {
+								add++
 							}
+							finalWidths.Set(i, currentW+add)
 						}
 					}
 				}
