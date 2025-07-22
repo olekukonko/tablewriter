@@ -339,7 +339,7 @@ func process(r io.Reader) error {
 		if !*streaming {
 			allRawRecords, errRead := csvInputReader.ReadAll()
 			if errRead != nil {
-				return fmt.Errorf("error reading CSV (ReadAll, no inference): %w.\nIf CSV has ragged rows, try enabling -infer flag.", errRead)
+				return fmt.Errorf("error reading CSV (ReadAll, no inference): %w.\nIf CSV has ragged rows, try enabling -infer flag", errRead)
 			}
 			if len(allRawRecords) == 0 {
 				fmt.Println("No data to display.")

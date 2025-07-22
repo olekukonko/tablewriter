@@ -624,9 +624,10 @@ func (s *SVG) renderVisualLine(visualLineData []string, ctx tw.Formatting, posit
 			}
 		}
 		textX := currentX + s.config.Padding
-		if cellTextAnchor == "middle" {
+		switch cellTextAnchor {
+		case "middle":
 			textX = currentX + s.config.Padding + (rectWidth-2*s.config.Padding)/2.0
-		} else if cellTextAnchor == "end" {
+		case "end":
 			textX = currentX + rectWidth - s.config.Padding
 		}
 		textY := s.currentY + rectHeight/2.0

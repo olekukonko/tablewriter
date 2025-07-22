@@ -69,21 +69,17 @@ func (s Slicer[T]) Last() T {
 // Each iterates over each element in the slice and calls the provided function.
 // Does nothing if the slice is nil.
 func (s Slicer[T]) Each(fn func(T)) {
-	if s != nil {
-		for _, v := range s {
-			fn(v)
-		}
+	for _, v := range s {
+		fn(v)
 	}
 }
 
 // Filter returns a new Slicer containing only elements that satisfy the predicate.
 func (s Slicer[T]) Filter(fn func(T) bool) Slicer[T] {
 	result := NewSlicer[T]()
-	if s != nil {
-		for _, v := range s {
-			if fn(v) {
-				result = result.Append(v)
-			}
+	for _, v := range s {
+		if fn(v) {
+			result = result.Append(v)
 		}
 	}
 	return result

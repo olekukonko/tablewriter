@@ -142,10 +142,8 @@ func (m Mapper[K, V]) MapValues(fn func(V) V) Mapper[K, V] {
 // Clone returns a shallow copy of the Mapper.
 func (m Mapper[K, V]) Clone() Mapper[K, V] {
 	result := NewMapper[K, V]()
-	if m != nil {
-		for k, v := range m {
-			result[k] = v
-		}
+	for k, v := range m {
+		result[k] = v
 	}
 	return result
 }
