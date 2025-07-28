@@ -92,6 +92,12 @@ func (b *ConfigBuilder) WithAutoHide(state tw.State) *ConfigBuilder {
 	return b
 }
 
+// WithStructsAutoHeader enables/disables automatic header extraction for structs in Bulk.
+func (b *ConfigBuilder) WithStructsAutoHeader(state tw.State) *ConfigBuilder {
+	b.config.Behavior.Structs.AutoHeader = state
+	return b
+}
+
 // WithFooterAlignment sets the text alignment for all footer cells.
 // Invalid alignments are ignored.
 func (b *ConfigBuilder) WithFooterAlignment(align tw.Align) *ConfigBuilder {
