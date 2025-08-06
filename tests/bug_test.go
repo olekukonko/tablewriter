@@ -3,6 +3,7 @@ package tests
 import (
 	"bytes"
 	"fmt"
+	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
@@ -339,6 +340,116 @@ func TestBug271(t *testing.T) {
         │                               TOTAL │ $145.93    │
         └─────────────────────────────────────┴────────────┘
 
+`
+	check := visualCheck(t, "HorizontalMergeAlignFooter", buf.String(), expected)
+	if !check {
+		t.Error(table.Debug())
+	}
+}
+
+func TestBug289(t *testing.T) {
+	var buf bytes.Buffer
+
+	data := [][]string{
+		{"Name", "Version", "Rev", "Tracking", "Publisher", "Notes"},
+		{"amberol", "0.10.3", "30", "latest/stable", "alexmurray✪", "-"},
+		{"android-studio", "2023.1.1", "148", "latest/stable", "snapcrafters✪", "classic"},
+		{"arianna", "23.08.3", "37", "latest/stable", "kde✓", "-"},
+		{"ascii-draw", "0.2.0", "66", "latest/stable", "nokse22", "-"},
+		{"bare", "1.0", "5", "latest/stable", "canonical✓", "base"},
+		{"beekeeper-studio", "4.1.10", "244", "latest/stable", "matthew-rathbone", "-"},
+		{"blender", "4.0.2", "4300", "latest/stable", "blenderfoundati✓", "classic"},
+	}
+
+	colorCfg := renderer.ColorizedConfig{
+		Header: renderer.Tint{
+			FG: renderer.Colors{color.Bold}, // Bold headers
+			BG: renderer.Colors{},
+		},
+		Column: renderer.Tint{
+			FG: renderer.Colors{color.Reset},
+			BG: renderer.Colors{color.Reset},
+		},
+		Footer: renderer.Tint{
+			FG: renderer.Colors{color.Bold},
+			BG: renderer.Colors{},
+		},
+		Borders: tw.BorderNone,
+		Settings: tw.Settings{
+			Separators: tw.Separators{
+				ShowHeader:     tw.Off,
+				ShowFooter:     tw.Off,
+				BetweenRows:    tw.Off,
+				BetweenColumns: tw.Off},
+			Lines: tw.Lines{
+				ShowTop:        tw.Off,
+				ShowBottom:     tw.Off,
+				ShowHeaderLine: tw.Off,
+				ShowFooterLine: tw.Off,
+			},
+		},
+	}
+
+	options := []tablewriter.Option{
+		tablewriter.WithRenderer(renderer.NewColorized(colorCfg)),
+		tablewriter.WithConfig(tablewriter.Config{
+			MaxWidth: 80,
+			Header: tw.CellConfig{
+				Alignment: tw.CellAlignment{
+					Global:    tw.AlignLeft,
+					PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.Skip, tw.Skip},
+				},
+				Formatting: tw.CellFormatting{
+					AutoWrap:   tw.WrapNone,
+					MergeMode:  tw.MergeNone,
+					AutoFormat: tw.On,
+				},
+				Padding: tw.CellPadding{
+					Global: tw.Padding{
+						Left:      tw.Empty,
+						Right:     "  ",
+						Top:       tw.Empty,
+						Bottom:    tw.Empty,
+						Overwrite: true,
+					},
+				},
+			},
+			Row: tw.CellConfig{
+				Formatting: tw.CellFormatting{AutoWrap: tw.WrapNormal}, // Wrap long content
+				Alignment: tw.CellAlignment{
+					Global:    tw.AlignLeft,
+					PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.Skip, tw.Skip},
+				},
+				Padding: tw.CellPadding{
+					Global: tw.Padding{
+						Left:      tw.Empty,
+						Right:     "  ",
+						Top:       tw.Empty,
+						Bottom:    tw.Empty,
+						Overwrite: true,
+					},
+				},
+			},
+			Footer: tw.CellConfig{
+				Alignment: tw.CellAlignment{Global: tw.AlignRight},
+			},
+		}),
+	}
+
+	table := tablewriter.NewTable(&buf, options...)
+	table.Header(data[0])
+	table.Bulk(data[1:])
+	table.Render()
+
+	expected := `
+	NAME              VERSION    REV  TRACKING       PUBLISHER         NOTES    
+	amberol           0.10.3      30  latest/stable  alexmurray✪       -        
+	android-studio    2023.1.1   148  latest/stable  snapcrafters✪     classic  
+	arianna           23.08.3     37  latest/stable  kde✓              -        
+	ascii-draw        0.2.0       66  latest/stable  nokse22           -        
+	bare              1.0          5  latest/stable  canonical✓        base     
+	beekeeper-studio  4.1.10     244  latest/stable  matthew-rathbone  -        
+	blender           4.0.2     4300  latest/stable  blenderfoundati✓  classic
 `
 	check := visualCheck(t, "HorizontalMergeAlignFooter", buf.String(), expected)
 	if !check {
