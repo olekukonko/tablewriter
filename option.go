@@ -498,6 +498,17 @@ func WithTrimSpace(state tw.State) Option {
 	}
 }
 
+// WithTrimLine sets whether empty visual lines within a cell are trimmed.
+// Logs the change if debugging is enabled.
+func WithTrimLine(state tw.State) Option {
+	return func(target *Table) {
+		target.config.Behavior.TrimLine = state
+		if target.logger != nil {
+			target.logger.Debugf("Option: WithTrimLine applied to Table: %v", state)
+		}
+	}
+}
+
 // WithHeaderAutoFormat enables or disables automatic formatting for header cells.
 // Logs the change if debugging is enabled.
 func WithHeaderAutoFormat(state tw.State) Option {
@@ -717,6 +728,7 @@ func defaultConfig() Config {
 		Behavior: tw.Behavior{
 			AutoHide:  tw.Off,
 			TrimSpace: tw.On,
+			TrimLine:  tw.On,
 			Structs: tw.Struct{
 				AutoHeader: tw.Off,
 				Tags:       []string{"json", "db"},

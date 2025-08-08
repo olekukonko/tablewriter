@@ -2139,19 +2139,21 @@ func (t *Table) renderRow(ctx *renderContext, mctx *mergeContext) error {
 			hctx.lineIdx = j
 			hctx.line = padLine(visualLineData, ctx.numCols)
 
-			if j > 0 {
-				visualLineHasActualContent := false
-				for kCellIdx, cellContentInVisualLine := range hctx.line {
-					if t.Trimmer(cellContentInVisualLine) != "" {
-						visualLineHasActualContent = true
-						ctx.logger.Debug("Visual line [%d][%d] has content in cell %d: '%s'. Not skipping.", i, j, kCellIdx, cellContentInVisualLine)
-						break
+			if t.config.Behavior.TrimLine.Enabled() {
+				if j > 0 {
+					visualLineHasActualContent := false
+					for kCellIdx, cellContentInVisualLine := range hctx.line {
+						if t.Trimmer(cellContentInVisualLine) != "" {
+							visualLineHasActualContent = true
+							ctx.logger.Debug("Visual line [%d][%d] has content in cell %d: '%s'. Not skipping.", i, j, kCellIdx, cellContentInVisualLine)
+							break
+						}
 					}
-				}
 
-				if !visualLineHasActualContent {
-					ctx.logger.Debug("Skipping visual line [%d][%d] as it's entirely blank after trimming. Line: %q", i, j, hctx.line)
-					continue
+					if !visualLineHasActualContent {
+						ctx.logger.Debug("Skipping visual line [%d][%d] as it's entirely blank after trimming. Line: %q", i, j, hctx.line)
+						continue
+					}
 				}
 			}
 
