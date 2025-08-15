@@ -2,13 +2,6 @@ package tablewriter
 
 import (
 	"bytes"
-	"github.com/olekukonko/errors"
-	"github.com/olekukonko/ll"
-	"github.com/olekukonko/ll/lh"
-	"github.com/olekukonko/tablewriter/pkg/twwarp"
-	"github.com/olekukonko/tablewriter/pkg/twwidth"
-	"github.com/olekukonko/tablewriter/renderer"
-	"github.com/olekukonko/tablewriter/tw"
 	"io"
 	"math"
 	"os"
@@ -16,6 +9,14 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+
+	"github.com/olekukonko/errors"
+	"github.com/olekukonko/ll"
+	"github.com/olekukonko/ll/lh"
+	"github.com/olekukonko/tablewriter/pkg/twwarp"
+	"github.com/olekukonko/tablewriter/pkg/twwidth"
+	"github.com/olekukonko/tablewriter/renderer"
+	"github.com/olekukonko/tablewriter/tw"
 )
 
 // Table represents a table instance with content and rendering capabilities.
@@ -410,7 +411,6 @@ func (t *Table) Footer(elements ...any) {
 // Parameter opts is a function that modifies the Table struct.
 // Returns the Table instance for method chaining.
 func (t *Table) Options(opts ...Option) *Table {
-
 	// add logger
 	if t.logger == nil {
 		t.logger = ll.New("table").Handler(lh.NewTextHandler(t.trace))
@@ -423,7 +423,7 @@ func (t *Table) Options(opts ...Option) *Table {
 
 	// force debugging mode if set
 	// This should  be move away form WithDebug
-	if t.config.Debug == true {
+	if t.config.Debug {
 		t.logger.Enable()
 		t.logger.Resume()
 	} else {
@@ -945,10 +945,7 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 					currentLine := line
 					breakCharWidth := twwidth.Width(tw.CharBreak)
 					for twwidth.Width(currentLine) > effectiveContentMaxWidth {
-						targetWidth := effectiveContentMaxWidth - breakCharWidth
-						if targetWidth < 0 {
-							targetWidth = 0
-						}
+						targetWidth := max(effectiveContentMaxWidth-breakCharWidth, 0)
 						breakPoint := tw.BreakPoint(currentLine, targetWidth)
 						runes := []rune(currentLine)
 						if breakPoint <= 0 || breakPoint > len(runes) {
@@ -1362,7 +1359,6 @@ func (t *Table) prepareWithMerges(content [][]string, config tw.CellConfig, posi
 // No parameters are required.
 // Returns an error if rendering fails in any section.
 func (t *Table) render() error {
-
 	t.ensureInitialized()
 
 	if t.config.Stream.Enable {
@@ -1398,7 +1394,7 @@ func (t *Table) render() error {
 		t.logger.Debugf("No caption detected. Rendering table core directly to writer.")
 	}
 
-	//Render Table Core
+	// Render Table Core
 	t.writer = targetWriter
 	ctx, mctx, err := t.prepareContexts()
 	if err != nil {
@@ -1446,7 +1442,7 @@ func (t *Table) render() error {
 		return firstRenderErr // Return error from core rendering if any
 	}
 
-	//Caption Handling & Final Output ---
+	// Caption Handling & Final Output ---
 	if isTopOrBottomCaption {
 		renderedTableContent := tableStringBuffer.String()
 		t.logger.Debugf("[Render] Table core buffer length: %d", len(renderedTableContent))
@@ -1677,7 +1673,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 	if hasTopPadding {
 		hctx.rowIdx = 0
 		hctx.lineIdx = -1
-		if !(hasContentAbove && cfg.Settings.Lines.ShowFooterLine.Enabled()) {
+		if !hasContentAbove || !cfg.Settings.Lines.ShowFooterLine.Enabled() {
 			hctx.location = tw.LocationFirst
 		} else {
 			hctx.location = tw.LocationMiddle
@@ -1699,7 +1695,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 		hctx.line = padLine(line, ctx.numCols)
 		isFirstContentLine := i == 0
 		isLastContentLine := i == len(ctx.footerLines)-1
-		if isFirstContentLine && !hasTopPadding && !(hasContentAbove && cfg.Settings.Lines.ShowFooterLine.Enabled()) {
+		if isFirstContentLine && !hasTopPadding && (!hasContentAbove || !cfg.Settings.Lines.ShowFooterLine.Enabled()) {
 			hctx.location = tw.LocationFirst
 		} else if isLastContentLine && !hasBottomPaddingConfig {
 			hctx.location = tw.LocationEnd
@@ -1716,7 +1712,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 	if hasBottomPaddingConfig {
 		paddingLineContentForContext = make([]string, ctx.numCols)
 		formattedPaddingCells := make([]string, ctx.numCols)
-		var representativePadChar string = " "
+		representativePadChar := " "
 		ctx.logger.Debugf("Constructing Footer Bottom Padding line content strings")
 		for j := 0; j < ctx.numCols; j++ {
 			colWd := ctx.widths[tw.Footer].Get(j)
@@ -1741,10 +1737,7 @@ func (t *Table) renderFooter(ctx *renderContext, mctx *mergeContext) error {
 			if j == 0 || representativePadChar == " " {
 				representativePadChar = padChar
 			}
-			padWidth := twwidth.Width(padChar)
-			if padWidth < 1 {
-				padWidth = 1
-			}
+			padWidth := max(twwidth.Width(padChar), 1)
 			repeatCount := 0
 			if colWd > 0 && padWidth > 0 {
 				repeatCount = colWd / padWidth

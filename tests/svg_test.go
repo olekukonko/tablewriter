@@ -182,6 +182,7 @@ func compareFloatStrings(a, b string) bool {
 }
 
 func showFormattedDiff(t *testing.T, actual, expected string) {
+	t.Helper()
 	format := func(s string) string {
 		var buf bytes.Buffer
 		enc := xml.NewEncoder(&buf)

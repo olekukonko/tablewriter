@@ -4,14 +4,15 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
-	"github.com/olekukonko/ll"
-	"github.com/olekukonko/ll/lh"
-	"github.com/olekukonko/ts" // For terminal size
 	"io"
 	"math"
 	"os"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/olekukonko/ll"
+	"github.com/olekukonko/ll/lh"
+	"github.com/olekukonko/ts" // For terminal size
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/renderer"
@@ -338,7 +339,7 @@ func process(r io.Reader) error {
 		if !*streaming {
 			allRawRecords, errRead := csvInputReader.ReadAll()
 			if errRead != nil {
-				return fmt.Errorf("error reading CSV (ReadAll, no inference): %w.\nIf CSV has ragged rows, try enabling -infer flag.", errRead)
+				return fmt.Errorf("error reading CSV (ReadAll, no inference): %w.\nIf CSV has ragged rows, try enabling -infer flag", errRead)
 			}
 			if len(allRawRecords) == 0 {
 				fmt.Println("No data to display.")
@@ -413,7 +414,7 @@ func process(r io.Reader) error {
 	return nil
 }
 
-func getHeaderConfig(alignFlag string, wrapFlag string) tw.CellConfig {
+func getHeaderConfig(alignFlag, wrapFlag string) tw.CellConfig {
 	cfgFmt := tw.CellFormatting{Alignment: tw.AlignCenter, AutoFormat: tw.On}
 	switch strings.ToLower(alignFlag) {
 	case "left":
@@ -441,7 +442,7 @@ func getHeaderConfig(alignFlag string, wrapFlag string) tw.CellConfig {
 	}
 }
 
-func getRowConfig(alignFlag string, wrapFlag string) tw.CellConfig {
+func getRowConfig(alignFlag, wrapFlag string) tw.CellConfig {
 	cfgFmt := tw.CellFormatting{}
 	switch strings.ToLower(alignFlag) {
 	case "left":

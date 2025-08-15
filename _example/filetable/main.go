@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/olekukonko/tablewriter"
-	"github.com/olekukonko/tablewriter/tw"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/tw"
 )
 
 const (
@@ -64,7 +65,6 @@ func main() {
 
 		return nil
 	})
-
 	if err != nil {
 		fmt.Fprintf(os.Stdout, "Error: %v\n", err)
 		return

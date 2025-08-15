@@ -34,8 +34,10 @@ func TestMarkdownAlignment(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewMarkdown()),
-		tablewriter.WithConfig(tablewriter.Config{Header: tw.CellConfig{
-			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignLeft, tw.AlignRight, tw.AlignRight, tw.AlignCenter}}},
+		tablewriter.WithConfig(tablewriter.Config{
+			Header: tw.CellConfig{
+				Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignLeft, tw.AlignRight, tw.AlignRight, tw.AlignCenter}},
+			},
 		}),
 	)
 	table.Header([]string{"Name", "Age", "City", "Status"})
@@ -60,8 +62,10 @@ func TestMarkdownNoBorders(t *testing.T) {
 		tablewriter.WithRenderer(renderer.NewMarkdown(tw.Rendition{
 			Borders: tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
 		})),
-		tablewriter.WithConfig(tablewriter.Config{Header: tw.CellConfig{
-			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignLeft}}},
+		tablewriter.WithConfig(tablewriter.Config{
+			Header: tw.CellConfig{
+				Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignLeft}},
+			},
 		}),
 	)
 

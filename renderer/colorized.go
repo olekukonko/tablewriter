@@ -1,12 +1,13 @@
 package renderer
 
 import (
+	"io"
+	"strings"
+
 	"github.com/fatih/color"
 	"github.com/olekukonko/ll"
 	"github.com/olekukonko/ll/lh"
 	"github.com/olekukonko/tablewriter/pkg/twwidth"
-	"io"
-	"strings"
 
 	"github.com/olekukonko/tablewriter/tw"
 )
@@ -378,11 +379,11 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 
 	// Set default padding characters
 	padLeftCharStr := padding.Left
-	//if padLeftCharStr == tw.Empty {
+	// if padLeftCharStr == tw.Empty {
 	//	padLeftCharStr = tw.Space
 	//}
 	padRightCharStr := padding.Right
-	//if padRightCharStr == tw.Empty {
+	// if padRightCharStr == tw.Empty {
 	//	padRightCharStr = tw.Space
 	//}
 
@@ -390,10 +391,7 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 	definedPadLeftWidth := twwidth.Width(padLeftCharStr)
 	definedPadRightWidth := twwidth.Width(padRightCharStr)
 	// Calculate available width for content and alignment
-	availableForContentAndAlign := width - definedPadLeftWidth - definedPadRightWidth
-	if availableForContentAndAlign < 0 {
-		availableForContentAndAlign = 0
-	}
+	availableForContentAndAlign := max(width-definedPadLeftWidth-definedPadRightWidth, 0)
 
 	// Truncate content if it exceeds available width
 	if contentVisualWidth > availableForContentAndAlign {
@@ -403,10 +401,7 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 	}
 
 	// Calculate remaining space for alignment
-	remainingSpaceForAlignment := availableForContentAndAlign - contentVisualWidth
-	if remainingSpaceForAlignment < 0 {
-		remainingSpaceForAlignment = 0
-	}
+	remainingSpaceForAlignment := max(availableForContentAndAlign-contentVisualWidth, 0)
 
 	// Apply alignment padding
 	leftAlignmentPadSpaces := tw.Empty
@@ -539,7 +534,7 @@ func (c *Colorized) renderLine(ctx tw.Formatting, line []string, tint Tint) {
 		shouldAddSeparator := false
 		if i > 0 && c.config.Settings.Separators.BetweenColumns.Enabled() {
 			cellCtx, ok := ctx.Row.Current[i]
-			if !ok || !(cellCtx.Merge.Horizontal.Present && !cellCtx.Merge.Horizontal.Start) {
+			if !ok || (!cellCtx.Merge.Horizontal.Present || cellCtx.Merge.Horizontal.Start) {
 				shouldAddSeparator = true
 			}
 		}
@@ -574,10 +569,7 @@ func (c *Colorized) renderLine(ctx tw.Formatting, line []string, tint Tint) {
 				dynamicTotalWidth := 0
 				for k := 0; k < span && i+k < numCols; k++ {
 					colToSum := i + k
-					normWidth := ctx.NormalizedWidths.Get(colToSum)
-					if normWidth < 0 {
-						normWidth = 0
-					}
+					normWidth := max(ctx.NormalizedWidths.Get(colToSum), 0)
 					dynamicTotalWidth += normWidth
 					if k > 0 && separatorDisplayWidth > 0 {
 						dynamicTotalWidth += separatorDisplayWidth

@@ -2,10 +2,11 @@ package tests
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
-	"testing"
 )
 
 func TestBatchPerColumnWidths(t *testing.T) {
