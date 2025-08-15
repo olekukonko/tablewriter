@@ -379,13 +379,13 @@ func (c *Colorized) formatCell(content string, width int, padding tw.Padding, al
 
 	// Set default padding characters
 	padLeftCharStr := padding.Left
-	if padLeftCharStr == tw.Empty {
-		padLeftCharStr = tw.Space
-	}
+	//if padLeftCharStr == tw.Empty {
+	//	padLeftCharStr = tw.Space
+	//}
 	padRightCharStr := padding.Right
-	if padRightCharStr == tw.Empty {
-		padRightCharStr = tw.Space
-	}
+	//if padRightCharStr == tw.Empty {
+	//	padRightCharStr = tw.Space
+	//}
 
 	// Calculate padding widths
 	definedPadLeftWidth := twwidth.Width(padLeftCharStr)

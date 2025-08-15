@@ -97,13 +97,13 @@ func TestColorizedCustomColors(t *testing.T) {
 
 	// Expected colors: Headers (red, yellow on blue), Rows (magenta, blue on black), Footers (yellow on blue), Borders/Separators (white on blue)
 	expected := `
-┌───────┬─────┐
-│ NAME  │ AGE │
-├───────┼─────┤
-│ Alice │ 25  │
-├───────┼─────┤
-│ Total │  1  │
-└───────┴─────┘
+        ┌───────┬─────┐
+        │ NAME  │ AGE │
+        ├───────┼─────┤
+        │ Alice │ 25  │
+        ├───────┼─────┤
+        │  Total│  1  │
+        └───────┴─────┘
 `
 	if !visualCheck(t, "ColorizedCustomColors", buf.String(), expected) {
 		t.Error(table.Debug())
