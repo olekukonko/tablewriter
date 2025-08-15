@@ -685,7 +685,7 @@ func (s *SVG) Start(w io.Writer) error {
 func (s *SVG) debug(format string, a ...interface{}) {
 	if s.config.Debug {
 		msg := fmt.Sprintf(format, a...)
-		s.trace = append(s.trace, fmt.Sprintf("[SVG] %s", msg))
+		s.trace = append(s.trace, "[SVG] "+msg)
 	}
 }
 

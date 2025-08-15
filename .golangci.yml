@@ -26,7 +26,7 @@ linters:
     - staticcheck
     - govet
     - gocritic
-    - unused # TODO: There are many unused functions, should I directly remove those ?
+    # - unused # TODO: There are many unused functions, should I directly remove those ?
     - ineffassign
     - unconvert
     - mirror
@@ -35,13 +35,21 @@ linters:
     - exptostd
     - godot
     - perfsprint
-    
 
   # See: https://golangci-lint.run/usage/false-positives/
-  # exclusion:
-  #   paths:
-  #   rules:
+  exclusion:
+    # paths:
+    # rules:
 
   settings:
+    staticcheck:
+      checks:
+        - all
+        - "-SA1019" # disabled because it warns about deprecated: kept for compatibility will be removed soon
+        - "-ST1019" # disabled because it warns about deprecated: kept for compatibility will be removed soon
+        - "-ST1021" # disabled because it warns to have comment on exported packages
+        - "-ST1000" # disabled because it warns to have comment on exported functions
+        - "-ST1020" # disabled because it warns to have at least one file in a package should have a package comment
+
     godot:
       period: false

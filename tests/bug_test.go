@@ -236,7 +236,6 @@ func TestBug254(t *testing.T) {
 			t.Error(table.Debug())
 		}
 	})
-
 }
 
 func TestBug260(t *testing.T) {
@@ -267,7 +266,8 @@ func TestBug260(t *testing.T) {
 			tablewriter.WithPadding(tw.PaddingNone),
 		)
 
-		table.Append([]string{"INFO:",
+		table.Append([]string{
+			"INFO:",
 			"The original machine had a base-plate of prefabulated aluminite, surmounted by a malleable logarithmic casing in such a way that the two main spurving bearings were in a direct line with the pentametric fan.",
 		})
 
@@ -291,7 +291,6 @@ func TestBug260(t *testing.T) {
 		if !debug {
 			t.Error(table.Debug())
 		}
-
 	})
 
 	t.Run("Mixed", func(t *testing.T) {
@@ -306,7 +305,8 @@ func TestBug260(t *testing.T) {
 			tablewriter.WithPadding(tw.PaddingNone),
 		)
 
-		table.Append([]string{"INFO:",
+		table.Append([]string{
+			"INFO:",
 			"The original machine had a base-plate of prefabulated aluminite, surmounted by a malleable logarithmic casing in such a way that the two main spurving bearings were in a direct line with the pentametric fan.",
 		})
 
@@ -330,9 +330,7 @@ func TestBug260(t *testing.T) {
 		if !debug {
 			t.Error(table.Debug())
 		}
-
 	})
-
 }
 
 func TestBug267(t *testing.T) {
@@ -469,7 +467,8 @@ func TestBug289(t *testing.T) {
 				ShowHeader:     tw.Off,
 				ShowFooter:     tw.Off,
 				BetweenRows:    tw.Off,
-				BetweenColumns: tw.Off},
+				BetweenColumns: tw.Off,
+			},
 			Lines: tw.Lines{
 				ShowTop:        tw.Off,
 				ShowBottom:     tw.Off,
