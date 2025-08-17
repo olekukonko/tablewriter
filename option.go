@@ -1,11 +1,12 @@
 package tablewriter
 
 import (
+	"reflect"
+
 	"github.com/mattn/go-runewidth"
 	"github.com/olekukonko/ll"
 	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"github.com/olekukonko/tablewriter/tw"
-	"reflect"
 )
 
 // Option defines a function type for configuring a Table instance.
@@ -618,10 +619,8 @@ func WithRendition(rendition tw.Rendition) Option {
 			if target.logger != nil {
 				target.logger.Debugf("Option: WithRendition: Applied to renderer via Renditioning.SetRendition(): %+v", rendition)
 			}
-		} else {
-			if target.logger != nil {
-				target.logger.Warnf("Option: WithRendition: Current renderer type %T does not implement tw.Renditioning. Rendition may not be applied as expected.", target.renderer)
-			}
+		} else if target.logger != nil {
+			target.logger.Warnf("Option: WithRendition: Current renderer type %T does not implement tw.Renditioning. Rendition may not be applied as expected.", target.renderer)
 		}
 	}
 }
@@ -665,10 +664,8 @@ func WithSymbols(symbols tw.Symbols) Option {
 				if target.logger != nil {
 					target.logger.Debugf("Option: WithRendition: Applied to renderer via Renditioning.SetRendition(): %+v", cfg)
 				}
-			} else {
-				if target.logger != nil {
-					target.logger.Warnf("Option: WithRendition: Current renderer type %T does not implement tw.Renditioning. Rendition may not be applied as expected.", target.renderer)
-				}
+			} else if target.logger != nil {
+				target.logger.Warnf("Option: WithRendition: Current renderer type %T does not implement tw.Renditioning. Rendition may not be applied as expected.", target.renderer)
 			}
 		}
 	}

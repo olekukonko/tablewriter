@@ -30,7 +30,6 @@ func TestColorizedBasicTable(t *testing.T) {
 └───────┴─────┴──────────┘
 `
 	visualCheck(t, "ColorizedBasicTable", buf.String(), expected)
-
 }
 
 func TestColorizedNoBorders(t *testing.T) {

@@ -3,9 +3,10 @@
 package tw
 
 import (
-	"fmt"
-	"github.com/olekukonko/errors"
+	"strconv"
 	"strings"
+
+	"github.com/olekukonko/errors"
 ) // Custom error handling library
 
 // Position defines where formatting applies in the table (e.g., header, footer, or rows).
@@ -52,7 +53,7 @@ func (a Alignment) String() string {
 		if i > 0 {
 			str.WriteString("; ")
 		}
-		str.WriteString(fmt.Sprint(i))
+		str.WriteString(strconv.Itoa(i))
 		str.WriteString("=")
 		str.WriteString(string(a))
 	}

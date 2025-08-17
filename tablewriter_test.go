@@ -3,13 +3,15 @@ package tablewriter
 import (
 	"bytes"
 	"database/sql"
+	"errors"
 	"fmt"
-	"github.com/olekukonko/ll"
-	"github.com/olekukonko/tablewriter/tw"
 	"os"
 	"reflect"
 	"sync"
 	"testing"
+
+	"github.com/olekukonko/ll"
+	"github.com/olekukonko/tablewriter/tw"
 )
 
 // TestBuildPaddingLineContents tests the buildPaddingLineContents function with various configurations.
@@ -258,7 +260,7 @@ func TestConvertToString(t *testing.T) {
 		{nil, ""},
 		{"test", "test"},
 		{[]byte("bytes"), "bytes"},
-		{fmt.Errorf("err"), "err"},
+		{errors.New("err"), "err"},
 		{sql.NullString{String: "valid", Valid: true}, "valid"},
 		{sql.NullString{Valid: false}, ""},
 		// Add more cases

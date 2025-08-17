@@ -3,10 +3,12 @@ package tests
 import (
 	"bytes"
 	"fmt"
+	"strconv"
+	"testing"
+
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
-	"testing"
 )
 
 // Employee represents a struct for employee data, simulating a database record.
@@ -35,11 +37,11 @@ func employeeStringer(e interface{}) []string {
 		return []string{"Error: Invalid type"}
 	}
 	return []string{
-		fmt.Sprintf("%d", emp.ID),
+		strconv.Itoa(emp.ID),
 		emp.Name,
-		fmt.Sprintf("%d", emp.Age),
+		strconv.Itoa(emp.Age),
 		emp.Department,
-		fmt.Sprintf("%.2f", emp.Salary),
+		strconv.FormatFloat(emp.Salary, 'f', 2, 64),
 	}
 }
 
