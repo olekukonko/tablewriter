@@ -5,6 +5,7 @@ import (
 
 	"github.com/mattn/go-runewidth"
 	"github.com/olekukonko/ll"
+
 	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"github.com/olekukonko/tablewriter/tw"
 )
@@ -517,6 +518,17 @@ func WithHeaderAutoFormat(state tw.State) Option {
 		target.config.Header.Formatting.AutoFormat = state
 		if target.logger != nil {
 			target.logger.Debugf("Option: WithHeaderAutoFormat applied to Table: %v", state)
+		}
+	}
+}
+
+// WithStructsAutoHeader enables/disables automatic header extraction for structs in Bulk.
+// Logs the change if debugging is enabled.
+func WithStructsAutoHeader(state tw.State) Option {
+	return func(target *Table) {
+		target.config.Behavior.Structs.AutoHeader = state
+		if target.logger != nil {
+			target.logger.Debugf("Option: WithStructsAutoHeader applied to Table: %v", state)
 		}
 	}
 }
