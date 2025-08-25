@@ -625,7 +625,7 @@ func (c *Colorized) renderLine(ctx tw.Formatting, line []string, tint Tint) {
 		}
 		// Override alignment for footer merges or TOTAL pattern
 		if (ctx.Row.Position == tw.Footer && isHMergeStart) || isTotalPattern {
-			if align != tw.AlignRight {
+			if align == tw.AlignNone {
 				c.logger.Debugf("renderLine: Applying AlignRight override for Footer HMerge/TOTAL pattern at col %d. Original/default align was: %s", i, align)
 				align = tw.AlignRight
 			}
