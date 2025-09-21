@@ -671,18 +671,28 @@ func WithSymbols(symbols tw.Symbols) Option {
 	}
 }
 
-// WithCounter enables line counting by wrapping the table's writer.
+// WithCounters enables line counting by wrapping the table's writer.
 // If a custom counter (that implements tw.Counter) is provided, it will be used.
 // If the provided counter is nil, a default tw.LineCounter will be used.
 // The final count can be retrieved via the table.Lines() method after Render() is called.
-func WithCounter(counter tw.Counter) Option {
+func WithCounters(counters ...tw.Counter) Option {
 	return func(target *Table) {
-		// If the user called WithCounter(nil), provide the default LineCounter.
-		if counter == nil {
-			target.counter = &tw.LineCounter{}
-		} else {
-			target.counter = counter
+		// Iterate through the provided counters and add any non-nil ones.
+		for _, c := range counters {
+			if c != nil {
+				target.counters = append(target.counters, c)
+			}
 		}
+	}
+}
+
+// WithLineCounter enables the default line counter.
+// A new instance of tw.LineCounter is added to the table's list of counters.
+// The total count can be retrieved via the table.Lines() method after Render() is called.
+func WithLineCounter() Option {
+	return func(target *Table) {
+		// Important: Create a new instance so tables don't share counters.
+		target.counters = append(target.counters, &tw.LineCounter{})
 	}
 }
 
