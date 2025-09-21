@@ -2,6 +2,7 @@ package tests
 
 import (
 	"bytes"
+	"io"
 	"testing"
 
 	"github.com/olekukonko/tablewriter"
@@ -252,4 +253,130 @@ func TestTrimLine(t *testing.T) {
 	if !visualCheck(t, "TestCompatMode", buf.String(), expected) {
 		t.Error(table.Debug())
 	}
+}
+
+// A simple ByteCounter to demonstrate a custom counter implementation.
+type ByteCounter struct {
+	count int
+}
+
+func (bc *ByteCounter) Write(p []byte) (n int, err error) {
+	bc.count += len(p)
+	return len(p), nil
+}
+func (bc *ByteCounter) Total() int {
+	return bc.count
+}
+
+// TestLinesCounter verifies the functionality of the WithLineCounter and WithCounters options.
+func TestLinesCounter(t *testing.T) {
+
+	data := [][]string{
+		{"A", "The Good", "500"},
+		{"B", "The Very Very Bad Man", "288"},
+		{"C", "The Ugly", "120"},
+		{"D", "The Gopher", "800"},
+	}
+
+	// Test Case 1: Default line counting on a standard table using the new API.
+	t.Run("WithLineCounter", func(t *testing.T) {
+		table := tablewriter.NewTable(io.Discard,
+			tablewriter.WithLineCounter(), // Use the new, explicit function.
+		)
+		table.Header("Name", "Sign", "Rating")
+		table.Bulk(data)
+		table.Render()
+
+		// Expected: 1 Top border + 1 Header + 1 Separator + 4 Rows + 1 Bottom border = 8
+		expectedLines := 8
+		if got := table.Lines(); got != expectedLines {
+			t.Errorf("expected %d lines, but got %d", expectedLines, got)
+		}
+	})
+
+	// Test Case 2: Line counting with auto-wrapping enabled.
+	t.Run("LineCounterWithWrapping", func(t *testing.T) {
+		table := tablewriter.NewTable(io.Discard,
+			tablewriter.WithLineCounter(), // Use the new, explicit function.
+			tablewriter.WithRowAutoWrap(tw.WrapNormal),
+			tablewriter.WithMaxWidth(40),
+		)
+		table.Header("Name", "Sign", "Rating")
+		table.Bulk(data)
+		table.Render()
+
+		// Expected: 1 Top border + 1 Header + 1 Separator + 1+3+1+1 Rows + 1 Bottom border = 10
+		expectedLines := 10
+		if got := table.Lines(); got != expectedLines {
+			t.Errorf("expected %d lines with wrapping, but got %d", expectedLines, got)
+		}
+	})
+
+	// Test Case 3: Ensure Lines() returns -1 when no counter is enabled at all.
+	t.Run("NoCounters", func(t *testing.T) {
+		table := tablewriter.NewTable(io.Discard) // No counter options
+		table.Header("Name", "Sign")
+		table.Append("A", "B")
+		table.Render()
+
+		expected := -1
+		if got := table.Lines(); got != expected {
+			t.Errorf("expected %d when no counter is used, but got %d", expected, got)
+		}
+	})
+
+	// Test Case 4: Use a custom counter and verify it's retrieved via Counters().
+	t.Run("WithCustomCounter", func(t *testing.T) {
+		byteCounter := &ByteCounter{}
+		var buf bytes.Buffer
+
+		table := tablewriter.NewTable(&buf,
+			tablewriter.WithCounters(byteCounter), // Use the new plural function for custom counters.
+		)
+		table.Header("A", "B")
+		table.Append("1", "2")
+		table.Render()
+
+		// Crucial Test: Lines() should return -1 because no *LineCounter* was added.
+		if got := table.Lines(); got != -1 {
+			t.Errorf("expected Lines() to return -1 when only a custom counter is used, but got %d", got)
+		}
+
+		// Verify the custom counter via the Counters() method.
+		allCounters := table.Counters()
+		if len(allCounters) != 1 {
+			t.Fatalf("expected 1 counter, but found %d", len(allCounters))
+		}
+
+		if custom, ok := allCounters[0].(*ByteCounter); ok {
+			if custom.Total() <= 0 {
+				t.Errorf("expected a positive byte count from custom counter, but got %d", custom.Total())
+			}
+			if custom.Total() != buf.Len() {
+				t.Errorf("byte counter total (%d) does not match buffer length (%d)", custom.Total(), buf.Len())
+			}
+		} else {
+			t.Error("expected the first counter to be of type *ByteCounter")
+		}
+	})
+
+	// Test Case 5: Ensure Lines() finds the line counter even when mixed with others.
+	t.Run("LinesWithMixedCounters", func(t *testing.T) {
+		byteCounter := &ByteCounter{}
+
+		// Add counters in a specific order: custom first, then default.
+		table := tablewriter.NewTable(io.Discard,
+			tablewriter.WithCounters(byteCounter),
+			tablewriter.WithLineCounter(),
+		)
+		table.Header("Name", "Sign", "Rating")
+		table.Bulk(data)
+		table.Render()
+
+		// Lines() should still find the line count correctly, regardless of order.
+		expectedLines := 8
+		if got := table.Lines(); got != expectedLines {
+			t.Errorf("expected %d lines even with mixed counters, but got %d", expectedLines, got)
+		}
+	})
 }
