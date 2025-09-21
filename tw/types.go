@@ -3,6 +3,8 @@
 package tw
 
 import (
+	"bytes"
+	"io"
 	"strconv"
 	"strings"
 
@@ -30,6 +32,13 @@ type Filter func([]string) []string
 // Used for custom formatting of table cell content.
 type Formatter interface {
 	Format() string // Returns the formatted string representation
+}
+
+// Counter defines an interface that combines io.Writer with a method to retrieve a total.
+// This is used by the WithCounter option to allow for counting lines, bytes, etc.
+type Counter interface {
+	io.Writer // It must be a writer to be used in io.MultiWriter.
+	Total() int
 }
 
 // Align specifies the text alignment within a table cell.
@@ -213,4 +222,22 @@ func (p Padding) Empty() bool {
 // apply the padding settings.
 func (p Padding) Paddable() bool {
 	return !p.Empty() || p.Overwrite
+}
+
+// LineCounter is the default implementation of the Counter interface.
+// It counts the number of newline characters written to it.
+type LineCounter struct {
+	count int
+}
+
+// Write implements the io.Writer interface, counting newlines in the input.
+// It uses a pointer receiver to modify the internal count.
+func (lc *LineCounter) Write(p []byte) (n int, err error) {
+	lc.count += bytes.Count(p, []byte{'\n'})
+	return len(p), nil
+}
+
+// Total implements the Counter interface, returning the final count.
+func (lc *LineCounter) Total() int {
+	return lc.count
 }

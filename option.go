@@ -671,6 +671,21 @@ func WithSymbols(symbols tw.Symbols) Option {
 	}
 }
 
+// WithCounter enables line counting by wrapping the table's writer.
+// If a custom counter (that implements tw.Counter) is provided, it will be used.
+// If the provided counter is nil, a default tw.LineCounter will be used.
+// The final count can be retrieved via the table.Lines() method after Render() is called.
+func WithCounter(counter tw.Counter) Option {
+	return func(target *Table) {
+		// If the user called WithCounter(nil), provide the default LineCounter.
+		if counter == nil {
+			target.counter = &tw.LineCounter{}
+		} else {
+			target.counter = counter
+		}
+	}
+}
+
 // defaultConfig returns a default Config with sensible settings for headers, rows, footers, and behavior.
 func defaultConfig() Config {
 	return Config{

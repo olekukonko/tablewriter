@@ -21,7 +21,8 @@ import (
 
 // Table represents a table instance with content and rendering capabilities.
 type Table struct {
-	writer       io.Writer           // Destination for table output
+	writer       io.Writer // Destination for table output
+	counter      tw.Counter
 	rows         [][][]string        // Row data, supporting multi-line cells
 	headers      [][]string          // Header content
 	footers      [][]string          // Footer content
@@ -508,6 +509,14 @@ func (t *Table) Reset() {
 // Returns an error if rendering fails.
 func (t *Table) Render() error {
 	return t.render()
+}
+
+func (t *Table) Lines() int {
+	if t.counter != nil {
+		return t.counter.Total()
+	}
+	// Return -1 to signal that the counter was not enabled.
+	return -1
 }
 
 // Trimmer trims whitespace from a string based on the Table’s configuration.
@@ -1360,6 +1369,20 @@ func (t *Table) prepareWithMerges(content [][]string, config tw.CellConfig, posi
 // Returns an error if rendering fails in any section.
 func (t *Table) render() error {
 	t.ensureInitialized()
+
+	// If a counter was set via WithCounter(), create an io.MultiWriter
+	// that writes to both the original destination and the counter.
+	if t.counter != nil {
+		// Save the original writer.
+		originalWriter := t.writer
+
+		t.writer = io.MultiWriter(originalWriter, t.counter)
+
+		// return original writer
+		defer func() {
+			t.writer = originalWriter
+		}()
+	}
 
 	if t.config.Stream.Enable {
 		t.logger.Warn("Render() called in streaming mode. Use Start/Append/Close methods instead.")

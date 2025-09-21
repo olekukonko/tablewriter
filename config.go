@@ -14,6 +14,7 @@ type Config struct {
 	Stream   tw.StreamConfig
 	Behavior tw.Behavior
 	Widths   tw.CellWidth
+	Counter  tw.Counter
 }
 
 // ConfigBuilder provides a fluent interface for building Config
