@@ -579,11 +579,6 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 	ctx.logger.Debugf("calculateAndNormalizeWidths: Computing and normalizing widths for %d columns. Compact: %v",
 		ctx.numCols, t.config.Behavior.Compact.Merge.Enabled())
 
-	// Initialize width maps
-	// t.headerWidths = tw.NewMapper[int, int]()
-	// t.rowWidths = tw.NewMapper[int, int]()
-	// t.footerWidths = tw.NewMapper[int, int]()
-
 	// Compute content-based widths for each section
 	for _, lines := range ctx.headerLines {
 		t.updateWidths(lines, t.headerWidths, t.config.Header.Padding)
@@ -1438,7 +1433,7 @@ func (t *Table) getColMaxWidths(position tw.Position) tw.CellWidth {
 // getEmptyColumnInfo identifies empty columns in row data.
 // Parameter numOriginalCols specifies the total column count.
 // Returns a boolean slice (true for empty) and visible column count.
-func (t *Table) getEmptyColumnInfo(numOriginalCols int) (isEmpty []bool, visibleColCount int) {
+func (t *Table) getEmptyColumnInfo(processedRows [][][]string, numOriginalCols int) (isEmpty []bool, visibleColCount int) {
 	isEmpty = make([]bool, numOriginalCols)
 	for i := range isEmpty {
 		isEmpty[i] = true
@@ -1453,9 +1448,9 @@ func (t *Table) getEmptyColumnInfo(numOriginalCols int) (isEmpty []bool, visible
 		return isEmpty, visibleColCount
 	}
 
-	t.logger.Debugf("getEmptyColumnInfo: Checking %d rows for %d columns...", len(t.rows), numOriginalCols)
+	t.logger.Debugf("getEmptyColumnInfo: Checking %d rows for %d columns...", len(processedRows), numOriginalCols)
 
-	for rowIdx, logicalRow := range t.rows {
+	for rowIdx, logicalRow := range processedRows {
 		for lineIdx, visualLine := range logicalRow {
 			for colIdx, cellContent := range visualLine {
 				if colIdx >= numOriginalCols {
@@ -1567,15 +1562,6 @@ func (t *Table) processVariadic(elements []any) []any {
 	return elements
 }
 
-// toStringLines converts raw cells to formatted lines for table output
-func (t *Table) toStringLines(row any, config tw.CellConfig) ([][]string, error) {
-	cells, err := t.convertCellsToStrings(row, config)
-	if err != nil {
-		return nil, err
-	}
-	return t.prepareContent(cells, config), nil
-}
-
 // updateWidths updates the width map based on cell content and padding.
 // Parameters include row content, widths map, and padding configuration.
 // No return value.
@@ -1598,10 +1584,9 @@ func (t *Table) updateWidths(row []string, widths tw.Mapper[int, int], padding t
 		lines := strings.Split(cell, tw.NewLine)
 		contentWidth := 0
 		for _, line := range lines {
+			// Always measure the raw line width, because the renderer
+			// will receive the raw line. Do not trim before measuring.
 			lineWidth := twwidth.Width(line)
-			if t.config.Behavior.TrimSpace.Enabled() {
-				lineWidth = twwidth.Width(t.Trimmer(line))
-			}
 			if lineWidth > contentWidth {
 				contentWidth = lineWidth
 			}
