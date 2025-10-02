@@ -131,11 +131,23 @@ func TestWrapStringAllocation(t *testing.T) {
 // BenchmarkWrapString-16    	    1652	    658098 ns/op	    230223 B/op	    5176 allocs/op
 func BenchmarkWrapString(b *testing.B) {
 	d, err := os.ReadFile(testDir + "/long-text.txt")
+	s := string(d)
 	if err != nil {
 		b.Fatal(err)
 	}
 	for i := 0; i < b.N; i++ {
-		WrapString(string(d), 128)
+		WrapString(s, 128)
+	}
+}
+
+func BenchmarkWrapStringWithSpaces(b *testing.B) {
+	d, err := os.ReadFile(testDir + "/long-text.txt")
+	s := string(d)
+	if err != nil {
+		b.Fatal(err)
+	}
+	for i := 0; i < b.N; i++ {
+		WrapStringWithSpaces(s, 128)
 	}
 }
 
