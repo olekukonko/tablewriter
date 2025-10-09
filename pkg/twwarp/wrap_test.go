@@ -132,6 +132,8 @@ func TestWrapStringAllocation(t *testing.T) {
 func BenchmarkWrapString(b *testing.B) {
 	d, err := os.ReadFile(testDir + "/long-text.txt")
 	s := string(d)
+	b.SetBytes(int64(len(s)))
+	b.ResetTimer()
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -143,6 +145,8 @@ func BenchmarkWrapString(b *testing.B) {
 func BenchmarkWrapStringWithSpaces(b *testing.B) {
 	d, err := os.ReadFile(testDir + "/long-text.txt")
 	s := string(d)
+	b.SetBytes(int64(len(s)))
+	b.ResetTimer()
 	if err != nil {
 		b.Fatal(err)
 	}
