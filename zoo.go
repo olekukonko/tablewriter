@@ -18,7 +18,23 @@ import (
 // Parameters ctx and mctx hold rendering and merge state.
 // No return value.
 func (t *Table) applyHierarchicalMerges(ctx *renderContext, mctx *mergeContext) {
-	ctx.logger.Debug("Applying hierarchical merges (left-to-right vertical flow - snapshot comparison)")
+	// First, ensure we should even run this logic.
+	// Check both the new CellMerging struct and the deprecated Formatting field.
+	mergeMode := t.config.Row.Merging.Mode
+	if mergeMode == 0 {
+		mergeMode = t.config.Row.Formatting.MergeMode
+	}
+	if !(mergeMode&tw.MergeHierarchical != 0) {
+		return
+	}
+
+	mergeColumnMapper := t.config.Row.Merging.ByColumnIndex
+	if mergeColumnMapper != nil {
+		ctx.logger.Debugf("Applying hierarchical merges ONLY to specified columns: %v", mergeColumnMapper.Keys())
+	} else {
+		ctx.logger.Debug("Applying hierarchical merges (left-to-right vertical flow - snapshot comparison)")
+	}
+
 	if len(ctx.rowLines) <= 1 {
 		ctx.logger.Debug("Skipping hierarchical merges - less than 2 rows")
 		return
@@ -41,6 +57,12 @@ func (t *Table) applyHierarchicalMerges(ctx *renderContext, mctx *mergeContext) 
 		leftCellContinuedHierarchical := false
 
 		for c := 0; c < numCols; c++ {
+			// If a column map is specified, skip columns that are not in it.
+			if mergeColumnMapper != nil && !mergeColumnMapper.Has(c) {
+				leftCellContinuedHierarchical = false // Reset hierarchy tracking
+				continue
+			}
+
 			if mctx.rowMerges[r] == nil {
 				mctx.rowMerges[r] = make(map[int]tw.MergeState)
 			}
@@ -146,15 +168,15 @@ func (t *Table) applyHierarchicalMerges(ctx *renderContext, mctx *mergeContext) 
 	ctx.logger.Debug("Hierarchical merge processing completed")
 }
 
-// applyHorizontalMergeWidths adjusts column widths for horizontal merges.
+// applyHorizontalMerges adjusts column widths for horizontal merges.
 // Parameters include position, ctx for rendering, and mergeStates for merges.
 // No return value.
-func (t *Table) applyHorizontalMergeWidths(position tw.Position, ctx *renderContext, mergeStates map[int]tw.MergeState) {
+func (t *Table) applyHorizontalMerges(position tw.Position, ctx *renderContext, mergeStates map[int]tw.MergeState) {
 	if mergeStates == nil {
-		t.logger.Debugf("applyHorizontalMergeWidths: Skipping %s - no merge states", position)
+		t.logger.Debugf("applyHorizontalMerges: Skipping %s - no merge states", position)
 		return
 	}
-	t.logger.Debugf("applyHorizontalMergeWidths: Applying HMerge width recalc for %s", position)
+	t.logger.Debugf("applyHorizontalMerges: Applying HMerge width recalc for %s", position)
 
 	numCols := ctx.numCols
 	targetWidthsMap := ctx.widths[position]
@@ -211,16 +233,31 @@ func (t *Table) applyHorizontalMergeWidths(position tw.Position, ctx *renderCont
 			}
 		}
 	}
-	ctx.logger.Debugf("applyHorizontalMergeWidths: Final widths for %s: %v", position, targetWidthsMap)
+	ctx.logger.Debugf("applyHorizontalMerges: Final widths for %s: %v", position, targetWidthsMap)
 }
 
 // applyVerticalMerges applies vertical merges to row content.
 // Parameters ctx and mctx hold rendering and merge state.
 // No return value.
 func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
-	ctx.logger.Debugf("Applying vertical merges across %d rows", len(ctx.rowLines))
-	numCols := ctx.numCols
+	// First, ensure we should even run this logic.
+	// Check both the new CellMerging struct and the deprecated Formatting field.
+	mergeMode := t.config.Row.Merging.Mode
+	if mergeMode == 0 {
+		mergeMode = t.config.Row.Formatting.MergeMode
+	}
+	if !(mergeMode&tw.MergeVertical != 0) {
+		return
+	}
 
+	mergeColumnMapper := t.config.Row.Merging.ByColumnIndex
+	if mergeColumnMapper != nil {
+		ctx.logger.Debugf("Applying vertical merges ONLY to specified columns: %v", mergeColumnMapper.Keys())
+	} else {
+		ctx.logger.Debugf("Applying vertical merges across %d rows", len(ctx.rowLines))
+	}
+
+	numCols := ctx.numCols
 	mergeStartRow := make(map[int]int)
 	mergeStartContent := make(map[int]string)
 
@@ -243,6 +280,11 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 		currentLineContent := ctx.rowLines[i]
 
 		for col := 0; col < numCols; col++ {
+			// If a column map is specified, skip columns that are not in it.
+			if mergeColumnMapper != nil && !mergeColumnMapper.Has(col) {
+				continue
+			}
+
 			// Join all lines of the cell to compare full content
 			var currentVal strings.Builder
 			for _, line := range currentLineContent {
