@@ -322,14 +322,18 @@ func BenchmarkWidthFunction(b *testing.B) {
 			SetEastAsian(eaSetting)
 
 			b.Run(fmt.Sprintf("%s_EA%v_NoCache", name, eaSetting), func(b *testing.B) {
+				b.SetBytes(int64(len(str)))
 				b.ReportAllocs()
+				b.ResetTimer()
 				for i := 0; i < b.N; i++ {
 					_ = WidthNoCache(str)
 				}
 			})
 
 			b.Run(fmt.Sprintf("%s_EA%v_CacheMiss", name, eaSetting), func(b *testing.B) {
+				b.SetBytes(int64(len(str)))
 				b.ReportAllocs()
+				b.ResetTimer()
 				for i := 0; i < b.N; i++ {
 					_ = Width(str + strconv.Itoa(i))
 				}
@@ -337,7 +341,9 @@ func BenchmarkWidthFunction(b *testing.B) {
 			resetGlobalCache()
 
 			b.Run(fmt.Sprintf("%s_EA%v_CacheHit", name, eaSetting), func(b *testing.B) {
+				b.SetBytes(int64(len(str)))
 				b.ReportAllocs()
+				b.ResetTimer()
 				if b.N > 0 {
 					_ = Width(str)
 				}
