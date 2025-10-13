@@ -1108,7 +1108,7 @@ func (t *Table) prepareContexts() (*renderContext, *mergeContext, error) {
 	}
 	ctx.rowLines = processedRowLinesWithMerges
 
-	t.applyHorizontalMergeWidths(tw.Header, ctx, mctx.headerMerges)
+	t.applyHorizontalMerges(tw.Header, ctx, mctx.headerMerges)
 
 	if t.config.Row.Formatting.MergeMode&tw.MergeVertical != 0 {
 		t.applyVerticalMerges(ctx, mctx)
@@ -1170,7 +1170,7 @@ func (t *Table) prepareFooter(ctx *renderContext, mctx *mergeContext) {
 	mctx.footerMerges = mergeStates
 	ctx.footerLines = t.footers
 	t.logger.Debugf("Base footer widths (normalized from rows/header): %v", ctx.widths[tw.Footer])
-	t.applyHorizontalMergeWidths(tw.Footer, ctx, mctx.footerMerges)
+	t.applyHorizontalMerges(tw.Footer, ctx, mctx.footerMerges)
 	ctx.footerPrepared = true
 	t.logger.Debugf("Footer preparation completed. Final footer widths: %v", ctx.widths[tw.Footer])
 }
