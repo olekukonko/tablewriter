@@ -212,7 +212,7 @@ The `defaultConfig()` function (`config.go:defaultConfig`) establishes baseline 
 | Header        | `Alignment.PerColumn`    | `[]tw.Align{}`                    | Empty; falls back to `Global` unless specified.                             |
 | Header        | `Formatting.AutoFormat`  | `tw.On`                           | Applies title case (e.g., "col_one" → "COL ONE") to header content.          |
 | Header        | `Formatting.AutoWrap`    | `tw.WrapTruncate`                 | Truncates long header text with "…" based on width constraints.              |
-| Header        | `Formatting.Merging`     | `tw.MergeNone`                    | Disables cell merging in headers by default.                                |
+| Header        | `Merging.Mode`           | `tw.MergeNone`                    | Disables cell merging in headers by default.                                |
 | Header        | `Padding.Global`         | `tw.PaddingDefault` (`" "`)       | Adds one space on left and right of header cells.                           |
 | Header        | `Padding.PerColumn`      | `[]tw.Padding{}`                  | Empty; falls back to `Global` unless specified.                             |
 | Header        | `ColMaxWidths.Global`    | `0` (unlimited)                   | No maximum content width for header cells unless set.                       |
@@ -223,7 +223,7 @@ The `defaultConfig()` function (`config.go:defaultConfig`) establishes baseline 
 | Row           | `Alignment.PerColumn`    | `[]tw.Align{}`                    | Empty; falls back to `Global`.                                              |
 | Row           | `Formatting.AutoFormat`  | `tw.Off`                          | Disables auto-formatting (e.g., title case) for row content.                |
 | Row           | `Formatting.AutoWrap`    | `tw.WrapNormal`                   | Wraps long row text naturally at word boundaries based on width constraints.|
-| Row           | `Formatting.Merging`   | `tw.MergeNone`                    | Disables cell merging in rows by default.                                   |
+| Row           | `Merging.Mode`           | `tw.MergeNone`                    | Disables cell merging in rows by default.                                   |
 | Row           | `Padding.Global`         | `tw.PaddingDefault` (`" "`)       | Adds one space on left and right of row cells.                              |
 | Row           | `Padding.PerColumn`      | `[]tw.Padding{}`                  | Empty; falls back to `Global`.                                              |
 | Row           | `ColMaxWidths.Global`    | `0` (unlimited)                   | No maximum content width for row cells.                                     |
@@ -2210,7 +2210,7 @@ import (
 func main() {
 	// Horizontal Merging (Similar to v0.0.5)
 	tableH := tablewriter.NewTable(os.Stdout,
-		tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal}}}),
+		tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Merging: tw.CellMerging{Mode: tw.MergeHorizontal}}}),
 		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{Symbols: tw.NewSymbols(tw.StyleASCII)})), // Specify renderer for symbols
 	)
 	tableH.Header("Category", "Item", "Item", "Notes") // Note: Two "Item" headers for demo
@@ -2219,7 +2219,7 @@ func main() {
 
 	// Vertical Merging
 	tableV := tablewriter.NewTable(os.Stdout,
-		tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeVertical}}}),
+		tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Merging: tw.CellMerging{Mode: tw.MergeVertical}}}),
 		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{Symbols: tw.NewSymbols(tw.StyleASCII)})),
 	)
 	tableV.Header("User", "Permission")
@@ -2230,7 +2230,7 @@ func main() {
 
 	// Hierarchical Merging
 	tableHier := tablewriter.NewTable(os.Stdout,
-		tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHierarchical}}}),
+		tablewriter.WithConfig(tablewriter.Config{Row: tw.CellConfig{Merging: tw.CellMerging{Mode: tw.MergeHierarchical}}}),
 		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{Symbols: tw.NewSymbols(tw.StyleASCII)})),
 	)
 	tableHier.Header("Group", "SubGroup", "Item")
