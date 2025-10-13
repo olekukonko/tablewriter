@@ -5,7 +5,7 @@ type CellFormatting struct {
 	AutoWrap   int   // Wrapping behavior (e.g., WrapTruncate, WrapNormal)
 	AutoFormat State // Enables automatic formatting (e.g., title case for headers)
 
-	// Deprecated: Kept for backward compatibility. Use CellConfig.Merging.Mode instead.
+	// Deprecated: Kept for backward compatibility. Use CellConfig.CellMerging.Mode instead.
 	// This will be removed in a future version.
 	MergeMode int
 
@@ -62,14 +62,11 @@ type CellConfig struct {
 	Filter       CellFilter     // Function to filter cell content (renamed from Filter Filter)
 	Alignment    CellAlignment  // Alignment configuration for cells
 	ColMaxWidths CellWidth      // Per-column maximum width overrides
+	Merging      CellMerging    // Merging holds all configuration related to cell merging.
 
 	// Deprecated: use Alignment.PerColumn instead. Will be removed in a future version.
 	// will be removed soon
 	ColumnAligns []Align // Per-column alignment overrides
-
-	// NEW: Merging holds all configuration related to cell merging.
-	// This is the new, preferred way to configure merging.
-	CellMerging []int
 }
 
 type CellWidth struct {
