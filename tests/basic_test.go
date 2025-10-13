@@ -760,8 +760,8 @@ func TestAlignmentMigration(t *testing.T) {
 		buf.Reset()
 		table := tablewriter.NewTable(buf)
 		table.Configure(func(cfg *tablewriter.Config) {
-			cfg.Row.Formatting.Alignment = tw.AlignCenter
-			cfg.Row.Formatting.MergeMode = tw.MergeHorizontal
+			cfg.Row.Alignment.Global = tw.AlignCenter
+			cfg.Row.Merging.Mode = tw.MergeHorizontal
 		})
 		table.Header([]string{"DATE", "SECTION A", "SECTION B", "SECTION C", "SECTION D", "SECTION E"})
 		table.Append([]string{"1/1/2014", "apple", "boy", "cat", "dog", "elephant"})

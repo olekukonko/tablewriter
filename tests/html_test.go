@@ -176,9 +176,9 @@ func TestHTMLHorizontalMerge(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewHTML()),
 		tablewriter.WithConfig(tablewriter.Config{
-			Header: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal}},
-			Row:    tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal}},
-			Footer: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal}},
+			Header: tw.CellConfig{Merging: tw.CellMerging{Mode: tw.MergeHorizontal}},
+			Row:    tw.CellConfig{Merging: tw.CellMerging{Mode: tw.MergeHorizontal}},
+			Footer: tw.CellConfig{Merging: tw.CellMerging{Mode: tw.MergeHorizontal}},
 		}),
 	)
 	table.Header([]string{"A", "Merged Header", "Merged Header"})
@@ -211,7 +211,7 @@ func TestHTMLVerticalMerge(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewHTML()),
 		tablewriter.WithConfig(tablewriter.Config{
-			Row: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeVertical}},
+			Row: tw.CellConfig{Merging: tw.CellMerging{Mode: tw.MergeVertical}},
 		}),
 	)
 	table.Header([]string{"Category", "Item", "Value"})
@@ -248,7 +248,7 @@ func TestHTMLCombinedMerge(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewHTML()),
 		tablewriter.WithConfig(tablewriter.Config{
-			Row: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeBoth}},
+			Row: tw.CellConfig{Merging: tw.CellMerging{Mode: tw.MergeBoth}},
 		}),
 	)
 	table.Header([]string{"Region", "Quarter", "Sales", "Target"})
@@ -284,7 +284,7 @@ func TestHTMLHierarchicalMerge(t *testing.T) {
 	table := tablewriter.NewTable(&buf,
 		tablewriter.WithRenderer(renderer.NewHTML()),
 		tablewriter.WithConfig(tablewriter.Config{
-			Row: tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHierarchical}},
+			Row: tw.CellConfig{Merging: tw.CellMerging{Mode: tw.MergeHierarchical}},
 		}),
 		tablewriter.WithHeaderConfig(tw.CellConfig{
 			Formatting: tw.CellFormatting{
