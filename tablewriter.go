@@ -1110,10 +1110,16 @@ func (t *Table) prepareContexts() (*renderContext, *mergeContext, error) {
 
 	t.applyHorizontalMerges(tw.Header, ctx, mctx.headerMerges)
 
-	if t.config.Row.Formatting.MergeMode&tw.MergeVertical != 0 {
+	mergeMode := t.config.Row.Merging.Mode
+	if mergeMode == 0 {
+		mergeMode = t.config.Row.Formatting.MergeMode
+	}
+
+	// Now check against the effective mode
+	if mergeMode&tw.MergeVertical != 0 {
 		t.applyVerticalMerges(ctx, mctx)
 	}
-	if t.config.Row.Formatting.MergeMode&tw.MergeHierarchical != 0 {
+	if mergeMode&tw.MergeHierarchical != 0 {
 		t.applyHierarchicalMerges(ctx, mctx)
 	}
 
