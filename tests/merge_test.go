@@ -13,8 +13,8 @@ func TestVerticalMerge(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeVertical,
+			Merging: tw.CellMerging{
+				Mode: tw.MergeVertical,
 			},
 			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignRight}},
 		},
@@ -53,8 +53,8 @@ func TestHorizontalMerge(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeHorizontal,
+			Merging: tw.CellMerging{
+				Mode: tw.MergeHorizontal,
 			},
 			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignCenter, tw.AlignCenter, tw.AlignCenter, tw.AlignCenter}},
 		},
@@ -98,13 +98,13 @@ func TestHorizontalMergeEachLine(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeHorizontal,
+			Merging: tw.CellMerging{
+				Mode: tw.MergeHorizontal,
 			},
 		},
 		Footer: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeHorizontal,
+			Merging: tw.CellMerging{
+				Mode: tw.MergeHorizontal,
 			},
 			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft}},
 		},
@@ -150,8 +150,8 @@ func TestHorizontalMergeEachLineCenter(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeHorizontal,
+			Merging: tw.CellMerging{
+				Mode: tw.MergeHorizontal,
 			},
 			Alignment: tw.CellAlignment{Global: tw.AlignCenter},
 		},
@@ -196,13 +196,13 @@ func TestHorizontalMergeAlignFooter(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeHorizontal,
+			Merging: tw.CellMerging{
+				Mode: tw.MergeHorizontal,
 			},
 		},
 		Footer: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeHorizontal,
+			Merging: tw.CellMerging{
+				Mode: tw.MergeHorizontal,
 			},
 			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft}},
 		},
@@ -245,8 +245,8 @@ func TestVerticalMergeLines(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeVertical,
+			Merging: tw.CellMerging{
+				Mode: tw.MergeVertical,
 			},
 			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignRight}},
 		},
@@ -289,13 +289,13 @@ func TestMergeBoth(t *testing.T) {
 
 	c := tablewriter.Config{
 		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeBoth,
+			Merging: tw.CellMerging{
+				Mode: tw.MergeBoth,
 			},
 		},
 		Footer: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeHorizontal,
+			Merging: tw.CellMerging{
+				Mode: tw.MergeHorizontal,
 			},
 			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignRight, tw.AlignRight, tw.AlignRight, tw.AlignLeft}},
 		},
@@ -373,8 +373,8 @@ func TestMergeHierarchical(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeHierarchical,
+			Merging: tw.CellMerging{
+				Mode: tw.MergeHierarchical,
 			},
 		},
 	}),
@@ -417,8 +417,8 @@ func TestMergeHierarchicalUnicode(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeHierarchical,
+			Merging: tw.CellMerging{
+				Mode: tw.MergeHierarchical,
 			},
 		},
 	}),
@@ -462,8 +462,8 @@ func TestMergeWithPadding(t *testing.T) {
 
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeBoth,
+			Merging: tw.CellMerging{
+				Mode: tw.MergeBoth,
 			},
 			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft}},
 		},
@@ -523,8 +523,8 @@ func TestMergeWithMultipleLines(t *testing.T) {
 		buf.Reset()
 		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 			Row: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					MergeMode: tw.MergeHorizontal,
+				Merging: tw.CellMerging{
+					Mode: tw.MergeHorizontal,
 				},
 				Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignLeft, tw.AlignLeft, tw.AlignLeft, tw.AlignLeft}},
 			},
@@ -569,8 +569,8 @@ func TestMergeWithMultipleLines(t *testing.T) {
 		buf.Reset()
 		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 			Row: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					MergeMode: tw.MergeVertical,
+				Merging: tw.CellMerging{
+					Mode: tw.MergeVertical,
 				},
 				Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignLeft, tw.AlignLeft, tw.AlignLeft, tw.AlignLeft}},
 			},
@@ -614,8 +614,8 @@ func TestMergeWithMultipleLines(t *testing.T) {
 		buf.Reset()
 		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 			Row: tw.CellConfig{
-				Formatting: tw.CellFormatting{
-					MergeMode: tw.MergeHierarchical,
+				Merging: tw.CellMerging{
+					Mode: tw.MergeHierarchical,
 				},
 				Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.AlignLeft, tw.AlignLeft, tw.AlignLeft, tw.AlignLeft}},
 			},
@@ -660,13 +660,13 @@ func TestMergeHierarchicalCombined(t *testing.T) {
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 		Header: tw.CellConfig{Alignment: tw.CellAlignment{Global: tw.AlignCenter}},
 		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{MergeMode: tw.MergeHierarchical},
-			Alignment:  tw.CellAlignment{Global: tw.AlignLeft},
+			Merging:   tw.CellMerging{Mode: tw.MergeHierarchical},
+			Alignment: tw.CellAlignment{Global: tw.AlignLeft},
 		},
 		Footer: tw.CellConfig{
 			Alignment: tw.CellAlignment{Global: tw.AlignLeft},
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeHorizontal,
+			Merging: tw.CellMerging{
+				Mode: tw.MergeHorizontal,
 			},
 		},
 		Debug: true,
@@ -709,6 +709,129 @@ func TestMergeHierarchicalCombined(t *testing.T) {
 `
 	check := visualCheck(t, "MergeHierarchical", buf.String(), expected)
 	if !check {
+		t.Error(table.Debug())
+	}
+}
+
+// TestMergeVerticalByColumnIndex verifies that vertical merging
+// only applies to the columns specified by the new API.
+func TestMergeVerticalByColumnIndex(t *testing.T) {
+	var buf bytes.Buffer
+
+	// Data where columns 0, 1, and 3 have duplicates that could be merged.
+	data := [][]string{
+		{"A", "The Good", "500", "OK"},
+		{"A", "The Bad", "288", "OK"},
+		{"B", "The Ugly", "120", "FAIL"},
+		{"B", "The Ugly", "200", "FAIL"},
+		{"B", "The Ugly", "300", "OK"},
+	}
+
+	// Use the new fluent builder to configure column-specific merging.
+	b := tablewriter.NewConfigBuilder()
+	b.Row().Merging().
+		WithMode(tw.MergeVertical). // Enable Vertical Merging
+		ByColumnIndex([]int{0, 3}). // ONLY apply it to column 0 and 3
+		Build()
+
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithConfig(b.Build()),
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
+			Settings: tw.Settings{
+				Separators: tw.Separators{
+					BetweenRows: tw.On,
+				},
+			},
+		})))
+
+	table.Header([]string{"Name", "Sign", "Rating", "Status"})
+	table.Bulk(data)
+	table.Render()
+
+	// EXPECTED:
+	// - Column 0 ("Name") SHOULD be merged.
+	// - Column 1 ("Sign") should NOT be merged, even though "The Ugly" repeats.
+	// - Column 3 ("Status") SHOULD be merged.
+	expected := `
+			┌──────┬──────────┬────────┬────────┐
+			│ NAME │   SIGN   │ RATING │ STATUS │
+			├──────┼──────────┼────────┼────────┤
+			│ A    │ The Good │ 500    │ OK     │
+			│      ├──────────┼────────┤        │
+			│      │ The Bad  │ 288    │        │
+			├──────┼──────────┼────────┼────────┤
+			│ B    │ The Ugly │ 120    │ FAIL   │
+			│      ├──────────┼────────┤        │
+			│      │ The Ugly │ 200    │        │
+			│      ├──────────┼────────┼────────┤
+			│      │ The Ugly │ 300    │ OK     │
+			└──────┴──────────┴────────┴────────┘
+`
+
+	if !visualCheck(t, "MergeVerticalByColumnIndex", buf.String(), expected) {
+		t.Error(table.Debug())
+	}
+}
+
+// TestMergeHierarchicalByColumnIndex verifies that hierarchical merging
+// correctly respects the column index filter.
+func TestMergeHierarchicalByColumnIndex(t *testing.T) {
+	var buf bytes.Buffer
+
+	data := [][]string{
+		{"Engineering", "Backend", "API Team", "Alice"},
+		{"Engineering", "Backend", "Database Team", "Bob"},
+		{"Engineering", "Frontend", "UI Team", "Charlie"},
+		{"Marketing", "Digital", "SEO Team", "Dave"},
+		{"Marketing", "Digital", "Content Team", "Eve"},
+		{"Marketing", "Brand", "PR Team", "Frank"},
+	}
+
+	// Use the new fluent builder to enable hierarchical merging for columns 0 and 1 only.
+	b := tablewriter.NewConfigBuilder()
+	b.Row().Merging().
+		WithMode(tw.MergeHierarchical).
+		ByColumnIndex([]int{0, 1}).
+		Build()
+
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithConfig(b.Build()),
+		tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
+			Settings: tw.Settings{
+				Separators: tw.Separators{
+					BetweenRows: tw.On,
+				},
+			},
+		})))
+
+	table.Header([]string{"Department", "Division", "Team", "Lead"})
+	table.Bulk(data)
+	table.Render()
+
+	// EXPECTED:
+	// - Column 0 ("Department") SHOULD merge.
+	// - Column 1 ("Division") SHOULD merge hierarchically (e.g., "Backend" and "Digital").
+	// - Column 2 ("Team") should NOT merge because it's not in the index list.
+	//   This will break the hierarchical chain for column 3.
+	// - Column 3 ("Lead") should NOT merge.
+	expected := `
+		┌─────────────┬──────────┬───────────────┬─────────┐
+		│ DEPARTMENT  │ DIVISION │     TEAM      │  LEAD   │
+		├─────────────┼──────────┼───────────────┼─────────┤
+		│ Engineering │ Backend  │ API Team      │ Alice   │
+		│             │          ├───────────────┼─────────┤
+		│             │          │ Database Team │ Bob     │
+		│             ├──────────┼───────────────┼─────────┤
+		│             │ Frontend │ UI Team       │ Charlie │
+		├─────────────┼──────────┼───────────────┼─────────┤
+		│ Marketing   │ Digital  │ SEO Team      │ Dave    │
+		│             │          ├───────────────┼─────────┤
+		│             │          │ Content Team  │ Eve     │
+		│             ├──────────┼───────────────┼─────────┤
+		│             │ Brand    │ PR Team       │ Frank   │
+		└─────────────┴──────────┴───────────────┴─────────┘
+`
+	if !visualCheck(t, "MergeHierarchicalByColumnIndex", buf.String(), expected) {
 		t.Error(table.Debug())
 	}
 }

@@ -351,11 +351,11 @@ func TestMergeCellConfig(t *testing.T) {
 			name:       "OverrideMergeModeNone_OnRowDefaultBase",
 			baseConfig: func() tw.CellConfig { return getTestSectionDefaultConfig("row") },
 			inputConfig: tw.CellConfig{
-				Formatting: tw.CellFormatting{MergeMode: tw.MergeNone},
+				Merging: tw.CellMerging{Mode: tw.MergeNone},
 			},
 			expectedConfig: func() tw.CellConfig {
 				cfg := getTestSectionDefaultConfig("row")
-				cfg.Formatting.MergeMode = tw.MergeNone
+				cfg.Merging.Mode = tw.MergeNone
 				cfg.Formatting.AutoFormat = tw.Pending // src.AutoFormat is 0
 				return cfg
 			},

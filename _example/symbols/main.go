@@ -21,13 +21,11 @@ func main() {
 
 	cnf := tablewriter.Config{
 		Header: tw.CellConfig{
-			Formatting: tw.CellFormatting{Alignment: tw.AlignCenter},
+			Alignment: tw.CellAlignment{Global: tw.AlignCenter},
 		},
 		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeHierarchical,
-				Alignment: tw.AlignLeft,
-			},
+			Merging:   tw.CellMerging{Mode: tw.MergeHierarchical},
+			Alignment: tw.CellAlignment{Global: tw.AlignLeft},
 		},
 		Debug: false,
 	}

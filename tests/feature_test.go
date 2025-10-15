@@ -104,8 +104,10 @@ func TestBatchWidthsWithHorizontalMerge(t *testing.T) {
 		},
 		Row: tw.CellConfig{
 			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeHorizontal,
-				AutoWrap:  tw.WrapTruncate,
+				AutoWrap: tw.WrapTruncate,
+			},
+			Merging: tw.CellMerging{
+				Mode: tw.MergeHorizontal,
 			},
 		},
 	}), tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
@@ -193,7 +195,7 @@ func TestWrapBreakWithConstrainedWidthsNoRightPadding(t *testing.T) {
 func TestCompatMode(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
-		Header:   tw.CellConfig{Formatting: tw.CellFormatting{MergeMode: tw.MergeHorizontal}},
+		Header:   tw.CellConfig{Merging: tw.CellMerging{Mode: tw.MergeHorizontal}},
 		Behavior: tw.Behavior{Compact: tw.Compact{Merge: tw.On}},
 		Debug:    true,
 	}))

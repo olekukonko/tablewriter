@@ -148,13 +148,13 @@ func TestColorizedHorizontalMerge(t *testing.T) {
 	var buf bytes.Buffer
 	c := tablewriter.Config{
 		Header: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeHorizontal,
+			Merging: tw.CellMerging{
+				Mode: tw.MergeHorizontal,
 			},
 		},
 		Row: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeHorizontal,
+			Merging: tw.CellMerging{
+				Mode: tw.MergeHorizontal,
 			},
 		},
 	}

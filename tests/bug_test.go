@@ -394,13 +394,13 @@ func TestBug271(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 		Header: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeHorizontal,
+			Merging: tw.CellMerging{
+				Mode: tw.MergeHorizontal,
 			},
 		},
 		Footer: tw.CellConfig{
-			Formatting: tw.CellFormatting{
-				MergeMode: tw.MergeHorizontal,
+			Merging: tw.CellMerging{
+				Mode: tw.MergeHorizontal,
 			},
 			Alignment: tw.CellAlignment{PerColumn: []tw.Align{tw.Skip, tw.Skip, tw.AlignRight, tw.AlignLeft}},
 		},
@@ -489,8 +489,10 @@ func TestBug289(t *testing.T) {
 				},
 				Formatting: tw.CellFormatting{
 					AutoWrap:   tw.WrapNone,
-					MergeMode:  tw.MergeNone,
 					AutoFormat: tw.On,
+				},
+				Merging: tw.CellMerging{
+					Mode: tw.MergeNone,
 				},
 				Padding: tw.CellPadding{
 					Global: tw.Padding{
