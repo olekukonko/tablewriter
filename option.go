@@ -3,7 +3,7 @@ package tablewriter
 import (
 	"reflect"
 
-	"github.com/mattn/go-runewidth"
+	"github.com/clipperhouse/displaywidth"
 	"github.com/olekukonko/ll"
 	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"github.com/olekukonko/tablewriter/tw"
@@ -644,9 +644,9 @@ func WithEastAsian(enable bool) Option {
 // The runewidth.Condition object allows for more fine-grained control over how rune widths
 // are determined, beyond just toggling EastAsianWidth. This could include settings for
 // ambiguous width characters or other future properties of runewidth.Condition.
-func WithCondition(condition *runewidth.Condition) Option {
+func WithCondition(opts displaywidth.Options) Option {
 	return func(target *Table) {
-		twwidth.SetCondition(condition)
+		twwidth.SetCondition(opts)
 	}
 }
 

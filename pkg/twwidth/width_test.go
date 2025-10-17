@@ -8,12 +8,12 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/mattn/go-runewidth"
+	"github.com/clipperhouse/displaywidth"
 )
 
 func TestMain(m *testing.M) {
 	mu.Lock()
-	condition = runewidth.NewCondition()
+	options = newOptions()
 	mu.Unlock()
 	os.Exit(m.Run())
 }
@@ -42,17 +42,17 @@ func TestFilter(t *testing.T) {
 }
 
 func TestSetEastAsian(t *testing.T) {
-	original := condition.EastAsianWidth
+	original := options.EastAsianWidth
 	SetEastAsian(true)
-	if !condition.EastAsianWidth {
+	if !options.EastAsianWidth {
 		t.Errorf("SetEastAsian(true): condition.EastAsianWidth = false, want true")
 	}
 	SetEastAsian(false)
-	if condition.EastAsianWidth {
+	if options.EastAsianWidth {
 		t.Errorf("SetEastAsian(false): condition.EastAsianWidth = true, want false")
 	}
 	mu.Lock()
-	condition.EastAsianWidth = original
+	options.EastAsianWidth = original
 	mu.Unlock()
 }
 
@@ -147,10 +147,10 @@ func TestDisplay(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cond := &runewidth.Condition{EastAsianWidth: tt.eastAsian}
-			got := Display(cond, tt.input)
+			options := displaywidth.Options{EastAsianWidth: tt.eastAsian}
+			got := Display(options, tt.input)
 			if got != tt.expectedWidth {
-				t.Errorf("Display(%q, cond) = %d, want %d (EastAsian=%v)", tt.input, got, tt.expectedWidth, tt.eastAsian)
+				t.Errorf("Display(%q, options) = %d, want %d (EastAsian=%v)", tt.input, got, tt.expectedWidth, tt.eastAsian)
 			}
 		})
 	}

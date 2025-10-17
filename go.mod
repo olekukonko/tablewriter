@@ -3,6 +3,7 @@ module github.com/olekukonko/tablewriter
 go 1.21
 
 require (
+	github.com/clipperhouse/displaywidth v0.3.0
 	github.com/clipperhouse/uax29/v2 v2.2.0
 	github.com/fatih/color v1.15.0
 	github.com/mattn/go-runewidth v0.0.19

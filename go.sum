@@ -1,3 +1,5 @@
+github.com/clipperhouse/displaywidth v0.3.0 h1:vGTl98nLVL9QdbdjwnqqzpHhCxBk52DpGhCE/77BN40=
+github.com/clipperhouse/displaywidth v0.3.0/go.mod h1:pqhHWrRnPAait6LnUVBH/M9Gj5/N09KGVHuhf4mEzo0=
 github.com/clipperhouse/uax29/v2 v2.2.0 h1:ChwIKnQN3kcZteTXMgb1wztSgaU+ZemkgWdohwgs8tY=
 github.com/clipperhouse/uax29/v2 v2.2.0/go.mod h1:EFJ2TJMRUaplDxHKj1qAEhCtQPW2tJSwu5BF98AuoVM=
 github.com/fatih/color v1.15.0 h1:kOqh6YHBtK8aywxGerMG2Eq3H6Qgoqeo13Bk2Mv/nBs=

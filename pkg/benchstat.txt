@@ -1,0 +1,194 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/olekukonko/tablewriter/pkg/twwarp
+cpu: Apple M2
+                       │   old.txt    │              new.txt               │
+                       │    sec/op    │   sec/op     vs base               │
+WrapString-8             116.9µ ±  1%   113.0µ ± 1%   -3.35% (p=0.002 n=6)
+WrapStringWithSpaces-8   179.7µ ± 47%   114.1µ ± 2%  -36.49% (p=0.002 n=6)
+geomean                  145.0µ         113.6µ       -21.65%
+
+                       │    old.txt    │               new.txt               │
+                       │      B/s      │     B/s       vs base               │
+WrapString-8             81.92Mi ±  1%   84.76Mi ± 1%   +3.46% (p=0.002 n=6)
+WrapStringWithSpaces-8   53.48Mi ± 39%   83.91Mi ± 2%  +56.90% (p=0.002 n=6)
+geomean                  66.19Mi         84.33Mi       +27.41%
+
+                       │   old.txt    │               new.txt                │
+                       │     B/op     │     B/op      vs base                │
+WrapString-8             47.35Ki ± 0%   47.35Ki ± 0%       ~ (p=1.000 n=6) ¹
+WrapStringWithSpaces-8   52.76Ki ± 0%   52.76Ki ± 0%       ~ (p=1.000 n=6) ¹
+geomean                  49.98Ki        49.98Ki       +0.00%
+¹ all samples are equal
+
+                       │  old.txt   │              new.txt               │
+                       │ allocs/op  │ allocs/op   vs base                │
+WrapString-8             33.00 ± 0%   33.00 ± 0%       ~ (p=1.000 n=6) ¹
+WrapStringWithSpaces-8   51.00 ± 0%   51.00 ± 0%       ~ (p=1.000 n=6) ¹
+geomean                  41.02        41.02       +0.00%
+¹ all samples are equal
+
+pkg: github.com/olekukonko/tablewriter/pkg/twwidth
+                                                    │    old.txt     │               new.txt                │
+                                                    │     sec/op     │    sec/op      vs base               │
+WidthFunction/EastAsian_EAfalse_NoCache-8              769.1n ±   1%   336.0n ±   1%  -56.31% (p=0.002 n=6)
+WidthFunction/EastAsian_EAfalse_CacheMiss-8            232.2n ± 397%   226.8n ± 114%        ~ (p=0.132 n=6)
+WidthFunction/EastAsian_EAfalse_CacheHit-8             15.07n ±   0%   14.77n ±   1%   -2.02% (p=0.002 n=6)
+WidthFunction/EastAsian_EAtrue_NoCache-8              1001.5n ±   4%   346.0n ±   9%  -65.46% (p=0.002 n=6)
+WidthFunction/EastAsian_EAtrue_CacheMiss-8             230.5n ± 510%   227.1n ± 109%        ~ (p=0.589 n=6)
+WidthFunction/EastAsian_EAtrue_CacheHit-8              14.72n ±   0%   14.74n ±   0%        ~ (p=0.719 n=6)
+WidthFunction/EastAsianWithANSI_EAfalse_NoCache-8     1381.5n ±   1%   984.4n ±   1%  -28.75% (p=0.002 n=6)
+WidthFunction/EastAsianWithANSI_EAfalse_CacheMiss-8    587.4n ± 190%   219.8n ± 517%        ~ (p=0.457 n=6)
+WidthFunction/EastAsianWithANSI_EAfalse_CacheHit-8     15.75n ±   1%   15.70n ±   2%        ~ (p=0.981 n=6)
+WidthFunction/EastAsianWithANSI_EAtrue_NoCache-8       1.612µ ±   1%   1.012µ ±   1%  -37.23% (p=0.002 n=6)
+WidthFunction/EastAsianWithANSI_EAtrue_CacheMiss-8     445.1n ± 346%   225.1n ± 507%        ~ (p=0.818 n=6)
+WidthFunction/EastAsianWithANSI_EAtrue_CacheHit-8      15.77n ±   3%   15.85n ±   2%        ~ (p=0.617 n=6)
+WidthFunction/LongSimpleASCII_EAfalse_NoCache-8        4.913µ ±   2%   4.573µ ±   2%   -6.94% (p=0.002 n=6)
+WidthFunction/LongSimpleASCII_EAfalse_CacheMiss-8      2.361µ ± 121%   2.441µ ± 105%        ~ (p=0.818 n=6)
+WidthFunction/LongSimpleASCII_EAfalse_CacheHit-8       23.27n ±   3%   23.61n ±   3%        ~ (p=0.251 n=6)
+WidthFunction/LongSimpleASCII_EAtrue_NoCache-8         9.297µ ±   0%   4.561µ ±   3%  -50.94% (p=0.002 n=6)
+WidthFunction/LongSimpleASCII_EAtrue_CacheMiss-8       4.094µ ± 125%   2.231µ ± 121%        ~ (p=0.394 n=6)
+WidthFunction/LongSimpleASCII_EAtrue_CacheHit-8        23.28n ±   4%   23.21n ±   3%        ~ (p=0.461 n=6)
+WidthFunction/LongASCIIWithANSI_EAfalse_NoCache-8      57.76µ ±   2%   56.76µ ±   3%        ~ (p=0.180 n=6)
+WidthFunction/LongASCIIWithANSI_EAfalse_CacheMiss-8    14.35µ ± 291%   22.63µ ± 150%        ~ (p=0.937 n=6)
+WidthFunction/LongASCIIWithANSI_EAfalse_CacheHit-8     45.31n ±   2%   44.22n ±   2%   -2.38% (p=0.009 n=6)
+WidthFunction/LongASCIIWithANSI_EAtrue_NoCache-8       61.53µ ±   3%   56.75µ ±   5%   -7.76% (p=0.002 n=6)
+WidthFunction/LongASCIIWithANSI_EAtrue_CacheMiss-8     23.78µ ± 150%   14.43µ ± 294%        ~ (p=0.818 n=6)
+WidthFunction/LongASCIIWithANSI_EAtrue_CacheHit-8      44.47n ±   4%   44.41n ±   2%        ~ (p=0.961 n=6)
+WidthFunction/SimpleASCII_EAfalse_NoCache-8            392.6n ±   1%   361.4n ±   3%   -7.95% (p=0.002 n=6)
+WidthFunction/SimpleASCII_EAfalse_CacheMiss-8          240.7n ±  92%   213.7n ± 126%        ~ (p=0.937 n=6)
+WidthFunction/SimpleASCII_EAfalse_CacheHit-8           14.72n ±   3%   14.79n ±   1%        ~ (p=0.677 n=6)
+WidthFunction/SimpleASCII_EAtrue_NoCache-8             687.1n ±   1%   361.2n ±   0%  -47.43% (p=0.002 n=6)
+WidthFunction/SimpleASCII_EAtrue_CacheMiss-8           216.2n ± 387%   215.2n ± 124%        ~ (p=0.777 n=6)
+WidthFunction/SimpleASCII_EAtrue_CacheHit-8            14.72n ±   1%   14.71n ±   2%        ~ (p=0.589 n=6)
+WidthFunction/ASCIIWithANSI_EAfalse_NoCache-8          1.040µ ±   1%   1.016µ ±   1%   -2.26% (p=0.002 n=6)
+WidthFunction/ASCIIWithANSI_EAfalse_CacheMiss-8        257.0n ± 434%   224.9n ± 492%        ~ (p=1.000 n=6)
+WidthFunction/ASCIIWithANSI_EAfalse_CacheHit-8         14.71n ±   1%   14.88n ±   1%        ~ (p=0.069 n=6)
+WidthFunction/ASCIIWithANSI_EAtrue_NoCache-8           1.329µ ±   1%   1.015µ ±   4%  -23.63% (p=0.002 n=6)
+WidthFunction/ASCIIWithANSI_EAtrue_CacheMiss-8         638.2n ± 157%   221.2n ± 500%        ~ (p=0.818 n=6)
+WidthFunction/ASCIIWithANSI_EAtrue_CacheHit-8          14.72n ±   1%   14.72n ±   0%        ~ (p=0.851 n=6)
+geomean                                                360.8n          286.9n         -20.48%
+
+                                                    │     old.txt      │                 new.txt                  │
+                                                    │       B/s        │       B/s         vs base                │
+WidthFunction/EastAsian_EAfalse_NoCache-8              74.40Mi ±    1%   170.30Mi ±    1%  +128.89% (p=0.002 n=6)
+WidthFunction/EastAsian_EAfalse_CacheMiss-8            246.5Mi ±   80%    252.2Mi ±   53%         ~ (p=0.132 n=6)
+WidthFunction/EastAsian_EAfalse_CacheHit-8             3.707Gi ±    0%    3.784Gi ±    1%    +2.09% (p=0.002 n=6)
+WidthFunction/EastAsian_EAtrue_NoCache-8               57.13Mi ±    4%   165.41Mi ±    8%  +189.50% (p=0.002 n=6)
+WidthFunction/EastAsian_EAtrue_CacheMiss-8             248.5Mi ±   84%    252.0Mi ±   52%         ~ (p=0.589 n=6)
+WidthFunction/EastAsian_EAtrue_CacheHit-8              3.796Gi ±    0%    3.791Gi ±    0%         ~ (p=0.394 n=6)
+WidthFunction/EastAsianWithANSI_EAfalse_NoCache-8      60.04Mi ±    1%    84.29Mi ±    1%   +40.37% (p=0.002 n=6)
+WidthFunction/EastAsianWithANSI_EAfalse_CacheMiss-8    227.7Mi ±   79%    377.4Mi ±   84%         ~ (p=0.485 n=6)
+WidthFunction/EastAsianWithANSI_EAfalse_CacheHit-8     5.145Gi ±    1%    5.161Gi ±    2%         ~ (p=0.937 n=6)
+WidthFunction/EastAsianWithANSI_EAtrue_NoCache-8       51.48Mi ±    1%    82.06Mi ±    1%   +59.40% (p=0.002 n=6)
+WidthFunction/EastAsianWithANSI_EAtrue_CacheMiss-8     250.1Mi ±   83%    368.6Mi ±   84%         ~ (p=0.818 n=6)
+WidthFunction/EastAsianWithANSI_EAtrue_CacheHit-8      5.141Gi ±    3%    5.110Gi ±    2%         ~ (p=0.699 n=6)
+WidthFunction/LongSimpleASCII_EAfalse_NoCache-8        104.8Mi ±    2%    112.6Mi ±    2%    +7.45% (p=0.002 n=6)
+WidthFunction/LongSimpleASCII_EAfalse_CacheMiss-8      457.8Mi ±  226%    310.3Mi ±  390%         ~ (p=0.818 n=6)
+WidthFunction/LongSimpleASCII_EAfalse_CacheHit-8       21.61Gi ±    3%    21.30Gi ±    3%         ~ (p=0.240 n=6)
+WidthFunction/LongSimpleASCII_EAtrue_NoCache-8         55.39Mi ±    0%   112.92Mi ±    3%  +103.84% (p=0.002 n=6)
+WidthFunction/LongSimpleASCII_EAtrue_CacheMiss-8       359.3Mi ±  313%    468.0Mi ±  218%         ~ (p=0.394 n=6)
+WidthFunction/LongSimpleASCII_EAtrue_CacheHit-8        21.60Gi ±    4%    21.68Gi ±    3%         ~ (p=0.485 n=6)
+WidthFunction/LongASCIIWithANSI_EAfalse_NoCache-8      33.85Mi ±    2%    34.44Mi ±    3%         ~ (p=0.180 n=6)
+WidthFunction/LongASCIIWithANSI_EAfalse_CacheMiss-8   652.96Mi ±  136%    92.01Mi ± 1785%         ~ (p=0.937 n=6)
+WidthFunction/LongASCIIWithANSI_EAfalse_CacheHit-8     42.14Gi ±    2%    43.17Gi ±    2%    +2.44% (p=0.009 n=6)
+WidthFunction/LongASCIIWithANSI_EAtrue_NoCache-8       31.77Mi ±    3%    34.45Mi ±    5%    +8.43% (p=0.002 n=6)
+WidthFunction/LongASCIIWithANSI_EAtrue_CacheMiss-8     85.76Mi ± 2674%   603.56Mi ±  239%         ~ (p=0.818 n=6)
+WidthFunction/LongASCIIWithANSI_EAtrue_CacheHit-8      42.93Gi ±    4%    42.99Gi ±    2%         ~ (p=1.000 n=6)
+WidthFunction/SimpleASCII_EAfalse_NoCache-8            85.02Mi ±    1%    92.36Mi ±    3%    +8.64% (p=0.002 n=6)
+WidthFunction/SimpleASCII_EAfalse_CacheMiss-8          140.7Mi ±   49%    156.2Mi ±   56%         ~ (p=0.937 n=6)
+WidthFunction/SimpleASCII_EAfalse_CacheHit-8           2.214Gi ±    3%    2.203Gi ±    1%         ~ (p=0.699 n=6)
+WidthFunction/SimpleASCII_EAtrue_NoCache-8             48.58Mi ±    1%    92.39Mi ±    0%   +90.19% (p=0.002 n=6)
+WidthFunction/SimpleASCII_EAtrue_CacheMiss-8           154.5Mi ±   79%    155.2Mi ±   55%         ~ (p=0.818 n=6)
+WidthFunction/SimpleASCII_EAtrue_CacheHit-8            2.214Gi ±    1%    2.217Gi ±    2%         ~ (p=0.485 n=6)
+WidthFunction/ASCIIWithANSI_EAfalse_NoCache-8          55.94Mi ±    1%    57.27Mi ±    1%    +2.38% (p=0.002 n=6)
+WidthFunction/ASCIIWithANSI_EAfalse_CacheMiss-8        231.7Mi ±   82%    258.7Mi ±   83%         ~ (p=1.000 n=6)
+WidthFunction/ASCIIWithANSI_EAfalse_CacheHit-8         3.863Gi ±    1%    3.819Gi ±    1%         ~ (p=0.065 n=6)
+WidthFunction/ASCIIWithANSI_EAtrue_NoCache-8           43.77Mi ±    1%    57.30Mi ±    4%   +30.91% (p=0.002 n=6)
+WidthFunction/ASCIIWithANSI_EAtrue_CacheMiss-8         160.1Mi ±   78%    263.0Mi ±   83%         ~ (p=0.818 n=6)
+WidthFunction/ASCIIWithANSI_EAtrue_CacheHit-8          3.858Gi ±    1%    3.860Gi ±    0%         ~ (p=0.699 n=6)
+geomean                                                458.8Mi            543.9Mi           +18.55%
+
+                                                    │     old.txt      │                new.txt                 │
+                                                    │       B/op       │      B/op       vs base                │
+WidthFunction/EastAsian_EAfalse_NoCache-8               145.0 ±   1%       145.0 ±   0%       ~ (p=0.455 n=6)
+WidthFunction/EastAsian_EAfalse_CacheMiss-8             87.00 ± 392%       87.00 ± 167%       ~ (p=0.697 n=6)
+WidthFunction/EastAsian_EAfalse_CacheHit-8              0.000 ±   0%       0.000 ±   0%       ~ (p=1.000 n=6) ¹
+WidthFunction/EastAsian_EAtrue_NoCache-8                145.0 ±   1%       145.0 ±   0%       ~ (p=0.455 n=6)
+WidthFunction/EastAsian_EAtrue_CacheMiss-8              87.00 ± 393%       87.00 ± 163%       ~ (p=0.697 n=6)
+WidthFunction/EastAsian_EAtrue_CacheHit-8               0.000 ±   0%       0.000 ±   0%       ~ (p=1.000 n=6) ¹
+WidthFunction/EastAsianWithANSI_EAfalse_NoCache-8       193.0 ±   0%       193.0 ±   0%       ~ (p=1.000 n=6) ¹
+WidthFunction/EastAsianWithANSI_EAfalse_CacheMiss-8     217.5 ± 151%       103.0 ± 485%       ~ (p=0.470 n=6)
+WidthFunction/EastAsianWithANSI_EAfalse_CacheHit-8      0.000 ±   0%       0.000 ±   0%       ~ (p=1.000 n=6) ¹
+WidthFunction/EastAsianWithANSI_EAtrue_NoCache-8        193.0 ±   0%       193.0 ±   0%       ~ (p=1.000 n=6) ¹
+WidthFunction/EastAsianWithANSI_EAtrue_CacheMiss-8      164.5 ± 242%       103.0 ± 485%       ~ (p=0.924 n=6)
+WidthFunction/EastAsianWithANSI_EAtrue_CacheHit-8       0.000 ±   0%       0.000 ±   0%       ~ (p=1.000 n=6) ¹
+WidthFunction/LongSimpleASCII_EAfalse_NoCache-8       1.151Ki ±   0%     1.153Ki ±   0%  +0.17% (p=0.019 n=6)
+WidthFunction/LongSimpleASCII_EAfalse_CacheMiss-8     1.059Ki ±  70%     1.091Ki ±  67%       ~ (p=0.981 n=6)
+WidthFunction/LongSimpleASCII_EAfalse_CacheHit-8        0.000 ±   0%       0.000 ±   0%       ~ (p=1.000 n=6) ¹
+WidthFunction/LongSimpleASCII_EAtrue_NoCache-8        1.151Ki ±   0%     1.154Ki ±   0%  +0.21% (p=0.006 n=6)
+WidthFunction/LongSimpleASCII_EAtrue_CacheMiss-8      1.063Ki ±  67%     1.021Ki ±  79%       ~ (p=0.814 n=6)
+WidthFunction/LongSimpleASCII_EAtrue_CacheHit-8         0.000 ±   0%       0.000 ±   0%       ~ (p=1.000 n=6) ¹
+WidthFunction/LongASCIIWithANSI_EAfalse_NoCache-8     1.356Ki ±   0%     1.356Ki ±   0%       ~ (p=1.000 n=6)
+WidthFunction/LongASCIIWithANSI_EAfalse_CacheMiss-8   2.611Ki ±  43%     2.789Ki ±  34%       ~ (p=0.978 n=6)
+WidthFunction/LongASCIIWithANSI_EAfalse_CacheHit-8      0.000 ±   0%       0.000 ±   0%       ~ (p=1.000 n=6) ¹
+WidthFunction/LongASCIIWithANSI_EAtrue_NoCache-8      1.359Ki ±   0%     1.359Ki ±   0%       ~ (p=0.853 n=6)
+WidthFunction/LongASCIIWithANSI_EAtrue_CacheMiss-8    2.814Ki ±  33%     2.609Ki ±  43%       ~ (p=0.935 n=6)
+WidthFunction/LongASCIIWithANSI_EAtrue_CacheHit-8       0.000 ±   0%       0.000 ±   0%       ~ (p=1.000 n=6) ¹
+WidthFunction/SimpleASCII_EAfalse_NoCache-8             113.0 ±   0%       112.0 ±   0%  -0.88% (p=0.002 n=6)
+WidthFunction/SimpleASCII_EAfalse_CacheMiss-8           62.50 ± 161%       55.00 ± 200%       ~ (p=0.545 n=6)
+WidthFunction/SimpleASCII_EAfalse_CacheHit-8            0.000 ±   0%       0.000 ±   0%       ~ (p=1.000 n=6) ¹
+WidthFunction/SimpleASCII_EAtrue_NoCache-8              113.0 ±   0%       113.0 ±   1%       ~ (p=1.000 n=6)
+WidthFunction/SimpleASCII_EAtrue_CacheMiss-8            55.00 ± 505%       55.00 ± 202%       ~ (p=0.697 n=6)
+WidthFunction/SimpleASCII_EAtrue_CacheHit-8             0.000 ±   0%       0.000 ±   0%       ~ (p=1.000 n=6) ¹
+WidthFunction/ASCIIWithANSI_EAfalse_NoCache-8           185.0 ±   1%       185.0 ±   0%       ~ (p=1.000 n=6)
+WidthFunction/ASCIIWithANSI_EAfalse_CacheMiss-8         93.50 ± 368%       87.00 ± 402%       ~ (p=0.697 n=6)
+WidthFunction/ASCIIWithANSI_EAfalse_CacheHit-8          0.000 ±   0%       0.000 ±   0%       ~ (p=1.000 n=6) ¹
+WidthFunction/ASCIIWithANSI_EAtrue_NoCache-8            186.0 ±   1%       185.0 ±   0%       ~ (p=0.061 n=6)
+WidthFunction/ASCIIWithANSI_EAtrue_CacheMiss-8         173.50 ± 117%       87.00 ± 401%       ~ (p=0.924 n=6)
+WidthFunction/ASCIIWithANSI_EAtrue_CacheHit-8           0.000 ±   0%       0.000 ±   0%       ~ (p=1.000 n=6) ¹
+geomean                                                              ²                   -5.76%               ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+                                                    │    old.txt     │                new.txt                │
+                                                    │   allocs/op    │  allocs/op    vs base                 │
+WidthFunction/EastAsian_EAfalse_NoCache-8             3.000 ±   0%     3.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/EastAsian_EAfalse_CacheMiss-8           1.000 ± 300%     1.000 ± 200%        ~ (p=0.697 n=6)
+WidthFunction/EastAsian_EAfalse_CacheHit-8            0.000 ±   0%     0.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/EastAsian_EAtrue_NoCache-8              3.000 ±   0%     3.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/EastAsian_EAtrue_CacheMiss-8            1.000 ± 300%     1.000 ± 200%        ~ (p=0.697 n=6)
+WidthFunction/EastAsian_EAtrue_CacheHit-8             0.000 ±   0%     0.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/EastAsianWithANSI_EAfalse_NoCache-8     5.000 ±   0%     5.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/EastAsianWithANSI_EAfalse_CacheMiss-8   3.000 ± 133%     1.000 ± 600%        ~ (p=0.394 n=6)
+WidthFunction/EastAsianWithANSI_EAfalse_CacheHit-8    0.000 ±   0%     0.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/EastAsianWithANSI_EAtrue_NoCache-8      5.000 ±   0%     5.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/EastAsianWithANSI_EAtrue_CacheMiss-8    2.000 ± 250%     1.000 ± 600%        ~ (p=1.000 n=6)
+WidthFunction/EastAsianWithANSI_EAtrue_CacheHit-8     0.000 ±   0%     0.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/LongSimpleASCII_EAfalse_NoCache-8       3.000 ±   0%     3.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/LongSimpleASCII_EAfalse_CacheMiss-8     3.000 ±  67%     3.000 ±  67%        ~ (p=1.000 n=6)
+WidthFunction/LongSimpleASCII_EAfalse_CacheHit-8      0.000 ±   0%     0.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/LongSimpleASCII_EAtrue_NoCache-8        3.000 ±   0%     3.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/LongSimpleASCII_EAtrue_CacheMiss-8      3.000 ±  67%     3.000 ±  67%        ~ (p=1.000 n=6)
+WidthFunction/LongSimpleASCII_EAtrue_CacheHit-8       0.000 ±   0%     0.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/LongASCIIWithANSI_EAfalse_NoCache-8     9.000 ±   0%     9.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/LongASCIIWithANSI_EAfalse_CacheMiss-8   3.500 ± 186%     5.000 ± 100%        ~ (p=0.978 n=6)
+WidthFunction/LongASCIIWithANSI_EAfalse_CacheHit-8    0.000 ±   0%     0.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/LongASCIIWithANSI_EAtrue_NoCache-8      9.000 ±   0%     9.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/LongASCIIWithANSI_EAtrue_CacheMiss-8    5.000 ± 100%     3.500 ± 186%        ~ (p=0.978 n=6)
+WidthFunction/LongASCIIWithANSI_EAtrue_CacheHit-8     0.000 ±   0%     0.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/SimpleASCII_EAfalse_NoCache-8           3.000 ±   0%     3.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/SimpleASCII_EAfalse_CacheMiss-8         2.000 ±  50%     1.000 ± 200%        ~ (p=0.567 n=6)
+WidthFunction/SimpleASCII_EAfalse_CacheHit-8          0.000 ±   0%     0.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/SimpleASCII_EAtrue_NoCache-8            3.000 ±   0%     3.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/SimpleASCII_EAtrue_CacheMiss-8          1.000 ± 300%     1.000 ± 200%        ~ (p=0.697 n=6)
+WidthFunction/SimpleASCII_EAtrue_CacheHit-8           0.000 ±   0%     0.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/ASCIIWithANSI_EAfalse_NoCache-8         6.000 ±   0%     6.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/ASCIIWithANSI_EAfalse_CacheMiss-8       1.500 ± 367%     1.000 ± 600%        ~ (p=1.000 n=6)
+WidthFunction/ASCIIWithANSI_EAfalse_CacheHit-8        0.000 ±   0%     0.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/ASCIIWithANSI_EAtrue_NoCache-8          6.000 ±   0%     6.000 ±   0%        ~ (p=1.000 n=6) ¹
+WidthFunction/ASCIIWithANSI_EAtrue_CacheMiss-8        3.000 ± 133%     1.000 ± 600%        ~ (p=1.000 n=6)
+WidthFunction/ASCIIWithANSI_EAtrue_CacheHit-8         0.000 ±   0%     0.000 ±   0%        ~ (p=1.000 n=6) ¹
+geomean                                                            ²                 -10.49%               ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
