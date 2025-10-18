@@ -78,19 +78,49 @@ func SetEastAsian(enable bool) {
 	}
 }
 
-// SetCondition updates the global runewidth.Condition used for width calculations.
-// When the condition is changed, the width cache is cleared.
+// IsEastAsian returns the current East Asian width setting.
 // This function is thread-safe.
 //
 // Example:
 //
-//	newCond := runewidth.NewCondition()
-//	newCond.EastAsianWidth = true
-//	twdw.SetCondition(newCond)
-func SetCondition(opts displaywidth.Options) {
+//	if twdw.IsEastAsian() {
+//		// Handle East Asian width characters
+//	}
+func IsEastAsian() bool {
+	mu.Lock()
+	defer mu.Unlock()
+	return options.EastAsianWidth
+}
+
+// SetOptions sets new global displaywidth.Options for all subsequent width calculations.
+// This allows for dynamic configuration of East Asian width behavior and other
+// displaywidth properties. The cache is cleared when the options change to ensure
+// consistent results.
+//
+// Example:
+//
+//	opts := displaywidth.Options{EastAsianWidth: true}
+//	twdw.SetOptions(opts)
+func SetOptions(opts displaywidth.Options) {
 	mu.Lock()
 	defer mu.Unlock()
 	options = opts
+	widthCache = make(map[cacheKey]int) // Clear cache on setting change
+}
+
+// SetCondition updates the global runewidth.Condition used for width calculations.
+// This method is kept for backward compatibility. The condition is converted to
+// displaywidth.Options internally for better performance.
+//
+// Deprecated: Use SetOptions instead.
+func SetCondition(condition *runewidth.Condition) {
+	mu.Lock()
+	defer mu.Unlock()
+	// Convert runewidth.Condition to displaywidth.Options
+	options = displaywidth.Options{
+		EastAsianWidth:     condition.EastAsianWidth,
+		StrictEmojiNeutral: condition.StrictEmojiNeutral,
+	}
 	widthCache = make(map[cacheKey]int) // Clear cache on setting change
 }
 

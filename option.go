@@ -4,6 +4,7 @@ import (
 	"reflect"
 
 	"github.com/clipperhouse/displaywidth"
+	"github.com/mattn/go-runewidth"
 	"github.com/olekukonko/ll"
 	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"github.com/olekukonko/tablewriter/tw"
@@ -644,9 +645,23 @@ func WithEastAsian(enable bool) Option {
 // The runewidth.Condition object allows for more fine-grained control over how rune widths
 // are determined, beyond just toggling EastAsianWidth. This could include settings for
 // ambiguous width characters or other future properties of runewidth.Condition.
-func WithCondition(opts displaywidth.Options) Option {
+//
+// Deprecated: Use WithOptions instead for better performance. This method is kept for backward compatibility.
+func WithCondition(condition *runewidth.Condition) Option {
 	return func(target *Table) {
-		twwidth.SetCondition(opts)
+		twwidth.SetCondition(condition)
+	}
+}
+
+// WithOptions provides a way to set custom displaywidth.Options
+// that will be used for all subsequent display width calculations by the twwidth (twdw) package.
+//
+// The displaywidth.Options object allows for more fine-grained control over how rune widths
+// are determined, beyond just toggling EastAsianWidth. This could include settings for
+// ambiguous width characters or other future properties of displaywidth.Options.
+func WithOptions(opts displaywidth.Options) Option {
+	return func(target *Table) {
+		twwidth.SetOptions(opts)
 	}
 }
 
