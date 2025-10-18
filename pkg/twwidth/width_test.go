@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/clipperhouse/displaywidth"
+	"github.com/mattn/go-runewidth"
 )
 
 func TestMain(m *testing.M) {
@@ -312,6 +313,99 @@ var benchmarkStrings = map[string]string{
 	"EastAsianWithANSI": "\033[32mこんにちは\033[0m \033[35m世界\033[0m、これは\033[4mテスト\033[0m文字列です。",
 	"LongSimpleASCII":   strings.Repeat("abcdefghijklmnopqrstuvwxyz ", 20),
 	"LongASCIIWithANSI": strings.Repeat("\033[31ma\033[32mb\033[33mc\033[34md\033[35me\033[36mf\033[0m ", 50),
+}
+
+func TestNewOptions(t *testing.T) {
+	// Test that newOptions() correctly picks up settings from go-runewidth
+	cond := runewidth.NewCondition()
+	options := newOptions()
+
+	// Verify that EastAsianWidth is correctly copied from runewidth condition
+	if options.EastAsianWidth != cond.EastAsianWidth {
+		t.Errorf("newOptions().EastAsianWidth = %v, want %v (from runewidth.NewCondition())",
+			options.EastAsianWidth, cond.EastAsianWidth)
+	}
+
+	// Verify that StrictEmojiNeutral is correctly copied from runewidth condition
+	if options.StrictEmojiNeutral != cond.StrictEmojiNeutral {
+		t.Errorf("newOptions().StrictEmojiNeutral = %v, want %v (from runewidth.NewCondition())",
+			options.StrictEmojiNeutral, cond.StrictEmojiNeutral)
+	}
+}
+
+func TestNewOptionsWithEnvironment(t *testing.T) {
+	// Test that newOptions() respects environment variables that affect go-runewidth
+	testCases := []struct {
+		name        string
+		runewidthEA string
+		locale      string
+		expectedEA  bool
+	}{
+		{
+			name:        "Default environment",
+			runewidthEA: "",
+			locale:      "",
+			expectedEA:  false, // Default behavior
+		},
+		{
+			name:        "RUNEWIDTH_EASTASIAN=1",
+			runewidthEA: "1",
+			locale:      "",
+			expectedEA:  true,
+		},
+		{
+			name:        "RUNEWIDTH_EASTASIAN=0",
+			runewidthEA: "0",
+			locale:      "",
+			expectedEA:  false,
+		},
+		{
+			name:        "Japanese locale",
+			runewidthEA: "",
+			locale:      "ja_JP.UTF-8",
+			expectedEA:  true, // Japanese locale typically enables East Asian width
+		},
+		{
+			name:        "Chinese locale",
+			runewidthEA: "",
+			locale:      "zh_CN.UTF-8",
+			expectedEA:  true, // Chinese locale typically enables East Asian width
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Use t.Setenv for automatic cleanup (Go 1.17+)
+			if tc.runewidthEA != "" {
+				t.Setenv("RUNEWIDTH_EASTASIAN", tc.runewidthEA)
+			} else {
+				t.Setenv("RUNEWIDTH_EASTASIAN", "") // This effectively unsets it
+			}
+
+			if tc.locale != "" {
+				t.Setenv("LC_ALL", tc.locale)
+			} else {
+				t.Setenv("LC_ALL", "") // This effectively unsets it
+			}
+
+			// Create a new runewidth condition with current environment
+			cond := runewidth.NewCondition()
+
+			// Get options from our function
+			options := newOptions()
+
+			// Verify that our function matches the runewidth condition
+			if options.EastAsianWidth != cond.EastAsianWidth {
+				t.Errorf("newOptions().EastAsianWidth = %v, want %v (from runewidth.NewCondition() with env: RUNEWIDTH_EASTASIAN=%s, LC_ALL=%s)",
+					options.EastAsianWidth, cond.EastAsianWidth, tc.runewidthEA, tc.locale)
+			}
+
+			if options.StrictEmojiNeutral != cond.StrictEmojiNeutral {
+				t.Errorf("newOptions().StrictEmojiNeutral = %v, want %v (from runewidth.NewCondition() with env: RUNEWIDTH_EASTASIAN=%s, LC_ALL=%s)",
+					options.StrictEmojiNeutral, cond.StrictEmojiNeutral, tc.runewidthEA, tc.locale)
+			}
+		})
+	}
 }
 
 func BenchmarkWidthFunction(b *testing.B) {
