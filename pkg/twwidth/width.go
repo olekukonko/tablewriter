@@ -6,11 +6,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/clipperhouse/displaywidth"
 	"github.com/mattn/go-runewidth"
 )
 
-// condition holds the global runewidth configuration, including East Asian width settings.
-var condition *runewidth.Condition
+// options holds the global runewidth configuration, including East Asian width settings.
+var options displaywidth.Options
 
 // mu protects access to condition and widthCache for thread safety.
 var mu sync.Mutex
@@ -19,8 +20,19 @@ var mu sync.Mutex
 var ansi = Filter()
 
 func init() {
-	condition = runewidth.NewCondition()
+	options = newOptions()
 	widthCache = make(map[cacheKey]int)
+}
+
+func newOptions() displaywidth.Options {
+	// go-runewidth has default logic based on env variables and locale,
+	// we want to keep that compatibility
+	cond := runewidth.NewCondition()
+	options := displaywidth.Options{
+		EastAsianWidth:     cond.EastAsianWidth,
+		StrictEmojiNeutral: cond.StrictEmojiNeutral,
+	}
+	return options
 }
 
 // cacheKey is used as a key for memoizing string width results in widthCache.
@@ -60,25 +72,55 @@ func Filter() *regexp.Regexp {
 func SetEastAsian(enable bool) {
 	mu.Lock()
 	defer mu.Unlock()
-	if condition.EastAsianWidth != enable {
-		condition.EastAsianWidth = enable
+	if options.EastAsianWidth != enable {
+		options.EastAsianWidth = enable
 		widthCache = make(map[cacheKey]int) // Clear cache on setting change
 	}
 }
 
-// SetCondition updates the global runewidth.Condition used for width calculations.
-// When the condition is changed, the width cache is cleared.
+// IsEastAsian returns the current East Asian width setting.
 // This function is thread-safe.
 //
 // Example:
 //
-//	newCond := runewidth.NewCondition()
-//	newCond.EastAsianWidth = true
-//	twdw.SetCondition(newCond)
-func SetCondition(newCond *runewidth.Condition) {
+//	if twdw.IsEastAsian() {
+//		// Handle East Asian width characters
+//	}
+func IsEastAsian() bool {
 	mu.Lock()
 	defer mu.Unlock()
-	condition = newCond
+	return options.EastAsianWidth
+}
+
+// SetOptions sets new global displaywidth.Options for all subsequent width calculations.
+// This allows for dynamic configuration of East Asian width behavior and other
+// displaywidth properties. The cache is cleared when the options change to ensure
+// consistent results.
+//
+// Example:
+//
+//	opts := displaywidth.Options{EastAsianWidth: true}
+//	twdw.SetOptions(opts)
+func SetOptions(opts displaywidth.Options) {
+	mu.Lock()
+	defer mu.Unlock()
+	options = opts
+	widthCache = make(map[cacheKey]int) // Clear cache on setting change
+}
+
+// SetCondition updates the global runewidth.Condition used for width calculations.
+// This method is kept for backward compatibility. The condition is converted to
+// displaywidth.Options internally for better performance.
+//
+// Deprecated: Use SetOptions instead.
+func SetCondition(condition *runewidth.Condition) {
+	mu.Lock()
+	defer mu.Unlock()
+	// Convert runewidth.Condition to displaywidth.Options
+	options = displaywidth.Options{
+		EastAsianWidth:     condition.EastAsianWidth,
+		StrictEmojiNeutral: condition.StrictEmojiNeutral,
+	}
 	widthCache = make(map[cacheKey]int) // Clear cache on setting change
 }
 
@@ -92,19 +134,19 @@ func SetCondition(newCond *runewidth.Condition) {
 //	width := twdw.Width("Hello\x1b[31mWorld") // Returns 10
 func Width(str string) int {
 	mu.Lock()
-	key := cacheKey{str: str, eastAsianWidth: condition.EastAsianWidth}
+	key := cacheKey{str: str, eastAsianWidth: options.EastAsianWidth}
 	if w, found := widthCache[key]; found {
 		mu.Unlock()
 		return w
 	}
 	mu.Unlock()
 
-	// Use a temporary condition to avoid holding the lock during calculation
-	tempCond := runewidth.NewCondition()
-	tempCond.EastAsianWidth = key.eastAsianWidth
+	options := displaywidth.Options{
+		EastAsianWidth: key.eastAsianWidth, // Use the cached East Asian width setting
+	}
 
 	stripped := ansi.ReplaceAllLiteralString(str, "")
-	calculatedWidth := tempCond.StringWidth(stripped)
+	calculatedWidth := options.String(stripped)
 
 	mu.Lock()
 	widthCache[key] = calculatedWidth
@@ -122,14 +164,14 @@ func Width(str string) int {
 //	width := twdw.WidthNoCache("Hello\x1b[31mWorld") // Returns 10
 func WidthNoCache(str string) int {
 	mu.Lock()
-	currentEA := condition.EastAsianWidth
+	currentEA := options.EastAsianWidth
 	mu.Unlock()
 
-	tempCond := runewidth.NewCondition()
-	tempCond.EastAsianWidth = currentEA
-
+	options := displaywidth.Options{
+		EastAsianWidth: currentEA, // Use the current East Asian width setting
+	}
 	stripped := ansi.ReplaceAllLiteralString(str, "")
-	return tempCond.StringWidth(stripped)
+	return options.String(stripped)
 }
 
 // Display calculates the visual width of a string, excluding ANSI escape sequences,
@@ -141,8 +183,8 @@ func WidthNoCache(str string) int {
 //
 //	cond := runewidth.NewCondition()
 //	width := twdw.Display(cond, "Hello\x1b[31mWorld") // Returns 10
-func Display(cond *runewidth.Condition, str string) int {
-	return cond.StringWidth(ansi.ReplaceAllLiteralString(str, ""))
+func Display(options displaywidth.Options, str string) int {
+	return options.String(ansi.ReplaceAllLiteralString(str, ""))
 }
 
 // Truncate shortens a string to fit within a specified visual width, optionally
@@ -205,7 +247,7 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 
 	// Capture the global EastAsianWidth setting once for consistent use
 	mu.Lock()
-	currentGlobalEastAsianWidth := condition.EastAsianWidth
+	currentGlobalEastAsianWidth := options.EastAsianWidth
 	mu.Unlock()
 
 	// Special case for EastAsian true: if only suffix fits, return suffix.
@@ -243,8 +285,9 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 	inAnsiSequence := false
 	ansiWrittenToContent := false
 
-	localRunewidthCond := runewidth.NewCondition()
-	localRunewidthCond.EastAsianWidth = currentGlobalEastAsianWidth
+	options := displaywidth.Options{
+		EastAsianWidth: currentGlobalEastAsianWidth,
+	}
 
 	for _, r := range s {
 		if r == '\x1b' {
@@ -278,7 +321,7 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 				ansiSeqBuf.Reset()
 			}
 		} else { // Normal character
-			runeDisplayWidth := localRunewidthCond.RuneWidth(r)
+			runeDisplayWidth := options.Rune(r)
 			if targetContentForIteration == 0 { // No budget for content at all
 				break
 			}
