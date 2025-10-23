@@ -10,8 +10,8 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-// options holds the global runewidth configuration, including East Asian width settings.
-var options displaywidth.Options
+// globalOptions holds the global displaywidth configuration, including East Asian width settings.
+var globalOptions displaywidth.Options
 
 // mu protects access to condition and widthCache for thread safety.
 var mu sync.Mutex
@@ -20,7 +20,7 @@ var mu sync.Mutex
 var ansi = Filter()
 
 func init() {
-	options = newOptions()
+	globalOptions = newOptions()
 	widthCache = make(map[cacheKey]int)
 }
 
@@ -72,8 +72,8 @@ func Filter() *regexp.Regexp {
 func SetEastAsian(enable bool) {
 	mu.Lock()
 	defer mu.Unlock()
-	if options.EastAsianWidth != enable {
-		options.EastAsianWidth = enable
+	if globalOptions.EastAsianWidth != enable {
+		globalOptions.EastAsianWidth = enable
 		widthCache = make(map[cacheKey]int) // Clear cache on setting change
 	}
 }
@@ -89,39 +89,25 @@ func SetEastAsian(enable bool) {
 func IsEastAsian() bool {
 	mu.Lock()
 	defer mu.Unlock()
-	return options.EastAsianWidth
-}
-
-// SetOptions sets new global displaywidth.Options for all subsequent width calculations.
-// This allows for dynamic configuration of East Asian width behavior and other
-// displaywidth properties. The cache is cleared when the options change to ensure
-// consistent results.
-//
-// Example:
-//
-//	opts := displaywidth.Options{EastAsianWidth: true}
-//	twdw.SetOptions(opts)
-func SetOptions(opts displaywidth.Options) {
-	mu.Lock()
-	defer mu.Unlock()
-	options = opts
-	widthCache = make(map[cacheKey]int) // Clear cache on setting change
+	return globalOptions.EastAsianWidth
 }
 
 // SetCondition updates the global runewidth.Condition used for width calculations.
 // This method is kept for backward compatibility. The condition is converted to
 // displaywidth.Options internally for better performance.
-//
-// Deprecated: Use SetOptions instead.
-func SetCondition(condition *runewidth.Condition) {
+func SetCondition(cond *runewidth.Condition) {
 	mu.Lock()
 	defer mu.Unlock()
-	// Convert runewidth.Condition to displaywidth.Options
-	options = displaywidth.Options{
-		EastAsianWidth:     condition.EastAsianWidth,
-		StrictEmojiNeutral: condition.StrictEmojiNeutral,
-	}
 	widthCache = make(map[cacheKey]int) // Clear cache on setting change
+	globalOptions = conditionToOptions(cond)
+}
+
+// Convert runewidth.Condition to displaywidth.Options
+func conditionToOptions(cond *runewidth.Condition) displaywidth.Options {
+	return displaywidth.Options{
+		EastAsianWidth:     cond.EastAsianWidth,
+		StrictEmojiNeutral: cond.StrictEmojiNeutral,
+	}
 }
 
 // Width calculates the visual width of a string, excluding ANSI escape sequences,
@@ -134,16 +120,15 @@ func SetCondition(condition *runewidth.Condition) {
 //	width := twdw.Width("Hello\x1b[31mWorld") // Returns 10
 func Width(str string) int {
 	mu.Lock()
-	key := cacheKey{str: str, eastAsianWidth: options.EastAsianWidth}
+	key := cacheKey{str: str, eastAsianWidth: globalOptions.EastAsianWidth}
 	if w, found := widthCache[key]; found {
 		mu.Unlock()
 		return w
 	}
 	mu.Unlock()
 
-	options := displaywidth.Options{
-		EastAsianWidth: key.eastAsianWidth, // Use the cached East Asian width setting
-	}
+	options := newOptions()
+	options.EastAsianWidth = key.eastAsianWidth
 
 	stripped := ansi.ReplaceAllLiteralString(str, "")
 	calculatedWidth := options.String(stripped)
@@ -164,12 +149,12 @@ func Width(str string) int {
 //	width := twdw.WidthNoCache("Hello\x1b[31mWorld") // Returns 10
 func WidthNoCache(str string) int {
 	mu.Lock()
-	currentEA := options.EastAsianWidth
+	currentEA := globalOptions.EastAsianWidth
 	mu.Unlock()
 
-	options := displaywidth.Options{
-		EastAsianWidth: currentEA, // Use the current East Asian width setting
-	}
+	options := newOptions()
+	options.EastAsianWidth = currentEA
+
 	stripped := ansi.ReplaceAllLiteralString(str, "")
 	return options.String(stripped)
 }
@@ -183,7 +168,8 @@ func WidthNoCache(str string) int {
 //
 //	cond := runewidth.NewCondition()
 //	width := twdw.Display(cond, "Hello\x1b[31mWorld") // Returns 10
-func Display(options displaywidth.Options, str string) int {
+func Display(cond *runewidth.Condition, str string) int {
+	options := conditionToOptions(cond)
 	return options.String(ansi.ReplaceAllLiteralString(str, ""))
 }
 
@@ -247,7 +233,7 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 
 	// Capture the global EastAsianWidth setting once for consistent use
 	mu.Lock()
-	currentGlobalEastAsianWidth := options.EastAsianWidth
+	currentGlobalEastAsianWidth := globalOptions.EastAsianWidth
 	mu.Unlock()
 
 	// Special case for EastAsian true: if only suffix fits, return suffix.
@@ -285,9 +271,8 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 	inAnsiSequence := false
 	ansiWrittenToContent := false
 
-	options := displaywidth.Options{
-		EastAsianWidth: currentGlobalEastAsianWidth,
-	}
+	options := newOptions()
+	options.EastAsianWidth = currentGlobalEastAsianWidth
 
 	for _, r := range s {
 		if r == '\x1b' {

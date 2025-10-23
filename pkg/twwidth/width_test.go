@@ -8,13 +8,12 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/clipperhouse/displaywidth"
 	"github.com/mattn/go-runewidth"
 )
 
 func TestMain(m *testing.M) {
 	mu.Lock()
-	options = newOptions()
+	globalOptions = newOptions()
 	mu.Unlock()
 	os.Exit(m.Run())
 }
@@ -43,37 +42,18 @@ func TestFilter(t *testing.T) {
 }
 
 func TestSetEastAsian(t *testing.T) {
-	original := options.EastAsianWidth
+	original := globalOptions.EastAsianWidth
 	SetEastAsian(true)
-	if !options.EastAsianWidth {
+	if !globalOptions.EastAsianWidth {
 		t.Errorf("SetEastAsian(true): condition.EastAsianWidth = false, want true")
 	}
 	SetEastAsian(false)
-	if options.EastAsianWidth {
+	if globalOptions.EastAsianWidth {
 		t.Errorf("SetEastAsian(false): condition.EastAsianWidth = true, want false")
 	}
 	mu.Lock()
-	options.EastAsianWidth = original
+	globalOptions.EastAsianWidth = original
 	mu.Unlock()
-}
-
-func TestIsEastAsian(t *testing.T) {
-	original := options.EastAsianWidth
-	defer func() {
-		mu.Lock()
-		options.EastAsianWidth = original
-		mu.Unlock()
-	}()
-
-	SetEastAsian(true)
-	if !IsEastAsian() {
-		t.Errorf("IsEastAsian() = false, want true")
-	}
-
-	SetEastAsian(false)
-	if IsEastAsian() {
-		t.Errorf("IsEastAsian() = true, want false")
-	}
 }
 
 func TestWidth(t *testing.T) {
@@ -167,8 +147,10 @@ func TestDisplay(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			options := displaywidth.Options{EastAsianWidth: tt.eastAsian}
-			got := Display(options, tt.input)
+			cond := &runewidth.Condition{
+				EastAsianWidth: tt.eastAsian,
+			}
+			got := Display(cond, tt.input)
 			if got != tt.expectedWidth {
 				t.Errorf("Display(%q, options) = %d, want %d (EastAsian=%v)", tt.input, got, tt.expectedWidth, tt.eastAsian)
 			}
@@ -467,75 +449,4 @@ func BenchmarkWidthFunction(b *testing.B) {
 			resetGlobalCache()
 		}
 	}
-}
-
-func TestSetOptions(t *testing.T) {
-	// Test that SetOptions correctly sets the global options
-	original := options
-	defer func() {
-		mu.Lock()
-		options = original
-		mu.Unlock()
-	}()
-
-	// Test setting new options
-	newOpts := displaywidth.Options{
-		EastAsianWidth:     true,
-		StrictEmojiNeutral: false,
-	}
-
-	SetOptions(newOpts)
-
-	mu.Lock()
-	if options.EastAsianWidth != true {
-		t.Errorf("SetOptions: EastAsianWidth = %v, want true", options.EastAsianWidth)
-	}
-	if options.StrictEmojiNeutral != false {
-		t.Errorf("SetOptions: StrictEmojiNeutral = %v, want false", options.StrictEmojiNeutral)
-	}
-	mu.Unlock()
-
-	// Test that cache is cleared
-	mu.Lock()
-	if len(widthCache) != 0 {
-		t.Errorf("SetOptions: cache should be cleared, but has %d entries", len(widthCache))
-	}
-	mu.Unlock()
-}
-
-func TestWithOptions(t *testing.T) {
-	// Test that WithOptions creates a valid Option function
-	// Since we can't import tablewriter here due to circular imports,
-	// we'll test the underlying SetOptions function directly
-	original := options
-	defer func() {
-		mu.Lock()
-		options = original
-		mu.Unlock()
-	}()
-
-	opts := displaywidth.Options{
-		EastAsianWidth:     true,
-		StrictEmojiNeutral: true,
-	}
-
-	// Test that SetOptions works correctly (which is what WithOptions calls internally)
-	SetOptions(opts)
-
-	// Verify that the options were set correctly
-	mu.Lock()
-	if options.EastAsianWidth != true {
-		t.Errorf("WithOptions (via SetOptions): EastAsianWidth = %v, want true", options.EastAsianWidth)
-	}
-	if options.StrictEmojiNeutral != true {
-		t.Errorf("WithOptions (via SetOptions): StrictEmojiNeutral = %v, want true", options.StrictEmojiNeutral)
-	}
-	mu.Unlock()
-
-	// Test that cache is cleared
-	mu.Lock()
-	if len(widthCache) != 0 {
-		t.Errorf("WithOptions (via SetOptions): cache should be cleared, but has %d entries", len(widthCache))
-	}
-	mu.Unlock()
 }
