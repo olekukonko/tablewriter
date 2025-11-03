@@ -18,8 +18,6 @@ import (
 
 	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"github.com/olekukonko/tablewriter/tw"
-
-	"github.com/mattn/go-runewidth"
 )
 
 var (
@@ -59,7 +57,7 @@ func TestWrapOneLine(t *testing.T) {
 func TestUnicode(t *testing.T) {
 	input := "Česká řeřicha"
 	var wordsUnicode []string
-	if runewidth.IsEastAsian() {
+	if twwidth.IsEastAsian() {
 		wordsUnicode, _ = WrapString(input, 14)
 	} else {
 		wordsUnicode, _ = WrapString(input, 13)
@@ -71,7 +69,7 @@ func TestUnicode(t *testing.T) {
 func TestDisplayWidth(t *testing.T) {
 	input := "Česká řeřicha"
 	want := 13
-	if runewidth.IsEastAsian() {
+	if twwidth.IsEastAsian() {
 		want = 14
 	}
 	if n := twwidth.Width(input); n != want {

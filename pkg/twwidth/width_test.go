@@ -13,7 +13,7 @@ import (
 
 func TestMain(m *testing.M) {
 	mu.Lock()
-	condition = runewidth.NewCondition()
+	globalOptions = newOptions()
 	mu.Unlock()
 	os.Exit(m.Run())
 }
@@ -42,17 +42,17 @@ func TestFilter(t *testing.T) {
 }
 
 func TestSetEastAsian(t *testing.T) {
-	original := condition.EastAsianWidth
+	original := globalOptions.EastAsianWidth
 	SetEastAsian(true)
-	if !condition.EastAsianWidth {
+	if !globalOptions.EastAsianWidth {
 		t.Errorf("SetEastAsian(true): condition.EastAsianWidth = false, want true")
 	}
 	SetEastAsian(false)
-	if condition.EastAsianWidth {
+	if globalOptions.EastAsianWidth {
 		t.Errorf("SetEastAsian(false): condition.EastAsianWidth = true, want false")
 	}
 	mu.Lock()
-	condition.EastAsianWidth = original
+	globalOptions.EastAsianWidth = original
 	mu.Unlock()
 }
 
@@ -147,10 +147,12 @@ func TestDisplay(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cond := &runewidth.Condition{EastAsianWidth: tt.eastAsian}
+			cond := &runewidth.Condition{
+				EastAsianWidth: tt.eastAsian,
+			}
 			got := Display(cond, tt.input)
 			if got != tt.expectedWidth {
-				t.Errorf("Display(%q, cond) = %d, want %d (EastAsian=%v)", tt.input, got, tt.expectedWidth, tt.eastAsian)
+				t.Errorf("Display(%q, options) = %d, want %d (EastAsian=%v)", tt.input, got, tt.expectedWidth, tt.eastAsian)
 			}
 		})
 	}
@@ -314,6 +316,99 @@ var benchmarkStrings = map[string]string{
 	"LongASCIIWithANSI": strings.Repeat("\033[31ma\033[32mb\033[33mc\033[34md\033[35me\033[36mf\033[0m ", 50),
 }
 
+func TestNewOptions(t *testing.T) {
+	// Test that newOptions() correctly picks up settings from go-runewidth
+	cond := runewidth.NewCondition()
+	options := newOptions()
+
+	// Verify that EastAsianWidth is correctly copied from runewidth condition
+	if options.EastAsianWidth != cond.EastAsianWidth {
+		t.Errorf("newOptions().EastAsianWidth = %v, want %v (from runewidth.NewCondition())",
+			options.EastAsianWidth, cond.EastAsianWidth)
+	}
+
+	// Verify that StrictEmojiNeutral is correctly copied from runewidth condition
+	if options.StrictEmojiNeutral != cond.StrictEmojiNeutral {
+		t.Errorf("newOptions().StrictEmojiNeutral = %v, want %v (from runewidth.NewCondition())",
+			options.StrictEmojiNeutral, cond.StrictEmojiNeutral)
+	}
+}
+
+func TestNewOptionsWithEnvironment(t *testing.T) {
+	// Test that newOptions() respects environment variables that affect go-runewidth
+	testCases := []struct {
+		name        string
+		runewidthEA string
+		locale      string
+		expectedEA  bool
+	}{
+		{
+			name:        "Default environment",
+			runewidthEA: "",
+			locale:      "",
+			expectedEA:  false, // Default behavior
+		},
+		{
+			name:        "RUNEWIDTH_EASTASIAN=1",
+			runewidthEA: "1",
+			locale:      "",
+			expectedEA:  true,
+		},
+		{
+			name:        "RUNEWIDTH_EASTASIAN=0",
+			runewidthEA: "0",
+			locale:      "",
+			expectedEA:  false,
+		},
+		{
+			name:        "Japanese locale",
+			runewidthEA: "",
+			locale:      "ja_JP.UTF-8",
+			expectedEA:  true, // Japanese locale typically enables East Asian width
+		},
+		{
+			name:        "Chinese locale",
+			runewidthEA: "",
+			locale:      "zh_CN.UTF-8",
+			expectedEA:  true, // Chinese locale typically enables East Asian width
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Use t.Setenv for automatic cleanup (Go 1.17+)
+			if tc.runewidthEA != "" {
+				t.Setenv("RUNEWIDTH_EASTASIAN", tc.runewidthEA)
+			} else {
+				t.Setenv("RUNEWIDTH_EASTASIAN", "") // This effectively unsets it
+			}
+
+			if tc.locale != "" {
+				t.Setenv("LC_ALL", tc.locale)
+			} else {
+				t.Setenv("LC_ALL", "") // This effectively unsets it
+			}
+
+			// Create a new runewidth condition with current environment
+			cond := runewidth.NewCondition()
+
+			// Get options from our function
+			options := newOptions()
+
+			// Verify that our function matches the runewidth condition
+			if options.EastAsianWidth != cond.EastAsianWidth {
+				t.Errorf("newOptions().EastAsianWidth = %v, want %v (from runewidth.NewCondition() with env: RUNEWIDTH_EASTASIAN=%s, LC_ALL=%s)",
+					options.EastAsianWidth, cond.EastAsianWidth, tc.runewidthEA, tc.locale)
+			}
+
+			if options.StrictEmojiNeutral != cond.StrictEmojiNeutral {
+				t.Errorf("newOptions().StrictEmojiNeutral = %v, want %v (from runewidth.NewCondition() with env: RUNEWIDTH_EASTASIAN=%s, LC_ALL=%s)",
+					options.StrictEmojiNeutral, cond.StrictEmojiNeutral, tc.runewidthEA, tc.locale)
+			}
+		})
+	}
+}
+
 func BenchmarkWidthFunction(b *testing.B) {
 	eastAsianSettings := []bool{false, true}
 
@@ -322,14 +417,18 @@ func BenchmarkWidthFunction(b *testing.B) {
 			SetEastAsian(eaSetting)
 
 			b.Run(fmt.Sprintf("%s_EA%v_NoCache", name, eaSetting), func(b *testing.B) {
+				b.SetBytes(int64(len(str)))
 				b.ReportAllocs()
+				b.ResetTimer()
 				for i := 0; i < b.N; i++ {
 					_ = WidthNoCache(str)
 				}
 			})
 
 			b.Run(fmt.Sprintf("%s_EA%v_CacheMiss", name, eaSetting), func(b *testing.B) {
+				b.SetBytes(int64(len(str)))
 				b.ReportAllocs()
+				b.ResetTimer()
 				for i := 0; i < b.N; i++ {
 					_ = Width(str + strconv.Itoa(i))
 				}
@@ -337,7 +436,9 @@ func BenchmarkWidthFunction(b *testing.B) {
 			resetGlobalCache()
 
 			b.Run(fmt.Sprintf("%s_EA%v_CacheHit", name, eaSetting), func(b *testing.B) {
+				b.SetBytes(int64(len(str)))
 				b.ReportAllocs()
+				b.ResetTimer()
 				if b.N > 0 {
 					_ = Width(str)
 				}

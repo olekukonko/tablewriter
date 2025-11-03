@@ -647,9 +647,9 @@ func WithEastAsian(enable bool) Option {
 // The runewidth.Condition object allows for more fine-grained control over how rune widths
 // are determined, beyond just toggling EastAsianWidth. This could include settings for
 // ambiguous width characters or other future properties of runewidth.Condition.
-func WithCondition(condition *runewidth.Condition) Option {
+func WithCondition(cond *runewidth.Condition) Option {
 	return func(target *Table) {
-		twwidth.SetCondition(condition)
+		twwidth.SetCondition(cond)
 	}
 }
 

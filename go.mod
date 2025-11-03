@@ -3,6 +3,7 @@ module github.com/olekukonko/tablewriter
 go 1.21
 
 require (
+	github.com/clipperhouse/displaywidth v0.3.1
 	github.com/clipperhouse/uax29/v2 v2.2.0
 	github.com/fatih/color v1.15.0
 	github.com/mattn/go-runewidth v0.0.19
@@ -12,6 +13,7 @@ require (
 )
 
 require (
+	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/olekukonko/cat v0.0.0-20250911104152-50322a0618f6 // indirect
