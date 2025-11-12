@@ -361,7 +361,7 @@ func TestEmojiTable(t *testing.T) {
 │  NAME  😺  │ AGE  🎂  │  CITY  🌍   │
 ├────────────┼──────────┼─────────────┤
 │ Alice 😊   │ 25       │ New York 🌆 │
-│ Bob 😎     │ 30       │ Boston 🏙️    │
+│ Bob 😎     │ 30       │ Boston 🏙️   │
 │ Charlie 🤓 │ 28       │ Tokyo 🗼    │
 ├────────────┼──────────┼─────────────┤
 │            │ Total 👥 │           3 │

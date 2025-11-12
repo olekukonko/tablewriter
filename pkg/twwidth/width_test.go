@@ -326,12 +326,6 @@ func TestNewOptions(t *testing.T) {
 		t.Errorf("newOptions().EastAsianWidth = %v, want %v (from runewidth.NewCondition())",
 			options.EastAsianWidth, cond.EastAsianWidth)
 	}
-
-	// Verify that StrictEmojiNeutral is correctly copied from runewidth condition
-	if options.StrictEmojiNeutral != cond.StrictEmojiNeutral {
-		t.Errorf("newOptions().StrictEmojiNeutral = %v, want %v (from runewidth.NewCondition())",
-			options.StrictEmojiNeutral, cond.StrictEmojiNeutral)
-	}
 }
 
 func TestNewOptionsWithEnvironment(t *testing.T) {
@@ -399,11 +393,6 @@ func TestNewOptionsWithEnvironment(t *testing.T) {
 			if options.EastAsianWidth != cond.EastAsianWidth {
 				t.Errorf("newOptions().EastAsianWidth = %v, want %v (from runewidth.NewCondition() with env: RUNEWIDTH_EASTASIAN=%s, LC_ALL=%s)",
 					options.EastAsianWidth, cond.EastAsianWidth, tc.runewidthEA, tc.locale)
-			}
-
-			if options.StrictEmojiNeutral != cond.StrictEmojiNeutral {
-				t.Errorf("newOptions().StrictEmojiNeutral = %v, want %v (from runewidth.NewCondition() with env: RUNEWIDTH_EASTASIAN=%s, LC_ALL=%s)",
-					options.StrictEmojiNeutral, cond.StrictEmojiNeutral, tc.runewidthEA, tc.locale)
 			}
 		})
 	}

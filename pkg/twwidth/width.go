@@ -29,8 +29,7 @@ func newOptions() displaywidth.Options {
 	// we want to keep that compatibility
 	cond := runewidth.NewCondition()
 	options := displaywidth.Options{
-		EastAsianWidth:     cond.EastAsianWidth,
-		StrictEmojiNeutral: cond.StrictEmojiNeutral,
+		EastAsianWidth: cond.EastAsianWidth,
 	}
 	return options
 }
@@ -105,8 +104,7 @@ func SetCondition(cond *runewidth.Condition) {
 // Convert runewidth.Condition to displaywidth.Options
 func conditionToOptions(cond *runewidth.Condition) displaywidth.Options {
 	return displaywidth.Options{
-		EastAsianWidth:     cond.EastAsianWidth,
-		StrictEmojiNeutral: cond.StrictEmojiNeutral,
+		EastAsianWidth: cond.EastAsianWidth,
 	}
 }
 
