@@ -3,6 +3,7 @@ package twwidth
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -11,11 +12,27 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
+// TestMain is the entry point for tests. It includes special logic to handle
+// re-executing the test binary as a sub-process. This is the standard pattern
+// for testing environment-dependent init() functions.
 func TestMain(m *testing.M) {
-	mu.Lock()
-	globalOptions = newOptions()
-	mu.Unlock()
+	// Check if we are in the sub-process execution.
+	if os.Getenv("GO_TEST_SUBPROCESS") == "1" {
+		helperProcess()
+		return
+	}
 	os.Exit(m.Run())
+}
+
+// helperProcess is run when the test is executed as a sub-process.
+// It checks the initial state of IsEastAsian() (which is set by init())
+// and prints it to stdout for the parent test process to capture.
+func helperProcess() {
+	if IsEastAsian() {
+		fmt.Fprint(os.Stdout, "true")
+	} else {
+		fmt.Fprint(os.Stdout, "false")
+	}
 }
 
 func TestFilter(t *testing.T) {
@@ -42,18 +59,20 @@ func TestFilter(t *testing.T) {
 }
 
 func TestSetEastAsian(t *testing.T) {
-	original := globalOptions.EastAsianWidth
+	// Defer restoring the original state to ensure other tests are not affected.
+	original := IsEastAsian()
+	t.Cleanup(func() {
+		SetEastAsian(original)
+	})
+
 	SetEastAsian(true)
-	if !globalOptions.EastAsianWidth {
-		t.Errorf("SetEastAsian(true): condition.EastAsianWidth = false, want true")
+	if !IsEastAsian() {
+		t.Errorf("SetEastAsian(true): IsEastAsian() = false, want true")
 	}
 	SetEastAsian(false)
-	if globalOptions.EastAsianWidth {
-		t.Errorf("SetEastAsian(false): condition.EastAsianWidth = true, want false")
+	if IsEastAsian() {
+		t.Errorf("SetEastAsian(false): IsEastAsian() = true, want false")
 	}
-	mu.Lock()
-	globalOptions.EastAsianWidth = original
-	mu.Unlock()
 }
 
 func TestWidth(t *testing.T) {
@@ -316,83 +335,36 @@ var benchmarkStrings = map[string]string{
 	"LongASCIIWithANSI": strings.Repeat("\033[31ma\033[32mb\033[33mc\033[34md\033[35me\033[36mf\033[0m ", 50),
 }
 
-func TestNewOptions(t *testing.T) {
-	// Test that newOptions() correctly picks up settings from go-runewidth
-	cond := runewidth.NewCondition()
-	options := newOptions()
-
-	// Verify that EastAsianWidth is correctly copied from runewidth condition
-	if options.EastAsianWidth != cond.EastAsianWidth {
-		t.Errorf("newOptions().EastAsianWidth = %v, want %v (from runewidth.NewCondition())",
-			options.EastAsianWidth, cond.EastAsianWidth)
-	}
-}
-
-func TestNewOptionsWithEnvironment(t *testing.T) {
-	// Test that newOptions() respects environment variables that affect go-runewidth
+// TestInitRespectsEnvironment verifies that the package's init() function
+// correctly reads environment variables like RUNEWIDTH_EASTASIAN.
+func TestInitRespectsEnvironment(t *testing.T) {
 	testCases := []struct {
-		name        string
-		runewidthEA string
-		locale      string
-		expectedEA  bool
+		name       string
+		envVar     string
+		wantOutput string
 	}{
-		{
-			name:        "Default environment",
-			runewidthEA: "",
-			locale:      "",
-			expectedEA:  false, // Default behavior
-		},
-		{
-			name:        "RUNEWIDTH_EASTASIAN=1",
-			runewidthEA: "1",
-			locale:      "",
-			expectedEA:  true,
-		},
-		{
-			name:        "RUNEWIDTH_EASTASIAN=0",
-			runewidthEA: "0",
-			locale:      "",
-			expectedEA:  false,
-		},
-		{
-			name:        "Japanese locale",
-			runewidthEA: "",
-			locale:      "ja_JP.UTF-8",
-			expectedEA:  true, // Japanese locale typically enables East Asian width
-		},
-		{
-			name:        "Chinese locale",
-			runewidthEA: "",
-			locale:      "zh_CN.UTF-8",
-			expectedEA:  true, // Chinese locale typically enables East Asian width
-		},
+		{"RUNEWIDTH_EASTASIAN=1", "1", "true"},
+		{"RUNEWIDTH_EASTASIAN=0", "0", "false"},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Use t.Setenv for automatic cleanup (Go 1.17+)
-			if tc.runewidthEA != "" {
-				t.Setenv("RUNEWIDTH_EASTASIAN", tc.runewidthEA)
-			} else {
-				t.Setenv("RUNEWIDTH_EASTASIAN", "") // This effectively unsets it
+			// Get the path to the current test binary.
+			// This ensures the sub-process runs TestMain (which we need), but doesn't
+			// re-run this same test, which would cause an infinite loop.
+			cmd := exec.Command(os.Args[0], "-test.run=^TestHelperProcess$")
+
+			// Set the environment for the sub-process.
+			cmd.Env = append(os.Environ(), "GO_TEST_SUBPROCESS=1", "RUNEWIDTH_EASTASIAN="+tc.envVar)
+
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("command failed: %v\nOutput: %s", err, output)
 			}
 
-			if tc.locale != "" {
-				t.Setenv("LC_ALL", tc.locale)
-			} else {
-				t.Setenv("LC_ALL", "") // This effectively unsets it
-			}
-
-			// Create a new runewidth condition with current environment
-			cond := runewidth.NewCondition()
-
-			// Get options from our function
-			options := newOptions()
-
-			// Verify that our function matches the runewidth condition
-			if options.EastAsianWidth != cond.EastAsianWidth {
-				t.Errorf("newOptions().EastAsianWidth = %v, want %v (from runewidth.NewCondition() with env: RUNEWIDTH_EASTASIAN=%s, LC_ALL=%s)",
-					options.EastAsianWidth, cond.EastAsianWidth, tc.runewidthEA, tc.locale)
+			got := strings.TrimSpace(string(output))
+			if got != tc.wantOutput {
+				t.Errorf("with RUNEWIDTH_EASTASIAN=%s, IsEastAsian() was %s, want %s", tc.envVar, got, tc.wantOutput)
 			}
 		})
 	}

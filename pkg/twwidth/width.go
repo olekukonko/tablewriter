@@ -14,28 +14,31 @@ const (
 	cacheCapacity = 8192
 )
 
-// globalOptions holds the global displaywidth configuration, including East Asian width settings.
-var globalOptions displaywidth.Options
+// Options allows for configuring width calculation on a per-call basis.
+type Options struct {
+	EastAsianWidth bool
+}
 
-// mu protects access to condition and widthCache for thread safety.
+// globalOptions holds the global displaywidth configuration, including East Asian width settings.
+var globalOptions Options
+
+// mu protects access to globalOptions for thread safety.
 var mu sync.Mutex
+
+// widthCache stores memoized results of Width calculations to improve performance.
+var widthCache *lruCache
 
 // ansi is a compiled regular expression for stripping ANSI escape codes from strings.
 var ansi = Filter()
 
 func init() {
-	globalOptions = newOptions()
-	widthCache = newLRUCache(cacheCapacity)
-}
-
-func newOptions() displaywidth.Options {
-	// go-runewidth has default logic based on env variables and locale,
-	// we want to keep that compatibility
+	// Initialize global options by detecting from the environment,
+	// which is the one key feature we get from go-runewidth.
 	cond := runewidth.NewCondition()
-	options := displaywidth.Options{
+	globalOptions = Options{
 		EastAsianWidth: cond.EastAsianWidth,
 	}
-	return options
+	widthCache = newLRUCache(cacheCapacity)
 }
 
 // makeCacheKey generates a string key for the LRU cache from the input string
@@ -47,15 +50,6 @@ func makeCacheKey(str string, eastAsianWidth bool) lruCacheKey {
 	}
 	return lruCacheKey("0:" + str)
 }
-
-// cacheKey is used as a key for memoizing string width results in widthCache.
-type cacheKey struct {
-	str            string // Input string
-	eastAsianWidth bool   // East Asian width setting
-}
-
-// widthCache stores memoized results of Width calculations to improve performance.
-var widthCache *lruCache
 
 // Filter compiles and returns a regular expression for matching ANSI escape sequences,
 // including CSI (Control Sequence Introducer) and OSC (Operating System Command) sequences.
@@ -75,20 +69,25 @@ func Filter() *regexp.Regexp {
 	return regexp.MustCompile("(" + regCSI + "|" + regOSC + ")")
 }
 
-// SetEastAsian enables or disables East Asian width handling for width calculations.
-// When the setting changes, the width cache is cleared to ensure accuracy.
+// SetOptions sets the global options for width calculation.
+// This function is thread-safe.
+func SetOptions(opts Options) {
+	mu.Lock()
+	defer mu.Unlock()
+	if globalOptions.EastAsianWidth != opts.EastAsianWidth {
+		globalOptions = opts
+		widthCache.Clear()
+	}
+}
+
+// SetEastAsian enables or disables East Asian width handling globally.
 // This function is thread-safe.
 //
 // Example:
 //
 //	twdw.SetEastAsian(true) // Enable East Asian width handling
 func SetEastAsian(enable bool) {
-	mu.Lock()
-	defer mu.Unlock()
-	if globalOptions.EastAsianWidth != enable {
-		globalOptions.EastAsianWidth = enable
-		widthCache = newLRUCache(cacheCapacity)
-	}
+	SetOptions(Options{EastAsianWidth: enable})
 }
 
 // IsEastAsian returns the current East Asian width setting.
@@ -105,85 +104,68 @@ func IsEastAsian() bool {
 	return globalOptions.EastAsianWidth
 }
 
-// SetCondition updates the global runewidth.Condition used for width calculations.
-// This method is kept for backward compatibility. The condition is converted to
-// displaywidth.Options internally for better performance.
+// Deprecated: use SetOptions with the new twwidth.Options struct instead.
+// This function is kept for backward compatibility.
 func SetCondition(cond *runewidth.Condition) {
 	mu.Lock()
 	defer mu.Unlock()
-	widthCache = newLRUCache(8192) // Clear cache on setting change
-	globalOptions = conditionToOptions(cond)
-}
-
-// Convert runewidth.Condition to displaywidth.Options
-func conditionToOptions(cond *runewidth.Condition) displaywidth.Options {
-	return displaywidth.Options{
-		EastAsianWidth: cond.EastAsianWidth,
+	newEastAsianWidth := cond.EastAsianWidth
+	if globalOptions.EastAsianWidth != newEastAsianWidth {
+		globalOptions.EastAsianWidth = newEastAsianWidth
+		widthCache.Clear()
 	}
 }
 
-// Width calculates the visual width of a string, excluding ANSI escape sequences,
-// using the go-runewidth package for accurate Unicode handling. It accounts for the
-// current East Asian width setting and caches results for performance.
+// Width calculates the visual width of a string using the global cache for performance.
+// It excludes ANSI escape sequences and accounts for the global East Asian width setting.
 // This function is thread-safe.
 //
 // Example:
 //
 //	width := twdw.Width("Hello\x1b[31mWorld") // Returns 10
 func Width(str string) int {
-	// Get the current East Asian setting for consistent keying and calculation.
 	currentEA := IsEastAsian()
 	key := makeCacheKey(str, currentEA)
 
-	// Check the cache first.
 	if w, found := widthCache.Get(key); found {
 		return w
 	}
 
-	// Perform the calculation.
-	options := newOptions()
-	options.EastAsianWidth = currentEA
-
+	opts := displaywidth.Options{EastAsianWidth: currentEA}
 	stripped := ansi.ReplaceAllLiteralString(str, "")
-	calculatedWidth := options.String(stripped)
+	calculatedWidth := opts.String(stripped)
 
-	// Store the result in the cache for next time.
 	widthCache.Put(key, calculatedWidth)
-
 	return calculatedWidth
 }
 
-// WidthNoCache calculates the visual width of a string without using or
-// updating the global cache. It uses the current global East Asian width setting.
-// This function is intended for internal use (e.g., benchmarking) and is thread-safe.
+// WidthWithOptions calculates the visual width of a string with specific options,
+// bypassing the global settings and cache. This is useful for one-shot calculations
+// where global state is not desired.
+func WidthWithOptions(str string, opts Options) int {
+	dwOpts := displaywidth.Options{EastAsianWidth: opts.EastAsianWidth}
+	stripped := ansi.ReplaceAllLiteralString(str, "")
+	return dwOpts.String(stripped)
+}
+
+// Deprecated: use WidthWithOptions instead. This function is kept for backward compatibility.
+// WidthNoCache calculates the visual width of a string without using the global cache.
 //
 // Example:
 //
 //	width := twdw.WidthNoCache("Hello\x1b[31mWorld") // Returns 10
 func WidthNoCache(str string) int {
-	mu.Lock()
-	currentEA := globalOptions.EastAsianWidth
-	mu.Unlock()
-
-	options := newOptions()
-	options.EastAsianWidth = currentEA
-
-	stripped := ansi.ReplaceAllLiteralString(str, "")
-	return options.String(stripped)
+	// This function's behavior is equivalent to a one-shot calculation
+	// using the current global options. The WidthWithOptions function
+	// does not interact with the cache, thus fulfilling the requirement.
+	return WidthWithOptions(str, Options{EastAsianWidth: IsEastAsian()})
 }
 
-// Display calculates the visual width of a string, excluding ANSI escape sequences,
-// using the provided runewidth condition. Unlike Width, it does not use caching
-// and is intended for cases where a specific condition is required.
-// This function is thread-safe with respect to the provided condition.
-//
-// Example:
-//
-//	cond := runewidth.NewCondition()
-//	width := twdw.Display(cond, "Hello\x1b[31mWorld") // Returns 10
+// Deprecated: use WidthWithOptions with the new twwidth.Options struct instead.
+// This function is kept for backward compatibility.
 func Display(cond *runewidth.Condition, str string) int {
-	options := conditionToOptions(cond)
-	return options.String(ansi.ReplaceAllLiteralString(str, ""))
+	opts := Options{EastAsianWidth: cond.EastAsianWidth}
+	return WidthWithOptions(str, opts)
 }
 
 // Truncate shortens a string to fit within a specified visual width, optionally
@@ -243,18 +225,14 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 
 	// Case 4: String needs truncation (sDisplayWidth > maxWidth).
 	// maxWidth is the total budget for the final string (content + suffix).
-
-	// Capture the global EastAsianWidth setting once for consistent use
-	mu.Lock()
-	currentGlobalEastAsianWidth := globalOptions.EastAsianWidth
-	mu.Unlock()
+	currentGlobalEastAsianWidth := IsEastAsian()
 
 	// Special case for EastAsian true: if only suffix fits, return suffix.
 	// This was derived from previous test behavior.
 	if len(suffixStr) > 0 && currentGlobalEastAsianWidth {
 		provisionalContentWidth := maxWidth - suffixDisplayWidth
 		if provisionalContentWidth == 0 { // Exactly enough space for suffix only
-			return suffixStr // <<<< MODIFIED: No ANSI reset here
+			return suffixStr
 		}
 	}
 
@@ -276,7 +254,6 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 		}
 		return "" // Cannot fit anything.
 	}
-	// If targetContentForIteration is 0, loop won't run, result will be empty string, then suffix is added.
 
 	var contentBuf bytes.Buffer
 	var currentContentDisplayWidth int
@@ -284,8 +261,7 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 	inAnsiSequence := false
 	ansiWrittenToContent := false
 
-	options := newOptions()
-	options.EastAsianWidth = currentGlobalEastAsianWidth
+	dwOpts := displaywidth.Options{EastAsianWidth: currentGlobalEastAsianWidth}
 
 	for _, r := range s {
 		if r == '\x1b' {
@@ -319,7 +295,7 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 				ansiSeqBuf.Reset()
 			}
 		} else { // Normal character
-			runeDisplayWidth := options.Rune(r)
+			runeDisplayWidth := dwOpts.Rune(r)
 			if targetContentForIteration == 0 { // No budget for content at all
 				break
 			}
