@@ -50,11 +50,6 @@ func newLRUCache(capacity int) *lruCache {
 		}
 	}
 
-	// Reasonable bounds
-	if capacity < cacheMinCapacity {
-		capacity = cacheMinCapacity
-	}
-
 	// Optional upper bound for very large capacities
 	if capacity > cacheMaxCapacity {
 		capacity = cacheMaxCapacity
