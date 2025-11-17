@@ -340,3 +340,28 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 	}
 	return result
 }
+
+// SetCacheCapacity changes the cache size dynamically
+// If capacity <= 0, disables caching entirely
+func SetCacheCapacity(capacity int) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if capacity <= 0 {
+		widthCache = newLRUCache(0) // disabled
+		return
+	}
+
+	widthCache = newLRUCache(capacity)
+}
+
+// GetCacheStats returns current cache statistics
+func GetCacheStats() (size, capacity int, hitRate float64) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if widthCache == nil {
+		return 0, 0, 0
+	}
+	return widthCache.Len(), widthCache.Cap(), widthCache.HitRate()
+}

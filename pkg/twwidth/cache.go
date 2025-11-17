@@ -215,3 +215,40 @@ func (c *lruCache) removeNode(e *cacheEntry) {
 	e.prev = nil
 	e.next = nil
 }
+
+//// adaptiveCache automatically resizes based on hit rate
+//type adaptiveCache struct {
+//	mu      sync.RWMutex
+//	cache   *lruCache
+//	minSize int
+//	maxSize int
+//}
+//
+//func newAdaptiveCache(initialSize int) *adaptiveCache {
+//	return &adaptiveCache{
+//		cache:   newLRUCache(initialSize),
+//		minSize: 1024,
+//		maxSize: 100000,
+//	}
+//}
+//
+//func (a *adaptiveCache) maybeResize() {
+//	rate := a.cache.HitRate()
+//	currentSize := a.cache.Cap()
+//
+//	if rate < 0.5 && currentSize > a.minSize {
+//		// Low hit rate, shrink cache
+//		newSize := currentSize / 2
+//		if newSize < a.minSize {
+//			newSize = a.minSize
+//		}
+//		a.cache.SetCapacity(newSize)
+//	} else if rate > 0.9 && currentSize < a.maxSize {
+//		// High hit rate, grow cache
+//		newSize := currentSize * 2
+//		if newSize > a.maxSize {
+//			newSize = a.maxSize
+//		}
+//		a.cache.SetCapacity(newSize)
+//	}
+//}
