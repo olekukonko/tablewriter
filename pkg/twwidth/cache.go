@@ -5,6 +5,11 @@ import (
 	"sync/atomic"
 )
 
+const (
+	cacheMinCapacity = 1024
+	cacheMaxCapacity = 100000
+)
+
 type lruCacheKey string
 
 func (k lruCacheKey) String() string {
@@ -44,10 +49,17 @@ func newLRUCache(capacity int) *lruCache {
 			capacity: 0,
 		}
 	}
-	// Optional upper bound for very large capacities
-	if capacity > 100000 {
-		capacity = 100000
+
+	// Reasonable bounds
+	if capacity < cacheMinCapacity {
+		capacity = cacheMinCapacity
 	}
+
+	// Optional upper bound for very large capacities
+	if capacity > cacheMaxCapacity {
+		capacity = cacheMaxCapacity
+	}
+
 	return &lruCache{
 		items:    make(map[lruCacheKey]*cacheEntry, capacity),
 		capacity: capacity,
@@ -123,6 +135,7 @@ func (c *lruCache) Clear() {
 	}
 	c.head = nil
 	c.tail = nil
+
 	// Reset metrics
 	atomic.StoreInt64(&c.hits, 0)
 	atomic.StoreInt64(&c.misses, 0)

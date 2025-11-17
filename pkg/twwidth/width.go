@@ -12,6 +12,9 @@ import (
 
 const (
 	cacheCapacity = 8192
+
+	cachePrefix          = "0:"
+	cacheEastAsianPrefix = "1:"
 )
 
 // Options allows for configuring width calculation on a per-call basis.
@@ -46,9 +49,9 @@ func init() {
 // Prefix "0:" for false, "1:" for true.
 func makeCacheKey(str string, eastAsianWidth bool) lruCacheKey {
 	if eastAsianWidth {
-		return lruCacheKey("1:" + str)
+		return lruCacheKey(cacheEastAsianPrefix + str)
 	}
-	return lruCacheKey("0:" + str)
+	return lruCacheKey(cachePrefix + str)
 }
 
 // Filter compiles and returns a regular expression for matching ANSI escape sequences,
@@ -148,7 +151,6 @@ func WidthWithOptions(str string, opts Options) int {
 	return dwOpts.String(stripped)
 }
 
-// Deprecated: use WidthWithOptions instead. This function is kept for backward compatibility.
 // WidthNoCache calculates the visual width of a string without using the global cache.
 //
 // Example:
