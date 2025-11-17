@@ -303,7 +303,7 @@ func TestWidthWithEnvironment(t *testing.T) {
 
 func resetGlobalCache() {
 	mu.Lock()
-	widthCache = make(map[cacheKey]int)
+	widthCache = newLRUCache(cacheCapacity)
 	mu.Unlock()
 }
 

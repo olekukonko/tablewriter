@@ -10,6 +10,10 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
+const (
+	cacheCapacity = 8192
+)
+
 // globalOptions holds the global displaywidth configuration, including East Asian width settings.
 var globalOptions displaywidth.Options
 
@@ -21,7 +25,7 @@ var ansi = Filter()
 
 func init() {
 	globalOptions = newOptions()
-	widthCache = make(map[cacheKey]int)
+	widthCache = newLRUCache(cacheCapacity)
 }
 
 func newOptions() displaywidth.Options {
@@ -34,6 +38,16 @@ func newOptions() displaywidth.Options {
 	return options
 }
 
+// makeCacheKey generates a string key for the LRU cache from the input string
+// and the current East Asian width setting.
+// Prefix "0:" for false, "1:" for true.
+func makeCacheKey(str string, eastAsianWidth bool) lruCacheKey {
+	if eastAsianWidth {
+		return lruCacheKey("1:" + str)
+	}
+	return lruCacheKey("0:" + str)
+}
+
 // cacheKey is used as a key for memoizing string width results in widthCache.
 type cacheKey struct {
 	str            string // Input string
@@ -41,7 +55,7 @@ type cacheKey struct {
 }
 
 // widthCache stores memoized results of Width calculations to improve performance.
-var widthCache map[cacheKey]int
+var widthCache *lruCache
 
 // Filter compiles and returns a regular expression for matching ANSI escape sequences,
 // including CSI (Control Sequence Introducer) and OSC (Operating System Command) sequences.
@@ -73,7 +87,7 @@ func SetEastAsian(enable bool) {
 	defer mu.Unlock()
 	if globalOptions.EastAsianWidth != enable {
 		globalOptions.EastAsianWidth = enable
-		widthCache = make(map[cacheKey]int) // Clear cache on setting change
+		widthCache = newLRUCache(cacheCapacity)
 	}
 }
 
@@ -97,7 +111,7 @@ func IsEastAsian() bool {
 func SetCondition(cond *runewidth.Condition) {
 	mu.Lock()
 	defer mu.Unlock()
-	widthCache = make(map[cacheKey]int) // Clear cache on setting change
+	widthCache = newLRUCache(8192) // Clear cache on setting change
 	globalOptions = conditionToOptions(cond)
 }
 
@@ -117,23 +131,24 @@ func conditionToOptions(cond *runewidth.Condition) displaywidth.Options {
 //
 //	width := twdw.Width("Hello\x1b[31mWorld") // Returns 10
 func Width(str string) int {
-	mu.Lock()
-	key := cacheKey{str: str, eastAsianWidth: globalOptions.EastAsianWidth}
-	if w, found := widthCache[key]; found {
-		mu.Unlock()
+	// Get the current East Asian setting for consistent keying and calculation.
+	currentEA := IsEastAsian()
+	key := makeCacheKey(str, currentEA)
+
+	// Check the cache first.
+	if w, found := widthCache.Get(key); found {
 		return w
 	}
-	mu.Unlock()
 
+	// Perform the calculation.
 	options := newOptions()
-	options.EastAsianWidth = key.eastAsianWidth
+	options.EastAsianWidth = currentEA
 
 	stripped := ansi.ReplaceAllLiteralString(str, "")
 	calculatedWidth := options.String(stripped)
 
-	mu.Lock()
-	widthCache[key] = calculatedWidth
-	mu.Unlock()
+	// Store the result in the cache for next time.
+	widthCache.Put(key, calculatedWidth)
 
 	return calculatedWidth
 }
