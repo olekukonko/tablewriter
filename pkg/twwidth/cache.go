@@ -35,8 +35,8 @@ type lruCache struct {
 	head     *cacheEntry // Most recently used
 	tail     *cacheEntry // Least recently used
 	capacity int
-	hits     int64 // atomic access for hit tracking
-	misses   int64 // atomic access for miss tracking
+	hits     atomic.Int64 // atomic access for hit tracking
+	misses   atomic.Int64 // atomic access for miss tracking
 }
 
 // newLRUCache creates a new LRU cache with the given capacity.
@@ -73,11 +73,11 @@ func (c *lruCache) Get(key lruCacheKey) (int, bool) {
 
 	entry, ok := c.items[key]
 	if !ok {
-		atomic.AddInt64(&c.misses, 1)
+		c.misses.Add(1)
 		return 0, false
 	}
 
-	atomic.AddInt64(&c.hits, 1)
+	c.hits.Add(1)
 	// Move the accessed entry to the front (MRU).
 	c.moveToFront(entry)
 
@@ -132,8 +132,8 @@ func (c *lruCache) Clear() {
 	c.tail = nil
 
 	// Reset metrics
-	atomic.StoreInt64(&c.hits, 0)
-	atomic.StoreInt64(&c.misses, 0)
+	c.hits.Store(0)
+	c.misses.Store(0)
 }
 
 // Len returns the current number of entries in the cache.
@@ -160,8 +160,8 @@ func (c *lruCache) HitRate() float64 {
 	if c == nil || c.capacity <= 0 {
 		return 0
 	}
-	hits := atomic.LoadInt64(&c.hits)
-	misses := atomic.LoadInt64(&c.misses)
+	hits := c.hits.Load()
+	misses := c.misses.Load()
 	total := hits + misses
 	if total == 0 {
 		return 0
@@ -215,40 +215,3 @@ func (c *lruCache) removeNode(e *cacheEntry) {
 	e.prev = nil
 	e.next = nil
 }
-
-//// adaptiveCache automatically resizes based on hit rate
-//type adaptiveCache struct {
-//	mu      sync.RWMutex
-//	cache   *lruCache
-//	minSize int
-//	maxSize int
-//}
-//
-//func newAdaptiveCache(initialSize int) *adaptiveCache {
-//	return &adaptiveCache{
-//		cache:   newLRUCache(initialSize),
-//		minSize: 1024,
-//		maxSize: 100000,
-//	}
-//}
-//
-//func (a *adaptiveCache) maybeResize() {
-//	rate := a.cache.HitRate()
-//	currentSize := a.cache.Cap()
-//
-//	if rate < 0.5 && currentSize > a.minSize {
-//		// Low hit rate, shrink cache
-//		newSize := currentSize / 2
-//		if newSize < a.minSize {
-//			newSize = a.minSize
-//		}
-//		a.cache.SetCapacity(newSize)
-//	} else if rate > 0.9 && currentSize < a.maxSize {
-//		// High hit rate, grow cache
-//		newSize := currentSize * 2
-//		if newSize > a.maxSize {
-//			newSize = a.maxSize
-//		}
-//		a.cache.SetCapacity(newSize)
-//	}
-//}
