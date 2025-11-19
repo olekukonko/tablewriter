@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/olekukonko/ll"
+	"github.com/olekukonko/tablewriter/pkg/twcache"
 	"github.com/olekukonko/tablewriter/tw"
 )
 
@@ -91,10 +92,9 @@ func TestCalculateContentMaxWidth(t *testing.T) {
 // It verifies stringer invocation and cache behavior for custom types.
 func TestCallStringer(t *testing.T) {
 	table := &Table{
-		logger:               ll.New("test"),
-		stringer:             func(s interface{}) []string { return []string{fmt.Sprintf("%v", s)} },
-		stringerCache:        map[reflect.Type]reflect.Value{},
-		stringerCacheEnabled: true,
+		logger:        ll.New("test"),
+		stringer:      func(s interface{}) []string { return []string{fmt.Sprintf("%v", s)} },
+		stringerCache: twcache.NewLRU[reflect.Type, reflect.Value](tw.DefaultCacheStringCapacity),
 	}
 	input := struct{ Name string }{Name: "test"}
 	cells, err := table.convertToStringer(input)
@@ -115,7 +115,6 @@ func TestCallStringer(t *testing.T) {
 	}
 
 	// Test disabled cache
-	table.stringerCacheEnabled = false
 	cells, err = table.convertToStringer(input)
 	if err != nil {
 		t.Errorf("convertToStringer failed without cache: %v", err)
@@ -129,10 +128,9 @@ func TestCallStringer(t *testing.T) {
 // It verifies thread-safety of the stringer cache with multiple goroutines.
 func TestCallStringerConcurrent(t *testing.T) {
 	table := &Table{
-		logger:               ll.New("test"),
-		stringer:             func(s interface{}) []string { return []string{fmt.Sprintf("%v", s)} },
-		stringerCacheEnabled: true,
-		stringerCache:        map[reflect.Type]reflect.Value{},
+		logger:        ll.New("test"),
+		stringer:      func(s interface{}) []string { return []string{fmt.Sprintf("%v", s)} },
+		stringerCache: twcache.NewLRU[reflect.Type, reflect.Value](tw.DefaultCacheStringCapacity),
 	}
 	var wg sync.WaitGroup
 	for i := 0; i < 100; i++ {

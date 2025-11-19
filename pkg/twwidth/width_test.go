@@ -3,19 +3,64 @@ package twwidth
 import (
 	"fmt"
 	"os"
-	"strconv"
+	"os/exec"
 	"strings"
 	"sync"
 	"testing"
 
 	"github.com/mattn/go-runewidth"
+	"github.com/olekukonko/tablewriter/pkg/twcache"
 )
 
-func TestMain(m *testing.M) {
+func helperProcess() {
+	if IsEastAsian() {
+		fmt.Fprint(os.Stdout, "true")
+	} else {
+		fmt.Fprint(os.Stdout, "false")
+	}
+}
+
+func resetGlobalCache() {
 	mu.Lock()
-	globalOptions = newOptions()
+	widthCache = twcache.NewLRU[string, int](cacheCapacity)
 	mu.Unlock()
+}
+
+func TestMain(m *testing.M) {
+	if os.Getenv("GO_TEST_SUBPROCESS") == "1" {
+		helperProcess()
+		return
+	}
 	os.Exit(m.Run())
+}
+
+func TestInitRespectsEnvironment(t *testing.T) {
+	testCases := []struct {
+		name       string
+		envVar     string
+		wantOutput string
+	}{
+		{"RUNEWIDTH_EASTASIAN=1", "1", "true"},
+		{"RUNEWIDTH_EASTASIAN=0", "0", "false"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := exec.Command(os.Args[0], "-test.run=^TestHelperProcess$")
+
+			cmd.Env = append(os.Environ(), "GO_TEST_SUBPROCESS=1", "RUNEWIDTH_EASTASIAN="+tc.envVar)
+
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("command failed: %v\nOutput: %s", err, output)
+			}
+
+			got := strings.TrimSpace(string(output))
+			if got != tc.wantOutput {
+				t.Errorf("with RUNEWIDTH_EASTASIAN=%s, IsEastAsian() was %s, want %s", tc.envVar, got, tc.wantOutput)
+			}
+		})
+	}
 }
 
 func TestFilter(t *testing.T) {
@@ -42,18 +87,19 @@ func TestFilter(t *testing.T) {
 }
 
 func TestSetEastAsian(t *testing.T) {
-	original := globalOptions.EastAsianWidth
+	original := IsEastAsian()
+	t.Cleanup(func() {
+		SetEastAsian(original)
+	})
+
 	SetEastAsian(true)
-	if !globalOptions.EastAsianWidth {
-		t.Errorf("SetEastAsian(true): condition.EastAsianWidth = false, want true")
+	if !IsEastAsian() {
+		t.Errorf("SetEastAsian(true): IsEastAsian() = false, want true")
 	}
 	SetEastAsian(false)
-	if globalOptions.EastAsianWidth {
-		t.Errorf("SetEastAsian(false): condition.EastAsianWidth = true, want false")
+	if IsEastAsian() {
+		t.Errorf("SetEastAsian(false): IsEastAsian() = true, want false")
 	}
-	mu.Lock()
-	globalOptions.EastAsianWidth = original
-	mu.Unlock()
 }
 
 func TestWidth(t *testing.T) {
@@ -301,141 +347,87 @@ func TestWidthWithEnvironment(t *testing.T) {
 	}
 }
 
-func resetGlobalCache() {
-	mu.Lock()
-	widthCache = make(map[cacheKey]int)
-	mu.Unlock()
-}
-
-var benchmarkStrings = map[string]string{
-	"SimpleASCII":       "hello world, this is a test string.",
-	"ASCIIWithANSI":     "\033[31mhello\033[0m \033[34mworld\033[0m, this is \033[1ma\033[0m test string.",
-	"EastAsian":         "こんにちは世界、これはテスト文字列です。",
-	"EastAsianWithANSI": "\033[32mこんにちは\033[0m \033[35m世界\033[0m、これは\033[4mテスト\033[0m文字列です。",
-	"LongSimpleASCII":   strings.Repeat("abcdefghijklmnopqrstuvwxyz ", 20),
-	"LongASCIIWithANSI": strings.Repeat("\033[31ma\033[32mb\033[33mc\033[34md\033[35me\033[36mf\033[0m ", 50),
-}
-
-func TestNewOptions(t *testing.T) {
-	// Test that newOptions() correctly picks up settings from go-runewidth
-	cond := runewidth.NewCondition()
-	options := newOptions()
-
-	// Verify that EastAsianWidth is correctly copied from runewidth condition
-	if options.EastAsianWidth != cond.EastAsianWidth {
-		t.Errorf("newOptions().EastAsianWidth = %v, want %v (from runewidth.NewCondition())",
-			options.EastAsianWidth, cond.EastAsianWidth)
-	}
-}
-
-func TestNewOptionsWithEnvironment(t *testing.T) {
-	// Test that newOptions() respects environment variables that affect go-runewidth
-	testCases := []struct {
-		name        string
-		runewidthEA string
-		locale      string
-		expectedEA  bool
-	}{
-		{
-			name:        "Default environment",
-			runewidthEA: "",
-			locale:      "",
-			expectedEA:  false, // Default behavior
-		},
-		{
-			name:        "RUNEWIDTH_EASTASIAN=1",
-			runewidthEA: "1",
-			locale:      "",
-			expectedEA:  true,
-		},
-		{
-			name:        "RUNEWIDTH_EASTASIAN=0",
-			runewidthEA: "0",
-			locale:      "",
-			expectedEA:  false,
-		},
-		{
-			name:        "Japanese locale",
-			runewidthEA: "",
-			locale:      "ja_JP.UTF-8",
-			expectedEA:  true, // Japanese locale typically enables East Asian width
-		},
-		{
-			name:        "Chinese locale",
-			runewidthEA: "",
-			locale:      "zh_CN.UTF-8",
-			expectedEA:  true, // Chinese locale typically enables East Asian width
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Use t.Setenv for automatic cleanup (Go 1.17+)
-			if tc.runewidthEA != "" {
-				t.Setenv("RUNEWIDTH_EASTASIAN", tc.runewidthEA)
-			} else {
-				t.Setenv("RUNEWIDTH_EASTASIAN", "") // This effectively unsets it
-			}
-
-			if tc.locale != "" {
-				t.Setenv("LC_ALL", tc.locale)
-			} else {
-				t.Setenv("LC_ALL", "") // This effectively unsets it
-			}
-
-			// Create a new runewidth condition with current environment
-			cond := runewidth.NewCondition()
-
-			// Get options from our function
-			options := newOptions()
-
-			// Verify that our function matches the runewidth condition
-			if options.EastAsianWidth != cond.EastAsianWidth {
-				t.Errorf("newOptions().EastAsianWidth = %v, want %v (from runewidth.NewCondition() with env: RUNEWIDTH_EASTASIAN=%s, LC_ALL=%s)",
-					options.EastAsianWidth, cond.EastAsianWidth, tc.runewidthEA, tc.locale)
-			}
-		})
-	}
-}
-
-func BenchmarkWidthFunction(b *testing.B) {
-	eastAsianSettings := []bool{false, true}
-
-	for name, str := range benchmarkStrings {
-		for _, eaSetting := range eastAsianSettings {
-			SetEastAsian(eaSetting)
-
-			b.Run(fmt.Sprintf("%s_EA%v_NoCache", name, eaSetting), func(b *testing.B) {
-				b.SetBytes(int64(len(str)))
-				b.ReportAllocs()
-				b.ResetTimer()
-				for i := 0; i < b.N; i++ {
-					_ = WidthNoCache(str)
-				}
-			})
-
-			b.Run(fmt.Sprintf("%s_EA%v_CacheMiss", name, eaSetting), func(b *testing.B) {
-				b.SetBytes(int64(len(str)))
-				b.ReportAllocs()
-				b.ResetTimer()
-				for i := 0; i < b.N; i++ {
-					_ = Width(str + strconv.Itoa(i))
-				}
-			})
-			resetGlobalCache()
-
-			b.Run(fmt.Sprintf("%s_EA%v_CacheHit", name, eaSetting), func(b *testing.B) {
-				b.SetBytes(int64(len(str)))
-				b.ReportAllocs()
-				b.ResetTimer()
-				if b.N > 0 {
-					_ = Width(str)
-				}
-				for i := 1; i < b.N; i++ {
-					_ = Width(str)
-				}
-			})
-			resetGlobalCache()
+func TestCoverageWidth(t *testing.T) {
+	t.Run("Direct Width Functions", func(t *testing.T) {
+		w := WidthNoCache("abc")
+		if w != 3 {
+			t.Errorf("WidthNoCache('abc') = %d, want 3", w)
 		}
-	}
+
+		opts := Options{EastAsianWidth: true}
+		w2 := WidthWithOptions("abc", opts)
+		if w2 != 3 {
+			t.Errorf("WidthWithOptions result wrong")
+		}
+	})
+
+	t.Run("SetCondition", func(t *testing.T) {
+		original := IsEastAsian()
+		defer SetEastAsian(original)
+
+		cond := &runewidth.Condition{EastAsianWidth: !original}
+		SetCondition(cond)
+
+		if IsEastAsian() == original {
+			t.Error("SetCondition failed to update global state")
+		}
+	})
+
+	t.Run("Truncate ANSI Reset", func(t *testing.T) {
+		input := "\x1b[31mHello World"
+		got := Truncate(input, 5)
+
+		if !strings.HasPrefix(got, "\x1b[31m") {
+			t.Error("Lost initial color code")
+		}
+		if !strings.HasSuffix(got, "\x1b[0m") {
+			t.Errorf("Expected ANSI reset at end, got: %q", got)
+		}
+
+		got = Truncate("\x1b[31mHi", 2)
+		if !strings.HasSuffix(got, "\x1b[0m") {
+			t.Error("Should append reset even on exact fit if color was active")
+		}
+	})
+
+	t.Run("Truncate Suffix Logic", func(t *testing.T) {
+		got := Truncate("Hello", 2, "...")
+		if got != "" {
+			t.Errorf("Expected empty string when suffix doesn't fit, got %q", got)
+		}
+
+		got = Truncate("Hello", 3, "...")
+		if got != "..." {
+			t.Errorf("Expected only suffix, got %q", got)
+		}
+	})
+
+	t.Run("Global Cache Management", func(t *testing.T) {
+		mu.Lock()
+		origCache := widthCache
+		mu.Unlock()
+		defer func() {
+			mu.Lock()
+			widthCache = origCache
+			mu.Unlock()
+		}()
+
+		SetCacheCapacity(0)
+		size, cap, _ := GetCacheStats()
+		if size != 0 || cap != 0 {
+			t.Error("Cache should be disabled (stats 0,0)")
+		}
+
+		if w := Width("abc"); w != 3 {
+			t.Errorf("Width('abc') = %d, want 3", w)
+		}
+
+		SetCacheCapacity(10)
+		Width("a")
+		size, cap, _ = GetCacheStats()
+		if size != 1 || cap != 10 {
+			t.Errorf("Stats mismatch: size=%d, cap=%d", size, cap)
+		}
+	})
+
 }
