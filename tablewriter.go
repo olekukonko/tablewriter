@@ -52,7 +52,7 @@ type Table struct {
 	streamRowCounter        int                           // Counter for rows rendered in streaming mode (0-indexed logical rows)
 
 	// cache
-	stringerCache tw.Cache[reflect.Type, reflect.Value] // Cache for stringer reflection
+	stringerCache twcache.Cache[reflect.Type, reflect.Value] // Cache for stringer reflection
 
 	batchRenderNumCols      int
 	isBatchRenderNumColsSet bool

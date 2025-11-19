@@ -498,7 +498,7 @@ func WithStringerCache() Option {
 
 // WithStringerCacheCustom enables caching for the stringer function using a specific implementation.
 // Passing nil disables caching entirely.
-func WithStringerCacheCustom(cache tw.Cache[reflect.Type, reflect.Value]) Option {
+func WithStringerCacheCustom(cache twcache.Cache[reflect.Type, reflect.Value]) Option {
 	return func(t *Table) {
 		if cache == nil {
 			t.stringerCache = nil
