@@ -8,6 +8,7 @@ import (
 
 	"github.com/clipperhouse/displaywidth"
 	"github.com/mattn/go-runewidth"
+	"github.com/olekukonko/tablewriter/pkg/twcache"
 )
 
 const (
@@ -29,7 +30,7 @@ var globalOptions Options
 var mu sync.Mutex
 
 // widthCache stores memoized results of Width calculations to improve performance.
-var widthCache *lruCache
+var widthCache *twcache.LRU[string, int]
 
 // ansi is a compiled regular expression for stripping ANSI escape codes from strings.
 var ansi = Filter()
@@ -41,17 +42,17 @@ func init() {
 	globalOptions = Options{
 		EastAsianWidth: cond.EastAsianWidth,
 	}
-	widthCache = newLRUCache(cacheCapacity)
+	widthCache = twcache.NewLRU[string, int](cacheCapacity)
 }
 
 // makeCacheKey generates a string key for the LRU cache from the input string
 // and the current East Asian width setting.
 // Prefix "0:" for false, "1:" for true.
-func makeCacheKey(str string, eastAsianWidth bool) lruCacheKey {
+func makeCacheKey(str string, eastAsianWidth bool) string {
 	if eastAsianWidth {
-		return lruCacheKey(cacheEastAsianPrefix + str)
+		return cacheEastAsianPrefix + str
 	}
-	return lruCacheKey(cachePrefix + str)
+	return cachePrefix + str
 }
 
 // Filter compiles and returns a regular expression for matching ANSI escape sequences,
@@ -79,7 +80,7 @@ func SetOptions(opts Options) {
 	defer mu.Unlock()
 	if globalOptions.EastAsianWidth != opts.EastAsianWidth {
 		globalOptions = opts
-		widthCache.Clear()
+		widthCache.Purge()
 	}
 }
 
@@ -115,7 +116,7 @@ func SetCondition(cond *runewidth.Condition) {
 	newEastAsianWidth := cond.EastAsianWidth
 	if globalOptions.EastAsianWidth != newEastAsianWidth {
 		globalOptions.EastAsianWidth = newEastAsianWidth
-		widthCache.Clear()
+		widthCache.Purge()
 	}
 }
 
@@ -138,7 +139,7 @@ func Width(str string) int {
 	stripped := ansi.ReplaceAllLiteralString(str, "")
 	calculatedWidth := opts.String(stripped)
 
-	widthCache.Put(key, calculatedWidth)
+	widthCache.Add(key, calculatedWidth)
 	return calculatedWidth
 }
 
@@ -214,15 +215,22 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 	// Case 3: String fits completely or fits with suffix.
 	// Here, maxWidth is the total budget for the line.
 	if sDisplayWidth <= maxWidth {
+		// If the string contains ANSI, we must ensure it ends with a reset
+		// to prevent bleeding, even if we don't truncate.
+		safeS := s
+		if strings.Contains(s, "\x1b") && !strings.HasSuffix(s, "\x1b[0m") {
+			safeS += "\x1b[0m"
+		}
+
 		if len(suffixStr) == 0 { // No suffix.
-			return s
+			return safeS
 		}
 		// Suffix is provided. Check if s + suffix fits.
 		if sDisplayWidth+suffixDisplayWidth <= maxWidth {
-			return s + suffixStr
+			return safeS + suffixStr
 		}
-		// s fits, but s + suffix is too long. Return s.
-		return s
+		// s fits, but s + suffix is too long. Return s (with reset if needed).
+		return safeS
 	}
 
 	// Case 4: String needs truncation (sDisplayWidth > maxWidth).
@@ -311,31 +319,24 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 
 	result := contentBuf.String()
 
-	// Suffix is added if:
-	// 1. A suffix string is provided.
-	// 2. Truncation actually happened (sDisplayWidth > maxWidth originally)
-	//    OR if the content part is empty but a suffix is meant to be shown
-	//    (e.g. targetContentForIteration was 0).
-	if len(suffixStr) > 0 {
-		// Add suffix if we are in the truncation path (sDisplayWidth > maxWidth)
-		// OR if targetContentForIteration was 0 (meaning only suffix should be shown)
-		// but we must ensure we don't exceed original maxWidth.
-		// The logic above for targetContentForIteration already ensures space.
-
-		needsReset := false
-		// Condition for reset: if styling was active in 's' and might affect suffix
-		if (ansiWrittenToContent || (inAnsiSequence && strings.Contains(s, "\x1b["))) && (currentContentDisplayWidth > 0 || ansiWrittenToContent) {
-			if !strings.HasSuffix(result, "\x1b[0m") {
-				needsReset = true
-			}
-		} else if currentContentDisplayWidth > 0 && strings.Contains(result, "\x1b[") && !strings.HasSuffix(result, "\x1b[0m") && strings.Contains(s, "\x1b[") {
-			// If result has content and ANSI, and original had ANSI, and result not already reset
+	// Determine if we need to append a reset sequence to prevent color bleeding.
+	// This is needed if we wrote any ANSI codes or if the input had active codes
+	// that we might have cut off or left open.
+	needsReset := false
+	if (ansiWrittenToContent || (inAnsiSequence && strings.Contains(s, "\x1b["))) && (currentContentDisplayWidth > 0 || ansiWrittenToContent) {
+		if !strings.HasSuffix(result, "\x1b[0m") {
 			needsReset = true
 		}
+	} else if currentContentDisplayWidth > 0 && strings.Contains(result, "\x1b[") && !strings.HasSuffix(result, "\x1b[0m") && strings.Contains(s, "\x1b[") {
+		needsReset = true
+	}
 
-		if needsReset {
-			result += "\x1b[0m"
-		}
+	if needsReset {
+		result += "\x1b[0m"
+	}
+
+	// Suffix is added if provided.
+	if len(suffixStr) > 0 {
 		result += suffixStr
 	}
 	return result
@@ -348,11 +349,12 @@ func SetCacheCapacity(capacity int) {
 	defer mu.Unlock()
 
 	if capacity <= 0 {
-		widthCache = newLRUCache(0) // disabled
+		widthCache = nil // nil = fully disabled
 		return
 	}
 
-	widthCache = newLRUCache(capacity)
+	newCache := twcache.NewLRU[string, int](capacity)
+	widthCache = newCache
 }
 
 // GetCacheStats returns current cache statistics

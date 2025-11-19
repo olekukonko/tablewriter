@@ -4,19 +4,29 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
 
 	"github.com/mattn/go-runewidth"
+	"github.com/olekukonko/tablewriter/pkg/twcache"
 )
 
-// TestMain is the entry point for tests. It includes special logic to handle
-// re-executing the test binary as a sub-process. This is the standard pattern
-// for testing environment-dependent init() functions.
+func helperProcess() {
+	if IsEastAsian() {
+		fmt.Fprint(os.Stdout, "true")
+	} else {
+		fmt.Fprint(os.Stdout, "false")
+	}
+}
+
+func resetGlobalCache() {
+	mu.Lock()
+	widthCache = twcache.NewLRU[string, int](cacheCapacity)
+	mu.Unlock()
+}
+
 func TestMain(m *testing.M) {
-	// Check if we are in the sub-process execution.
 	if os.Getenv("GO_TEST_SUBPROCESS") == "1" {
 		helperProcess()
 		return
@@ -24,14 +34,32 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// helperProcess is run when the test is executed as a sub-process.
-// It checks the initial state of IsEastAsian() (which is set by init())
-// and prints it to stdout for the parent test process to capture.
-func helperProcess() {
-	if IsEastAsian() {
-		fmt.Fprint(os.Stdout, "true")
-	} else {
-		fmt.Fprint(os.Stdout, "false")
+func TestInitRespectsEnvironment(t *testing.T) {
+	testCases := []struct {
+		name       string
+		envVar     string
+		wantOutput string
+	}{
+		{"RUNEWIDTH_EASTASIAN=1", "1", "true"},
+		{"RUNEWIDTH_EASTASIAN=0", "0", "false"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := exec.Command(os.Args[0], "-test.run=^TestHelperProcess$")
+
+			cmd.Env = append(os.Environ(), "GO_TEST_SUBPROCESS=1", "RUNEWIDTH_EASTASIAN="+tc.envVar)
+
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("command failed: %v\nOutput: %s", err, output)
+			}
+
+			got := strings.TrimSpace(string(output))
+			if got != tc.wantOutput {
+				t.Errorf("with RUNEWIDTH_EASTASIAN=%s, IsEastAsian() was %s, want %s", tc.envVar, got, tc.wantOutput)
+			}
+		})
 	}
 }
 
@@ -59,7 +87,6 @@ func TestFilter(t *testing.T) {
 }
 
 func TestSetEastAsian(t *testing.T) {
-	// Defer restoring the original state to ensure other tests are not affected.
 	original := IsEastAsian()
 	t.Cleanup(func() {
 		SetEastAsian(original)
@@ -320,94 +347,87 @@ func TestWidthWithEnvironment(t *testing.T) {
 	}
 }
 
-func resetGlobalCache() {
-	mu.Lock()
-	widthCache = newLRUCache(cacheCapacity)
-	mu.Unlock()
-}
-
-var benchmarkStrings = map[string]string{
-	"SimpleASCII":       "hello world, this is a test string.",
-	"ASCIIWithANSI":     "\033[31mhello\033[0m \033[34mworld\033[0m, this is \033[1ma\033[0m test string.",
-	"EastAsian":         "こんにちは世界、これはテスト文字列です。",
-	"EastAsianWithANSI": "\033[32mこんにちは\033[0m \033[35m世界\033[0m、これは\033[4mテスト\033[0m文字列です。",
-	"LongSimpleASCII":   strings.Repeat("abcdefghijklmnopqrstuvwxyz ", 20),
-	"LongASCIIWithANSI": strings.Repeat("\033[31ma\033[32mb\033[33mc\033[34md\033[35me\033[36mf\033[0m ", 50),
-}
-
-// TestInitRespectsEnvironment verifies that the package's init() function
-// correctly reads environment variables like RUNEWIDTH_EASTASIAN.
-func TestInitRespectsEnvironment(t *testing.T) {
-	testCases := []struct {
-		name       string
-		envVar     string
-		wantOutput string
-	}{
-		{"RUNEWIDTH_EASTASIAN=1", "1", "true"},
-		{"RUNEWIDTH_EASTASIAN=0", "0", "false"},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Get the path to the current test binary.
-			// This ensures the sub-process runs TestMain (which we need), but doesn't
-			// re-run this same test, which would cause an infinite loop.
-			cmd := exec.Command(os.Args[0], "-test.run=^TestHelperProcess$")
-
-			// Set the environment for the sub-process.
-			cmd.Env = append(os.Environ(), "GO_TEST_SUBPROCESS=1", "RUNEWIDTH_EASTASIAN="+tc.envVar)
-
-			output, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatalf("command failed: %v\nOutput: %s", err, output)
-			}
-
-			got := strings.TrimSpace(string(output))
-			if got != tc.wantOutput {
-				t.Errorf("with RUNEWIDTH_EASTASIAN=%s, IsEastAsian() was %s, want %s", tc.envVar, got, tc.wantOutput)
-			}
-		})
-	}
-}
-
-func BenchmarkWidthFunction(b *testing.B) {
-	eastAsianSettings := []bool{false, true}
-
-	for name, str := range benchmarkStrings {
-		for _, eaSetting := range eastAsianSettings {
-			SetEastAsian(eaSetting)
-
-			b.Run(fmt.Sprintf("%s_EA%v_NoCache", name, eaSetting), func(b *testing.B) {
-				b.SetBytes(int64(len(str)))
-				b.ReportAllocs()
-				b.ResetTimer()
-				for i := 0; i < b.N; i++ {
-					_ = WidthNoCache(str)
-				}
-			})
-
-			b.Run(fmt.Sprintf("%s_EA%v_CacheMiss", name, eaSetting), func(b *testing.B) {
-				b.SetBytes(int64(len(str)))
-				b.ReportAllocs()
-				b.ResetTimer()
-				for i := 0; i < b.N; i++ {
-					_ = Width(str + strconv.Itoa(i))
-				}
-			})
-			resetGlobalCache()
-
-			b.Run(fmt.Sprintf("%s_EA%v_CacheHit", name, eaSetting), func(b *testing.B) {
-				b.SetBytes(int64(len(str)))
-				b.ReportAllocs()
-				b.ResetTimer()
-				if b.N > 0 {
-					_ = Width(str)
-				}
-				for i := 1; i < b.N; i++ {
-					_ = Width(str)
-				}
-			})
-			resetGlobalCache()
+func TestCoverageWidth(t *testing.T) {
+	t.Run("Direct Width Functions", func(t *testing.T) {
+		w := WidthNoCache("abc")
+		if w != 3 {
+			t.Errorf("WidthNoCache('abc') = %d, want 3", w)
 		}
-	}
+
+		opts := Options{EastAsianWidth: true}
+		w2 := WidthWithOptions("abc", opts)
+		if w2 != 3 {
+			t.Errorf("WidthWithOptions result wrong")
+		}
+	})
+
+	t.Run("SetCondition", func(t *testing.T) {
+		original := IsEastAsian()
+		defer SetEastAsian(original)
+
+		cond := &runewidth.Condition{EastAsianWidth: !original}
+		SetCondition(cond)
+
+		if IsEastAsian() == original {
+			t.Error("SetCondition failed to update global state")
+		}
+	})
+
+	t.Run("Truncate ANSI Reset", func(t *testing.T) {
+		input := "\x1b[31mHello World"
+		got := Truncate(input, 5)
+
+		if !strings.HasPrefix(got, "\x1b[31m") {
+			t.Error("Lost initial color code")
+		}
+		if !strings.HasSuffix(got, "\x1b[0m") {
+			t.Errorf("Expected ANSI reset at end, got: %q", got)
+		}
+
+		got = Truncate("\x1b[31mHi", 2)
+		if !strings.HasSuffix(got, "\x1b[0m") {
+			t.Error("Should append reset even on exact fit if color was active")
+		}
+	})
+
+	t.Run("Truncate Suffix Logic", func(t *testing.T) {
+		got := Truncate("Hello", 2, "...")
+		if got != "" {
+			t.Errorf("Expected empty string when suffix doesn't fit, got %q", got)
+		}
+
+		got = Truncate("Hello", 3, "...")
+		if got != "..." {
+			t.Errorf("Expected only suffix, got %q", got)
+		}
+	})
+
+	t.Run("Global Cache Management", func(t *testing.T) {
+		mu.Lock()
+		origCache := widthCache
+		mu.Unlock()
+		defer func() {
+			mu.Lock()
+			widthCache = origCache
+			mu.Unlock()
+		}()
+
+		SetCacheCapacity(0)
+		size, cap, _ := GetCacheStats()
+		if size != 0 || cap != 0 {
+			t.Error("Cache should be disabled (stats 0,0)")
+		}
+
+		if w := Width("abc"); w != 3 {
+			t.Errorf("Width('abc') = %d, want 3", w)
+		}
+
+		SetCacheCapacity(10)
+		Width("a")
+		size, cap, _ = GetCacheStats()
+		if size != 1 || cap != 10 {
+			t.Errorf("Stats mismatch: size=%d, cap=%d", size, cap)
+		}
+	})
+
 }
