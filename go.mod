@@ -3,12 +3,12 @@ module github.com/olekukonko/tablewriter
 go 1.21
 
 require (
-	github.com/clipperhouse/displaywidth v0.5.0
+	github.com/clipperhouse/displaywidth v0.6.0
 	github.com/clipperhouse/uax29/v2 v2.3.0
 	github.com/fatih/color v1.15.0
 	github.com/mattn/go-runewidth v0.0.19
 	github.com/olekukonko/errors v1.1.0
-	github.com/olekukonko/ll v0.1.2
+	github.com/olekukonko/ll v0.1.3
 	github.com/olekukonko/ts v0.0.0-20171002115256-78ecb04241c0
 )
 
