@@ -232,7 +232,6 @@ func (c *LRU[K, V]) RemoveOldest() (key K, value V, ok bool) {
 	value = c.tail.value
 
 	c.removeOldest()
-
 	return key, value, true
 }
 
@@ -256,6 +255,7 @@ func (c *LRU[K, V]) addToFront(e *entry[K, V]) {
 	if c.tail == nil {
 		c.tail = e
 	}
+
 }
 
 // removeNode removes an entry from the linked list.

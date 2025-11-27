@@ -8,7 +8,7 @@ require (
 	github.com/fatih/color v1.15.0
 	github.com/mattn/go-runewidth v0.0.19
 	github.com/olekukonko/errors v1.1.0
-	github.com/olekukonko/ll v0.1.2
+	github.com/olekukonko/ll v0.1.3
 	github.com/olekukonko/ts v0.0.0-20171002115256-78ecb04241c0
 )
 
