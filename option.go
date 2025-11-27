@@ -655,15 +655,20 @@ func WithRendition(rendition tw.Rendition) Option {
 }
 
 // WithEastAsian configures the global East Asian width calculation setting.
-//   - enable=true: Enables East Asian width calculations. CJK and ambiguous characters
+//   - state=tw.On: Enables East Asian width calculations. CJK and ambiguous characters
 //     are typically measured as double width.
-//   - enable=false: Disables East Asian width calculations. Characters are generally
+//   - state=tw.Off: Disables East Asian width calculations. Characters are generally
 //     measured as single width, subject to Unicode standards.
 //
 // This setting affects all subsequent display width calculations using the twdw package.
-func WithEastAsian(enable bool) Option {
+func WithEastAsian(state tw.State) Option {
 	return func(target *Table) {
-		twwidth.SetEastAsian(enable)
+		if state.Enabled() {
+			twwidth.SetEastAsian(true)
+		}
+		if state.Disabled() {
+			twwidth.SetEastAsian(false)
+		}
 	}
 }
 
