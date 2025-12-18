@@ -3,13 +3,9 @@ ASCII Table Writer Tool
 
 Generate ASCII table on the fly via command line ...  Installation is simple as
 
-#### Get Tool
-
-    go get  github.com/olekukonko/tablewriter/csv2table
-
 #### Install Tool
 
-    go install  github.com/olekukonko/tablewriter/csv2table
+    go install github.com/olekukonko/tablewriter/cmd/csv2table@latest
 
 
 #### Usage

@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Build binaries
+        run: |
+          # Windows
+          GOOS=windows GOARCH=amd64 go build -o csv2table-windows-amd64.exe ./cmd/csv2table
+          GOOS=windows GOARCH=arm64 go build -o csv2table-windows-arm64.exe ./cmd/csv2table
+          
+          # Linux
+          GOOS=linux GOARCH=amd64 go build -o csv2table-linux-amd64 ./cmd/csv2table
+          GOOS=linux GOARCH=arm64 go build -o csv2table-linux-arm64 ./cmd/csv2table
+          
+          # macOS
+          GOOS=darwin GOARCH=amd64 go build -o csv2table-darwin-amd64 ./cmd/csv2table
+          GOOS=darwin GOARCH=arm64 go build -o csv2table-darwin-arm64 ./cmd/csv2table
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            csv2table-windows-amd64.exe
+            csv2table-windows-arm64.exe
+            csv2table-linux-amd64
+            csv2table-linux-arm64
+            csv2table-darwin-amd64
+            csv2table-darwin-arm64
+          draft: false
+          prerelease: false
