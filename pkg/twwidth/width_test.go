@@ -423,7 +423,7 @@ func TestCoverageWidth(t *testing.T) {
 		}
 
 		SetCacheCapacity(10)
-		Width("a")
+		Width("ab")
 		size, cap, _ = GetCacheStats()
 		if size != 1 || cap != 10 {
 			t.Errorf("Stats mismatch: size=%d, cap=%d", size, cap)
