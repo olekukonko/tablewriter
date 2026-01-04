@@ -148,8 +148,8 @@ func SetEastAsian(enable bool) {
 	SetOptions(Options{EastAsianWidth: enable})
 }
 
-// SetNarrowBorders to preserve the new flag, or create a new setter
-func SetNarrowBorders(enable bool) {
+// SetForceNarrow to preserve the new flag, or create a new setter
+func SetForceNarrow(enable bool) {
 	mu.Lock()
 	defer mu.Unlock()
 	globalOptions.ForceNarrowBorders = enable
