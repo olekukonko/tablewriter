@@ -672,6 +672,28 @@ func WithEastAsian(state tw.State) Option {
 	}
 }
 
+// WithAutoEastAsian automatically configures East Asian width calculations
+// by detecting the user's environment locale (LC_ALL, LANG, etc).
+//
+// If CJK (Chinese/Japanese/Korean) environment is detected, it enables
+// EastAsian formatting (tw.On). Otherwise, it defaults to off.
+func WithAutoEastAsian() Option {
+	return func(target *Table) {
+		if twwidth.AutoUseEastAsian() {
+			// Reuse the logic from WithEastAsian
+			twwidth.SetEastAsian(true)
+			if target.logger != nil {
+				target.logger.Debug("Option: WithAutoEastAsian enabled (CJK Locale detected)")
+			}
+		} else {
+			twwidth.SetEastAsian(false)
+			if target.logger != nil {
+				target.logger.Debug("Option: WithAutoEastAsian disabled (Non-CJK Locale detected)")
+			}
+		}
+	}
+}
+
 // WithSymbols sets the symbols used for drawing table borders and separators.
 // The symbols are applied to the table's renderer configuration, if a renderer is set.
 // If no renderer is set (target.renderer is nil), this option has no effect. .
