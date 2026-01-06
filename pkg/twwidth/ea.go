@@ -48,6 +48,15 @@ const (
 	EnvVTEVersion         = "VTE_VERSION"   // GNOME/VTE
 )
 
+const (
+	overwriteOn  = "override_on"
+	overwriteOff = "override_off"
+
+	envModern = "modern_env"
+	envCjk    = "locale_cjk"
+	envAscii  = "default_ascii"
+)
+
 // CJK Language Codes (Prefixes)
 // Covers ISO 639-1 (2-letter) and common full names used in some systems.
 var cjkPrefixes = []string{
@@ -133,9 +142,9 @@ func EastAsianForceLegacy(force bool) {
 	forceLegacyEastAsian = force
 }
 
-// EastAsian checks the environment variables to determine if
+// EastAsianDetect checks the environment variables to determine if
 // East Asian width calculations should be enabled.
-func EastAsian() bool {
+func EastAsianDetect() bool {
 	eastAsianOnce.Do(func() {
 		eastAsianVal = detectEastAsian()
 	})
@@ -166,9 +175,9 @@ func EastAsianMode() string {
 	// Check override
 	if val, found := checkOverrides(); found {
 		if val {
-			return "override_on"
+			return overwriteOn
 		}
-		return "override_off"
+		return overwriteOff
 	}
 
 	cfgMu.RLock()
@@ -177,20 +186,20 @@ func EastAsianMode() string {
 
 	if legacy {
 		if checkLocale() {
-			return "legacy_cjk"
+			return envCjk
 		}
-		return "legacy_ascii"
+		return envAscii
 	}
 
 	if isModernEnvironment() {
-		return "modern_env"
+		return envModern
 	}
 
 	if checkLocale() {
-		return "locale_cjk"
+		return envCjk
 	}
 
-	return "default_ascii"
+	return envAscii
 }
 
 // Debugging returns detailed information about the detection decision.
@@ -203,7 +212,7 @@ func Debugging() Detection {
 	cfgMu.RUnlock()
 
 	return Detection{
-		AutoUseEastAsian: EastAsian(),
+		AutoUseEastAsian: EastAsianDetect(),
 		DetectionMode:    EastAsianMode(),
 		Raw: Enviroment{
 			GOOS:                runtime.GOOS,

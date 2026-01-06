@@ -171,7 +171,7 @@ func TestAutoUseEastAsian_Cache(t *testing.T) {
 	// is fresh. This test is best effort to ensure stability.
 
 	// Snapshot Result
-	firstResult := EastAsian()
+	firstResult := EastAsianDetect()
 
 	// Change Environmental factors to the OPPOSITE of what triggered firstResult
 	if firstResult {
@@ -190,9 +190,9 @@ func TestAutoUseEastAsian_Cache(t *testing.T) {
 	}()
 
 	// Second call
-	secondResult := EastAsian()
+	secondResult := EastAsianDetect()
 
 	if firstResult != secondResult {
-		t.Errorf("EastAsian() did not cache result. First=%v, Second=%v", firstResult, secondResult)
+		t.Errorf("EastAsianDetect() did not cache result. First=%v, Second=%v", firstResult, secondResult)
 	}
 }

@@ -40,7 +40,7 @@ var widthCache *twcache.LRU[string, int]
 var ansi = Filter()
 
 func init() {
-	isEastAsian := EastAsian()
+	isEastAsian := EastAsianDetect()
 
 	cond := runewidth.NewCondition()
 	cond.EastAsianWidth = isEastAsian
@@ -246,7 +246,7 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 	// maxWidth is the total budget for the final string (content + suffix).
 	currentGlobalEastAsianWidth := IsEastAsian()
 
-	// Special case for EastAsian true: if only suffix fits, return suffix.
+	// Special case for EastAsianDetect true: if only suffix fits, return suffix.
 	// This was derived from previous test behavior.
 	if len(suffixStr) > 0 && currentGlobalEastAsianWidth {
 		provisionalContentWidth := maxWidth - suffixDisplayWidth
@@ -383,7 +383,7 @@ func Width(str string) int {
 		if len(r) == 1 {
 			if r[0] >= 0x2500 && r[0] <= 0x257F {
 				// We don't cache this specific case to keep logic simple,
-				// and it's fast enough. Or you can add to cache if desired.
+				// and it's fast enough.
 				return 1
 			}
 		}
