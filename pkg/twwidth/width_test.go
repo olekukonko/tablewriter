@@ -431,3 +431,27 @@ func TestCoverageWidth(t *testing.T) {
 	})
 
 }
+
+func TestBug_ForceNarrow_MultiChar(t *testing.T) {
+	// Setup the specific condition causing the bug:
+	// EastAsianWidth is ON (simulating RUNEWIDTH_EASTASIAN=1)
+	// ForceNarrowBorders is ON (simulating Modern Terminal detection)
+	buggyOptions := Options{
+		EastAsianWidth:     true,
+		ForceNarrowBorders: true,
+	}
+	SetOptions(buggyOptions)
+
+	// Define a border string commonly used by the renderer (length > 1)
+	// The current bug fails because it only checks len(r) == 1
+	input := "─────" // 5 chars
+	want := 5        // Should be 5 width (1 per char)
+
+	// 3. Measure
+	got := Width(input)
+
+	// 4. Assert
+	if got != want {
+		t.Fatalf("Regression found: ForceNarrowBorders failed on multi-char string.\nInput: %q\nGot Width: %d (Likely Double Width)\nWant Width: %d", input, got, want)
+	}
+}

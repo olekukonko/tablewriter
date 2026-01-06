@@ -1,3 +1,4 @@
+// width.go
 package twwidth
 
 import (
@@ -174,7 +175,7 @@ func SetForceNarrow(enable bool) {
 func SetOptions(opts Options) {
 	mu.Lock()
 	defer mu.Unlock()
-	if globalOptions.EastAsianWidth != opts.EastAsianWidth {
+	if globalOptions.EastAsianWidth != opts.EastAsianWidth || globalOptions.ForceNarrowBorders != opts.ForceNarrowBorders {
 		globalOptions = opts
 		widthCache.Purge()
 	}
@@ -244,11 +245,13 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 
 	// Case 4: String needs truncation (sDisplayWidth > maxWidth).
 	// maxWidth is the total budget for the final string (content + suffix).
-	currentGlobalEastAsianWidth := IsEastAsian()
+	mu.Lock()
+	currentOpts := globalOptions
+	mu.Unlock()
 
 	// Special case for EastAsianDetect true: if only suffix fits, return suffix.
 	// This was derived from previous test behavior.
-	if len(suffixStr) > 0 && currentGlobalEastAsianWidth {
+	if len(suffixStr) > 0 && currentOpts.EastAsianWidth {
 		provisionalContentWidth := maxWidth - suffixDisplayWidth
 		if provisionalContentWidth == 0 { // Exactly enough space for suffix only
 			return suffixStr
@@ -279,8 +282,6 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 	var ansiSeqBuf bytes.Buffer
 	inAnsiSequence := false
 	ansiWrittenToContent := false
-
-	dwOpts := displaywidth.Options{EastAsianWidth: currentGlobalEastAsianWidth}
 
 	for _, r := range s {
 		if r == '\x1b' {
@@ -314,7 +315,7 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 				ansiSeqBuf.Reset()
 			}
 		} else { // Normal character
-			runeDisplayWidth := dwOpts.Rune(r)
+			runeDisplayWidth := calculateRunewidth(r, currentOpts)
 			if targetContentForIteration == 0 { // No budget for content at all
 				break
 			}
@@ -364,35 +365,23 @@ func Width(str string) int {
 		return 1
 	}
 
-	currentEA := IsEastAsian()
-	key := makeCacheKey(str, currentEA)
+	mu.Lock()
+	currentOpts := globalOptions
+	mu.Unlock()
+
+	key := makeCacheKey(str, currentOpts.EastAsianWidth)
 
 	// Check Cache (Optimization)
 	if w, found := widthCache.Get(key); found {
 		return w
 	}
 
-	// ForceNarrowBorders Check (Safety Fix - Allocates []rune)
-	// We check this AFTER cache miss so we don't slow down cached non-border strings.
-	mu.Lock()
-	forceNarrow := globalOptions.ForceNarrowBorders
-	mu.Unlock()
-
-	if forceNarrow {
-		r := []rune(str)
-		if len(r) == 1 {
-			if r[0] >= 0x2500 && r[0] <= 0x257F {
-				// We don't cache this specific case to keep logic simple,
-				// and it's fast enough.
-				return 1
-			}
-		}
-	}
-
-	// Heavy Calculation (Go-Runewidth)
-	opts := displaywidth.Options{EastAsianWidth: currentEA}
 	stripped := ansi.ReplaceAllLiteralString(str, "")
-	calculatedWidth := opts.String(stripped)
+	calculatedWidth := 0
+
+	for _, r := range stripped {
+		calculatedWidth += calculateRunewidth(r, currentOpts)
+	}
 
 	// Store in Cache
 	widthCache.Add(key, calculatedWidth)
@@ -408,14 +397,36 @@ func WidthNoCache(str string) int {
 	// This function's behavior is equivalent to a one-shot calculation
 	// using the current global options. The WidthWithOptions function
 	// does not interact with the cache, thus fulfilling the requirement.
-	return WidthWithOptions(str, Options{EastAsianWidth: IsEastAsian()})
+	mu.Lock()
+	opts := globalOptions
+	mu.Unlock()
+	return WidthWithOptions(str, opts)
 }
 
 // WidthWithOptions calculates the visual width of a string with specific options,
 // bypassing the global settings and cache. This is useful for one-shot calculations
 // where global state is not desired.
 func WidthWithOptions(str string, opts Options) int {
-	dwOpts := displaywidth.Options{EastAsianWidth: opts.EastAsianWidth}
 	stripped := ansi.ReplaceAllLiteralString(str, "")
-	return dwOpts.String(stripped)
+	calculatedWidth := 0
+	for _, r := range stripped {
+		calculatedWidth += calculateRunewidth(r, opts)
+	}
+	return calculatedWidth
+}
+
+// calculateRunewidth calculates the width of a single rune based on the provided options.
+// It applies narrow overrides for box drawing characters if configured.
+func calculateRunewidth(r rune, opts Options) int {
+	if opts.ForceNarrowBorders && isBoxDrawingChar(r) {
+		return 1
+	}
+
+	dwOpts := displaywidth.Options{EastAsianWidth: opts.EastAsianWidth}
+	return dwOpts.Rune(r)
+}
+
+// isBoxDrawingChar checks if a rune is within the Unicode Box Drawing range.
+func isBoxDrawingChar(r rune) bool {
+	return r >= 0x2500 && r <= 0x257F
 }
