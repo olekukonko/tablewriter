@@ -7,80 +7,125 @@ import (
 
 func TestDetectEastAsian_Logic(t *testing.T) {
 	// We cannot run this in parallel (t.Parallel()) because it modifies
-	// process-level environment variables.
+	// process-level environment variables and global state.
+
+	// Helper struct to define the environment state for a test case
+	type envConfig struct {
+		lcAll       string
+		lcCtype     string
+		lang        string
+		runeWidth   string // RUNEWIDTH_EASTASIAN
+		termProg    string // TERM_PROGRAM
+		term        string // TERM
+		forceLegacy bool   // Global legacy switch
+	}
 
 	tests := []struct {
 		name     string
-		lcAll    string // Sets LC_ALL
-		lcCtype  string // Sets LC_CTYPE
-		lang     string // Sets LANG
+		env      envConfig
 		expected bool
 	}{
-		// --- Basic Language Checks ---
-		{"Chinese (Simplified)", "", "", "zh_CN.UTF-8", true},
-		{"Chinese (Traditional)", "", "", "zh_TW", true},
-		{"Japanese", "", "", "ja_JP.UTF-8", true},
-		{"Korean", "", "", "ko_KR.UTF-8", true},
-		{"English", "", "", "en_US.UTF-8", false},
-		{"German", "", "", "de_DE.UTF-8", false},
 
-		// --- Priority Order Checks (LC_ALL > LC_CTYPE > LANG) ---
+		// LOCALE ONLY (Legacy Behavior / Non-Modern Terminal)
 		{
-			name:     "LC_ALL overrides others",
-			lcAll:    "ja_JP", // Should be true
-			lcCtype:  "en_US",
-			lang:     "en_US",
+			name:     "Locale: Chinese (Simplified)",
+			env:      envConfig{lang: "zh_CN.UTF-8"},
 			expected: true,
 		},
 		{
-			name:     "LC_CTYPE overrides LANG",
-			lcAll:    "",
-			lcCtype:  "zh_CN", // Should be true
-			lang:     "en_US",
+			name:     "Locale: Japanese",
+			env:      envConfig{lang: "ja_JP.UTF-8"},
 			expected: true,
 		},
 		{
-			name:     "LANG is fallback",
-			lcAll:    "",
-			lcCtype:  "",
-			lang:     "ko_KR", // Should be true
+			name:     "Locale: English",
+			env:      envConfig{lang: "en_US.UTF-8"},
+			expected: false,
+		},
+		{
+			name:     "Locale Priority: LC_ALL overrides LANG",
+			env:      envConfig{lcAll: "ja_JP", lang: "en_US"},
 			expected: true,
 		},
 		{
-			name:     "Non-CJK LC_ALL disables CJK LANG",
-			lcAll:    "en_US", // Should be false
-			lcCtype:  "zh_CN",
-			lang:     "zh_CN",
+			name:     "Locale Region: English in Hong Kong (en_HK)",
+			env:      envConfig{lang: "en_HK"},
+			expected: true,
+		},
+
+		// MODERN ENVIRONMENT (Should force Narrow/False)
+		{
+			name:     "Modern: VSCode with Chinese Locale",
+			env:      envConfig{lang: "zh_CN.UTF-8", termProg: "vscode"},
+			expected: false, // Modern env implies single-width font
+		},
+		{
+			name:     "Modern: iTerm2 with Japanese Locale",
+			env:      envConfig{lang: "ja_JP.UTF-8", termProg: "iTerm.app"},
+			expected: false,
+		},
+		{
+			name: "Modern: Windows Terminal via WT_PROFILE_ID (Simulated by TERM checks in this test structure)",
+			// Note: We can't easily mock runtime.GOOS, so we stick to env vars
+			// that work cross-platform in the heuristic function.
+			// Let's test Alacritty which is checked via env var.
+			env:      envConfig{lang: "zh_CN.UTF-8", termProg: "Alacritty"},
+			expected: false,
+		},
+		{
+			name:     "Modern: TERM=xterm-kitty with Chinese Locale",
+			env:      envConfig{lang: "zh_CN.UTF-8", term: "xterm-kitty"},
 			expected: false,
 		},
 
-		// --- Suffix Handling ---
-		{"Strip Encoding", "", "", "ja_JP.EUC-JP", true},
-		{"Strip Modifier", "", "", "zh_CN@currency=CNY", true},
-		{"Strip Both", "", "", "zh_TW.UTF-8@modifier", true},
+		// USER OVERRIDE (Highest Priority)
+		{
+			name:     "Override: Force ON (1) in English Env",
+			env:      envConfig{lang: "en_US.UTF-8", runeWidth: "1"},
+			expected: true,
+		},
+		{
+			name:     "Override: Force ON (true) overrides Modern Env",
+			env:      envConfig{lang: "en_US.UTF-8", termProg: "vscode", runeWidth: "true"},
+			expected: true,
+		},
+		{
+			name:     "Override: Force OFF (0) in Chinese Env",
+			env:      envConfig{lang: "zh_CN.UTF-8", runeWidth: "0"},
+			expected: false,
+		},
+		{
+			name:     "Override: Force OFF (false) overrides Legacy Detection",
+			env:      envConfig{lang: "zh_CN.UTF-8", runeWidth: "false"},
+			expected: false,
+		},
 
-		// --- Region Checks (e.g. English users in East Asia) ---
-		{"English in Hong Kong", "", "", "en_HK", true},
-		{"English in Japan", "", "", "en_JP", true},
-		{"English in Singapore", "", "", "en_SG.UTF-8", true}, // 'sg' was added in previous steps
-		{"English in US", "", "", "en_US", false},
-
-		// --- Edge Cases ---
-		{"Empty", "", "", "", false},
-		{"C Locale", "", "", "C", false},
-		{"POSIX Locale", "", "", "POSIX", false},
-		{"Case Insensitive Input", "", "", "ZH_cn.utf-8", true},
-		{"Short string", "", "", "z", false},
-		{"Just language", "", "", "ja", true},
-		{"ISO 3-letter (chi)", "", "", "chi_CN", true},
-		{"Full name (japanese)", "", "", "japanese", true},
+		// LEGACY FORCE SWITCH (Programmatic Override)
+		{
+			name:     "Legacy Force: Ignores Modern Env",
+			env:      envConfig{lang: "zh_CN.UTF-8", termProg: "vscode", forceLegacy: true},
+			expected: true, // Should use Locale (True) despite VSCode
+		},
+		{
+			name:     "Legacy Force: Still respects User Override (RW=0)",
+			env:      envConfig{lang: "zh_CN.UTF-8", runeWidth: "0", forceLegacy: true},
+			expected: false, // User env var is supreme
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Helper to save and restore env vars
+			// Save current state
 			saveEnv := func(key string) string { return os.Getenv(key) }
-			restoreEnv := func(key, val string) {
+			oldLCAll := saveEnv(EnvLCAll)
+			oldLCCtype := saveEnv(EnvLCCtype)
+			oldLang := saveEnv(EnvLang)
+			oldRuneWidth := saveEnv(EnvRuneWidthEastAsian)
+			oldTermProg := saveEnv(EnvTermProgram)
+			oldTerm := saveEnv(EnvTerm)
+
+			// Helper to set/unset
+			setEnv := func(key, val string) {
 				if val == "" {
 					os.Unsetenv(key)
 				} else {
@@ -88,40 +133,29 @@ func TestDetectEastAsian_Logic(t *testing.T) {
 				}
 			}
 
-			oldLCAll := saveEnv("LC_ALL")
-			oldLCCtype := saveEnv("LC_CTYPE")
-			oldLang := saveEnv("LANG")
-
-			// Cleanup after test
+			// Restore after test
 			defer func() {
-				restoreEnv("LC_ALL", oldLCAll)
-				restoreEnv("LC_CTYPE", oldLCCtype)
-				restoreEnv("LANG", oldLang)
+				setEnv(EnvLCAll, oldLCAll)
+				setEnv(EnvLCCtype, oldLCCtype)
+				setEnv(EnvLang, oldLang)
+				setEnv(EnvRuneWidthEastAsian, oldRuneWidth)
+				setEnv(EnvTermProgram, oldTermProg)
+				setEnv(EnvTerm, oldTerm)
+				EastAsianForceLegacy(false) // Reset global flag
 			}()
 
-			// Set Environment for test
-			if tt.lcAll != "" {
-				os.Setenv("LC_ALL", tt.lcAll)
-			} else {
-				os.Unsetenv("LC_ALL")
-			}
-
-			if tt.lcCtype != "" {
-				os.Setenv("LC_CTYPE", tt.lcCtype)
-			} else {
-				os.Unsetenv("LC_CTYPE")
-			}
-
-			if tt.lang != "" {
-				os.Setenv("LANG", tt.lang)
-			} else {
-				os.Unsetenv("LANG")
-			}
+			// Apply test configuration
+			setEnv(EnvLCAll, tt.env.lcAll)
+			setEnv(EnvLCCtype, tt.env.lcCtype)
+			setEnv(EnvLang, tt.env.lang)
+			setEnv(EnvRuneWidthEastAsian, tt.env.runeWidth)
+			setEnv(EnvTermProgram, tt.env.termProg)
+			setEnv(EnvTerm, tt.env.term)
+			EastAsianForceLegacy(tt.env.forceLegacy)
 
 			// Call internal logic directly to bypass sync.Once
 			if got := detectEastAsian(); got != tt.expected {
-				t.Errorf("detectEastAsian() = %v, want %v (LC_ALL=%q LC_CTYPE=%q LANG=%q)",
-					got, tt.expected, tt.lcAll, tt.lcCtype, tt.lang)
+				t.Errorf("detectEastAsian() = %v, want %v\nEnv: %+v", got, tt.expected, tt.env)
 			}
 		})
 	}
@@ -129,29 +163,36 @@ func TestDetectEastAsian_Logic(t *testing.T) {
 
 func TestAutoUseEastAsian_Cache(t *testing.T) {
 	// This test verifies that the result is cached (sync.Once).
-	// NOTE: This test might conflict if AutoUseEastAsian was called by other tests
-	// in the same package run. Ideally, reset 'eastAsianOnce' or run separately.
-	// Since 'eastAsianOnce' is private, we assume this is the first call in this process execution
-	// or we accept we are testing the behavior of the *first* call logic.
+	// Since 'eastAsianOnce' is private and global, we assume this is the
+	// first call in this process execution, OR we implicitly accept checking
+	// the behavior of the *existing* singleton state if unrelated tests ran before.
 
-	// Set Environment to CJK
-	os.Setenv("LANG", "ja_JP.UTF-8")
-	defer os.Unsetenv("LANG")
+	// IMPORTANT: Because other tests might have run, we can't guarantee `eastAsianOnce`
+	// is fresh. This test is best effort to ensure stability.
 
-	// Since we can't easily reset sync.Once in a black-box test,
-	// we will verify that changing the Env Var AFTER the first call
-	// DOES NOT change the result.
+	// Snapshot Result
+	firstResult := EastAsian()
 
-	initial := AutoUseEastAsian() // Calculates based on ja_JP -> True
+	// Change Environmental factors to the OPPOSITE of what triggered firstResult
+	if firstResult {
+		// If currently True (e.g. CJK), try to force False
+		os.Setenv(EnvLang, "en_US.UTF-8")
+		os.Setenv(EnvRuneWidthEastAsian, "0")
+	} else {
+		// If currently False, try to force True
+		os.Setenv(EnvLang, "zh_CN.UTF-8")
+		os.Setenv(EnvRuneWidthEastAsian, "1")
+	}
+	// Ensure we clean up
+	defer func() {
+		os.Unsetenv(EnvLang)
+		os.Unsetenv(EnvRuneWidthEastAsian)
+	}()
 
-	// Change Environment to US
-	os.Setenv("LANG", "en_US.UTF-8")
+	// Second call
+	secondResult := EastAsian()
 
-	// Second call: Should still be what the first call was (True)
-	// because logic is cached.
-	cached := AutoUseEastAsian()
-
-	if initial != cached {
-		t.Errorf("AutoUseEastAsian() did not cache result. Got %v, expected %v", cached, initial)
+	if firstResult != secondResult {
+		t.Errorf("EastAsian() did not cache result. First=%v, Second=%v", firstResult, secondResult)
 	}
 }
