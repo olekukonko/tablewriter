@@ -40,12 +40,25 @@ var widthCache *twcache.LRU[string, int]
 var ansi = Filter()
 
 func init() {
-	// Initialize global options by detecting from the environment,
-	// which is the one key feature we get from go-runewidth.
+	isEastAsian := EastAsian()
+
 	cond := runewidth.NewCondition()
+	cond.EastAsianWidth = isEastAsian
+
 	globalOptions = Options{
-		EastAsianWidth: cond.EastAsianWidth,
+		EastAsianWidth: isEastAsian,
+
+		// Auto-enable ForceNarrowBorders for edge cases.
+		// If EastAsianWidth is ON (e.g. forced via Env Var), but we detect
+		// a modern environment, we might technically want to narrow borders
+		// while keeping text wide.
+		//
+		// Note: In the standard EastAsian logic, isEastAsian will
+		// ALREADY be false for modern environments, so this boolean implies
+		// a specific "Forced On" scenario.
+		ForceNarrowBorders: isEastAsian && isModernEnvironment(),
 	}
+
 	widthCache = twcache.NewLRU[string, int](cacheCapacity)
 }
 
