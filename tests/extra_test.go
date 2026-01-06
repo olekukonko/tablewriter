@@ -95,7 +95,10 @@ func TestFilterMasking(t *testing.T) {
 			table.Header(header)
 			table.Bulk(tt.data)
 			table.Render()
-			visualCheck(t, tt.name, buf.String(), tt.expected)
+
+			if !visualCheck(t, tt.name, buf.String(), tt.expected) {
+				t.Error(table.Debug())
+			}
 		})
 	}
 }
@@ -187,7 +190,9 @@ func TestMasterClass(t *testing.T) {
          ────── │ ────── 
           C C   │  D D  
 `
-	visualCheck(t, "Master Class", buf.String(), expected)
+	if !visualCheck(t, "Master Class", buf.String(), expected) {
+		t.Error(table.Debug())
+	}
 }
 
 func TestConfigAutoHideDefault(t *testing.T) {
@@ -247,11 +252,7 @@ func TestAutoHideFeature(t *testing.T) {
 		// Use visualCheck, expect it might fail initially if Blueprint isn't perfect yet
 		if !visualCheck(t, "AutoHide_HideWhenEmpty", buf.String(), expected) {
 			t.Log("Output for HideWhenEmpty was not as expected (might be OK if Blueprint needs more fixes):")
-			t.Error(buf.String())
-			// Log debug info if helpful
-			// for _, v := range table.Debug() {
-			// 	t.Log(v)
-			// }
+			t.Error(table.Debug())
 		}
 	})
 
@@ -285,11 +286,7 @@ func TestAutoHideFeature(t *testing.T) {
 `
 		if !visualCheck(t, "AutoHide_ShowWhenNotEmpty", buf.String(), expected) {
 			t.Log("Output for ShowWhenNotEmpty was not as expected (might be OK if Blueprint needs more fixes):")
-			t.Log(buf.String())
-			// Log debug info if helpful
-			// for _, v := range table.Debug() {
-			// 	t.Log(v)
-			// }
+			t.Error(table.Debug())
 		}
 	})
 
@@ -329,63 +326,94 @@ func TestAutoHideFeature(t *testing.T) {
 		// This one should ideally PASS if the default behavior is preserved
 		if !visualCheck(t, "AutoHide_DisabledShowsEmpty", buf.String(), expected) {
 			t.Errorf("AutoHide disabled test failed!")
-			t.Log(buf.String())
-			// Log debug info if helpful
-			// for _, v := range table.Debug() {
-			// 	t.Log(v)
-			// }
+			t.Error(table.Debug())
 		}
 	})
 }
 
 func TestEmojiTable(t *testing.T) {
-	var buf bytes.Buffer
+	// Original Boston Test (Updated expectation as discussed)
+	t.Run("Cityscape", func(t *testing.T) {
+		var buf bytes.Buffer
+		table := tablewriter.NewTable(&buf, tablewriter.WithDebug(true))
+		table.Header([]string{"Name 😺", "Age 🎂", "City 🌍"})
+		data := [][]string{
+			{"Alice 😊", "25", "New York 🌆"},
+			{"Bob 😎", "30", "Boston 🏙️"},
+			{"Charlie 🤓", "28", "Tokyo 🗼"},
+		}
+		table.Bulk(data)
+		table.Footer([]string{"", "Total 👥", "3"})
+		table.Configure(func(config *tablewriter.Config) {
+			config.Row.Alignment.Global = tw.AlignLeft
+			config.Footer.Alignment.Global = tw.AlignRight
+		})
+		table.Render()
 
-	table := tablewriter.NewTable(&buf)
-	table.Header([]string{"Name 😺", "Age 🎂", "City 🌍"})
-	data := [][]string{
-		{"Alice 😊", "25", "New York 🌆"},
-		{"Bob 😎", "30", "Boston 🏙️"},
-		{"Charlie 🤓", "28", "Tokyo 🗼"},
-	}
-	table.Bulk(data)
-	table.Footer([]string{"", "Total 👥", "3"})
-	table.Configure(func(config *tablewriter.Config) {
-		config.Row.Alignment.Global = tw.AlignLeft
-		config.Footer.Alignment.Global = tw.AlignRight
-	})
-	table.Render()
-
-	expected := `
+		expected := `
 ┌────────────┬──────────┬─────────────┐
 │  NAME  😺  │ AGE  🎂  │  CITY  🌍   │
 ├────────────┼──────────┼─────────────┤
 │ Alice 😊   │ 25       │ New York 🌆 │
-│ Bob 😎     │ 30       │ Boston 🏙️   │
+│ Bob 😎     │ 30       │ Boston 🏙️    │
 │ Charlie 🤓 │ 28       │ Tokyo 🗼    │
 ├────────────┼──────────┼─────────────┤
 │            │ Total 👥 │           3 │
 └────────────┴──────────┴─────────────┘
-
 `
-	if !visualCheck(t, "EmojiTable", buf.String(), expected) {
-		t.Error(table.Debug())
-	}
+		if !visualCheck(t, "Cityscape", buf.String(), expected) {
+			t.Error(table.Debug())
+		}
+	})
+
+	// New Test: Common Emojis
+	// This verifies if standard faces/objects also calculate as Width 1
+	// causing the "extra space" visual effect in the padding.
+	t.Run("CommonEmojis", func(t *testing.T) {
+		var buf bytes.Buffer
+		table := tablewriter.NewTable(&buf)
+		// "Status" is 6 chars wide.
+		// "Icon" is 4 chars wide.
+		table.Header([]string{"Item", "Status", "Icon"})
+
+		table.Append([]string{"Work", "Done", "✅"})   // Check mark
+		table.Append([]string{"Happy", "Great", "😀"}) // Grinning Face
+		table.Append([]string{"Food", "Yum", "🍕"})    // Pizza
+		table.Append([]string{"Tech", "Fast", "🚀"})   // Rocket
+
+		table.Render()
+		expected := `
+┌───────┬────────┬──────┐
+│ ITEM  │ STATUS │ ICON │
+├───────┼────────┼──────┤
+│ Work  │ Done   │ ✅   │
+│ Happy │ Great  │ 😀   │
+│ Food  │ Yum    │ 🍕   │
+│ Tech  │ Fast   │ 🚀   │
+└───────┴────────┴──────┘
+`
+
+		if !visualCheck(t, "CommonEmojis", buf.String(), expected) {
+			t.Error(table.Debug())
+		}
+	})
 }
 
 func TestUnicodeTableDefault(t *testing.T) {
-	var buf bytes.Buffer
+	// Original test case: Mixed ASCII, Latin-1, Emoji/Symbols, and Devanagari
+	t.Run("Mixed", func(t *testing.T) {
+		var buf bytes.Buffer
 
-	table := tablewriter.NewTable(&buf)
-	table.Header([]string{"Name", "Age", "City"})
-	table.Append([]string{"Alice", "25", "New York"})
-	table.Append([]string{"Bøb", "30", "Tōkyō"})    // Contains ø and ō
-	table.Append([]string{"José", "28", "México"}) // Contains é and accented e (e + combining acute)
-	table.Append([]string{"张三", "35", "北京"})        // Chinese characters
-	table.Append([]string{"अनु", "40", "मुंबई"})    // Devanagari script
-	table.Render()
+		table := tablewriter.NewTable(&buf)
+		table.Header([]string{"Name", "Age", "City"})
+		table.Append([]string{"Alice", "25", "New York"})
+		table.Append([]string{"Bøb", "30", "Tōkyō"})    // Contains ø and ō
+		table.Append([]string{"José", "28", "México"}) // Contains é and accented e (e + combining acute)
+		table.Append([]string{"张三", "35", "北京"})        // Chinese characters
+		table.Append([]string{"अनु", "40", "मुंबई"})    // Devanagari script
+		table.Render()
 
-	expected := `
+		expected := `
 ┌───────┬─────┬──────────┐
 │ NAME  │ AGE │   CITY   │
 ├───────┼─────┼──────────┤
@@ -395,9 +423,48 @@ func TestUnicodeTableDefault(t *testing.T) {
 │ 张三  │ 35  │ 北京     │
 │ अनु    │ 40  │ मुंबई      │
 └───────┴─────┴──────────┘
-
 `
-	visualCheck(t, "UnicodeTableRendering", buf.String(), expected)
+		if !visualCheck(t, "UnicodeTableRendering_Mixed", buf.String(), expected) {
+			t.Error(table.Debug())
+		}
+	})
+
+	// New test case: 100% Wide Characters (Chinese)
+	// This verifies alignment when every single character is Double Width (2 cells).
+	t.Run("PureChinese", func(t *testing.T) {
+		var buf bytes.Buffer
+
+		table := tablewriter.NewTable(&buf)
+		// Headers: Name, Age, Hometown
+		table.Header([]string{"姓名", "年龄", "籍贯"})
+
+		// Row 1: Zhang San, Twenty-Five, Beijing
+		table.Append([]string{"张三", "二十五", "北京"})
+
+		// Row 2: Li Si, Thirty, Shanghai
+		// Note: "三十" (30) is 2 chars (4 width), "二十五" (25) is 3 chars (6 width).
+		// This forces alignment padding on the "30" cell.
+		table.Append([]string{"李四", "三十", "上海"})
+
+		table.Render()
+
+		// Logic:
+		// Col 1: Max width 4 ("张三"). Visual: 1 space + 4 content + 1 space = 6.
+		// Col 2: Max width 6 ("二十五"). Visual: 1 space + 6 content + 1 space = 8.
+		// Col 3: Max width 4 ("北京"). Visual: 1 space + 4 content + 1 space = 6.
+		// "三十" needs 2 extra spaces padding to match "二十五".
+		expected := `
+┌──────┬────────┬──────┐
+│ 姓名 │  年龄  │ 籍贯 │
+├──────┼────────┼──────┤
+│ 张三 │ 二十五 │ 北京 │
+│ 李四 │ 三十   │ 上海 │
+└──────┴────────┴──────┘
+`
+		if !visualCheck(t, "UnicodeTableRendering_PureChinese", buf.String(), expected) {
+			t.Error(table.Debug())
+		}
+	})
 }
 
 func TestSpaces(t *testing.T) {
@@ -425,7 +492,7 @@ func TestSpaces(t *testing.T) {
            └────┴─────┴──────────┘
 `
 		if !visualCheck(t, "UnicodeTableRendering", buf.String(), expected) {
-			t.Log(table.Debug())
+			t.Error(table.Debug())
 		}
 	})
 
@@ -503,6 +570,8 @@ func TestControl(t *testing.T) {
 
 
 `
-		visualCheck(t, "UnicodeTableRendering", buf.String(), expected)
+		if !visualCheck(t, "UnicodeTableRendering", buf.String(), expected) {
+			t.Error(table.Debug())
+		}
 	})
 }
