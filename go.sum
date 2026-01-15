@@ -18,6 +18,8 @@ github.com/olekukonko/errors v1.1.0 h1:RNuGIh15QdDenh+hNvKrJkmxxjV4hcS50Db478Ou5
 github.com/olekukonko/errors v1.1.0/go.mod h1:ppzxA5jBKcO1vIpCXQ9ZqgDh8iwODz6OXIGKU8r5m4Y=
 github.com/olekukonko/ll v0.1.3 h1:sV2jrhQGq5B3W0nENUISCR6azIPf7UBUpVq0x/y70Fg=
 github.com/olekukonko/ll v0.1.3/go.mod h1:b52bVQRRPObe+yyBl0TxNfhesL0nedD4Cht0/zx55Ew=
+github.com/olekukonko/ll v0.1.4-0.20260115111900-9e59c2286df0 h1:jrYnow5+hy3WRDCBypUFvVKNSPPCdqgSXIE9eJDD8LM=
+github.com/olekukonko/ll v0.1.4-0.20260115111900-9e59c2286df0/go.mod h1:b52bVQRRPObe+yyBl0TxNfhesL0nedD4Cht0/zx55Ew=
 github.com/olekukonko/ts v0.0.0-20171002115256-78ecb04241c0 h1:LiZB1h0GIcudcDci2bxbqI6DXV8bF8POAnArqvRrIyw=
 github.com/olekukonko/ts v0.0.0-20171002115256-78ecb04241c0/go.mod h1:F/7q8/HZz+TXjlsoZQQKVYvXTZaFH4QRa3y+j1p7MS0=
 golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
