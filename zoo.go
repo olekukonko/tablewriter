@@ -1217,10 +1217,6 @@ func (t *Table) convertToString(value interface{}) string {
 // convertItemToCells is responsible for converting a single input item (which could be
 // a struct, a basic type, or an item implementing Stringer/Formatter) into a slice
 // of strings, where each string represents a cell for the table row.
-// zoo.go
-
-// convertItemToCells is responsible for converting a single input item into a slice of strings.
-// It now uses the unified struct parser for structs.
 func (t *Table) convertItemToCells(item interface{}) ([]string, error) {
 	t.logger.Debugf("convertItemToCells: Converting item of type %T", item)
 
