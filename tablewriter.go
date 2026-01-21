@@ -570,7 +570,7 @@ func (t *Table) Trimmer(str string) string {
 
 	// Granular Trimming via TrimFunc
 	return strings.TrimFunc(str, func(r rune) bool {
-		if r == '\t' {
+		if twwidth.IsTab(r) {
 			return trimTab // Return true to trim if TrimTab is On
 		}
 		if trimSpace {
