@@ -1,4 +1,3 @@
-// width.go
 package twwidth
 
 import (
@@ -53,10 +52,6 @@ func init() {
 		// If EastAsianWidth is ON (e.g. forced via Env Var), but we detect
 		// a modern environment, we might technically want to narrow borders
 		// while keeping text wide.
-		//
-		// Note: In the standard EastAsian logic, isEastAsian will
-		// ALREADY be false for modern environments, so this boolean implies
-		// a specific "Forced On" scenario.
 		ForceNarrowBorders: isEastAsian && isModernEnvironment(),
 	}
 
@@ -362,6 +357,10 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 func Width(str string) int {
 	// Fast path ASCII (Optimization)
 	if len(str) == 1 && str[0] < 0x80 {
+		// Treat tab as special case even in fast path
+		if IsTab(rune(str[0])) {
+			return TabWidth()
+		}
 		return 1
 	}
 
@@ -416,10 +415,16 @@ func WidthWithOptions(str string, opts Options) int {
 }
 
 // calculateRunewidth calculates the width of a single rune based on the provided options.
-// It applies narrow overrides for box drawing characters if configured.
+// It applies narrow overrides for box drawing characters if configured and handles Tabs.
 func calculateRunewidth(r rune, opts Options) int {
 	if opts.ForceNarrowBorders && isBoxDrawingChar(r) {
 		return 1
+	}
+
+	// Explicitly handle Tabinal to ensure tables have enough space
+	// when TrimTab is Off.
+	if IsTab(r) {
+		return TabWidth()
 	}
 
 	dwOpts := displaywidth.Options{EastAsianWidth: opts.EastAsianWidth}
