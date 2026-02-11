@@ -92,7 +92,7 @@ func TestCalculateContentMaxWidth(t *testing.T) {
 // It verifies stringer invocation and cache behavior for custom types.
 func TestCallStringer(t *testing.T) {
 	table := &Table{
-		logger:        ll.New("test"),
+		logger:        ll.New("test").Disable(),
 		stringer:      func(s interface{}) []string { return []string{fmt.Sprintf("%v", s)} },
 		stringerCache: twcache.NewLRU[reflect.Type, reflect.Value](tw.DefaultCacheStringCapacity),
 	}
@@ -128,7 +128,7 @@ func TestCallStringer(t *testing.T) {
 // It verifies thread-safety of the stringer cache with multiple goroutines.
 func TestCallStringerConcurrent(t *testing.T) {
 	table := &Table{
-		logger:        ll.New("test"),
+		logger:        ll.New("test").Disable(),
 		stringer:      func(s interface{}) []string { return []string{fmt.Sprintf("%v", s)} },
 		stringerCache: twcache.NewLRU[reflect.Type, reflect.Value](tw.DefaultCacheStringCapacity),
 	}
@@ -250,7 +250,7 @@ func TestCallbacks(t *testing.T) {
 // TestConvertToString tests the convertToString function with various input types.
 // It verifies correct string conversion for nil, strings, SQL null types, and errors.
 func TestConvertToString(t *testing.T) {
-	table := &Table{logger: ll.New("test")}
+	table := &Table{logger: ll.New("test").Disable()}
 	tests := []struct {
 		input    interface{}
 		expected string

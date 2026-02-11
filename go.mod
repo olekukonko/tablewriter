@@ -8,12 +8,13 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/mattn/go-runewidth v0.0.19
 	github.com/olekukonko/errors v1.2.0
-	github.com/olekukonko/ll v0.1.4-0.20260115111900-9e59c2286df0
+	github.com/olekukonko/ll v0.1.5
 	github.com/olekukonko/ts v0.0.0-20171002115256-78ecb04241c0
 	golang.org/x/term v0.29.0
 )
 
 require (
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

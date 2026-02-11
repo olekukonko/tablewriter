@@ -44,7 +44,7 @@ func NewBlueprint(configs ...tw.Rendition) *Blueprint {
 		// Merge user settings with default settings
 		cfg.Settings = mergeSettings(cfg.Settings, userCfg.Settings)
 	}
-	return &Blueprint{config: cfg, logger: ll.New("blueprint")}
+	return &Blueprint{config: cfg, logger: ll.New("blueprint").Disable()}
 }
 
 // Close performs cleanup (no-op in this implementation).
