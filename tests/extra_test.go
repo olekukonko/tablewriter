@@ -575,3 +575,87 @@ func TestControl(t *testing.T) {
 		}
 	})
 }
+
+func TestPadding(t *testing.T) {
+	var buf bytes.Buffer
+	data := [][]string{
+		{"Column A", "Column B"},
+		{"aaaaa", "bbbbb"},
+		{"a", "b"},
+	}
+
+	alignments := tw.Alignment{
+		tw.AlignDefault,
+		tw.AlignRight,
+	}
+
+	t.Run("Right", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(
+			&buf,
+			tablewriter.WithRendition(tw.Rendition{
+				Borders: tw.BorderNone,
+				Settings: tw.Settings{
+					Lines:      tw.LinesNone,
+					Separators: tw.SeparatorsNone,
+				},
+			}),
+			tablewriter.WithPadding(tw.Padding{
+				Left:      "",
+				Right:     ">",
+				Overwrite: true,
+			}),
+			tablewriter.WithHeaderAutoFormat(tw.Off),
+			tablewriter.WithAlignment(alignments),
+			tablewriter.WithDebug(true),
+		)
+
+		table.Header(data[0])
+		table.Bulk(data[1:])
+		table.Render()
+
+		expected := `
+		Column A>Column B>
+		aaaaa>>>>   bbbbb>
+		a>>>>>>>>       b>
+`
+		if !visualCheck(t, "UnicodeTableRendering", buf.String(), expected) {
+			t.Log(table.Debug())
+		}
+	})
+
+	t.Run("Space", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(
+			&buf,
+			tablewriter.WithRendition(tw.Rendition{
+				Borders: tw.BorderNone,
+				Settings: tw.Settings{
+					Lines:      tw.LinesNone,
+					Separators: tw.SeparatorsNone,
+				},
+			}),
+			tablewriter.WithPadding(tw.Padding{
+				Left:      "",
+				Right:     "  ",
+				Overwrite: true,
+			}),
+			tablewriter.WithHeaderAutoFormat(tw.Off),
+			tablewriter.WithAlignment(alignments),
+			tablewriter.WithDebug(true),
+		)
+
+		table.Header(data[0])
+		table.Bulk(data[1:])
+		table.Render()
+
+		expected := `
+		Column A  Column B  
+		aaaaa        bbbbb  
+		a                b
+`
+		if !visualCheck(t, "UnicodeTableRendering", buf.String(), expected) {
+			t.Error(table.Debug())
+		}
+	})
+}
