@@ -22,7 +22,7 @@ func helperProcess() {
 
 func resetGlobalCache() {
 	mu.Lock()
-	widthCache = twcache.NewLRU[string, int](cacheCapacity)
+	widthCache = twcache.NewLRU[cacheKey, int](cacheCapacity)
 	mu.Unlock()
 }
 
