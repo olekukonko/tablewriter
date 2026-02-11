@@ -150,6 +150,12 @@ func TabWidth() int {
 	return TabInstance().Size()
 }
 
+// SetTabWidth sets the global tab width used by Width, Truncate, and other calculations.
+// Width must be > 0 and <= 32; otherwise it's ignored.
+func SetTabWidth(w int) {
+	TabInstance().SetWidth(w)
+}
+
 func envInt(k string) int {
 	v := os.Getenv(k)
 	w, _ := strconv.Atoi(v)
