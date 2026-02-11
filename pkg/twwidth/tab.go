@@ -5,16 +5,13 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
-
-	"golang.org/x/term"
 )
 
 type Tab rune
 
-// TabWidthDefault is the fallback if detection fails (standard unix terminal default).
+// TabWidthDefault is the fallback if detection fails.
 const (
-	TabWidthDefault     = 8
+	TabWidthDefault     = 4
 	TabString       Tab = '\t'
 )
 
@@ -43,17 +40,19 @@ func IsTab(r rune) bool {
 // Tabinal is a live object whose Size() returns the current tab width.
 type Tabinal struct {
 	once  sync.Once
-	width int // guarded by mu
+	width int
 	mu    sync.RWMutex
 }
 
 func (t *Tabinal) String() string { return TabString.String() }
 
 func (t *Tabinal) Size() int {
-	t.once.Do(t.init) // first call does the detection
+	t.once.Do(t.init)
+
 	t.mu.RLock()
 	w := t.width
 	t.mu.RUnlock()
+
 	if w <= 0 {
 		return TabWidthDefault
 	}
@@ -71,133 +70,64 @@ func (t *Tabinal) SetWidth(w int) {
 
 // init runs exactly once per Tabinal instance.
 func (t *Tabinal) init() {
-	t.width = t.detect()
+	w := t.detect()
+
+	t.mu.Lock()
+	t.width = w
+	t.mu.Unlock()
 }
 
-// detect returns the best guess > 0, or 0 to use TabWidth.
+// detect returns the best guess > 0, or 0 to use TabWidthDefault.
 func (t *Tabinal) detect() int {
-	// 1. Environment override (Safest & Fastest).
+	// 1. Environment override (explicit always wins)
 	if w := envInt("TABWIDTH"); w > 0 {
-		return w
+		return clamp(w)
 	}
 	if w := envInt("TS"); w > 0 {
-		return w
+		return clamp(w)
 	}
 	if w := envInt("VIM_TABSTOP"); w > 0 {
+		return clamp(w)
+	}
+
+	// 2. TERM heuristics (safe + deterministic)
+	if w := termHeuristic(); w > 0 {
 		return w
 	}
 
-	// 2. Terminfo (Passive file read).
-	if w := t.terminfoIt(); w > 0 {
-		return w
-	}
-
-	// 3. TERM heuristics (Passive string check).
-	if w := t.termHeuristic(); w > 0 {
-		return w
-	}
-
-	// 4. Ask the terminal directly (Active, Risky).
-	if w := t.decRQSS(); w > 0 {
-		return w
-	}
-
-	return 0 // use default
-}
-
-/* ---------- DECRQSS ---------- */
-
-func (t *Tabinal) decRQSS() int {
-	fd := int(os.Stdin.Fd())
-	if !term.IsTerminal(fd) {
-		return 0
-	}
-
-	if err := os.Stdin.SetReadDeadline(time.Now().Add(100 * time.Millisecond)); err != nil {
-		return 0
-	}
-	defer os.Stdin.SetReadDeadline(time.Time{})
-
-	old, err := term.MakeRaw(fd)
-	if err != nil {
-		return 0
-	}
-	defer term.Restore(fd, old)
-
-	buf := make([]byte, 128)
-	for {
-		if err := os.Stdin.SetReadDeadline(time.Now().Add(1 * time.Millisecond)); err != nil {
-			break
-		}
-		n, _ := os.Stdin.Read(buf)
-		if n == 0 {
-			break
-		}
-	}
-
-	if _, err := os.Stdout.WriteString("\x1bP$qit\x1b\\"); err != nil {
-		return 0
-	}
-
-	if err := os.Stdin.SetReadDeadline(time.Now().Add(100 * time.Millisecond)); err != nil {
-		return 0
-	}
-
-	n, _ := os.Stdin.Read(buf)
-	resp := string(buf[:n])
-
-	if i := strings.Index(resp, "\x1bP1$r"); i >= 0 {
-		rest := resp[i+5:]
-		if j := strings.Index(rest, "\x1b\\"); j >= 0 {
-			if w, err := strconv.Atoi(rest[:j]); err == nil && w > 0 && w <= 32 {
-				return w
-			}
-		}
-	}
 	return 0
 }
 
-func (t *Tabinal) terminfoIt() int {
-	termEnv := os.Getenv("TERM")
+func termHeuristic() int {
+	termEnv := strings.ToLower(os.Getenv("TERM"))
 	if termEnv == "" {
 		return 0
 	}
 
-	paths := []string{
-		"/usr/share/terminfo/" + string(termEnv[0]) + "/" + termEnv,
-		"/lib/terminfo/" + string(termEnv[0]) + "/" + termEnv,
-		os.Getenv("HOME") + "/.terminfo/" + string(termEnv[0]) + "/" + termEnv,
-	}
-
-	for _, path := range paths {
-		b, err := os.ReadFile(path)
-		if err == nil {
-			if i := strings.Index(string(b), "it#"); i >= 0 {
-				s := string(b[i+3:])
-				if end := strings.IndexAny(s, ",:\x00"); end >= 0 {
-					if n, err := strconv.Atoi(s[:end]); err == nil && n > 0 {
-						return n
-					}
-				}
-			}
-			return 0
-		}
-	}
-	return 0
-}
-
-func (t *Tabinal) termHeuristic() int {
-	termEnv := os.Getenv("TERM")
 	if strings.Contains(termEnv, "vt52") {
 		return 2
 	}
+
 	if strings.Contains(termEnv, "xterm") ||
 		strings.Contains(termEnv, "screen") ||
+		strings.Contains(termEnv, "tmux") ||
 		strings.Contains(termEnv, "linux") ||
-		strings.Contains(termEnv, "ansi") {
+		strings.Contains(termEnv, "ansi") ||
+		strings.Contains(termEnv, "rxvt") {
 		return 8
 	}
+
 	return 0
+}
+
+func clamp(w int) int {
+	if w <= 0 {
+		return 0
+	}
+	if w > 32 {
+		return 32
+	}
+	return w
 }
 
 /* ---------- global singleton ---------- */
@@ -208,7 +138,6 @@ var (
 )
 
 // TabInstance returns the singleton Tabinal instance.
-// It performs detection on the first call to Size().
 func TabInstance() *Tabinal {
 	globalTabOnce.Do(func() {
 		globalTab = &Tabinal{}
