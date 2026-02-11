@@ -33,9 +33,6 @@ var globalOptions Options
 // mu protects access to globalOptions for thread safety.
 var mu sync.Mutex
 
-// widthCache stores memoized results of Width calculations to improve performance.
-var widthCache *twcache.LRU[string, int]
-
 // ansi is a compiled regular expression for stripping ANSI escape codes from strings.
 var ansi = Filter()
 
@@ -55,17 +52,7 @@ func init() {
 		ForceNarrowBorders: isEastAsian && isModernEnvironment(),
 	}
 
-	widthCache = twcache.NewLRU[string, int](cacheCapacity)
-}
-
-// makeCacheKey generates a string key for the LRU cache from the input string
-// and the current East Asian width setting.
-// Prefix "0:" for false, "1:" for true.
-func makeCacheKey(str string, eastAsianWidth bool) string {
-	if eastAsianWidth {
-		return cacheEastAsianPrefix + str
-	}
-	return cachePrefix + str
+	widthCache = twcache.NewLRU[cacheKey, int](cacheCapacity)
 }
 
 // Display calculates the visual width of a string using a specific runewidth.Condition.
@@ -117,21 +104,6 @@ func IsEastAsian() bool {
 	mu.Lock()
 	defer mu.Unlock()
 	return globalOptions.EastAsianWidth
-}
-
-// SetCacheCapacity changes the cache size dynamically
-// If capacity <= 0, disables caching entirely
-func SetCacheCapacity(capacity int) {
-	mu.Lock()
-	defer mu.Unlock()
-
-	if capacity <= 0 {
-		widthCache = nil // nil = fully disabled
-		return
-	}
-
-	newCache := twcache.NewLRU[string, int](capacity)
-	widthCache = newCache
 }
 
 // SetCondition sets the global East Asian width setting based on a runewidth.Condition.
@@ -368,17 +340,20 @@ func Width(str string) int {
 	currentOpts := globalOptions
 	mu.Unlock()
 
-	key := makeCacheKey(str, currentOpts.EastAsianWidth)
+	key := cacheKey{
+		eastAsian: currentOpts.EastAsianWidth,
+		str:       str,
+	}
 
 	// Check Cache (Optimization)
 	if w, found := widthCache.Get(key); found {
 		return w
 	}
 
-	stripped := ansi.ReplaceAllLiteralString(str, "")
+	//stripped := ansi.ReplaceAllLiteralString(str, "")
 	calculatedWidth := 0
 
-	for _, r := range stripped {
+	for _, r := range strip(str) {
 		calculatedWidth += calculateRunewidth(r, currentOpts)
 	}
 
@@ -406,9 +381,9 @@ func WidthNoCache(str string) int {
 // bypassing the global settings and cache. This is useful for one-shot calculations
 // where global state is not desired.
 func WidthWithOptions(str string, opts Options) int {
-	stripped := ansi.ReplaceAllLiteralString(str, "")
+	// stripped := ansi.ReplaceAllLiteralString(str, "")
 	calculatedWidth := 0
-	for _, r := range stripped {
+	for _, r := range strip(str) {
 		calculatedWidth += calculateRunewidth(r, opts)
 	}
 	return calculatedWidth
@@ -434,4 +409,11 @@ func calculateRunewidth(r rune, opts Options) int {
 // isBoxDrawingChar checks if a rune is within the Unicode Box Drawing range.
 func isBoxDrawingChar(r rune) bool {
 	return r >= 0x2500 && r <= 0x257F
+}
+
+func strip(s string) string {
+	if strings.IndexByte(s, '\x1b') == -1 {
+		return s
+	}
+	return ansi.ReplaceAllLiteralString(s, "")
 }
