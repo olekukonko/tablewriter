@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
 )
@@ -384,134 +385,133 @@ func TestLinesCounter(t *testing.T) {
 }
 
 func TestTrimTab(t *testing.T) {
-	// Scenario 1: TrimSpace ON, TrimTab OFF (Preserve Indentation)
-	// Input: " \tfunc main() { " -> "\tfunc main() {"
-	t.Run("PreserveTabs_TrimSpaces", func(t *testing.T) {
-		var buf bytes.Buffer
-		table := tablewriter.NewTable(&buf,
-			tablewriter.WithTrimSpace(tw.On),
-			tablewriter.WithTrimTab(tw.Off),
-			tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
-				Settings: tw.Settings{Separators: tw.Separators{BetweenRows: tw.Off}},
-			})),
-		)
+	// Use consistent tab width of 4 for all tests to match modern conventions
+	// and ensure predictable visual alignment regardless of environment
+	testWithTabWidth(t, 4, func() {
+		// Scenario 1: TrimSpace ON, TrimTab OFF (Preserve Indentation)
+		// Input: " \tfunc main() { " -> "\tfunc main() {"
+		t.Run("PreserveTabs_TrimSpaces", func(t *testing.T) {
+			var buf bytes.Buffer
+			table := tablewriter.NewTable(&buf,
+				tablewriter.WithTrimSpace(tw.On),
+				tablewriter.WithTrimTab(tw.Off),
+				tablewriter.WithRenderer(renderer.NewBlueprint(tw.Rendition{
+					Settings: tw.Settings{Separators: tw.Separators{BetweenRows: tw.Off}},
+				})),
+			)
 
-		table.Header([]string{"Code"})
-		table.Append([]string{" \tfunc main() { "})
-		table.Append([]string{"\t\tfmt.Println() "})
+			table.Header([]string{"Code"})
+			table.Append([]string{" \tfunc main() { "})
+			table.Append([]string{"\t\tfmt.Println() "})
 
-		table.Render()
+			table.Render()
 
-		// Width Calculation Check:
-		// Row 1: "\tfunc main() {" = 4 + 13 = 17 width.
-		// Row 2: "\t\tfmt.Println()" = 4 + 4 + 13 = 21 width.
-		// Max Content Width: 21. Total Cell Width: 21 + 2(pad) = 23.
-		// Header "Code" (4) needs centering in 23 -> (21-4)/2 = 8L, 9R padding + global padding.
-		// Row 1 needs padding to match 21 -> 21-17 = 4 spaces align padding.
-		expected := `
-	┌───────────────────────────────┐
-	│             CODE              │
-	├───────────────────────────────┤
-	│         func main() {         │
-	│                 fmt.Println() │
-	└───────────────────────────────┘
+			// Width Calculation Check (TabWidth=4):
+			// Row 1: "\tfunc main() {" = 4 + 13 = 17 width.
+			// Row 2: "\t\tfmt.Println()" = 4 + 4 + 13 = 21 width.
+			// Max Content Width: 21. Total Cell Width: 21 + 2(pad) = 23.
+			expected := `
+			┌───────────────────────┐
+			│         CODE          │
+			├───────────────────────┤
+			│     func main() {     │
+			│         fmt.Println() │
+			└───────────────────────┘
 `
-		if !visualCheck(t, "PreserveTabs", buf.String(), expected) {
-			t.Logf("Buffer Content: %q", buf.String())
-			t.Error(table.Debug())
-		}
-	})
+			if !visualCheck(t, "PreserveTabs", buf.String(), expected) {
+				t.Logf("Buffer Content: %q", buf.String())
+				t.Error(table.Debug())
+			}
+		})
 
-	// Scenario 2: TrimSpace OFF, TrimTab ON (Remove Tabs, Keep Spaces)
-	// Input: "\t  Data  \t" -> "  Data  "
-	t.Run("TrimTabs_PreserveSpaces", func(t *testing.T) {
-		var buf bytes.Buffer
-		table := tablewriter.NewTable(&buf,
-			tablewriter.WithTrimSpace(tw.Off),
-			tablewriter.WithTrimTab(tw.On),
-		)
+		// Scenario 2: TrimSpace OFF, TrimTab ON (Remove Tabs, Keep Spaces)
+		// Input: "\t  Data  \t" -> "  Data  "
+		t.Run("TrimTabs_PreserveSpaces", func(t *testing.T) {
+			var buf bytes.Buffer
+			table := tablewriter.NewTable(&buf,
+				tablewriter.WithTrimSpace(tw.Off),
+				tablewriter.WithTrimTab(tw.On),
+			)
 
-		table.Header([]string{"Data"})
-		table.Append([]string{"\t  Data  \t"})
+			table.Header([]string{"Data"})
+			table.Append([]string{"\t  Data  \t"})
 
-		table.Render()
+			table.Render()
 
-		// "  Data  " is width 8. Header "Data" is 4.
-		// Max Content Width: 8. Total Cell Width: 8 + 2(pad) = 10.
-		expected := `
-┌──────────┐
-│   DATA   │
-├──────────┤
-│   Data   │
-└──────────┘
+			// Tab removed: "  Data  " is width 8. Header "Data" is 4.
+			// Max Content Width: 8. Total Cell Width: 8 + 2(pad) = 10.
+			expected := `
+            ┌──────────┐
+            │   DATA   │
+            ├──────────┤
+            │   Data   │
+            └──────────┘
 `
-		if !visualCheck(t, "TrimTabsOnly", buf.String(), expected) {
-			t.Logf("Buffer Content: %q", buf.String())
-			t.Error(table.Debug())
-		}
-	})
+			if !visualCheck(t, "TrimTabsOnly", buf.String(), expected) {
+				t.Logf("Buffer Content: %q", buf.String())
+				t.Error(table.Debug())
+			}
+		})
 
-	// Scenario 3: TrimSpace OFF, TrimTab OFF (Preserve All)
-	// Input: " \tval " -> " \tval " (exact match)
-	t.Run("PreserveAll", func(t *testing.T) {
-		var buf bytes.Buffer
-		table := tablewriter.NewTable(&buf,
-			tablewriter.WithTrimSpace(tw.Off),
-			tablewriter.WithTrimTab(tw.Off),
-		)
+		// Scenario 3: TrimSpace OFF, TrimTab OFF (Preserve All)
+		// Input: " \tval " -> " \tval " (exact match)
+		t.Run("PreserveAll", func(t *testing.T) {
+			var buf bytes.Buffer
+			table := tablewriter.NewTable(&buf,
+				tablewriter.WithTrimSpace(tw.Off),
+				tablewriter.WithTrimTab(tw.Off),
+			)
 
-		table.Header([]string{"Raw"})
-		table.Append([]string{" \tval "})
+			table.Header([]string{"Raw"})
+			table.Append([]string{" \tval "})
 
-		table.Render()
+			table.Render()
 
-		// Width Calculation:
-		// Space(1) + Tab(4) + val(3) + Space(1) = 9.
-		// Header "Raw" (3). Max Content Width: 9.
-		// Total Cell Width: 9 + 2(pad) = 11.
-		// Header Alignment: (9-3)/2 = 3 spaces each side. +1 global pad = 4 total spaces L/R.
-		// Row Content: " \tval ". Padded global L/R only.
-		expected := `
-        ┌───────────────┐
-        │      RAW      │
-        ├───────────────┤
-        │          val  │
-        └───────────────┘
+			// Width Calculation (TabWidth=4):
+			// Space(1) + Tab(4) + val(3) + Space(1) = 9.
+			// Header "Raw" (3). Max Content Width: 9.
+			// Total Cell Width: 9 + 2(pad) = 11.
+			expected := `
+			┌───────────┐
+			│    RAW    │
+			├───────────┤
+			│      val  │
+			└───────────┘
 `
-		if !visualCheck(t, "PreserveAll", buf.String(), expected) {
-			t.Logf("Buffer Content: %q", buf.String())
-			t.Error(table.Debug())
-		}
-	})
+			if !visualCheck(t, "PreserveAll", buf.String(), expected) {
+				t.Logf("Buffer Content: %q", buf.String())
+				t.Error(table.Debug())
+			}
+		})
 
-	// Scenario 4: TrimSpace ON, TrimTab ON (Trim All - Default Behavior)
-	// Input: " \tval \t " -> "val"
-	t.Run("TrimAll", func(t *testing.T) {
-		var buf bytes.Buffer
-		table := tablewriter.NewTable(&buf,
-			tablewriter.WithTrimSpace(tw.On),
-			tablewriter.WithTrimTab(tw.On),
-		)
+		// Scenario 4: TrimSpace ON, TrimTab ON (Trim All - Default Behavior)
+		// Input: " \tval \t " -> "val"
+		t.Run("TrimAll", func(t *testing.T) {
+			var buf bytes.Buffer
+			table := tablewriter.NewTable(&buf,
+				tablewriter.WithTrimSpace(tw.On),
+				tablewriter.WithTrimTab(tw.On),
+			)
 
-		table.Header([]string{"Clean"})
-		table.Append([]string{" \tval \t "})
+			table.Header([]string{"Clean"})
+			table.Append([]string{" \tval \t "})
 
-		table.Render()
+			table.Render()
 
-		// "val" width 3. "Clean" width 5.
-		// Max Content Width: 5. Total Cell Width: 7.
-		// Row "val" needs 2 spaces alignment padding.
-		expected := `
+			// "val" width 3. "Clean" width 5.
+			// Max Content Width: 5. Total Cell Width: 7.
+			expected := `
 ┌───────┐
 │ CLEAN │
 ├───────┤
 │ val   │
 └───────┘
 `
-		if !visualCheck(t, "TrimAll", buf.String(), expected) {
-			t.Logf("Buffer Content: %q", buf.String())
-			t.Error(table.Debug())
-		}
+			if !visualCheck(t, "TrimAll", buf.String(), expected) {
+				t.Logf("Buffer Content: %q", buf.String())
+				t.Error(table.Debug())
+			}
+		})
 	})
 }
 
@@ -592,4 +592,11 @@ func containsIndentedLine(tableOutput, contentFragment string) bool {
 	// or ensure the string size reflects the tab.
 
 	return true // visualCheck in other tests covers the structure
+}
+
+func testWithTabWidth(t *testing.T, width int, fn func()) {
+	old := twwidth.TabWidth()
+	twwidth.SetTabWidth(width)
+	defer twwidth.SetTabWidth(old)
+	fn()
 }
