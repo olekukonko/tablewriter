@@ -3,6 +3,7 @@ package tests
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/fatih/color"
@@ -545,4 +546,58 @@ func TestBug289(t *testing.T) {
 	if !check {
 		t.Error(table.Debug())
 	}
+}
+
+// TestBugRenditionDebugLeak verifies that Blueprint.Rendition() does not emit debug
+// output when WithDebug(false) is applied via Options(). Previously, when a table was
+// created with WithDebug(true) and then reconfigured via Options() with WithDebug(false)
+// and WithRendition(), the renderer's logger was still enabled during option application,
+// causing unwanted debug messages from Blueprint.Rendition().
+func TestBugRenditionDebugLeak(t *testing.T) {
+	t.Run("OptionsReconfigure", func(t *testing.T) {
+		var buf bytes.Buffer
+		// Create a table with debug enabled so the renderer gets an enabled logger
+		table := tablewriter.NewTable(&buf, tablewriter.WithDebug(true))
+
+		// Reconfigure with debug disabled and a rendition change
+		table.Options(
+			tablewriter.WithDebug(false),
+			tablewriter.WithRendition(tw.Rendition{
+				Borders: tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
+			}),
+		)
+
+		table.Header([]string{"Name", "Age"})
+		table.Append("Alice", "25")
+		table.Render()
+
+		debugBuf := table.Debug()
+		if strings.Contains(debugBuf.String(), "Blueprint.Rendition updated") {
+			t.Errorf("debug output leaked from Blueprint.Rendition despite WithDebug(false):\n%s", debugBuf.String())
+		}
+	})
+
+	t.Run("OptionsReconfigureOcean", func(t *testing.T) {
+		var buf bytes.Buffer
+		table := tablewriter.NewTable(&buf,
+			tablewriter.WithDebug(true),
+			tablewriter.WithRenderer(renderer.NewOcean()),
+		)
+
+		table.Options(
+			tablewriter.WithDebug(false),
+			tablewriter.WithRendition(tw.Rendition{
+				Borders: tw.Border{Left: tw.Off, Right: tw.Off, Top: tw.Off, Bottom: tw.Off},
+			}),
+		)
+
+		table.Header([]string{"Name", "Age"})
+		table.Append("Alice", "25")
+		table.Render()
+
+		debugBuf := table.Debug()
+		if strings.Contains(debugBuf.String(), "Rendition updated") {
+			t.Errorf("debug output leaked from Ocean.Rendition despite WithDebug(false):\n%s", debugBuf.String())
+		}
+	})
 }
