@@ -413,6 +413,15 @@ func (t *Table) Options(opts ...Option) *Table {
 		t.logger = ll.New("table").Handler(lh.NewTextHandler(t.trace)).Disable()
 	}
 
+	// Disable and suspend the logger before applying options to prevent premature
+	// debug output from renderer methods (e.g., Blueprint.Rendition) triggered by
+	// options like WithRendition. Without this, a previously-enabled logger would
+	// still be active on the renderer during option application, causing debug
+	// messages even when WithDebug(false) is being applied.
+	t.logger.Disable()
+	t.logger.Suspend()
+	t.renderer.Logger(t.logger)
+
 	// loop through options
 	for _, opt := range opts {
 		opt(t)
