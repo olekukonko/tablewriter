@@ -410,7 +410,7 @@ func (t *Table) Footer(elements ...any) {
 func (t *Table) Options(opts ...Option) *Table {
 	// add logger
 	if t.logger == nil {
-		t.logger = ll.New("table").Handler(lh.NewTextHandler(t.trace)).Disable()
+		t.logger = ll.New("table").Handler(lh.NewTextHandler(t.trace))
 	}
 
 	// Disable and suspend the logger before applying options to prevent premature
