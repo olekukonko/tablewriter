@@ -78,6 +78,9 @@ func (t *Table) Close() error {
 // Returns an error if streaming is disabled or the renderer does not support streaming,
 // or if called multiple times on the same stream.
 func (t *Table) Start() error {
+	if t.writer == nil {
+		return errors.New("tablewriter: writer is nil")
+	}
 	t.ensureInitialized() // Ensures basic setup like loggers
 
 	if !t.config.Stream.Enable {

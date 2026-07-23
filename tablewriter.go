@@ -1444,6 +1444,9 @@ func (t *Table) prepareWithMerges(content [][]string, config tw.CellConfig, posi
 // Returns an error if rendering fails in any section.
 func (t *Table) render() error {
 	t.ensureInitialized()
+	if t.writer == nil {
+		return errors.New("tablewriter: writer is nil")
+	}
 
 	// Save the original writer and schedule its restoration upon function exit.
 	// This guarantees the table's writer is restored even if errors occur.
