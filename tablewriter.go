@@ -104,6 +104,9 @@ type renderMergeResponse struct {
 // Parameters include writer for output and optional configuration options.
 // Returns a pointer to the initialized Table instance.
 func NewTable(w io.Writer, opts ...Option) *Table {
+	if w == nil {
+		w = io.Discard
+	}
 	t := &Table{
 		writer:       w,
 		headerWidths: tw.NewMapper[int, int](),
