@@ -2,6 +2,7 @@ package tablewriter
 
 import (
 	"encoding/csv"
+	"errors"
 	"io"
 	"os"
 )
@@ -28,6 +29,9 @@ func NewCSV(writer io.Writer, fileName string, hasHeader bool, opts ...Option) (
 // This enables customisation such as reader.Comma = ';'
 // See http://golang.org/src/pkg/encoding/csv/reader.go?s=3213:3671#L94
 func NewCSVReader(writer io.Writer, csvReader *csv.Reader, hasHeader bool, opts ...Option) (*Table, error) {
+	if csvReader == nil {
+		return nil, errors.New("csv reader is nil")
+	}
 	// Create a new table instance using the modern API and provided options.
 	// Options configure the table's appearance and behavior (renderer, borders, etc.).
 	t := NewTable(writer, opts...) // Logger setup happens here if WithLogger/WithDebug is passed
