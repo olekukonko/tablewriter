@@ -134,7 +134,7 @@ func TestStructTableWithDB(t *testing.T) {
 }
 
 func TestAutoHeaderScenarios(t *testing.T) {
-	// --- Legacy/Standard Structs ---
+	// Legacy/Standard Structs
 	type Basic struct {
 		Foo int
 		Bar string
@@ -167,35 +167,35 @@ func TestAutoHeaderScenarios(t *testing.T) {
 		Value string
 	}
 
-	// --- 1. Alignment & Header Alignment Tests ---
+	// Alignment & Header Alignment Tests
 	type TWAlign struct {
 		LeftCol   string `tw:"name=Left Col, align=left, header_align=center"`
 		CenterCol string `tw:"name=Center Col, align=center, header_align=right"`
 		RightCol  string `tw:"name=Right Col, align=right, header_align=left"`
 	}
 
-	// --- 2. Advanced Padding Tests ---
+	// Advanced Padding Tests
 	type TWPadding struct {
 		PadA string `tw:"name=Pad A, pad_left=>, pad_right=<"`
 		PadB string `tw:"name=Pad B, pad_left=-, pad_right=-"`
 		PadC string `tw:"name=Pad C, pad_left=, pad_right=*"`
 	}
 
-	// --- 3. Per-Column Width Tests ---
+	// Per-Column Width Tests
 	type TWPerColumnMaxWidth struct {
 		Narrow string `tw:"name=Narrow, max_width=8, wrap=truncate"`
 		Medium string `tw:"name=Medium, max_width=12, wrap=truncate"`
 		Wide   string `tw:"name=Wide, max_width=16, wrap=truncate"`
 	}
 
-	// --- 4. Table-Wide Formatting Overrides ---
+	// Table-Wide Formatting Overrides
 	type TWTableWideOverrides struct {
 		Raw   string `tw:"name=my_raw_header, auto_format=false"`
 		Space string `tw:"name=Spaced, trim_space=false"`
 		Tab   string `tw:"name=Tabbed, trim_tab=false"`
 	}
 
-	// --- 5. Tag Fallbacks & Composites ---
+	// Tag Fallbacks & Composites
 	type TWComposite struct {
 		A string `json:"json_name" tw:"align=right"`
 		B string `db:"db_name" tw:"-"`
@@ -209,7 +209,7 @@ func TestAutoHeaderScenarios(t *testing.T) {
 		preHeaders []string
 		expected   string
 	}{
-		// --- Legacy Tests ---
+		// Legacy Tests
 		{
 			name:   "BasicStruct",
 			data:   []Basic{{1, "test", true}, {2, "test2", false}},
@@ -353,7 +353,7 @@ func TestAutoHeaderScenarios(t *testing.T) {
 `,
 		},
 
-		// --- New 'tw' Tag Features Tests ---
+		// New 'tw' Tag Features Tests
 
 		{
 			name:   "TW_Alignment_Independence",
