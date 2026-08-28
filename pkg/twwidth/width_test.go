@@ -152,6 +152,14 @@ func TestWidth(t *testing.T) {
 	}
 }
 
+func TestWidthControlCharMatchesNoCache(t *testing.T) {
+	for _, s := range []string{"\x00", "\x07", "\x1f", "\x7f"} {
+		if got, want := Width(s), WidthNoCache(s); got != want {
+			t.Errorf("Width(%q) = %d, WidthNoCache(%q) = %d; fast path must match", s, got, s, want)
+		}
+	}
+}
+
 func TestDisplay(t *testing.T) {
 	tests := []struct {
 		name          string
