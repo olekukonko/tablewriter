@@ -21,7 +21,6 @@ type Markdown struct {
 	// Deferred separator rendering
 	pendingSeparator bool
 	pendingSepCtx    tw.Formatting
-	pendingHeaders   [][]string
 }
 
 // NewMarkdown initializes a Markdown renderer with defaults tailored for Markdown.
@@ -91,7 +90,6 @@ func (m *Markdown) Header(headers [][]string, ctx tw.Formatting) {
 	if m.config.Settings.Lines.ShowHeaderLine.Enabled() {
 		m.pendingSeparator = true
 		m.pendingSepCtx = ctx
-		m.pendingHeaders = headers
 		m.logger.Debug("Header: Deferred separator rendering until body alignment is known")
 	}
 }
