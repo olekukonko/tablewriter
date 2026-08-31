@@ -15,6 +15,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"github.com/olekukonko/tablewriter/tw"
@@ -186,4 +187,28 @@ func TestWrapString(t *testing.T) {
 	want := []string{"ああああああああああああああああああああああああ", "あああああああ"}
 	got, _ := WrapString("ああああああああああああああああああああああああ あああああああ", 55)
 	checkEqual(t, got, want)
+}
+
+func TestWrapWordsLastWordWiderThanLimit(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		words []string
+		lim   int
+		want  [][]string
+	}{
+		{"single word over limit", []string{"hello"}, 3, [][]string{{"hello"}}},
+		{"last word over limit", []string{"aaa", "bbbb"}, 3, [][]string{{"aaa"}, {"bbbb"}}},
+		{"last of three over limit", []string{"a", "b", "cccc"}, 3, [][]string{{"a", "b"}, {"cccc"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			done := make(chan [][]string, 1)
+			go func() { done <- WrapWords(tc.words, 1, tc.lim, defaultPenalty) }()
+			select {
+			case got := <-done:
+				checkEqual(t, got, tc.want)
+			case <-time.After(5 * time.Second):
+				t.Fatalf("WrapWords(%q, 1, %d) did not return", tc.words, tc.lim)
+			}
+		})
+	}
 }
