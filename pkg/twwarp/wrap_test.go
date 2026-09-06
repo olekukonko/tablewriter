@@ -189,25 +189,40 @@ func TestWrapString(t *testing.T) {
 	checkEqual(t, got, want)
 }
 
-func TestWrapWordsLastWordWiderThanLimit(t *testing.T) {
+func TestWrapWords(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
 		words []string
+		spc   int
 		lim   int
 		want  [][]string
 	}{
-		{"single word over limit", []string{"hello"}, 3, [][]string{{"hello"}}},
-		{"last word over limit", []string{"aaa", "bbbb"}, 3, [][]string{{"aaa"}, {"bbbb"}}},
-		{"last of three over limit", []string{"a", "b", "cccc"}, 3, [][]string{{"a", "b"}, {"cccc"}}},
+		// A last word wider than lim used to leave the break chain unterminated.
+		{"single word over limit", []string{"hello"}, 1, 3, [][]string{{"hello"}}},
+		{"last word over limit", []string{"aaa", "bbbb"}, 1, 3, [][]string{{"aaa"}, {"bbbb"}}},
+		{"last of three over limit", []string{"a", "b", "cccc"}, 1, 3, [][]string{{"a", "b"}, {"cccc"}}},
+		{"every word over limit", []string{"aaaa", "bbbb"}, 1, 3, [][]string{{"aaaa"}, {"bbbb"}}},
+		{"wide runes over limit", []string{"ああ", "いいい"}, 1, 4, [][]string{{"ああ"}, {"いいい"}}},
+		{"zero limit", []string{"x"}, 1, 0, [][]string{{"x"}}},
+
+		// Unaffected shapes, kept so the fix is pinned to the last-word case.
+		{"empty", nil, 1, 3, nil},
+		{"single word at limit", []string{"abc"}, 1, 3, [][]string{{"abc"}}},
+		{"single word under limit", []string{"ab"}, 1, 3, [][]string{{"ab"}}},
+		{"over-limit word not last", []string{"aaaa", "b"}, 1, 3, [][]string{{"aaaa"}, {"b"}}},
+		{"wraps at limit", []string{"the", "quick", "brown", "fox"}, 1, 10, [][]string{{"the", "quick"}, {"brown", "fox"}}},
+		{"one word per line", []string{"the", "quick", "brown", "fox"}, 1, 5, [][]string{{"the"}, {"quick"}, {"brown"}, {"fox"}}},
+		{"all on one line", []string{"a", "b", "c"}, 1, 100, [][]string{{"a", "b", "c"}}},
+		{"no space between words", []string{"aaa", "bbb"}, 0, 3, [][]string{{"aaa"}, {"bbb"}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			done := make(chan [][]string, 1)
-			go func() { done <- WrapWords(tc.words, 1, tc.lim, defaultPenalty) }()
+			go func() { done <- WrapWords(tc.words, tc.spc, tc.lim, defaultPenalty) }()
 			select {
 			case got := <-done:
 				checkEqual(t, got, tc.want)
 			case <-time.After(5 * time.Second):
-				t.Fatalf("WrapWords(%q, 1, %d) did not return", tc.words, tc.lim)
+				t.Fatalf("WrapWords(%q, %d, %d) did not return", tc.words, tc.spc, tc.lim)
 			}
 		})
 	}
