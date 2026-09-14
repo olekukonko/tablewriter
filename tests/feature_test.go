@@ -3,6 +3,7 @@ package tests
 import (
 	"bytes"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/olekukonko/tablewriter"
@@ -77,20 +78,19 @@ func TestBatchGlobalWidthScaling(t *testing.T) {
 	table.Append([]string{"Bob Johnson", "30", "Boston"})
 	table.Render()
 
-	// Expected widths:
-	// Total width = 20, with 2 separators (2x1 = 2)
-	// Available for columns = 20 - 2 = 18
-	// 3 columns, so each ~6 (18/3), adjusted for padding and separators
-	// Col 0: 6 (content=4, pad=1+1, sep=1)
-	// Col 1: 6 (content=4, pad=1+1, sep=1)
-	// Col 2: 6 (content=4, pad=1+1)
+	// Widths.Global is a table-wide limit, so wrap width is split across
+	// columns (20 - 2 separators) / 3 rather than wrapping each column to 20
+	// and then shrinking (which truncated content).
 	expected := `
-	┌──────┬─────┬───────┐
-	│ NAME │ AGE │ CITY  │
-	├──────┼─────┼───────┤
-	│ Alic │ 25  │ New Y │
-	│ Bob  │ 30  │ Bosto │
-	└──────┴─────┴───────┘
+	┌───────┬─────┬──────┐
+	│ NAME  │ AGE │ CITY │
+	├───────┼─────┼──────┤
+	│ Alice │ 25  │ New  │
+	│ Smith │     │ York │
+	│       │     │ City │
+	│ Bob   │ 30  │ Bost │
+	│ Johns │     │      │
+	└───────┴─────┴──────┘
 `
 	if !visualCheck(t, "BatchGlobalWidthScaling", buf.String(), expected) {
 		t.Error(table.Debug())
@@ -190,6 +190,39 @@ func TestWrapBreakWithConstrainedWidthsNoRightPadding(t *testing.T) {
 `
 	if !visualCheck(t, "WrapBreakWithConstrainedWidthsNoRightPadding", buf.String(), expected) {
 		t.Error(table.Debug())
+	}
+}
+
+func TestWrapBreakGlobalWidthKeepsContent(t *testing.T) {
+	const original = "111,2049,3261,4420,8009,10200-10203,10206-10207"
+	var buf bytes.Buffer
+	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
+		Widths: tw.CellWidth{Global: 40},
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{AutoWrap: tw.WrapBreak},
+		},
+	}))
+	table.Header("A", "B")
+	if err := table.Append("x", original); err != nil {
+		t.Fatal(err)
+	}
+	if err := table.Render(); err != nil {
+		t.Fatal(err)
+	}
+	var recovered string
+	for _, line := range strings.Split(buf.String(), "\n") {
+		parts := strings.Split(line, "│")
+		if len(parts) != 4 {
+			continue
+		}
+		cell := strings.TrimSpace(parts[2])
+		if cell == "" || cell == "B" {
+			continue
+		}
+		recovered += strings.TrimSuffix(cell, tw.CharBreak)
+	}
+	if recovered != original {
+		t.Fatalf("WrapBreak dropped characters under Widths.Global\noriginal =%q\nrecovered=%q\noutput:\n%s", original, recovered, buf.String())
 	}
 }
 
