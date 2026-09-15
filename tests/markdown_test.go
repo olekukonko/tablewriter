@@ -493,3 +493,60 @@ func TestMarkdownCenterAlignment(t *testing.T) {
 		t.Error(table.Debug())
 	}
 }
+
+func TestMarkdownHeaderOnlyTable(t *testing.T) {
+	var buf bytes.Buffer
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithRenderer(renderer.NewMarkdown()),
+	)
+	table.Header([]string{"Name", "Age", "City"})
+	// No Append, no Footer — just headers
+	table.Render()
+
+	expected := `
+	| NAME | AGE | CITY |
+	|:----:|:---:|:----:|
+`
+	if !visualCheck(t, "MarkdownHeaderOnlyTable", buf.String(), expected) {
+		t.Error(table.Debug())
+	}
+}
+
+func TestMarkdownRendererCloseFlushesSeparator(t *testing.T) {
+	var buf bytes.Buffer
+	md := renderer.NewMarkdown()
+	md.Start(&buf)
+
+	// Simulate header call with correct widths and uppercased headers
+	ctx := tw.Formatting{
+		Row: tw.RowContext{
+			Current: map[int]tw.CellContext{
+				0: {Align: tw.AlignLeft, Width: 6},
+				1: {Align: tw.AlignCenter, Width: 5},
+			},
+			// Only initialize keys 0 and 1 so it strictly limits to 2 columns.
+			// Because no explicit widths are given, they default to 0,
+			// triggering the minimum 3-character separator.
+			Widths: tw.NewMapperWithKeys[int, int](0, 1),
+		},
+	}
+
+	md.Header([][]string{{"NAME", "AGE"}}, ctx)
+
+	// No Row() called — body alignment unresolved
+	// Close should flush using header alignment as fallback
+	err := md.Close()
+	if err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	got := buf.String()
+
+	// Because column widths default to 0, the separators fall back to the min width (3 chars).
+	// Left alignment becomes ":--" and Center alignment becomes ":-:"
+	want := "| NAME | AGE |\n|:--|:-:|\n"
+
+	if got != want {
+		t.Errorf("Close() flush mismatch\ngot:  %q\nwant: %q", got, want)
+	}
+}

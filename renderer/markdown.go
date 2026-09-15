@@ -161,7 +161,22 @@ func (m *Markdown) Start(w io.Writer) error {
 }
 
 func (m *Markdown) Close() error {
-	m.logger.Warn("Markdown.Close() called (no-op).")
+	if !m.pendingSeparator {
+		return nil
+	}
+
+	// If we have a deferred separator but body alignment was never resolved,
+	// fall back to header alignment so the separator still renders.
+	if !m.bodyResolved && len(m.headerAlignment) > 0 {
+		m.bodyResolved = true
+		m.bodyAlignment = make(tw.Alignment, len(m.headerAlignment))
+		copy(m.bodyAlignment, m.headerAlignment)
+	}
+
+	if m.bodyResolved {
+		m.renderDeferredSeparator()
+	}
+
 	return nil
 }
 
