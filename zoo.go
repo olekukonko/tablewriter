@@ -976,7 +976,7 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 
 // calculateContentMaxWidth computes the maximum content width for a column, accounting for padding and mode-specific constraints.
 // Returns the effective content width (after subtracting padding) for the given column index.
-func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLeftWidth, padRightWidth int, isStreaming bool, numCols int) int {
+func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLeftWidth, padRightWidth int, isStreaming bool, numCols int, applyGlobalWrap bool) int {
 	var effectiveContentMaxWidth int
 
 	if isStreaming {
@@ -1010,8 +1010,10 @@ func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLe
 			// Check new Widths.Global. It is a table-wide limit, so split it
 			// across columns (same idea as MaxWidth). Applying the full Global
 			// value per column wraps too wide, then later shrink+truncate
-			// drops characters (see #328).
-			if !hasConstraint && t.config.Widths.Global > 0 {
+			// drops characters (see #328). Skip when the unconstrained row
+			// already fits under Global — splitting equally would wrap
+			// prematurely and shrink a table that did not need it.
+			if !hasConstraint && applyGlobalWrap && t.config.Widths.Global > 0 {
 				n := numCols
 				if n < 1 {
 					n = 1

@@ -65,7 +65,7 @@ func TestCalculateContentMaxWidth(t *testing.T) {
 		},
 	}
 	t.Run("Batch Mode with MaxWidth", func(t *testing.T) {
-		got := table.calculateContentMaxWidth(0, config, 1, 1, false, 1)
+		got := table.calculateContentMaxWidth(0, config, 1, 1, false, 1, true)
 		if got != 8 { // 10 - 1 (left) - 1 (right)
 			t.Errorf("Expected width 8, got %d", got)
 		}
@@ -74,14 +74,14 @@ func TestCalculateContentMaxWidth(t *testing.T) {
 		table.streamWidths = map[int]int{0: 12}
 		table.config.Stream.Enable = true
 		table.hasPrinted = true
-		got := table.calculateContentMaxWidth(0, config, 1, 1, true, 1)
+		got := table.calculateContentMaxWidth(0, config, 1, 1, true, 1, true)
 		if got != 10 { // 12 - 1 (left) - 1 (right)
 			t.Errorf("Expected width 10, got %d", got)
 		}
 	})
 	t.Run("No Constraint in Batch", func(t *testing.T) {
 		config.ColMaxWidths.Global = 0
-		got := table.calculateContentMaxWidth(0, config, 1, 1, false, 1)
+		got := table.calculateContentMaxWidth(0, config, 1, 1, false, 1, true)
 		if got != 0 {
 			t.Errorf("Expected width 0, got %d", got)
 		}

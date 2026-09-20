@@ -144,6 +144,41 @@ func TestBatchWidthsWithHorizontalMerge(t *testing.T) {
 	}
 }
 
+func TestGlobalWidthDoesNotPrematurelyWrapFittingContent(t *testing.T) {
+	// Remaining #328: Widths.Global=50 on a table that naturally fits
+	// (~37) must not wrap equally across columns and shrink the table.
+	var withoutGlobal, withGlobal bytes.Buffer
+	appendRow := func(tbl *tablewriter.Table) {
+		tbl.Header("A", "B", "C")
+		_ = tbl.Append("x", "short", "012345678901234567890")
+		_ = tbl.Render()
+	}
+	appendRow(tablewriter.NewTable(&withoutGlobal))
+	appendRow(tablewriter.NewTable(&withGlobal, tablewriter.WithConfig(tablewriter.Config{
+		Widths: tw.CellWidth{Global: 50},
+		Row: tw.CellConfig{
+			Formatting: tw.CellFormatting{AutoWrap: tw.WrapBreak},
+		},
+	})))
+
+	natural := strings.TrimSpace(withoutGlobal.String())
+	constrained := strings.TrimSpace(withGlobal.String())
+	if natural == "" || constrained == "" {
+		t.Fatalf("empty render without=%q with=%q", natural, constrained)
+	}
+	if strings.Contains(constrained, tw.CharBreak) {
+		t.Fatalf("Widths.Global wrapped content that already fit:\n%s", constrained)
+	}
+	natW := len([]rune(strings.Split(natural, "\n")[0]))
+	conW := len([]rune(strings.Split(constrained, "\n")[0]))
+	if conW < natW {
+		t.Fatalf("Widths.Global shrunk a fitting table: natural=%d constrained=%d\n%s", natW, conW, constrained)
+	}
+	if !strings.Contains(constrained, "012345678901234567890") {
+		t.Fatalf("long cell was split/truncated:\n%s", constrained)
+	}
+}
+
 func TestWrapBreakWithConstrainedWidthsNoRightPadding(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf,

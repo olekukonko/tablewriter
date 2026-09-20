@@ -914,6 +914,42 @@ func (t *Table) printTopBottomCaption(w io.Writer, actualTableWidth int) {
 	t.logger.Debugf("[printCaption] Finished printing all caption lines.")
 }
 
+// rowExceedsGlobalWidth reports whether this row's unconstrained content
+// (plus padding and column separators) would exceed Widths.Global.
+// When it does not, wrapping to Global/n would shrink a table that already
+// fits (remaining #328).
+func (t *Table) rowExceedsGlobalWidth(cells []string, config tw.CellConfig, numCols int) bool {
+	if t.config.Widths.Global <= 0 || numCols <= 0 {
+		return false
+	}
+	sepW := 0
+	if numCols > 1 && t.renderer != nil && t.renderer.Config().Settings.Separators.BetweenColumns.Enabled() {
+		sepW = twwidth.Width(t.renderer.Config().Symbols.Column()) * (numCols - 1)
+	}
+	total := sepW
+	for i := 0; i < numCols; i++ {
+		cell := tw.Empty
+		if i < len(cells) {
+			cell = t.Trimmer(cells[i])
+		}
+		maxW := 0
+		for _, line := range strings.Split(cell, "\n") {
+			if w := twwidth.Width(line); w > maxW {
+				maxW = w
+			}
+		}
+		pad := config.Padding.Global
+		if i < len(config.Padding.PerColumn) && config.Padding.PerColumn[i].Paddable() {
+			pad = config.Padding.PerColumn[i]
+		}
+		total += maxW + twwidth.Width(pad.Left) + twwidth.Width(pad.Right)
+		if total > t.config.Widths.Global {
+			return true
+		}
+	}
+	return false
+}
+
 // prepareContent processes cell content with formatting and wrapping.
 // Parameters include cells to process and config for formatting rules.
 // Returns a slice of string slices representing processed lines.
@@ -956,6 +992,8 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 		}
 	}
 
+	applyGlobalWrap := t.rowExceedsGlobalWidth(cells, config, effectiveNumCols)
+
 	for i := 0; i < effectiveNumCols; i++ {
 		cellContent := ""
 		if i < len(cells) {
@@ -981,7 +1019,7 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig) [][]string 
 		padLeftWidth := twwidth.Width(colPad.Left)
 		padRightWidth := twwidth.Width(colPad.Right)
 
-		effectiveContentMaxWidth := t.calculateContentMaxWidth(i, config, padLeftWidth, padRightWidth, isStreaming, effectiveNumCols)
+		effectiveContentMaxWidth := t.calculateContentMaxWidth(i, config, padLeftWidth, padRightWidth, isStreaming, effectiveNumCols, applyGlobalWrap)
 
 		if config.Formatting.AutoFormat.Enabled() {
 			cellContent = tw.Title(strings.Join(tw.SplitCamelCase(cellContent), tw.Space))
