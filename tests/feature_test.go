@@ -335,7 +335,7 @@ func TestLinesCounter(t *testing.T) {
 		table := tablewriter.NewTable(io.Discard,
 			tablewriter.WithLineCounter(), // Use the new, explicit function.
 			tablewriter.WithRowAutoWrap(tw.WrapNormal),
-			tablewriter.WithMaxWidth(40),
+			tablewriter.WithMaxWidth(28),
 		)
 		table.Header("Name", "Sign", "Rating")
 		table.Bulk(data)
