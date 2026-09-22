@@ -64,24 +64,42 @@ func TestCalculateContentMaxWidth(t *testing.T) {
 			Global: tw.Padding{Left: " ", Right: " "},
 		},
 	}
+
 	t.Run("Batch Mode with MaxWidth", func(t *testing.T) {
-		got := table.calculateContentMaxWidth(0, config, 1, 1, false, 1)
+		// Ensure streaming is disabled for this run
+		table.config.Stream.Enable = false
+		table.hasPrinted = false
+
+		// New signature: (colIdx, config, padLeft, padRight, numCols, resolvedWidths)
+		got := table.calculateContentMaxWidth(0, config, 1, 1, 1, nil)
 		if got != 8 { // 10 - 1 (left) - 1 (right)
 			t.Errorf("Expected width 8, got %d", got)
 		}
 	})
+
 	t.Run("Streaming Mode", func(t *testing.T) {
-		table.streamWidths = map[int]int{0: 12}
+		// Update to use the new tw.Mapper type instead of native map
+		table.streamWidths = tw.NewMapper[int, int]()
+		table.streamWidths.Set(0, 12)
+
+		// Enable streaming state internally
 		table.config.Stream.Enable = true
 		table.hasPrinted = true
-		got := table.calculateContentMaxWidth(0, config, 1, 1, true, 1)
+
+		got := table.calculateContentMaxWidth(0, config, 1, 1, 1, nil)
 		if got != 10 { // 12 - 1 (left) - 1 (right)
 			t.Errorf("Expected width 10, got %d", got)
 		}
 	})
+
 	t.Run("No Constraint in Batch", func(t *testing.T) {
 		config.ColMaxWidths.Global = 0
-		got := table.calculateContentMaxWidth(0, config, 1, 1, false, 1)
+
+		// Reset streaming state
+		table.config.Stream.Enable = false
+		table.hasPrinted = false
+
+		got := table.calculateContentMaxWidth(0, config, 1, 1, 1, nil)
 		if got != 0 {
 			t.Errorf("Expected width 0, got %d", got)
 		}

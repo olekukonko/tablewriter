@@ -820,8 +820,13 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 
 	// Apply global width constraint
 	finalWidths := workingWidths.Clone()
-	if t.config.Widths.Global > 0 {
-		ctx.logger.Debugf("Applying global width constraint: %d", t.config.Widths.Global)
+	globalLimit := t.config.Widths.Global
+	if globalLimit <= 0 && t.config.MaxWidth > 0 {
+		globalLimit = t.config.MaxWidth
+	}
+
+	if globalLimit > 0 {
+		ctx.logger.Debugf("Applying global width constraint: %d", globalLimit)
 		currentSumOfFinalColWidths := 0
 		finalWidths.Each(func(_, w int) { currentSumOfFinalColWidths += w })
 		numSeparators := 0
@@ -829,9 +834,9 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 			numSeparators = (ctx.numCols - 1) * twwidth.Width(t.renderer.Config().Symbols.Column())
 		}
 		totalCurrentTablePhysicalWidth := currentSumOfFinalColWidths + numSeparators
-		if totalCurrentTablePhysicalWidth > t.config.Widths.Global {
-			ctx.logger.Debugf("Table width %d exceeds global limit %d. Shrinking.", totalCurrentTablePhysicalWidth, t.config.Widths.Global)
-			targetTotalColumnContentWidth := max(t.config.Widths.Global-numSeparators, 0)
+		if totalCurrentTablePhysicalWidth > globalLimit {
+			ctx.logger.Debugf("Table width %d exceeds global limit %d. Shrinking.", totalCurrentTablePhysicalWidth, globalLimit)
+			targetTotalColumnContentWidth := max(globalLimit-numSeparators, 0)
 			if ctx.numCols > 0 && targetTotalColumnContentWidth < ctx.numCols {
 				targetTotalColumnContentWidth = ctx.numCols
 			}
@@ -888,67 +893,33 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 				finalWidths = scaledHardMinimums.Clone()
 				ctx.logger.Debugf("Scaled minimums: %v", finalWidths)
 			} else {
-				finalWidths = hardMinimums.Clone()
-				widthAllocatedByMinimums := sumOfHardMinimums
-				remainingWidthToDistribute := targetTotalColumnContentWidth - widthAllocatedByMinimums
-				ctx.logger.Debugf("Target: %d, minimums: %d, remaining: %d", targetTotalColumnContentWidth, widthAllocatedByMinimums, remainingWidthToDistribute)
-				if remainingWidthToDistribute > 0 {
-					sumOfFlexiblePotentialBase := 0
-					flexibleColsOriginalWidths := tw.NewMapper[int, int]()
+				excess := currentSumOfFinalColWidths - targetTotalColumnContentWidth
+				for excess > 0 {
+					maxW := -1
 					for i := 0; i < ctx.numCols; i++ {
-						naturalW := workingWidths.Get(i)
+						w := finalWidths.Get(i)
 						minW := hardMinimums.Get(i)
-						if naturalW > minW {
-							sumOfFlexiblePotentialBase += (naturalW - minW)
-							flexibleColsOriginalWidths.Set(i, naturalW)
+						if w > minW && w > maxW {
+							maxW = w
 						}
 					}
-					ctx.logger.Debugf("Flexible potential: %d, flexible widths: %v", sumOfFlexiblePotentialBase, flexibleColsOriginalWidths)
-					if sumOfFlexiblePotentialBase > 0 {
-						distributedExtraSum := 0
-						sortedFlexKeys := flexibleColsOriginalWidths.SortedKeys()
-						for _, colIdx := range sortedFlexKeys {
-							naturalWOfCol := flexibleColsOriginalWidths.Get(colIdx)
-							hardMinOfCol := hardMinimums.Get(colIdx)
-							flexiblePartOfCol := naturalWOfCol - hardMinOfCol
-							proportion := 0.0
-							if sumOfFlexiblePotentialBase > 0 {
-								proportion = float64(flexiblePartOfCol) / float64(sumOfFlexiblePotentialBase)
-							} else if len(sortedFlexKeys) > 0 {
-								proportion = 1.0 / float64(len(sortedFlexKeys))
-							}
-							extraForThisCol := int(math.Round(float64(remainingWidthToDistribute) * proportion))
-							currentAssignedW := finalWidths.Get(colIdx)
-							finalWidths.Set(colIdx, currentAssignedW+extraForThisCol)
-							distributedExtraSum += extraForThisCol
+
+					if maxW == -1 {
+						break
+					}
+
+					var maxCols []int
+					for i := 0; i < ctx.numCols; i++ {
+						if finalWidths.Get(i) == maxW {
+							maxCols = append(maxCols, i)
 						}
-						errorInDist := remainingWidthToDistribute - distributedExtraSum
-						ctx.logger.Debugf("Distributed %d, error: %d", distributedExtraSum, errorInDist)
-						if errorInDist != 0 && len(sortedFlexKeys) > 0 {
-							for i := 0; i < int(math.Abs(float64(errorInDist))); i++ {
-								colToAdjust := sortedFlexKeys[i%len(sortedFlexKeys)]
-								w := finalWidths.Get(colToAdjust)
-								adj := 1
-								if errorInDist < 0 {
-									adj = -1
-								}
-								if adj >= 0 || w+adj >= hardMinimums.Get(colToAdjust) {
-									finalWidths.Set(colToAdjust, w+adj)
-								} else if adj > 0 {
-									finalWidths.Set(colToAdjust, w+adj)
-								}
-							}
-						}
-					} else if ctx.numCols > 0 {
-						extraPerCol := remainingWidthToDistribute / ctx.numCols
-						rem := remainingWidthToDistribute % ctx.numCols
-						for i := 0; i < ctx.numCols; i++ {
-							currentW := finalWidths.Get(i)
-							add := extraPerCol
-							if i < rem {
-								add++
-							}
-							finalWidths.Set(i, currentW+add)
+					}
+
+					for i := len(maxCols) - 1; i >= 0; i-- {
+						colIdx := maxCols[i]
+						if excess > 0 {
+							finalWidths.Set(colIdx, maxW-1)
+							excess--
 						}
 					}
 				}
@@ -976,8 +947,9 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 
 // calculateContentMaxWidth computes the maximum content width for a column, accounting for padding and mode-specific constraints.
 // Returns the effective content width (after subtracting padding) for the given column index.
-func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLeftWidth, padRightWidth int, isStreaming bool, numCols int) int {
+func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLeftWidth, padRightWidth int, numCols int, resolvedWidths tw.Mapper[int, int]) int {
 	var effectiveContentMaxWidth int
+	isStreaming := t.config.Stream.Enable && t.hasPrinted
 
 	if isStreaming {
 		// Existing streaming logic remains unchanged
@@ -993,70 +965,36 @@ func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLe
 		}
 		t.logger.Debugf("calculateContentMaxWidth: Streaming col %d, TotalColWd=%d, PadL=%d, PadR=%d -> ContentMaxWd=%d", colIdx, totalColumnWidthFromStream, padLeftWidth, padRightWidth, effectiveContentMaxWidth)
 	} else {
-		// New priority-based width constraint checking
 		constraintTotalCellWidth := 0
 		hasConstraint := false
 
-		// Check new Widths.PerColumn (highest priority)
-		if t.config.Widths.Constrained() {
-
-			if colWidth, ok := t.config.Widths.PerColumn.OK(colIdx); ok && colWidth > 0 {
-				constraintTotalCellWidth = colWidth
+		if resolvedWidths != nil {
+			// PASS 2: Hard resolved widths
+			if w, ok := resolvedWidths.OK(colIdx); ok {
+				constraintTotalCellWidth = w
 				hasConstraint = true
-				t.logger.Debugf("calculateContentMaxWidth: Using Widths.PerColumn[%d] = %d",
-					colIdx, constraintTotalCellWidth)
 			}
-
-			// Check new Widths.Global. It is a table-wide limit, so split it
-			// across columns (same idea as MaxWidth). Applying the full Global
-			// value per column wraps too wide, then later shrink+truncate
-			// drops characters (see #328).
-			if !hasConstraint && t.config.Widths.Global > 0 {
-				n := numCols
-				if n < 1 {
-					n = 1
+		} else {
+			// PASS 1: Natural layout. Apply only per-column strict maximums,
+			// do NOT apportion global table widths (Widths.Global or MaxWidth) yet.
+			if t.config.Widths.Constrained() {
+				if colWidth, ok := t.config.Widths.PerColumn.OK(colIdx); ok && colWidth > 0 {
+					constraintTotalCellWidth = colWidth
+					hasConstraint = true
 				}
-				sepW := 0
-				if n > 1 && t.renderer != nil && t.renderer.Config().Settings.Separators.BetweenColumns.Enabled() {
-					sepW = twwidth.Width(t.renderer.Config().Symbols.Column()) * (n - 1)
+			}
+			if !hasConstraint && config.ColMaxWidths.PerColumn != nil {
+				if colMax, ok := config.ColMaxWidths.PerColumn.OK(colIdx); ok && colMax > 0 {
+					constraintTotalCellWidth = colMax
+					hasConstraint = true
 				}
-				available := t.config.Widths.Global - sepW
-				if available < n {
-					available = n
-				}
-				constraintTotalCellWidth = available / n
+			}
+			if !hasConstraint && config.ColMaxWidths.Global > 0 {
+				constraintTotalCellWidth = config.ColMaxWidths.Global
 				hasConstraint = true
-				t.logger.Debugf("calculateContentMaxWidth: Using Widths.Global = %d as per-column %d (%d cols)", t.config.Widths.Global, constraintTotalCellWidth, n)
 			}
 		}
 
-		// Fall back to legacy ColMaxWidths.PerColumn (backward compatibility)
-		if !hasConstraint && config.ColMaxWidths.PerColumn != nil {
-			if colMax, ok := config.ColMaxWidths.PerColumn.OK(colIdx); ok && colMax > 0 {
-				constraintTotalCellWidth = colMax
-				hasConstraint = true
-				t.logger.Debugf("calculateContentMaxWidth: Using legacy ColMaxWidths.PerColumn[%d] = %d",
-					colIdx, constraintTotalCellWidth)
-			}
-		}
-
-		// Fall back to legacy ColMaxWidths.Global
-		if !hasConstraint && config.ColMaxWidths.Global > 0 {
-			constraintTotalCellWidth = config.ColMaxWidths.Global
-			hasConstraint = true
-			t.logger.Debugf("calculateContentMaxWidth: Using legacy ColMaxWidths.Global = %d",
-				constraintTotalCellWidth)
-		}
-
-		// Fall back to table MaxWidth if auto-wrapping
-		if !hasConstraint && t.config.MaxWidth > 0 && config.Formatting.AutoWrap != tw.WrapNone {
-			constraintTotalCellWidth = t.config.MaxWidth
-			hasConstraint = true
-			t.logger.Debugf("calculateContentMaxWidth: Using table MaxWidth = %d (AutoWrap enabled)",
-				constraintTotalCellWidth)
-		}
-
-		// Calculate effective width based on found constraint
 		if hasConstraint {
 			effectiveContentMaxWidth = constraintTotalCellWidth - padLeftWidth - padRightWidth
 			if effectiveContentMaxWidth < 1 && constraintTotalCellWidth > (padLeftWidth+padRightWidth) {
@@ -1064,11 +1002,8 @@ func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLe
 			} else if effectiveContentMaxWidth < 0 {
 				effectiveContentMaxWidth = 0
 			}
-			t.logger.Debugf("calculateContentMaxWidth: ConstraintTotalCellWidth=%d, PadL=%d, PadR=%d -> EffectiveContentMaxWidth=%d",
-				constraintTotalCellWidth, padLeftWidth, padRightWidth, effectiveContentMaxWidth)
 		} else {
-			effectiveContentMaxWidth = 0
-			t.logger.Debugf("calculateContentMaxWidth: No width constraints found for column %d", colIdx)
+			effectiveContentMaxWidth = 0 // unlimited
 		}
 	}
 
@@ -1076,7 +1011,7 @@ func (t *Table) calculateContentMaxWidth(colIdx int, config tw.CellConfig, padLe
 }
 
 // convertToStringer invokes the table's stringer function with optional caching.
-func (t *Table) convertToStringer(input interface{}) ([]string, error) {
+func (t *Table) convertToStringer(input any) ([]string, error) {
 	// This function is now only called if t.stringer is non-nil.
 	if t.stringer == nil {
 		return nil, errors.New("internal error: convertToStringer called with nil t.stringer")
@@ -1152,7 +1087,7 @@ func (t *Table) convertToStringer(input interface{}) ([]string, error) {
 }
 
 // convertToString converts a value to its string representation.
-func (t *Table) convertToString(value interface{}) string {
+func (t *Table) convertToString(value any) string {
 	if value == nil {
 		return ""
 	}
@@ -1238,7 +1173,7 @@ func (t *Table) convertToString(value interface{}) string {
 // convertItemToCells is responsible for converting a single input item (which could be
 // a struct, a basic type, or an item implementing Stringer/Formatter) into a slice
 // of strings, where each string represents a cell for the table row.
-func (t *Table) convertItemToCells(item interface{}) ([]string, error) {
+func (t *Table) convertItemToCells(item any) ([]string, error) {
 	t.logger.Debugf("convertItemToCells: Converting item of type %T", item)
 
 	// User-defined table-wide stringer (t.stringer) takes highest precedence.
@@ -1282,7 +1217,7 @@ func (t *Table) convertItemToCells(item interface{}) ([]string, error) {
 
 // convertCellsToStrings converts a row to its raw string representation using specified cell config for filters.
 // 'rowInput' can be []string, []any, or a custom type if t.stringer is set.
-func (t *Table) convertCellsToStrings(rowInput interface{}, cellCfg tw.CellConfig) ([]string, error) {
+func (t *Table) convertCellsToStrings(rowInput any, cellCfg tw.CellConfig) ([]string, error) {
 	t.logger.Debugf("convertCellsToStrings: Converting row: %v (type: %T)", rowInput, rowInput)
 
 	var cells []string
@@ -1553,65 +1488,6 @@ func (t *Table) getNumColsToUse() int {
 	num := t.maxColumns()
 	t.logger.Debugf("getNumColsToUse (batch): Cache not active, calculated via t.maxColumns(): %d", num)
 	return num
-}
-
-// prepareTableSection prepares either headers or footers for the table
-func (t *Table) prepareTableSection(elements []any, config tw.CellConfig, sectionName string) [][]string {
-	actualCellsToProcess := t.processVariadic(elements)
-	t.logger.Debugf("%s(): Effective cells to process: %v", sectionName, actualCellsToProcess)
-
-	stringsResult, err := t.convertCellsToStrings(actualCellsToProcess, config)
-	if err != nil {
-		t.logger.Errorf("%s(): Failed to convert elements to strings: %v", sectionName, err)
-		stringsResult = []string{}
-	}
-
-	prepared := t.prepareContent(stringsResult, config)
-	numColsBatch := t.maxColumns()
-
-	if len(prepared) > 0 {
-		for i := range prepared {
-			if len(prepared[i]) < numColsBatch {
-				t.logger.Debugf("Padding %s line %d from %d to %d columns", sectionName, i, len(prepared[i]), numColsBatch)
-				paddedLine := make([]string, numColsBatch)
-				copy(paddedLine, prepared[i])
-				for j := len(prepared[i]); j < numColsBatch; j++ {
-					paddedLine[j] = tw.Empty
-				}
-				prepared[i] = paddedLine
-			} else if len(prepared[i]) > numColsBatch {
-				t.logger.Debugf("Truncating %s line %d from %d to %d columns", sectionName, i, len(prepared[i]), numColsBatch)
-				prepared[i] = prepared[i][:numColsBatch]
-			}
-		}
-	}
-
-	return prepared
-}
-
-// processVariadic handles the common logic for processing variadic arguments
-// that could be either individual elements or a slice of elements
-func (t *Table) processVariadic(elements []any) []any {
-	if len(elements) == 1 {
-		switch v := elements[0].(type) {
-		case []string:
-			t.logger.Debugf("Detected single []string argument. Unpacking it (fast path).")
-			out := make([]any, len(v))
-			for i := range v {
-				out[i] = v[i]
-			}
-			return out
-
-		case []interface{}:
-			t.logger.Debugf("Detected single []interface{} argument. Unpacking it (fast path).")
-			out := make([]any, len(v))
-			copy(out, v)
-			return out
-		}
-	}
-
-	t.logger.Debugf("Input has multiple elements or single non-slice. Using variadic elements as-is.")
-	return elements
 }
 
 // updateWidths updates the width map based on cell content and padding.
