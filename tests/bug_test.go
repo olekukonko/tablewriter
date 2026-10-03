@@ -262,7 +262,7 @@ func TestBug260(t *testing.T) {
 		table := tablewriter.NewTable(
 			&buf,
 			tablewriter.WithRenderer(tableRenderer),
-			tablewriter.WithTableMax(120),
+			tablewriter.WithTableMax(64),
 			tablewriter.WithTrimSpace(tw.Off),
 			tablewriter.WithDebug(true),
 			tablewriter.WithPadding(tw.PaddingNone),
@@ -301,7 +301,7 @@ func TestBug260(t *testing.T) {
 		table := tablewriter.NewTable(
 			&buf,
 			tablewriter.WithRenderer(tableRenderer),
-			tablewriter.WithTableMax(120),
+			tablewriter.WithTableMax(64),
 			tablewriter.WithTrimSpace(tw.Off),
 			tablewriter.WithDebug(true),
 			tablewriter.WithPadding(tw.PaddingNone),

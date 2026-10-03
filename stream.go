@@ -1,8 +1,6 @@
 package tablewriter
 
 import (
-	"math"
-
 	"github.com/olekukonko/errors"
 	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"github.com/olekukonko/tablewriter/tw"
@@ -257,7 +255,7 @@ func (t *Table) streamAppendRow(row interface{}) error {
 	}
 
 	_, rowMerges, _ := t.prepareWithMerges([][]string{rawCellsSlice}, t.config.Row, tw.Row)
-	processedRowLines := t.prepareContent(rawCellsSlice, t.config.Row)
+	processedRowLines := t.prepareContent(rawCellsSlice, t.config.Row, t.streamWidths)
 	t.logger.Debugf("streamAppendRow: Processed row lines: %d lines", len(processedRowLines))
 
 	f := t.renderer
@@ -597,7 +595,7 @@ func (t *Table) streamCalculateWidths(sampling []string, config tw.CellConfig) i
 		}
 	}
 
-	// Apply Global Constraint (if t.config.Stream.Widths.Global > 0)
+	// Apply Global Constraint (if t.config.Widths.Global > 0)
 	if t.config.Widths.Global > 0 && t.streamNumCols > 0 {
 		t.logger.Debug("streamCalculateWidths: Applying global stream width constraint %d", t.config.Widths.Global)
 		currentTotalColumnWidthsSum := 0
@@ -634,64 +632,29 @@ func (t *Table) streamCalculateWidths(sampling []string, config tw.CellConfig) i
 				targetSumForColumnWidths = 0
 			}
 
-			scaleFactor := float64(targetSumForColumnWidths) / float64(currentTotalColumnWidthsSum)
-			if currentTotalColumnWidthsSum <= 0 {
-				scaleFactor = 0
-			} // Avoid division by zero or negative scale
-
-			adjustedSum := 0
-			for i := 0; i < t.streamNumCols; i++ {
-				originalColWidth := t.streamWidths.Get(i)
-				if originalColWidth == 0 {
-					continue
-				} // Don't scale hidden columns
-
-				scaledWidth := 0
-				if scaleFactor > 0 {
-					scaledWidth = int(math.Round(float64(originalColWidth) * scaleFactor))
-				}
-
-				if scaledWidth < 1 && originalColWidth > 0 { // Ensure at least 1 if original had width and scaling made it too small
-					scaledWidth = 1
-				} else if scaledWidth < 0 { // Should not happen with math.Round on positive*positive
-					scaledWidth = 0
-				}
-				t.streamWidths.Set(i, scaledWidth)
-				adjustedSum += scaledWidth
-			}
-
-			// Distribute rounding errors to meet targetSumForColumnWidths
-			remainingSpace := targetSumForColumnWidths - adjustedSum
-			t.logger.Debug("streamCalculateWidths: Scaling complete. TargetSum=%d, AchievedSum=%d, RemSpace=%d", targetSumForColumnWidths, adjustedSum, remainingSpace)
-			// Distribute remainingSpace (positive or negative) among non-zero width columns
-			if remainingSpace != 0 && t.streamNumCols > 0 {
-				colsToAdjust := []int{}
-				t.streamWidths.Each(func(col, w int) {
-					if w > 0 { // Only consider columns that currently have width
-						colsToAdjust = append(colsToAdjust, col)
+			excess := currentTotalColumnWidthsSum - targetSumForColumnWidths
+			for excess > 0 {
+				maxW := -1
+				for i := 0; i < t.streamNumCols; i++ {
+					w := t.streamWidths.Get(i)
+					if w > 1 && w > maxW { // min width 1
+						maxW = w
 					}
-				})
-				if len(colsToAdjust) > 0 {
-					for i := 0; i < int(math.Abs(float64(remainingSpace))); i++ {
-						if remainingSpace > 0 {
-							colIdx := colsToAdjust[i%len(colsToAdjust)]
-							currentColWidth := t.streamWidths.Get(colIdx)
-							t.streamWidths.Set(colIdx, currentColWidth+1)
-						} else {
-							// Find next column that can be reduced (skip columns already at minimum width)
-							reduced := false
-							for j := 0; j < len(colsToAdjust); j++ {
-								colIdx := colsToAdjust[(i+j)%len(colsToAdjust)]
-								if t.streamWidths.Get(colIdx) > 1 {
-									t.streamWidths.Set(colIdx, t.streamWidths.Get(colIdx)-1)
-									reduced = true
-									break
-								}
-							}
-							if !reduced {
-								break // All columns at minimum width, no further reduction possible
-							}
-						}
+				}
+				if maxW <= 1 {
+					break
+				}
+				var maxCols []int
+				for i := 0; i < t.streamNumCols; i++ {
+					if t.streamWidths.Get(i) == maxW {
+						maxCols = append(maxCols, i)
+					}
+				}
+				for i := len(maxCols) - 1; i >= 0; i-- {
+					colIdx := maxCols[i]
+					if excess > 0 {
+						t.streamWidths.Set(colIdx, maxW-1)
+						excess--
 					}
 				}
 			}
@@ -926,7 +889,7 @@ func (t *Table) streamRenderHeader(headers []string) error {
 	}
 
 	_, headerMerges, _ := t.prepareWithMerges([][]string{headers}, t.config.Header, tw.Header)
-	processedHeaderLines := t.prepareContent(headers, t.config.Header)
+	processedHeaderLines := t.prepareContent(headers, t.config.Header, t.streamWidths)
 	t.logger.Debug("streamRenderHeader: Processed header lines: %d", len(processedHeaderLines))
 
 	if t.streamNumCols > 0 {
@@ -1169,7 +1132,7 @@ func (t *Table) streamStoreFooter(footers []string) error {
 		return nil
 	}
 
-	t.streamFooterLines = t.prepareContent(footers, t.config.Footer)
+	t.streamFooterLines = t.prepareContent(footers, t.config.Footer, t.streamWidths)
 	t.logger.Debug("streamStoreFooter: Processed and stored footer lines: %d lines. Content: %v", len(t.streamFooterLines), t.streamFooterLines)
 
 	return nil
