@@ -516,9 +516,30 @@ func (t *Table) streamCalculateWidths(sampling []string, config tw.CellConfig) i
 		// No PerColumn config, derive from sampling intelligently
 		t.logger.Debug("streamCalculateWidths: Intelligently deriving widths from sample data content and padding.")
 		tempRequiredWidths := tw.NewMapper[int, int]() // Widths from updateWidths (content + padding)
+		var sampleContentDisplayWidths []int
+
 		if len(sampling) > 0 {
-			// updateWidths calculates: DisplayWidth(content) + padLeft + padRight
-			t.updateWidths(sampling, tempRequiredWidths, paddingForWidthCalc)
+			// Run sampling through prepareContent to apply AutoFormat (Title case),
+			// trims, and tabs BEFORE calculating the required space.
+			processedLines := t.prepareContent(sampling, config, nil)
+			for _, line := range processedLines {
+				t.updateWidths(line, tempRequiredWidths, paddingForWidthCalc)
+			}
+
+			// Extract the true formatted display width of the content (without padding)
+			sampleContentDisplayWidths = make([]int, t.streamNumCols)
+			for i := 0; i < t.streamNumCols; i++ {
+				maxW := 0
+				for _, line := range processedLines {
+					if i < len(line) {
+						w := twwidth.Width(line[i])
+						if w > maxW {
+							maxW = w
+						}
+					}
+				}
+				sampleContentDisplayWidths[i] = maxW
+			}
 		}
 
 		ellipsisWidthBuffer := 0
@@ -527,18 +548,8 @@ func (t *Table) streamCalculateWidths(sampling []string, config tw.CellConfig) i
 		}
 		varianceBuffer := 2 // Your suggested variance
 		minTotalColWidth := tw.MinimumColumnWidth
-		// Example: if t.config.Stream.MinAutoColumnWidth > 0 { minTotalColWidth = t.config.Stream.MinAutoColumnWidth }
 
 		for i := 0; i < t.streamNumCols; i++ {
-			// baseCellWidth (content_width + padding_width) comes from tempRequiredWidths.Get(i)
-			// We need to deconstruct it to apply logic to content_width first.
-
-			sampleContent := ""
-			if i < len(sampling) {
-				sampleContent = t.Trimmer(sampling[i])
-			}
-			sampleContentDisplayWidth := twwidth.Width(sampleContent)
-
 			colPad := paddingForWidthCalc.Global
 			if i < len(paddingForWidthCalc.PerColumn) && paddingForWidthCalc.PerColumn[i].Paddable() {
 				colPad = paddingForWidthCalc.PerColumn[i]
@@ -546,6 +557,12 @@ func (t *Table) streamCalculateWidths(sampling []string, config tw.CellConfig) i
 			currentPadLWidth := twwidth.Width(colPad.Left)
 			currentPadRWidth := twwidth.Width(colPad.Right)
 			currentTotalPaddingWidth := currentPadLWidth + currentPadRWidth
+
+			// Extract the true formatted content width
+			sampleContentDisplayWidth := 0
+			if i < len(sampleContentDisplayWidths) {
+				sampleContentDisplayWidth = sampleContentDisplayWidths[i]
+			}
 
 			// Start with the target content width logic
 			targetContentWidth := sampleContentDisplayWidth
@@ -565,7 +582,7 @@ func (t *Table) streamCalculateWidths(sampling []string, config tw.CellConfig) i
 				t.logger.Debug("streamCalculateWidths: Col %d, InitialCalcW=%d (ContentTarget=%d + Pad=%d) is less than MinTotalW=%d. Adjusting to MinTotalW.",
 					i, calculatedWidth, targetContentWidth, currentTotalPaddingWidth, minTotalColWidth)
 				calculatedWidth = minTotalColWidth
-			} else if calculatedWidth <= 0 && sampleContentDisplayWidth > 0 { // If content exists but calc width is 0 (e.g. large negative variance)
+			} else if calculatedWidth <= 0 && sampleContentDisplayWidth > 0 { // If content exists but calc width is 0
 				// Ensure at least min width or content + padding + buffers
 				fallbackWidth := sampleContentDisplayWidth + currentTotalPaddingWidth
 				if autoWrapForWidthCalc == tw.WrapTruncate {
@@ -603,29 +620,33 @@ func (t *Table) streamCalculateWidths(sampling []string, config tw.CellConfig) i
 			currentTotalColumnWidthsSum += w
 		})
 
-		separatorWidth := 0
+		// Factor in the actual Outer Borders to the total physical width
+		numSeparators := 0
 		if t.renderer != nil {
-			rendererConfig := t.renderer.Config()
-			if rendererConfig.Settings.Separators.BetweenColumns.Enabled() {
-				separatorWidth = twwidth.Width(rendererConfig.Symbols.Column())
+			rCfg := t.renderer.Config()
+			if t.streamNumCols > 1 && rCfg.Settings.Separators.BetweenColumns.Enabled() {
+				numSeparators += (t.streamNumCols - 1) * twwidth.Width(rCfg.Symbols.Column())
+			}
+			if rCfg.Borders.Left.Enabled() {
+				numSeparators += twwidth.Width(rCfg.Symbols.Column())
+			}
+			if rCfg.Borders.Right.Enabled() {
+				numSeparators += twwidth.Width(rCfg.Symbols.Column())
 			}
 		} else {
-			separatorWidth = 1 // Default if renderer not available yet
+			// Fallback if renderer is not configured yet
+			if t.streamNumCols > 1 {
+				numSeparators += (t.streamNumCols - 1)
+			}
+			numSeparators += 2
 		}
 
-		totalWidthIncludingSeparators := currentTotalColumnWidthsSum
-		if t.streamNumCols > 1 {
-			totalWidthIncludingSeparators += (t.streamNumCols - 1) * separatorWidth
-		}
+		totalWidthIncludingSeparators := currentTotalColumnWidthsSum + numSeparators
 
-		if t.config.Widths.Global < totalWidthIncludingSeparators && totalWidthIncludingSeparators > 0 { // Added check for total > 0
+		if t.config.Widths.Global < totalWidthIncludingSeparators && totalWidthIncludingSeparators > 0 {
 			t.logger.Debug("streamCalculateWidths: Total calculated width (%d incl separators) exceeds global stream width (%d). Shrinking.", totalWidthIncludingSeparators, t.config.Widths.Global)
 
-			// Target sum for column widths only (global limit - total separator width)
-			targetSumForColumnWidths := t.config.Widths.Global
-			if t.streamNumCols > 1 {
-				targetSumForColumnWidths -= (t.streamNumCols - 1) * separatorWidth
-			}
+			targetSumForColumnWidths := t.config.Widths.Global - numSeparators
 			if targetSumForColumnWidths < t.streamNumCols && t.streamNumCols > 0 { // Ensure at least 1 per column if possible
 				targetSumForColumnWidths = t.streamNumCols
 			} else if targetSumForColumnWidths < 0 {
