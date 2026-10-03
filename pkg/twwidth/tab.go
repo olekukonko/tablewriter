@@ -67,6 +67,7 @@ func (t *Tabinal) SetWidth(w int) {
 	if w <= 0 || w > 32 {
 		return
 	}
+	t.once.Do(t.init)
 	t.mu.Lock()
 	t.width = w
 	t.mu.Unlock()
