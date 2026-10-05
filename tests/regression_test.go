@@ -10,6 +10,8 @@ import (
 	"github.com/olekukonko/tablewriter/tw"
 )
 
+// / Regression Test
+// https://github.com/olekukonko/tablewriter/pull/335
 func TestPR335AutoFormatWrapBreakPreservesContentAtGlobalWidth20(t *testing.T) {
 	var buf bytes.Buffer
 	st := createStreamTable(t, &buf, tablewriter.WithConfig(tablewriter.Config{
