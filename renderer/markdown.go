@@ -498,19 +498,24 @@ func (m *Markdown) renderMarkdownLine(line []string, ctx tw.Formatting, isHeader
 }
 
 // escapePipes escapes "|" in cell content so it is not read as a column
-// separator. Pipes that are already escaped are left as they are.
+// separator. A pipe after an odd number of backslashes is already escaped
+// and is left as it is.
 func escapePipes(s string) string {
 	if !strings.Contains(s, "|") {
 		return s
 	}
 	var sb strings.Builder
-	prev := rune(0)
+	backslashes := 0
 	for _, r := range s {
-		if r == '|' && prev != '\\' {
+		if r == '|' && backslashes%2 == 0 {
 			sb.WriteRune('\\')
 		}
 		sb.WriteRune(r)
-		prev = r
+		if r == '\\' {
+			backslashes++
+		} else {
+			backslashes = 0
+		}
 	}
 	return sb.String()
 }
