@@ -550,3 +550,32 @@ func TestMarkdownRendererCloseFlushesSeparator(t *testing.T) {
 		t.Errorf("Close() flush mismatch\ngot:  %q\nwant: %q", got, want)
 	}
 }
+
+func TestMarkdownEscapesPipes(t *testing.T) {
+	var buf bytes.Buffer
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithRenderer(renderer.NewMarkdown()),
+	)
+	table.Header([]string{"Flag", "Values"})
+	table.Append([]string{"--mode", "fast|slow"})
+	table.Append([]string{"--sep", `a\|b`})
+	table.Append([]string{"--even", `a\\|b`})
+	table.Append([]string{"--odd", `a\\\|b`})
+	table.Append([]string{"--level", "one of 1, 2 or 3"})
+	table.Footer([]string{"Total", "x|y"})
+	table.Render()
+
+	expected := `
+|  FLAG   |      VALUES      |
+|:--------|:-----------------|
+| --mode  | fast\|slow       |
+| --sep   | a\|b             |
+| --even  | a\\\|b           |
+| --odd   | a\\\|b           |
+| --level | one of 1, 2 or 3 |
+| Total   | x\|y             |
+`
+	if !visualCheck(t, "MarkdownEscapesPipes", buf.String(), expected) {
+		t.Error(table.Debug())
+	}
+}
