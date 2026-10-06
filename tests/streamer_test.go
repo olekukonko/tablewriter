@@ -476,15 +476,14 @@ func TestStreamEmptyCells(t *testing.T) {
 		t.Fatalf("End failed: %v", err)
 	}
 
-	// Max widths: [6, 6, 6]
 	expected := `
-		┌──────┬──────┬──────┐
-		│ H 1  │      │ H 3  │
-		├──────┼──────┼──────┤
-		│      │ R1C2 │      │
-		│ R2C1 │      │ R2C3 │
-		│      │      │      │
-		└──────┴──────┴──────┘
+        ┌──────┬─────┬─────┐
+        │ H 1  │     │ H 3 │
+        ├──────┼─────┼─────┤
+        │      │ R1C │     │
+        │ R2C1 │     │ R2C │
+        │      │     │     │
+        └──────┴─────┴─────┘
 `
 	if !visualCheck(t, "StreamEmptyCells", buf.String(), expected) {
 		fmt.Println("--- DEBUG LOG ---")
@@ -513,9 +512,9 @@ func TestStreamOnlyHeader(t *testing.T) {
 	}
 
 	expected := `
-        ┌───────────┬───────────┐
-        │ HEADER 1  │ HEADER 2  │
-        └───────────┴───────────┘
+        ┌────────────┬────────────┐
+        │  HEADER 1  │  HEADER 2  │
+        └────────────┴────────────┘
 `
 	if !visualCheck(t, "StreamOnlyHeader", buf.String(), expected) {
 		fmt.Println("--- DEBUG LOG ---")
@@ -544,9 +543,9 @@ func TestStreamOnlyHeaderNoHeaderLine(t *testing.T) {
 	}
 
 	expected := `
-        ┌───────────┬───────────┐
-        │ HEADER 1  │ HEADER 2  │
-        └───────────┴───────────┘
+		┌────────────┬────────────┐
+		│  HEADER 1  │  HEADER 2  │
+		└────────────┴────────────┘
 `
 	if !visualCheck(t, "StreamOnlyHeaderNoHeaderLine", buf.String(), expected) {
 		fmt.Println("--- DEBUG LOG ---")

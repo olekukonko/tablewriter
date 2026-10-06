@@ -807,7 +807,6 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 								}
 							}
 							if !reduced {
-								// No eligible column found, no further reduction possible
 								break
 							}
 						}
@@ -829,14 +828,29 @@ func (t *Table) calculateAndNormalizeWidths(ctx *renderContext) error {
 		ctx.logger.Debugf("Applying global width constraint: %d", globalLimit)
 		currentSumOfFinalColWidths := 0
 		finalWidths.Each(func(_, w int) { currentSumOfFinalColWidths += w })
+
+		// Factor in the actual Outer Borders to the total physical width
 		numSeparators := 0
-		if ctx.numCols > 1 && t.renderer != nil && t.renderer.Config().Settings.Separators.BetweenColumns.Enabled() {
-			numSeparators = (ctx.numCols - 1) * twwidth.Width(t.renderer.Config().Symbols.Column())
+		if t.renderer != nil {
+			rCfg := t.renderer.Config()
+			if rCfg.Settings.Separators.BetweenColumns.Enabled() && ctx.numCols > 1 {
+				numSeparators += (ctx.numCols - 1) * twwidth.Width(rCfg.Symbols.Column())
+			}
+			if rCfg.Borders.Left.Enabled() {
+				numSeparators += twwidth.Width(rCfg.Symbols.Column())
+			}
+			if rCfg.Borders.Right.Enabled() {
+				numSeparators += twwidth.Width(rCfg.Symbols.Column())
+			}
 		}
+
 		totalCurrentTablePhysicalWidth := currentSumOfFinalColWidths + numSeparators
 		if totalCurrentTablePhysicalWidth > globalLimit {
 			ctx.logger.Debugf("Table width %d exceeds global limit %d. Shrinking.", totalCurrentTablePhysicalWidth, globalLimit)
+
+			// Subtract the borders from the global limit so columns only get what's left
 			targetTotalColumnContentWidth := max(globalLimit-numSeparators, 0)
+
 			if ctx.numCols > 0 && targetTotalColumnContentWidth < ctx.numCols {
 				targetTotalColumnContentWidth = ctx.numCols
 			}

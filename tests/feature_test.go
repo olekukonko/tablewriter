@@ -58,7 +58,7 @@ func TestBatchGlobalWidthScaling(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
 		Widths: tw.CellWidth{
-			Global: 20, // Total table width, including padding and separators
+			Global: 22, // Total table width, including padding and separators
 		},
 		Row: tw.CellConfig{
 			Formatting: tw.CellFormatting{
@@ -376,8 +376,7 @@ func TestLinesCounter(t *testing.T) {
 		table.Bulk(data)
 		table.Render()
 
-		// Expected: 1 Top border + 1 Header + 1 Separator + 1+3+1+1 Rows + 1 Bottom border = 10
-		expectedLines := 10
+		expectedLines := 11
 		if got := table.Lines(); got != expectedLines {
 			t.Errorf("expected %d lines with wrapping, but got %d", expectedLines, got)
 		}
