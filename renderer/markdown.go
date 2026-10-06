@@ -456,7 +456,7 @@ func (m *Markdown) renderMarkdownLine(line []string, ctx tw.Formatting, isHeader
 		} else {
 			content := ""
 			if colIndex < len(line) {
-				content = line[colIndex]
+				content = escapePipes(line[colIndex])
 			}
 			if ctx.Row.Position == tw.Header {
 				// Header content uses its own alignment
@@ -495,6 +495,24 @@ func (m *Markdown) renderMarkdownLine(line []string, ctx tw.Formatting, isHeader
 	output.WriteString(tw.NewLine)
 	m.w.Write([]byte(output.String()))
 	m.logger.Debugf("renderMarkdownLine: Final line: %s", strings.TrimSuffix(output.String(), tw.NewLine))
+}
+
+// escapePipes escapes "|" in cell content so it is not read as a column
+// separator. Pipes that are already escaped are left as they are.
+func escapePipes(s string) string {
+	if !strings.Contains(s, "|") {
+		return s
+	}
+	var sb strings.Builder
+	prev := rune(0)
+	for _, r := range s {
+		if r == '|' && prev != '\\' {
+			sb.WriteRune('\\')
+		}
+		sb.WriteRune(r)
+		prev = r
+	}
+	return sb.String()
 }
 
 var _ tw.Renditioning = (*Markdown)(nil)
