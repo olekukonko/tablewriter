@@ -559,6 +559,8 @@ func TestMarkdownEscapesPipes(t *testing.T) {
 	table.Header([]string{"Flag", "Values"})
 	table.Append([]string{"--mode", "fast|slow"})
 	table.Append([]string{"--sep", `a\|b`})
+	table.Append([]string{"--even", `a\\|b`})
+	table.Append([]string{"--odd", `a\\\|b`})
 	table.Append([]string{"--level", "one of 1, 2 or 3"})
 	table.Footer([]string{"Total", "x|y"})
 	table.Render()
@@ -568,6 +570,8 @@ func TestMarkdownEscapesPipes(t *testing.T) {
 |:--------|:-----------------|
 | --mode  | fast\|slow       |
 | --sep   | a\|b             |
+| --even  | a\\\|b           |
+| --odd   | a\\\|b           |
 | --level | one of 1, 2 or 3 |
 | Total   | x\|y             |
 `
