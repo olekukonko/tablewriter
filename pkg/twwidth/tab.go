@@ -280,6 +280,9 @@ func TabWidth() int {
 // SetTabWidth sets the global tab width.
 func SetTabWidth(w int) {
 	TabInstance().SetWidth(w)
+	mu.Lock()
+	defer mu.Unlock()
+	widthCache.Purge() // Clear cache because widths might change
 }
 
 func envInt(k string) int {
