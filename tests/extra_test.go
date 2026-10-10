@@ -332,7 +332,8 @@ func TestAutoHideFeature(t *testing.T) {
 }
 
 func TestEmojiTable(t *testing.T) {
-	// Original Boston Test (Updated expectation as discussed)
+	// Original Boston Test: every line of the table has to be the same width,
+	// borders included.
 	t.Run("Cityscape", func(t *testing.T) {
 		var buf bytes.Buffer
 		table := tablewriter.NewTable(&buf, tablewriter.WithDebug(true))
@@ -355,7 +356,7 @@ func TestEmojiTable(t *testing.T) {
 │  NAME  😺  │ AGE  🎂  │  CITY  🌍   │
 ├────────────┼──────────┼─────────────┤
 │ Alice 😊   │ 25       │ New York 🌆 │
-│ Bob 😎     │ 30       │ Boston 🏙️    │
+│ Bob 😎     │ 30       │ Boston 🏙️   │
 │ Charlie 🤓 │ 28       │ Tokyo 🗼    │
 ├────────────┼──────────┼─────────────┤
 │            │ Total 👥 │           3 │
