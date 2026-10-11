@@ -456,7 +456,7 @@ func (m *Markdown) renderMarkdownLine(line []string, ctx tw.Formatting, isHeader
 		} else {
 			content := ""
 			if colIndex < len(line) {
-				content = line[colIndex]
+				content = escapePipes(line[colIndex])
 			}
 			if ctx.Row.Position == tw.Header {
 				// Header content uses its own alignment
@@ -495,6 +495,29 @@ func (m *Markdown) renderMarkdownLine(line []string, ctx tw.Formatting, isHeader
 	output.WriteString(tw.NewLine)
 	m.w.Write([]byte(output.String()))
 	m.logger.Debugf("renderMarkdownLine: Final line: %s", strings.TrimSuffix(output.String(), tw.NewLine))
+}
+
+// escapePipes escapes "|" in cell content so it is not read as a column
+// separator. A pipe after an odd number of backslashes is already escaped
+// and is left as it is.
+func escapePipes(s string) string {
+	if !strings.Contains(s, "|") {
+		return s
+	}
+	var sb strings.Builder
+	backslashes := 0
+	for _, r := range s {
+		if r == '|' && backslashes%2 == 0 {
+			sb.WriteRune('\\')
+		}
+		sb.WriteRune(r)
+		if r == '\\' {
+			backslashes++
+		} else {
+			backslashes = 0
+		}
+	}
+	return sb.String()
 }
 
 var _ tw.Renditioning = (*Markdown)(nil)
