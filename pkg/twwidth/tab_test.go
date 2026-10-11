@@ -38,3 +38,16 @@ func TestTabinalSetWidth(t *testing.T) {
 		}
 	}
 }
+
+func TestSetTabWidthPurgesWidthCache(t *testing.T) {
+	orig := twwidth.TabWidth()
+	t.Cleanup(func() { twwidth.SetTabWidth(orig) })
+
+	const s = "a\tb"
+	for _, width := range []int{2, 4, 6} {
+		twwidth.SetTabWidth(width)
+		if got, want := twwidth.Width(s), twwidth.WidthNoCache(s); got != want {
+			t.Errorf("Width(%q) after SetTabWidth(%d) = %d, want %d", s, width, got, want)
+		}
+	}
+}
