@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/clipperhouse/displaywidth"
 	"github.com/mattn/go-runewidth"
@@ -355,11 +356,7 @@ func Width(str string) int {
 	}
 
 	//stripped := ansi.ReplaceAllLiteralString(str, "")
-	calculatedWidth := 0
-
-	for _, r := range strip(str) {
-		calculatedWidth += calculateRunewidth(r, currentOpts)
-	}
+	calculatedWidth := calculateWidth(strip(str), currentOpts)
 
 	// Store in Cache
 	widthCache.Add(key, calculatedWidth)
@@ -386,9 +383,34 @@ func WidthNoCache(str string) int {
 // where global state is not desired.
 func WidthWithOptions(str string, opts Options) int {
 	// stripped := ansi.ReplaceAllLiteralString(str, "")
+	return calculateWidth(strip(str), opts)
+}
+
+// calculateWidth measures str one grapheme cluster at a time, which is the
+// unit a terminal draws. Adding up rune widths instead counts every rune of an
+// emoji sequence on its own: a four-person ZWJ sequence comes out four times
+// too wide, and a text symbol followed by VS16 one column too narrow. Either
+// way the column gets sized for a width the terminal never renders, and the
+// row stops lining up with the borders around it.
+func calculateWidth(str string, opts Options) int {
+	dwOpts := displaywidth.Options{EastAsianWidth: opts.EastAsianWidth}
 	calculatedWidth := 0
-	for _, r := range strip(str) {
-		calculatedWidth += calculateRunewidth(r, opts)
+	graphemes := dwOpts.StringGraphemes(str)
+	for graphemes.Next() {
+		cluster := graphemes.Value()
+		// Tabs and the narrow-border override are per-rune rules, and a rune
+		// they can apply to is always a cluster of its own.
+		if r, size := utf8.DecodeRuneInString(cluster); size == len(cluster) {
+			if opts.ForceNarrowBorders && isBoxDrawingChar(r) {
+				calculatedWidth++
+				continue
+			}
+			if IsTab(r) {
+				calculatedWidth += TabWidth()
+				continue
+			}
+		}
+		calculatedWidth += graphemes.Width()
 	}
 	return calculatedWidth
 }

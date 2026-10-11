@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/clipperhouse/displaywidth"
 	"github.com/mattn/go-runewidth"
 	"github.com/olekukonko/tablewriter/pkg/twcache"
 )
@@ -461,5 +462,40 @@ func TestBug_ForceNarrow_MultiChar(t *testing.T) {
 	// 4. Assert
 	if got != want {
 		t.Fatalf("Regression found: ForceNarrowBorders failed on multi-char string.\nInput: %q\nGot Width: %d (Likely Double Width)\nWant Width: %d", input, got, want)
+	}
+}
+
+// TestWidthMeasuresGraphemeClusters pins Width to the measurement its own
+// displaywidth dependency makes for the whole string. Adding up the widths of
+// the individual runes gives a different answer for anything a terminal draws
+// as one glyph: a ZWJ sequence is charged once per person in it, and a text
+// symbol followed by VS16 is charged as if it were still narrow. Columns sized
+// from those numbers do not line up with the borders drawn around them.
+func TestWidthMeasuresGraphemeClusters(t *testing.T) {
+	SetEastAsian(false)
+	for _, input := range []string{
+		"hello",
+		"日本語",
+		"프로젝트",
+		"💡",
+		"👨‍👩‍👧‍👦", // ZWJ sequence: four people, one glyph
+		"🇯🇵",      // regional indicator pair: two runes, one flag
+		"👍🏽",      // emoji with a skin tone modifier
+		"🏳️‍🌈",    // ZWJ sequence with a variation selector
+		"❤️",      // text symbol promoted to emoji presentation by VS16
+		"⚠️",
+		"🏙️",
+		"👨‍👩‍👧‍👦 family",
+		"\033[31m❤️\033[0m",
+	} {
+		t.Run(input, func(t *testing.T) {
+			want := displaywidth.Options{}.String(strip(input))
+			if got := Width(input); got != want {
+				t.Errorf("Width(%q) = %d, want %d", input, got, want)
+			}
+			if got := WidthNoCache(input); got != want {
+				t.Errorf("WidthNoCache(%q) = %d, want %d", input, got, want)
+			}
+		})
 	}
 }
