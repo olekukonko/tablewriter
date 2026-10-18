@@ -252,7 +252,7 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 	ansiWrittenToContent := false
 
 	for _, r := range s {
-		if r == '\x1b' {
+		if r == '\x1b' && !inAnsiSequence {
 			inAnsiSequence = true
 			ansiSeqBuf.Reset()
 			ansiSeqBuf.WriteRune(r)
