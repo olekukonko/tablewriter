@@ -278,6 +278,42 @@ func TestHTMLCombinedMerge(t *testing.T) {
 	}
 }
 
+// TestHTMLMergeBothBlock verifies that a cell merged across columns and rows
+// is skipped in every column it covers in the rows below.
+func TestHTMLMergeBothBlock(t *testing.T) {
+	var buf bytes.Buffer
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithRenderer(renderer.NewHTML()),
+		tablewriter.WithConfig(tablewriter.Config{
+			Row: tw.CellConfig{Merging: tw.CellMerging{Mode: tw.MergeBoth}},
+		}),
+	)
+	table.Header([]string{"Date", "Description", "Status"})
+	table.Append([]string{"Holiday", "Holiday", "Closed"})
+	table.Append([]string{"Holiday", "Holiday", "Open"})
+	table.Append([]string{"1/2/2014", "Domain name", "Open"})
+	table.Append([]string{"1/2/2014", "Hosting", "Paid"})
+	table.Append([]string{"Holiday", "Domain name", "Paid"})
+	table.Render()
+
+	expected := `
+<table>
+<thead>
+<tr><th style="text-align: center;">DATE</th><th style="text-align: center;">DESCRIPTION</th><th style="text-align: center;">STATUS</th></tr>
+</thead>
+<tbody>
+<tr><td colspan="2" rowspan="2" style="text-align: left;">Holiday</td><td style="text-align: left;">Closed</td></tr>
+<tr><td rowspan="2" style="text-align: left;">Open</td></tr>
+<tr><td rowspan="2" style="text-align: left;">1/2/2014</td><td style="text-align: left;">Domain name</td></tr>
+<tr><td style="text-align: left;">Hosting</td><td rowspan="2" style="text-align: left;">Paid</td></tr>
+<tr><td style="text-align: left;">Holiday</td><td style="text-align: left;">Domain name</td></tr>
+</tbody>
+</table>`
+	if !visualCheckHTML(t, "HTMLMergeBothBlock", buf.String(), expected) {
+		t.Error(table.Debug())
+	}
+}
+
 // TestHTMLHierarchicalMerge tests HTML table rendering with hierarchical cell merges.
 func TestHTMLHierarchicalMerge(t *testing.T) {
 	var buf bytes.Buffer
