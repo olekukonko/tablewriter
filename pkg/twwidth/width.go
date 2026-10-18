@@ -251,13 +251,17 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 	inAnsiSequence := false
 	ansiWrittenToContent := false
 
-	for _, r := range s {
+	dwOpts := displaywidth.Options{EastAsianWidth: currentOpts.EastAsianWidth}
+	graphemes := dwOpts.StringGraphemes(s)
+	for graphemes.Next() {
+		cluster := graphemes.Value()
+		r, _ := utf8.DecodeRuneInString(cluster)
 		if r == '\x1b' {
 			inAnsiSequence = true
 			ansiSeqBuf.Reset()
-			ansiSeqBuf.WriteRune(r)
+			ansiSeqBuf.WriteString(cluster)
 		} else if inAnsiSequence {
-			ansiSeqBuf.WriteRune(r)
+			ansiSeqBuf.WriteString(cluster)
 			seqBytes := ansiSeqBuf.Bytes()
 			seqLen := len(seqBytes)
 			terminated := false
@@ -283,14 +287,14 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 				ansiSeqBuf.Reset()
 			}
 		} else { // Normal character
-			runeDisplayWidth := calculateRunewidth(r, currentOpts)
+			runeDisplayWidth := calculateWidth(cluster, currentOpts)
 			if targetContentForIteration == 0 { // No budget for content at all
 				break
 			}
 			if currentContentDisplayWidth+runeDisplayWidth > targetContentForIteration {
 				break
 			}
-			contentBuf.WriteRune(r)
+			contentBuf.WriteString(cluster)
 			currentContentDisplayWidth += runeDisplayWidth
 		}
 	}
