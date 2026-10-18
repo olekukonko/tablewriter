@@ -284,6 +284,7 @@ func (o *Ocean) renderContentLine(ctx tw.Formatting, lineData []string) {
 	}
 
 	sortedColIndices := o.fixedWidths.SortedKeys()
+	mergeEnd := -1 // first column after the current horizontal merge
 
 	for i, colIdx := range sortedColIndices {
 		cellVisualWidth := o.fixedWidths.Get(colIdx)
@@ -322,6 +323,7 @@ func (o *Ocean) renderContentLine(ctx tw.Formatting, lineData []string) {
 				if hSpan <= 0 {
 					hSpan = 1
 				}
+				mergeEnd = colIdx + hSpan
 
 				currentMergeTotalRenderWidth := 0
 				for k := 0; k < hSpan; k++ {
@@ -361,15 +363,12 @@ func (o *Ocean) renderContentLine(ctx tw.Formatting, lineData []string) {
 		// Add column separator if:
 		// 1. It's not the last column in sortedColIndices
 		// 2. Separators are enabled
-		// 3. This cell is NOT a horizontal merge start that spans over the next column.
+		// 3. This cell and the next column are not part of the same horizontal merge.
 		if i < len(sortedColIndices)-1 && o.config.Settings.Separators.BetweenColumns.Enabled() {
 			shouldAddSeparator := true
-			if hasCellCtx && cellCtx.Merge.Horizontal.Present && cellCtx.Merge.Horizontal.Start {
-				// If this merge start spans beyond the current colIdx into the next sortedColIndex
-				if colIdx+cellCtx.Merge.Horizontal.Span > sortedColIndices[i+1] {
-					shouldAddSeparator = false // Separator is part of the merged cell's width
-					o.logger.Debugf("renderContentLine: Suppressed separator after HMerge col %d.", colIdx)
-				}
+			if hasCellCtx && cellCtx.Merge.Horizontal.Present && sortedColIndices[i+1] < mergeEnd {
+				shouldAddSeparator = false // Separator is part of the merged cell's width
+				o.logger.Debugf("renderContentLine: Suppressed separator after HMerge col %d.", colIdx)
 			}
 			if shouldAddSeparator {
 				output.WriteString(o.config.Symbols.Column())
