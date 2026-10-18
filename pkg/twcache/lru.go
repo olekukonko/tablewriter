@@ -65,10 +65,10 @@ func (c *LRU[K, V]) GetOrCompute(key K, compute func() V) V {
 	}
 
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	if e, ok := c.items[key]; ok {
 		c.moveToFront(e)
 		c.hits.Add(1)
-		c.mu.Unlock()
 		return e.value
 	}
 
@@ -79,7 +79,6 @@ func (c *LRU[K, V]) GetOrCompute(key K, compute func() V) V {
 	if e, ok := c.items[key]; ok {
 		e.value = value
 		c.moveToFront(e)
-		c.mu.Unlock()
 		return value
 	}
 
@@ -91,7 +90,6 @@ func (c *LRU[K, V]) GetOrCompute(key K, compute func() V) V {
 	e := &entry[K, V]{key: key, value: value}
 	c.addToFront(e)
 	c.items[key] = e
-	c.mu.Unlock()
 	return value
 }
 
