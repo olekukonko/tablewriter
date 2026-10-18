@@ -385,6 +385,25 @@ func (t *Table) prepareContexts() (*renderContext, *mergeContext, error) {
 	return ctx, mctx, nil
 }
 
+// renderOutput retains write failures from renderers whose section methods
+// cannot return errors. Once a write fails, later writes return the same error.
+type renderOutput struct {
+	writer io.Writer
+	err    error
+}
+
+func (w *renderOutput) Write(p []byte) (int, error) {
+	if w.err != nil {
+		return 0, w.err
+	}
+	n, err := w.writer.Write(p)
+	if err == nil && n < len(p) {
+		err = io.ErrShortWrite
+	}
+	w.err = err
+	return n, err
+}
+
 // render generates the table output using the configured renderer.
 // No parameters are required.
 // Returns an error if rendering fails in any section.
@@ -394,6 +413,8 @@ func (t *Table) render() error {
 	// Save the original writer and schedule its restoration upon function exit.
 	// This guarantees the table's writer is restored even if errors occur.
 	originalWriter := t.writer
+	output := &renderOutput{writer: originalWriter}
+	t.writer = output
 	defer func() {
 		t.writer = originalWriter
 	}()
@@ -402,7 +423,7 @@ func (t *Table) render() error {
 	if len(t.counters) > 0 {
 		// The slice must be of type io.Writer.
 		// Start it with the original destination writer.
-		allWriters := []io.Writer{originalWriter}
+		allWriters := []io.Writer{output}
 
 		// Append each counter to the slice of writers.
 		for _, c := range t.counters {
@@ -475,6 +496,11 @@ func (t *Table) render() error {
 		}
 	}
 
+	if !renderError && output.err != nil {
+		firstRenderErr = errors.Newf("failed to write table output").Wrap(output.err)
+		renderError = true
+	}
+
 	if closeErr := ctx.renderer.Close(); closeErr != nil {
 		t.logger.Errorf("Renderer Close() error: %v", closeErr)
 		if !renderError {
@@ -483,10 +509,10 @@ func (t *Table) render() error {
 		renderError = true
 	}
 
-	// Restore the writer to the original for the caption-handling logic.
+	// Restore the output writer for the caption-handling logic.
 	// This is necessary because the caption must be written to the final
 	// destination, not the temporary buffer used for the table body.
-	t.writer = originalWriter
+	t.writer = output
 
 	if renderError {
 		return firstRenderErr
@@ -545,6 +571,10 @@ func (t *Table) render() error {
 			t.printTopBottomCaption(t.writer, actualTableWidth)
 			t.logger.Debugf("[Render] Returned from printTopBottomCaption for Bottom Caption.")
 		}
+	}
+
+	if output.err != nil {
+		return errors.Newf("failed to write table output").Wrap(output.err)
 	}
 
 	t.hasPrinted = true
