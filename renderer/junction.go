@@ -1,7 +1,10 @@
 package renderer
 
 import (
+	"strings"
+
 	"github.com/olekukonko/ll"
+	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"github.com/olekukonko/tablewriter/tw"
 )
 
@@ -244,6 +247,10 @@ func (jr *Junction) RenderJunction(leftColIdx, rightColIdx int) string {
 	}
 
 	if vPassThruLStrict && vPassThruRStrict {
+		if isSpannedCurrent && isSpannedNext {
+			// Inside a cell merged both ways: no line crosses here.
+			return strings.Repeat(tw.Space, twwidth.Width(jr.sym.Column()))
+		}
 		symbol := jr.sym.Column()
 		return jr.separatorTint.Apply(symbol)
 	}

@@ -395,8 +395,15 @@ func (h *HTML) renderRowCell(originalContent string, cellCtx tw.CellContext, isH
 		}
 		if vSpan > 1 {
 			fmt.Fprintf(&attrBuilder, ` rowspan="%d"`, vSpan)
-			h.vMergeTrack[colIdx] = vSpan
-			h.logger.Debugf("renderRowCell: Tracking rowspan=%d for col %d", vSpan, colIdx)
+			// The rows below skip every column the cell covers, not just the first.
+			hSpan := 1
+			if merge.Horizontal.Present && merge.Horizontal.Start && merge.Horizontal.Span > 1 {
+				hSpan = merge.Horizontal.Span
+			}
+			for k := 0; k < hSpan; k++ {
+				h.vMergeTrack[colIdx+k] = vSpan
+			}
+			h.logger.Debugf("renderRowCell: Tracking rowspan=%d for cols %d-%d", vSpan, colIdx, colIdx+hSpan-1)
 		}
 	}
 

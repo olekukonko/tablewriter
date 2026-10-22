@@ -369,6 +369,139 @@ func TestMergeBoth(t *testing.T) {
 	})
 }
 
+// TestMergeBothBlock checks that cells merged across columns are merged down
+// as one block, and only with cells covering the same columns.
+func TestMergeBothBlock(t *testing.T) {
+	var buf bytes.Buffer
+
+	c := tablewriter.Config{
+		Row: tw.CellConfig{
+			Merging: tw.CellMerging{
+				Mode: tw.MergeBoth,
+			},
+		},
+	}
+
+	r := renderer.NewBlueprint(tw.Rendition{
+		Settings: tw.Settings{
+			Separators: tw.Separators{
+				BetweenRows: tw.On,
+			},
+		},
+	})
+
+	t.Run("block", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c), tablewriter.WithRenderer(r))
+		table.Header([]string{"Date", "Description", "Status"})
+		table.Append([]string{"Holiday", "Holiday", "Closed"})
+		table.Append([]string{"Holiday", "Holiday", "Open"})
+		table.Append([]string{"1/2/2014", "Domain name", "Open"})
+		table.Append([]string{"1/2/2014", "Hosting", "Paid"})
+		table.Render()
+
+		expected := `
+        ┌──────────┬─────────────┬────────┐
+        │   DATE   │ DESCRIPTION │ STATUS │
+        ├──────────┴─────────────┼────────┤
+        │ Holiday                │ Closed │
+        │                        ├────────┤
+        │                        │ Open   │
+        ├──────────┬─────────────┤        │
+        │ 1/2/2014 │ Domain name │        │
+        │          ├─────────────┼────────┤
+        │          │ Hosting     │ Paid   │
+        └──────────┴─────────────┴────────┘
+`
+		if !visualCheck(t, "TestMergeBothBlock-block", buf.String(), expected) {
+			t.Log(table.Debug())
+		}
+	})
+
+	// The block wins over a covered column's own run of the same value:
+	// the run above or below the block stays a cell of its own.
+	t.Run("covered-column-run-above", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c), tablewriter.WithRenderer(r))
+		table.Header([]string{"Date", "Description", "Status"})
+		table.Append([]string{"1/1/2014", "Holiday", "Closed"})
+		table.Append([]string{"Holiday", "Holiday", "Open"})
+		table.Append([]string{"Holiday", "Holiday", "Paid"})
+		table.Render()
+
+		expected := `
+        ┌──────────┬─────────────┬────────┐
+        │   DATE   │ DESCRIPTION │ STATUS │
+        ├──────────┼─────────────┼────────┤
+        │ 1/1/2014 │ Holiday     │ Closed │
+        ├──────────┴─────────────┼────────┤
+        │ Holiday                │ Open   │
+        │                        ├────────┤
+        │                        │ Paid   │
+        └────────────────────────┴────────┘
+`
+		if !visualCheck(t, "TestMergeBothBlock-covered-column-run-above", buf.String(), expected) {
+			t.Log(table.Debug())
+		}
+	})
+
+	t.Run("covered-column-run-below", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c), tablewriter.WithRenderer(r))
+		table.Header([]string{"Date", "Description", "Status"})
+		table.Append([]string{"Holiday", "Holiday", "Closed"})
+		table.Append([]string{"Holiday", "Holiday", "Open"})
+		table.Append([]string{"1/2/2014", "Holiday", "Open"})
+		table.Append([]string{"1/3/2014", "Holiday", "Paid"})
+		table.Render()
+
+		expected := `
+        ┌──────────┬─────────────┬────────┐
+        │   DATE   │ DESCRIPTION │ STATUS │
+        ├──────────┴─────────────┼────────┤
+        │ Holiday                │ Closed │
+        │                        ├────────┤
+        │                        │ Open   │
+        ├──────────┬─────────────┤        │
+        │ 1/2/2014 │ Holiday     │        │
+        ├──────────┤             ├────────┤
+        │ 1/3/2014 │             │ Paid   │
+        └──────────┴─────────────┴────────┘
+`
+		if !visualCheck(t, "TestMergeBothBlock-covered-column-run-below", buf.String(), expected) {
+			t.Log(table.Debug())
+		}
+	})
+
+	t.Run("different-widths", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c), tablewriter.WithRenderer(r))
+		table.Header([]string{"Date", "Description", "Status"})
+		table.Append([]string{"Holiday", "Holiday", "Closed"})
+		table.Append([]string{"Holiday", "Domain name", "Open"})
+		table.Append([]string{"1/3/2014", "Hosting", "Paid"})
+		table.Append([]string{"Holiday", "Holiday", "Closed"})
+		table.Render()
+
+		expected := `
+        ┌──────────┬─────────────┬────────┐
+        │   DATE   │ DESCRIPTION │ STATUS │
+        ├──────────┴─────────────┼────────┤
+        │ Holiday                │ Closed │
+        ├──────────┬─────────────┼────────┤
+        │ Holiday  │ Domain name │ Open   │
+        ├──────────┼─────────────┼────────┤
+        │ 1/3/2014 │ Hosting     │ Paid   │
+        ├──────────┴─────────────┼────────┤
+        │ Holiday                │ Closed │
+        └────────────────────────┴────────┘
+`
+		if !visualCheck(t, "TestMergeBothBlock-different-widths", buf.String(), expected) {
+			t.Log(table.Debug())
+		}
+	})
+}
+
 func TestMergeHierarchical(t *testing.T) {
 	var buf bytes.Buffer
 	table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
