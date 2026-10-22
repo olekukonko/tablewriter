@@ -205,6 +205,9 @@ func (c *LRU[K, V]) Cap() int {
 // HitRate returns the cache hit ratio (0.0 to 1.0).
 // Based on hits / (hits + misses).
 func (c *LRU[K, V]) HitRate() float64 {
+	if c == nil {
+		return 0
+	}
 	h := c.hits.Load()
 	m := c.misses.Load()
 	total := h + m
