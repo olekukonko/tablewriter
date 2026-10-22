@@ -491,3 +491,46 @@ func TestTwTagSkipDoesNotLeakConfigToNextColumn(t *testing.T) {
 		}
 	}
 }
+
+func TestStructSkipsTaggedEmbeddedFields(t *testing.T) {
+	type Hidden struct {
+		Secret string
+	}
+	for _, tc := range []struct {
+		name string
+		row  interface{}
+	}{
+		{"tw", struct {
+			Hidden `tw:"-"`
+			Kept   string
+		}{Hidden{"secret"}, "visible"}},
+		{"tw composite", struct {
+			Hidden `tw:"align=right,-"`
+			Kept   string
+		}{Hidden{"secret"}, "visible"}},
+		{"json", struct {
+			Hidden `json:"-"`
+			Kept   string
+		}{Hidden{"secret"}, "visible"}},
+		{"db pointer", struct {
+			*Hidden `db:"-"`
+			Kept    string
+		}{&Hidden{"secret"}, "visible"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			table := tablewriter.NewTable(&buf)
+			table.Configure(func(cfg *tablewriter.Config) {
+				cfg.Behavior.Structs.AutoHeader = tw.On
+			})
+			if err := table.Append(tc.row); err != nil {
+				t.Fatal(err)
+			}
+			table.Render()
+			want := "┌─────────┐\n│  KEPT   │\n├─────────┤\n│ visible │\n└─────────┘\n"
+			if got := buf.String(); got != want {
+				t.Fatalf("skipped embedded field must not add a column:\ngot:\n%swant:\n%s", got, want)
+			}
+		})
+	}
+}
