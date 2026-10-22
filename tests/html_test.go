@@ -448,3 +448,61 @@ func TestHTMLStructureStrict(t *testing.T) {
 		t.Errorf("Got Raw Output:\n%s", buf.String())
 	}
 }
+
+// TestHTMLMergeBothBlockWins verifies that a covered column's own run of the
+// same value above or below a block stays a cell of its own.
+func TestHTMLMergeBothBlockWins(t *testing.T) {
+	render := func(rows [][]string) string {
+		var buf bytes.Buffer
+		table := tablewriter.NewTable(&buf,
+			tablewriter.WithRenderer(renderer.NewHTML()),
+			tablewriter.WithConfig(tablewriter.Config{
+				Row: tw.CellConfig{Merging: tw.CellMerging{Mode: tw.MergeBoth}},
+			}),
+		)
+		table.Header([]string{"Date", "Description", "Status"})
+		for _, row := range rows {
+			table.Append(row)
+		}
+		table.Render()
+		return buf.String()
+	}
+
+	above := render([][]string{
+		{"1/1/2014", "Holiday", "Closed"},
+		{"Holiday", "Holiday", "Open"},
+		{"Holiday", "Holiday", "Paid"},
+	})
+	expectedAbove := `
+<table>
+<thead>
+<tr><th style="text-align: center;">DATE</th><th style="text-align: center;">DESCRIPTION</th><th style="text-align: center;">STATUS</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left;">1/1/2014</td><td style="text-align: left;">Holiday</td><td style="text-align: left;">Closed</td></tr>
+<tr><td colspan="2" rowspan="2" style="text-align: left;">Holiday</td><td style="text-align: left;">Open</td></tr>
+<tr><td style="text-align: left;">Paid</td></tr>
+</tbody>
+</table>`
+	visualCheckHTML(t, "HTMLMergeBothBlockWins-above", above, expectedAbove)
+
+	below := render([][]string{
+		{"Holiday", "Holiday", "Closed"},
+		{"Holiday", "Holiday", "Open"},
+		{"1/2/2014", "Holiday", "Open"},
+		{"1/3/2014", "Holiday", "Paid"},
+	})
+	expectedBelow := `
+<table>
+<thead>
+<tr><th style="text-align: center;">DATE</th><th style="text-align: center;">DESCRIPTION</th><th style="text-align: center;">STATUS</th></tr>
+</thead>
+<tbody>
+<tr><td colspan="2" rowspan="2" style="text-align: left;">Holiday</td><td style="text-align: left;">Closed</td></tr>
+<tr><td rowspan="2" style="text-align: left;">Open</td></tr>
+<tr><td style="text-align: left;">1/2/2014</td><td rowspan="2" style="text-align: left;">Holiday</td></tr>
+<tr><td style="text-align: left;">1/3/2014</td><td style="text-align: left;">Paid</td></tr>
+</tbody>
+</table>`
+	visualCheckHTML(t, "HTMLMergeBothBlockWins-below", below, expectedBelow)
+}

@@ -418,6 +418,61 @@ func TestMergeBothBlock(t *testing.T) {
 		}
 	})
 
+	// The block wins over a covered column's own run of the same value:
+	// the run above or below the block stays a cell of its own.
+	t.Run("covered-column-run-above", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c), tablewriter.WithRenderer(r))
+		table.Header([]string{"Date", "Description", "Status"})
+		table.Append([]string{"1/1/2014", "Holiday", "Closed"})
+		table.Append([]string{"Holiday", "Holiday", "Open"})
+		table.Append([]string{"Holiday", "Holiday", "Paid"})
+		table.Render()
+
+		expected := `
+        ┌──────────┬─────────────┬────────┐
+        │   DATE   │ DESCRIPTION │ STATUS │
+        ├──────────┼─────────────┼────────┤
+        │ 1/1/2014 │ Holiday     │ Closed │
+        ├──────────┴─────────────┼────────┤
+        │ Holiday                │ Open   │
+        │                        ├────────┤
+        │                        │ Paid   │
+        └────────────────────────┴────────┘
+`
+		if !visualCheck(t, "TestMergeBothBlock-covered-column-run-above", buf.String(), expected) {
+			t.Log(table.Debug())
+		}
+	})
+
+	t.Run("covered-column-run-below", func(t *testing.T) {
+		buf.Reset()
+		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c), tablewriter.WithRenderer(r))
+		table.Header([]string{"Date", "Description", "Status"})
+		table.Append([]string{"Holiday", "Holiday", "Closed"})
+		table.Append([]string{"Holiday", "Holiday", "Open"})
+		table.Append([]string{"1/2/2014", "Holiday", "Open"})
+		table.Append([]string{"1/3/2014", "Holiday", "Paid"})
+		table.Render()
+
+		expected := `
+        ┌──────────┬─────────────┬────────┐
+        │   DATE   │ DESCRIPTION │ STATUS │
+        ├──────────┴─────────────┼────────┤
+        │ Holiday                │ Closed │
+        │                        ├────────┤
+        │                        │ Open   │
+        ├──────────┬─────────────┤        │
+        │ 1/2/2014 │ Holiday     │        │
+        ├──────────┤             ├────────┤
+        │ 1/3/2014 │             │ Paid   │
+        └──────────┴─────────────┴────────┘
+`
+		if !visualCheck(t, "TestMergeBothBlock-covered-column-run-below", buf.String(), expected) {
+			t.Log(table.Debug())
+		}
+	})
+
 	t.Run("different-widths", func(t *testing.T) {
 		buf.Reset()
 		table := tablewriter.NewTable(&buf, tablewriter.WithConfig(c), tablewriter.WithRenderer(r))

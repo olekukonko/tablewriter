@@ -378,6 +378,11 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 	// A vertical merge of horizontally merged cells covers a block of
 	// columns. Give the covered columns the same vertical state so
 	// renderers see the whole block, not just its first column.
+	//
+	// The block wins over the covered columns' own vertical state: a
+	// covered cell is part of the block, so its column's merge cannot
+	// reach past the block's rows. A run of the same value in a covered
+	// column just above or below the block stays a cell of its own.
 	for i := range mctx.rowMerges {
 		for col := 0; col < numCols; col++ {
 			state := mctx.rowMerges[i][col]
