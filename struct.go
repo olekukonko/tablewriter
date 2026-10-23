@@ -132,8 +132,8 @@ func (t *Table) extractFieldsAndValuesFromStructWithOffset(sample interface{}, c
 		// explicit tw:"name=..." value is taken verbatim instead, after
 		// this point, and intentionally skips this step to preserve casing.
 		headerName := field.Name
-		if legacyTagName != "" {
-			headerName = strings.Split(legacyTagName, ",")[0]
+		if name := strings.Split(legacyTagName, ",")[0]; name != "" {
+			headerName = name
 		}
 		headerName = tw.Title(headerName)
 
