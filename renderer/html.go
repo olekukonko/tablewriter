@@ -103,7 +103,7 @@ func (h *HTML) Start(w io.Writer) error {
 
 	classAttr := tw.Empty
 	if h.config.TableClass != tw.Empty {
-		classAttr = fmt.Sprintf(` class="%s"`, h.config.TableClass)
+		classAttr = fmt.Sprintf(` class="%s"`, html.EscapeString(h.config.TableClass))
 	}
 	h.logger.Debugf("Writing opening <table%s> tag", classAttr)
 	_, err := fmt.Fprintf(h.w, "<table%s>\n", classAttr)
@@ -142,7 +142,7 @@ func (h *HTML) Header(headers [][]string, ctx tw.Formatting) {
 	h.closePreviousSection()
 	classAttr := tw.Empty
 	if h.config.HeaderClass != tw.Empty {
-		classAttr = fmt.Sprintf(` class="%s"`, h.config.HeaderClass)
+		classAttr = fmt.Sprintf(` class="%s"`, html.EscapeString(h.config.HeaderClass))
 	}
 	fmt.Fprintf(h.w, "<thead%s>\n", classAttr)
 
@@ -163,7 +163,7 @@ func (h *HTML) Header(headers [][]string, ctx tw.Formatting) {
 	indent := "  "
 	rowClassAttr := tw.Empty
 	if h.config.HeaderRowClass != tw.Empty {
-		rowClassAttr = fmt.Sprintf(` class="%s"`, h.config.HeaderRowClass)
+		rowClassAttr = fmt.Sprintf(` class="%s"`, html.EscapeString(h.config.HeaderRowClass))
 	}
 	fmt.Fprintf(h.w, "%s<tr%s>", indent, rowClassAttr)
 
@@ -217,7 +217,7 @@ func (h *HTML) Row(row []string, ctx tw.Formatting) {
 		h.closePreviousSection()
 		classAttr := tw.Empty
 		if h.config.BodyClass != tw.Empty {
-			classAttr = fmt.Sprintf(` class="%s"`, h.config.BodyClass)
+			classAttr = fmt.Sprintf(` class="%s"`, html.EscapeString(h.config.BodyClass))
 		}
 		h.logger.Debugf("Writing opening <tbody%s> tag", classAttr)
 		fmt.Fprintf(h.w, "<tbody%s>\n", classAttr)
@@ -241,7 +241,7 @@ func (h *HTML) Row(row []string, ctx tw.Formatting) {
 	indent := "  "
 	rowClassAttr := tw.Empty
 	if h.config.RowClass != tw.Empty {
-		rowClassAttr = fmt.Sprintf(` class="%s"`, h.config.RowClass)
+		rowClassAttr = fmt.Sprintf(` class="%s"`, html.EscapeString(h.config.RowClass))
 	}
 	fmt.Fprintf(h.w, "%s<tr%s>", indent, rowClassAttr)
 
@@ -297,7 +297,7 @@ func (h *HTML) Footer(footers [][]string, ctx tw.Formatting) {
 	h.closePreviousSection()
 	classAttr := tw.Empty
 	if h.config.FooterClass != tw.Empty {
-		classAttr = fmt.Sprintf(` class="%s"`, h.config.FooterClass)
+		classAttr = fmt.Sprintf(` class="%s"`, html.EscapeString(h.config.FooterClass))
 	}
 	fmt.Fprintf(h.w, "<tfoot%s>\n", classAttr)
 	h.tfootStarted = true
@@ -319,7 +319,7 @@ func (h *HTML) Footer(footers [][]string, ctx tw.Formatting) {
 	indent := "  "
 	rowClassAttr := tw.Empty
 	if h.config.FooterRowClass != tw.Empty {
-		rowClassAttr = fmt.Sprintf(` class="%s"`, h.config.FooterRowClass)
+		rowClassAttr = fmt.Sprintf(` class="%s"`, html.EscapeString(h.config.FooterRowClass))
 	}
 	fmt.Fprintf(h.w, "%s<tr%s>", indent, rowClassAttr)
 

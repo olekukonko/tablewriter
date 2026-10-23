@@ -83,16 +83,6 @@ func (t *Table) extractFieldsAndValuesFromStructWithOffset(sample interface{}, c
 			continue
 		}
 
-		// Handle embedded structs recursively, tracking absolute column offset
-		if field.Anonymous {
-			h, val := t.extractFieldsAndValuesFromStructWithOffset(fieldValue.Interface(), colOffset+len(headers))
-			if h != nil {
-				headers = append(headers, h...)
-				values = append(values, val...)
-			}
-			continue
-		}
-
 		var legacyTagName string
 		skipField := false
 		twTag := field.Tag.Get("tw")
@@ -108,6 +98,28 @@ func (t *Table) extractFieldsAndValuesFromStructWithOffset(sample interface{}, c
 				legacyTagName = tagValue
 				break
 			}
+		}
+
+		// Resolve skip tags before recursing or changing column configuration.
+		for _, p := range strings.Split(twTag, ",") {
+			kv := strings.SplitN(p, "=", 2)
+			if strings.TrimSpace(kv[0]) == twTagSkip {
+				skipField = true
+				break
+			}
+		}
+		if skipField {
+			continue
+		}
+
+		// Handle embedded structs recursively, tracking absolute column offset.
+		if field.Anonymous {
+			h, val := t.extractFieldsAndValuesFromStructWithOffset(fieldValue.Interface(), colOffset+len(headers))
+			if h != nil {
+				headers = append(headers, h...)
+				values = append(values, val...)
+			}
+			continue
 		}
 
 		// Determine base header name (Fallback: legacy tag -> field name).
@@ -130,115 +142,88 @@ func (t *Table) extractFieldsAndValuesFromStructWithOffset(sample interface{}, c
 
 		// Parse the 'tw' struct tag schema
 		if twTag != "" {
-			if strings.TrimSpace(twTag) == twTagSkip {
-				continue
-			}
-
 			parts := strings.Split(twTag, ",")
-
-			// Pass 1: resolve skip first, before any part is allowed to
-			// mutate table config. A tag like "align=left,-" must not leave
-			// behind an alignment write for colIdx; if this field is going
-			// to be dropped, the part that comes before "-" in the tag
-			// string shouldn't matter, and a stale config write would leak
-			// onto whichever field ends up occupying this column index.
 			for _, p := range parts {
 				kv := strings.SplitN(p, "=", 2)
-				if strings.TrimSpace(kv[0]) == twTagSkip {
-					skipField = true
-					break
+				key := strings.TrimSpace(kv[0])
+
+				if len(kv) != 2 {
+					continue
 				}
-			}
 
-			// Pass 2: only now apply side effects, and only if the field
-			// survived pass 1.
-			if !skipField {
-				for _, p := range parts {
-					kv := strings.SplitN(p, "=", 2)
-					key := strings.TrimSpace(kv[0])
+				val := kv[1] // Do not TrimSpace val yet, to preserve padding spaces
+				valTrimmed := strings.TrimSpace(val)
 
-					if len(kv) != 2 {
-						continue
+				switch key {
+				case twKeyName:
+					headerName = val // Use exact string, preserve casing
+
+				// Per-Column Configurations
+				case twKeyAlign:
+					if isFirstPass {
+						align := t.parseTwAlign(valTrimmed)
+						t.setTwColumnAlignment(tw.Row, colIdx, align)
+						t.setTwColumnAlignment(tw.Footer, colIdx, align)
+					}
+				case twKeyHeaderAlign:
+					if isFirstPass {
+						t.setTwColumnAlignment(tw.Header, colIdx, t.parseTwAlign(valTrimmed))
+					}
+				case twKeyMaxWidth:
+					if isFirstPass {
+						if mw, err := strconv.Atoi(valTrimmed); err == nil && mw > 0 {
+							t.setTwColumnMaxWidth(colIdx, mw)
+						}
+					}
+				case twKeyPadLeft:
+					if isFirstPass {
+						t.setTwColumnPadding(colIdx, val, true)
+					}
+				case twKeyPadRight:
+					if isFirstPass {
+						t.setTwColumnPadding(colIdx, val, false)
 					}
 
-					val := kv[1] // Do not TrimSpace val yet, to preserve padding spaces
-					valTrimmed := strings.TrimSpace(val)
-
-					switch key {
-					case twKeyName:
-						headerName = val // Use exact string, preserve casing
-
-					// Per-Column Configurations
-					case twKeyAlign:
-						if isFirstPass {
-							align := t.parseTwAlign(valTrimmed)
-							t.setTwColumnAlignment(tw.Row, colIdx, align)
-							t.setTwColumnAlignment(tw.Footer, colIdx, align)
-						}
-					case twKeyHeaderAlign:
-						if isFirstPass {
-							t.setTwColumnAlignment(tw.Header, colIdx, t.parseTwAlign(valTrimmed))
-						}
-					case twKeyMaxWidth:
-						if isFirstPass {
-							if mw, err := strconv.Atoi(valTrimmed); err == nil && mw > 0 {
-								t.setTwColumnMaxWidth(colIdx, mw)
-							}
-						}
-					case twKeyPadLeft:
-						if isFirstPass {
-							t.setTwColumnPadding(colIdx, val, true)
-						}
-					case twKeyPadRight:
-						if isFirstPass {
-							t.setTwColumnPadding(colIdx, val, false)
-						}
-
-					// Table-wide configurations. These cannot be scoped to a
-					// single column: TrimSpace/TrimTab are a single flag on
-					// t.config.Behavior used for every cell in the table
-					// (header, row and footer alike), and Header.Formatting
-					// .AutoFormat is one flag per section, not a per-column
-					// array like Alignment.PerColumn is. Setting one of
-					// these on a field changes that behavior for every
-					// other column too, including ones processed earlier.
-					// Whichever field sets a given key last "wins" for the
-					// whole table. If genuinely independent per-column
-					// control is needed, these settings don't belong in a
-					// per-field tag — that would require making
-					// CellFormatting per-column-aware first.
-					case twKeyTrimSpace:
-						if isFirstPass {
-							t.config.Behavior.TrimSpace = t.parseTwState(valTrimmed)
-						}
-					case twKeyTrimTab:
-						if isFirstPass {
-							t.config.Behavior.TrimTab = t.parseTwState(valTrimmed)
-						}
-					case twKeyAutoFormat:
-						if isFirstPass {
-							t.config.Header.Formatting.AutoFormat = t.parseTwState(valTrimmed)
-						}
-					case twKeyWrap:
-						if isFirstPass {
-							switch valTrimmed {
-							case "none":
-								t.config.Row.Formatting.AutoWrap = tw.WrapNone
-							case "normal":
-								t.config.Row.Formatting.AutoWrap = tw.WrapNormal
-							case "truncate":
-								t.config.Row.Formatting.AutoWrap = tw.WrapTruncate
-							case "break":
-								t.config.Row.Formatting.AutoWrap = tw.WrapBreak
-							}
+				// Table-wide configurations. These cannot be scoped to a
+				// single column: TrimSpace/TrimTab are a single flag on
+				// t.config.Behavior used for every cell in the table
+				// (header, row and footer alike), and Header.Formatting
+				// .AutoFormat is one flag per section, not a per-column
+				// array like Alignment.PerColumn is. Setting one of
+				// these on a field changes that behavior for every
+				// other column too, including ones processed earlier.
+				// Whichever field sets a given key last "wins" for the
+				// whole table. If genuinely independent per-column
+				// control is needed, these settings don't belong in a
+				// per-field tag — that would require making
+				// CellFormatting per-column-aware first.
+				case twKeyTrimSpace:
+					if isFirstPass {
+						t.config.Behavior.TrimSpace = t.parseTwState(valTrimmed)
+					}
+				case twKeyTrimTab:
+					if isFirstPass {
+						t.config.Behavior.TrimTab = t.parseTwState(valTrimmed)
+					}
+				case twKeyAutoFormat:
+					if isFirstPass {
+						t.config.Header.Formatting.AutoFormat = t.parseTwState(valTrimmed)
+					}
+				case twKeyWrap:
+					if isFirstPass {
+						switch valTrimmed {
+						case "none":
+							t.config.Row.Formatting.AutoWrap = tw.WrapNone
+						case "normal":
+							t.config.Row.Formatting.AutoWrap = tw.WrapNormal
+						case "truncate":
+							t.config.Row.Formatting.AutoWrap = tw.WrapTruncate
+						case "break":
+							t.config.Row.Formatting.AutoWrap = tw.WrapBreak
 						}
 					}
 				}
 			}
-		}
-
-		if skipField {
-			continue
 		}
 
 		headers = append(headers, headerName)
