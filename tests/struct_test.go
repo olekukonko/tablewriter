@@ -534,3 +534,33 @@ func TestStructSkipsTaggedEmbeddedFields(t *testing.T) {
 		})
 	}
 }
+
+func TestStructTagWithoutNameUsesFieldName(t *testing.T) {
+	type Row struct {
+		Name  string `json:",omitempty"`
+		Email string `json:"email,omitempty"`
+		Age   int    `json:",omitempty"`
+	}
+
+	var buf bytes.Buffer
+	table := tablewriter.NewTable(&buf)
+	table.Configure(func(cfg *tablewriter.Config) {
+		cfg.Behavior.Structs.AutoHeader = tw.On
+	})
+	if err := table.Bulk([]Row{{"Alice", "alice@example.com", 30}, {"Bob", "", 0}}); err != nil {
+		t.Fatalf("Bulk failed: %v", err)
+	}
+	table.Render()
+
+	expected := `
+	┌───────┬───────────────────┬─────┐
+	│ NAME  │       EMAIL       │ AGE │
+	├───────┼───────────────────┼─────┤
+	│ Alice │ alice@example.com │ 30  │
+	│ Bob   │                   │     │
+	└───────┴───────────────────┴─────┘
+`
+	if !visualCheck(t, "StructTagWithoutName", buf.String(), expected) {
+		t.Log(table.Debug())
+	}
+}
