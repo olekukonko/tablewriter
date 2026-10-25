@@ -396,3 +396,47 @@ func TestSVGHorizontalMerge(t *testing.T) {
 		t.Log(table.Debug())
 	}
 }
+
+// TestSVGHorizontalMergeKeepsSpannedColumns tests that a horizontal merge in one row
+// does not hide the cells of the spanned columns in the other rows.
+// Parameter t is the testing context.
+// No return value;
+func TestSVGHorizontalMergeKeepsSpannedColumns(t *testing.T) {
+	var buf bytes.Buffer
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithRenderer(renderer.NewSVG(defaultSVGConfigForTests(false))),
+		tablewriter.WithConfig(tablewriter.Config{
+			Row: tw.CellConfig{Merging: tw.CellMerging{Mode: tw.MergeHorizontal}},
+		}),
+	)
+	table.Header([]string{"Region", "Quarter", "Quarter", "Sales"})
+	table.Append([]string{"North", "Q1 & Q2", "Q1 & Q2", "$2200"})
+	table.Append([]string{"South", "Q1", "Q2", "$1000"})
+	table.Render()
+	expected := `<svg xmlns="http://www.w3.org/2000/svg" width="179" height="58" font-family="Arial" font-size="10"><style>text { stroke: none; }</style><rect x="1" y="1" width="42" height="18" fill="#DDD"/><text x="22" y="10" fill="#000" text-anchor="middle" dominant-baseline="middle">REGION</text><rect x="44" y="1" width="48" height="18" fill="#DDD"/><text x="68" y="10" fill="#000" text-anchor="middle" dominant-baseline="middle">QUARTER</text><rect x="93" y="1" width="48" height="18" fill="#DDD"/><text x="117" y="10" fill="#000" text-anchor="middle" dominant-baseline="middle">QUARTER</text><rect x="142" y="1" width="36" height="18" fill="#DDD"/><text x="160" y="10" fill="#000" text-anchor="middle" dominant-baseline="middle">SALES</text><rect x="1" y="20" width="42" height="18" fill="#FFF"/><text x="4" y="29" fill="#000" text-anchor="start" dominant-baseline="middle">North</text><rect x="44" y="20" width="97" height="18" fill="#FFF"/><text x="47" y="29" fill="#000" text-anchor="start" dominant-baseline="middle">Q1 &amp; Q2</text><rect x="142" y="20" width="36" height="18" fill="#FFF"/><text x="145" y="29" fill="#000" text-anchor="start" dominant-baseline="middle">$2200</text><rect x="1" y="39" width="42" height="18" fill="#EEE"/><text x="4" y="48" fill="#000" text-anchor="start" dominant-baseline="middle">South</text><rect x="44" y="39" width="48" height="18" fill="#EEE"/><text x="47" y="48" fill="#000" text-anchor="start" dominant-baseline="middle">Q1</text><rect x="93" y="39" width="48" height="18" fill="#EEE"/><text x="96" y="48" fill="#000" text-anchor="start" dominant-baseline="middle">Q2</text><rect x="142" y="39" width="36" height="18" fill="#EEE"/><text x="145" y="48" fill="#000" text-anchor="start" dominant-baseline="middle">$1000</text><g class="table-borders" stroke="black" stroke-width="1" stroke-linecap="square"><line x1="0.50" y1="0.50" x2="178.50" y2="0.50"/><line x1="0.50" y1="19.50" x2="178.50" y2="19.50"/><line x1="0.50" y1="38.50" x2="178.50" y2="38.50"/><line x1="0.50" y1="57.50" x2="178.50" y2="57.50"/><line x1="0.50" y1="0.50" x2="0.50" y2="57.50"/><line x1="43.50" y1="0.50" x2="43.50" y2="57.50"/><line x1="92.50" y1="0.50" x2="92.50" y2="57.50"/><line x1="141.50" y1="0.50" x2="141.50" y2="57.50"/><line x1="178.50" y1="0.50" x2="178.50" y2="57.50"/></g></svg>`
+	if !visualCheckSVG(t, "SVGHorizontalMergeKeepsSpannedColumns", buf.String(), expected) {
+		t.Log(table.Debug())
+	}
+}
+
+// TestSVGHorizontalMergeWiderThanColumns tests that the spanned columns grow when
+// the merged text is wider than they are.
+// Parameter t is the testing context.
+// No return value;
+func TestSVGHorizontalMergeWiderThanColumns(t *testing.T) {
+	var buf bytes.Buffer
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithRenderer(renderer.NewSVG(defaultSVGConfigForTests(false))),
+		tablewriter.WithConfig(tablewriter.Config{
+			Row: tw.CellConfig{Merging: tw.CellMerging{Mode: tw.MergeHorizontal}},
+		}),
+	)
+	table.Header([]string{"Item", "East", "West"})
+	table.Append([]string{"Total", "Combined sales", "Combined sales"})
+	table.Append([]string{"North", "10", "20"})
+	table.Render()
+	expected := `<svg xmlns="http://www.w3.org/2000/svg" width="136" height="58" font-family="Arial" font-size="10"><style>text { stroke: none; }</style><rect x="1" y="1" width="36" height="18" fill="#DDD"/><text x="19" y="10" fill="#000" text-anchor="middle" dominant-baseline="middle">ITEM</text><rect x="38" y="1" width="48" height="18" fill="#DDD"/><text x="62" y="10" fill="#000" text-anchor="middle" dominant-baseline="middle">EAST</text><rect x="87" y="1" width="48" height="18" fill="#DDD"/><text x="111" y="10" fill="#000" text-anchor="middle" dominant-baseline="middle">WEST</text><rect x="1" y="20" width="36" height="18" fill="#FFF"/><text x="4" y="29" fill="#000" text-anchor="start" dominant-baseline="middle">Total</text><rect x="38" y="20" width="97" height="18" fill="#FFF"/><text x="41" y="29" fill="#000" text-anchor="start" dominant-baseline="middle">Combined sales</text><rect x="1" y="39" width="36" height="18" fill="#EEE"/><text x="4" y="48" fill="#000" text-anchor="start" dominant-baseline="middle">North</text><rect x="38" y="39" width="48" height="18" fill="#EEE"/><text x="41" y="48" fill="#000" text-anchor="start" dominant-baseline="middle">10</text><rect x="87" y="39" width="48" height="18" fill="#EEE"/><text x="90" y="48" fill="#000" text-anchor="start" dominant-baseline="middle">20</text><g class="table-borders" stroke="black" stroke-width="1" stroke-linecap="square"><line x1="0.50" y1="0.50" x2="135.50" y2="0.50"/><line x1="0.50" y1="19.50" x2="135.50" y2="19.50"/><line x1="0.50" y1="38.50" x2="135.50" y2="38.50"/><line x1="0.50" y1="57.50" x2="135.50" y2="57.50"/><line x1="0.50" y1="0.50" x2="0.50" y2="57.50"/><line x1="37.50" y1="0.50" x2="37.50" y2="57.50"/><line x1="86.50" y1="0.50" x2="86.50" y2="57.50"/><line x1="135.50" y1="0.50" x2="135.50" y2="57.50"/></g></svg>`
+	if !visualCheckSVG(t, "SVGHorizontalMergeWiderThanColumns", buf.String(), expected) {
+		t.Log(table.Debug())
+	}
+}

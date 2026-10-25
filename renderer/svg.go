@@ -264,11 +264,19 @@ func (s *SVG) calculateAllColumnWidths() {
 	processSectionForWidth(sectionTypeRow)
 	processSectionForWidth(sectionTypeFooter)
 
-	// Apply maximum widths for merged cells
-	for key, width := range maxMergeWidths {
-		s.calculatedColWidths[key.startCol] = width
-		for i := 1; i < key.span && (key.startCol+i) < len(s.calculatedColWidths); i++ {
-			s.calculatedColWidths[key.startCol+i] = 0
+	// Spanned columns keep the widths their own cells need. A merge only widens
+	// them, evenly, when its content needs more than they already add up to.
+	for key, need := range maxMergeWidths {
+		end := min(key.startCol+key.span, len(s.calculatedColWidths))
+		spannedSum := 0.0
+		for i := key.startCol; i < end; i++ {
+			spannedSum += s.calculatedColWidths[i]
+		}
+		if need > spannedSum {
+			extra := (need - spannedSum) / float64(end-key.startCol)
+			for i := key.startCol; i < end; i++ {
+				s.calculatedColWidths[i] += extra
+			}
 		}
 	}
 
