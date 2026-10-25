@@ -331,6 +331,57 @@ func TestAutoHideFeature(t *testing.T) {
 	})
 }
 
+// TestAutoHideColumnPosition checks that a hidden empty column leaves one
+// column separator between its neighbours, wherever it sits in the table.
+func TestAutoHideColumnPosition(t *testing.T) {
+	expected := `
+        ┌───────┬─────┐
+        │ NAME  │ QTY │
+        ├───────┼─────┤
+        │ apple │ 3   │
+        │ pear  │ 5   │
+        └───────┴─────┘
+`
+	tests := []struct {
+		name   string
+		header []string
+		rows   [][]string
+	}{
+		{"First", []string{"Notes", "Name", "Qty"}, [][]string{{"", "apple", "3"}, {"", "pear", "5"}}},
+		{"Middle", []string{"Name", "Notes", "Qty"}, [][]string{{"apple", "", "3"}, {"pear", "", "5"}}},
+		{"Last", []string{"Name", "Qty", "Notes"}, [][]string{{"apple", "3", ""}, {"pear", "5", ""}}},
+		{"TwoAdjacent", []string{"Name", "Notes", "Tags", "Qty"}, [][]string{{"apple", "", "", "3"}, {"pear", "", "", "5"}}},
+	}
+	renderers := []struct {
+		name string
+		new  func() tw.Renderer
+	}{
+		{"Blueprint", func() tw.Renderer { return renderer.NewBlueprint() }},
+		{"Colorized", func() tw.Renderer { return renderer.NewColorized() }},
+	}
+
+	for _, r := range renderers {
+		for _, tt := range tests {
+			t.Run(r.name+"/"+tt.name, func(t *testing.T) {
+				var buf bytes.Buffer
+				table := tablewriter.NewTable(&buf,
+					tablewriter.WithAutoHide(tw.On),
+					tablewriter.WithRenderer(r.new()),
+				)
+				table.Header(tt.header)
+				for _, row := range tt.rows {
+					table.Append(row)
+				}
+				table.Render()
+
+				if !visualCheck(t, "AutoHide_"+r.name+"_"+tt.name, buf.String(), expected) {
+					t.Error(table.Debug())
+				}
+			})
+		}
+	}
+}
+
 func TestEmojiTable(t *testing.T) {
 	// Original Boston Test: every line of the table has to be the same width,
 	// borders included.
