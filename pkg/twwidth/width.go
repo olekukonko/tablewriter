@@ -256,7 +256,7 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 	for graphemes.Next() {
 		cluster := graphemes.Value()
 		r, _ := utf8.DecodeRuneInString(cluster)
-		if r == '\x1b' {
+		if r == '\x1b' && !inAnsiSequence {
 			inAnsiSequence = true
 			ansiSeqBuf.Reset()
 			ansiSeqBuf.WriteString(cluster)
