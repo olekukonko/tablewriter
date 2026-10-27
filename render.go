@@ -111,6 +111,9 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig, resolvedWid
 
 		cellContent = t.Trimmer(cellContent)
 
+		// Treat Windows line endings as plain newlines so no "\r" reaches the output
+		cellContent = strings.ReplaceAll(cellContent, "\r\n", tw.NewLine)
+
 		if strings.Contains(cellContent, twwidth.TabString.String()) {
 			// Get the detected width from the singleton
 			width := twwidth.TabWidth()
