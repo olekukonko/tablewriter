@@ -260,6 +260,7 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 	numCols := ctx.numCols
 	mergeStartRow := make(map[int]int)
 	mergeStartContent := make(map[int]string)
+	mergeStartWidth := make(map[int]int)
 
 	for i := 0; i < len(ctx.rowLines); i++ {
 		if i >= len(mctx.rowMerges) {
@@ -299,7 +300,7 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 			startContent := mergeStartContent[col]
 			mergeState := mctx.rowMerges[i][col]
 
-			if ongoingMerge && currentValStr == startContent && currentValStr != "" {
+			if ongoingMerge && currentValStr == startContent && currentValStr != "" && horizontalWidth(mergeState) == mergeStartWidth[col] {
 				mergeState.Vertical = tw.MergeStateOption{
 					Present: true,
 					Span:    0,
@@ -330,6 +331,7 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 					}
 					delete(mergeStartRow, col)
 					delete(mergeStartContent, col)
+					delete(mergeStartWidth, col)
 				}
 
 				if currentValStr != "" {
@@ -342,6 +344,7 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 					mctx.rowMerges[i][col] = mergeState
 					mergeStartRow[col] = i
 					mergeStartContent[col] = currentValStr
+					mergeStartWidth[col] = horizontalWidth(mergeState)
 					ctx.logger.Debugf("Vertical merge started at row %d, col %d", i, col)
 				} else if !mergeState.Horizontal.Present {
 					mergeState.Vertical = tw.MergeStateOption{}
@@ -369,6 +372,29 @@ func (t *Table) applyVerticalMerges(ctx *renderContext, mctx *mergeContext) {
 			}
 			mctx.rowMerges[lastRowIdx][col] = endState
 			ctx.logger.Debugf("Vertical merge finalized at row %d, col %d, span %d", lastRowIdx, col, finalSpan)
+		}
+	}
+
+	// A vertical merge of horizontally merged cells covers a block of
+	// columns. Give the covered columns the same vertical state so
+	// renderers see the whole block, not just its first column.
+	//
+	// The block wins over the covered columns' own vertical state: a
+	// covered cell is part of the block, so its column's merge cannot
+	// reach past the block's rows. A run of the same value in a covered
+	// column just above or below the block stays a cell of its own.
+	for i := range mctx.rowMerges {
+		for col := 0; col < numCols; col++ {
+			state := mctx.rowMerges[i][col]
+			width := horizontalWidth(state)
+			if width == 1 || !state.Vertical.Present || (state.Vertical.Start && state.Vertical.Span <= 1) {
+				continue
+			}
+			for k := 1; k < width && col+k < numCols; k++ {
+				covered := mctx.rowMerges[i][col+k]
+				covered.Vertical = state.Vertical
+				mctx.rowMerges[i][col+k] = covered
+			}
 		}
 	}
 	ctx.logger.Debug("Vertical merges completed")
@@ -1555,4 +1581,12 @@ func (t *Table) updateWidths(row []string, widths tw.Mapper[int, int], padding t
 			t.logger.Debugf("  Col %d: Width %d not greater than current max %d for cell '%s'", i, totalWidth, currentMax, cell)
 		}
 	}
+}
+
+// horizontalWidth returns the number of columns a cell covers in its row.
+func horizontalWidth(state tw.MergeState) int {
+	if state.Horizontal.Present && state.Horizontal.Start && state.Horizontal.Span > 1 {
+		return state.Horizontal.Span
+	}
+	return 1
 }
