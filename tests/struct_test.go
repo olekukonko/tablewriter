@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/olekukonko/tablewriter/renderer"
@@ -561,6 +562,41 @@ func TestStructTagWithoutNameUsesFieldName(t *testing.T) {
 	└───────┴───────────────────┴─────┘
 `
 	if !visualCheck(t, "StructTagWithoutName", buf.String(), expected) {
+		t.Log(table.Debug())
+	}
+}
+
+func TestStructPointerFields(t *testing.T) {
+	type Row struct {
+		Name    string
+		Age     *int
+		Email   *string
+		Created *time.Time
+	}
+
+	age := 30
+	email := "alice@example.com"
+	created := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+
+	var buf bytes.Buffer
+	table := tablewriter.NewTable(&buf)
+	table.Configure(func(cfg *tablewriter.Config) {
+		cfg.Behavior.Structs.AutoHeader = tw.On
+	})
+	if err := table.Bulk([]Row{{"Alice", &age, &email, &created}, {"Bob", nil, nil, nil}}); err != nil {
+		t.Fatalf("Bulk failed: %v", err)
+	}
+	table.Render()
+
+	expected := `
+	┌───────┬─────┬───────────────────┬───────────────────────────────┐
+	│ NAME  │ AGE │       EMAIL       │            CREATED            │
+	├───────┼─────┼───────────────────┼───────────────────────────────┤
+	│ Alice │ 30  │ alice@example.com │ 2026-01-02 03:04:05 +0000 UTC │
+	│ Bob   │     │                   │                               │
+	└───────┴─────┴───────────────────┴───────────────────────────────┘
+`
+	if !visualCheck(t, "StructPointerFields", buf.String(), expected) {
 		t.Log(table.Debug())
 	}
 }

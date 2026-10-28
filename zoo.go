@@ -1131,6 +1131,11 @@ func (t *Table) convertToString(value any) string {
 	if value == nil {
 		return ""
 	}
+	// A nil pointer is empty like nil; calling its String method can panic (e.g. nil *time.Time).
+	rv := reflect.ValueOf(value)
+	if rv.Kind() == reflect.Ptr && rv.IsNil() {
+		return ""
+	}
 	switch v := value.(type) {
 	case tw.Formatter:
 		return v.Format()
@@ -1205,6 +1210,9 @@ func (t *Table) convertToString(value any) string {
 	case bool:
 		return strconv.FormatBool(v)
 	default:
+		if rv.Kind() == reflect.Ptr {
+			return t.convertToString(rv.Elem().Interface())
+		}
 		t.logger.Debugf("convertToString: Falling back to fmt.Sprintf for type %T", value)
 		return fmt.Sprintf("%v", value) // Fallback for rare types
 	}
