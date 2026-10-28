@@ -382,6 +382,63 @@ func TestAutoHideColumnPosition(t *testing.T) {
 	}
 }
 
+func TestAutoHideWithMergedCells(t *testing.T) {
+	tests := []struct {
+		name     string
+		mode     int
+		header   []string
+		rows     [][]string
+		expected string
+	}{
+		{
+			name:   "Horizontal",
+			mode:   tw.MergeHorizontal,
+			header: []string{"Group", "Group", "Notes", "Value"},
+			rows:   [][]string{{"Group", "Group", "", "Value"}, {"Other", "Other", "", "Result"}},
+			expected: "\n        ┌───────┬───────┬────────┐\n" +
+				"        │ GROUP │ GROUP │ VALUE  │\n        ├───────┴───────┼────────┤\n" +
+				"        │ Group         │ Value  │\n        │ Other         │ Result │\n        └───────────────┴────────┘\n",
+		},
+		{
+			name:   "Vertical",
+			mode:   tw.MergeVertical,
+			header: []string{"Group", "Notes", "Value"},
+			rows:   [][]string{{"Group", "", "Value"}, {"Group", "", "Result"}},
+			expected: "\n        ┌───────┬────────┐\n        │ GROUP │ VALUE  │\n" +
+				"        ├───────┼────────┤\n        │ Group │ Value  │\n        │       │ Result │\n" +
+				"        └───────┴────────┘\n",
+		},
+	}
+	renderers := []struct {
+		name string
+		new  func() tw.Renderer
+	}{
+		{"Blueprint", func() tw.Renderer { return renderer.NewBlueprint() }},
+		{"Colorized", func() tw.Renderer { return renderer.NewColorized() }},
+	}
+
+	for _, r := range renderers {
+		for _, tt := range tests {
+			t.Run(r.name+"/"+tt.name, func(t *testing.T) {
+				var buf bytes.Buffer
+				table := tablewriter.NewTable(&buf,
+					tablewriter.WithConfig(tablewriter.Config{
+						Row: tw.CellConfig{Merging: tw.CellMerging{Mode: tt.mode}},
+					}),
+					tablewriter.WithAutoHide(tw.On),
+					tablewriter.WithRenderer(r.new()),
+				)
+				table.Header(tt.header)
+				table.Bulk(tt.rows)
+				table.Render()
+				if !visualCheck(t, "AutoHideMerge_"+r.name+"_"+tt.name, buf.String(), tt.expected) {
+					t.Error(table.Debug())
+				}
+			})
+		}
+	}
+}
+
 func TestEmojiTable(t *testing.T) {
 	// Original Boston Test: every line of the table has to be the same width,
 	// borders included.
