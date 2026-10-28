@@ -440,3 +440,41 @@ func TestSVGHorizontalMergeWiderThanColumns(t *testing.T) {
 		t.Log(table.Debug())
 	}
 }
+
+func TestSVGHorizontalMergeOverlappingAndNestedSpans(t *testing.T) {
+	var buf bytes.Buffer
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithRenderer(renderer.NewSVG(defaultSVGConfigForTests(false))),
+		tablewriter.WithConfig(tablewriter.Config{
+			Row: tw.CellConfig{Merging: tw.CellMerging{Mode: tw.MergeHorizontal}},
+		}),
+	)
+	table.Header([]string{"A", "B", "C", "D"})
+	table.Append([]string{"Left span content", "Left span content", "x", "tail"})
+	table.Append([]string{"x", "Right span content", "Right span content", "tail"})
+	table.Append([]string{"Outer span across three", "Outer span across three", "Outer span across three", "tail"})
+	table.Append([]string{"x", "Nested inner span", "Nested inner span", "tail"})
+	table.Render()
+
+	svg := buf.String()
+	expectedFragments := []string{
+		"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"202.00\" height=\"96.00\"",
+		"<rect x=\"1.00\" y=\"1.00\" width=\"57.00\"",
+		"<rect x=\"59.00\" y=\"1.00\" width=\"78.50\"",
+		"<rect x=\"138.50\" y=\"1.00\" width=\"41.50\"",
+		"<rect x=\"1.00\" y=\"20.00\" width=\"136.50\"",
+		"<rect x=\"59.00\" y=\"39.00\" width=\"121.00\"",
+		"<rect x=\"1.00\" y=\"58.00\" width=\"179.00\"",
+		"<rect x=\"59.00\" y=\"77.00\" width=\"121.00\"",
+	}
+	for _, fragment := range expectedFragments {
+		if !strings.Contains(svg, fragment) {
+			t.Errorf("SVG output missing %q:\n%s", fragment, svg)
+		}
+	}
+	for _, text := range []string{"Left span content", "Right span content", "Outer span across three", "Nested inner span"} {
+		if count := strings.Count(svg, ">"+text+"</text>"); count != 1 {
+			t.Errorf("SVG output contains %q %d times, want 1", text, count)
+		}
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/olekukonko/ll"
@@ -266,7 +267,21 @@ func (s *SVG) calculateAllColumnWidths() {
 
 	// Spanned columns keep the widths their own cells need. A merge only widens
 	// them, evenly, when its content needs more than they already add up to.
-	for key, need := range maxMergeWidths {
+	mergeKeys := make([]mergeKey, 0, len(maxMergeWidths))
+	for key := range maxMergeWidths {
+		mergeKeys = append(mergeKeys, key)
+	}
+	// Apply inner constraints before enclosing ones, with a stable order for
+	// overlaps of the same size.
+	slices.SortFunc(mergeKeys, func(a, b mergeKey) int {
+		if a.span != b.span {
+			return a.span - b.span
+		}
+		return a.startCol - b.startCol
+	})
+
+	for _, key := range mergeKeys {
+		need := maxMergeWidths[key]
 		end := min(key.startCol+key.span, len(s.calculatedColWidths))
 		spannedSum := 0.0
 		for i := key.startCol; i < end; i++ {
