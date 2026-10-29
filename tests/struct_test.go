@@ -2,6 +2,7 @@ package tests
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"strconv"
 	"testing"
@@ -597,6 +598,41 @@ func TestStructPointerFields(t *testing.T) {
 	└───────┴─────┴───────────────────┴───────────────────────────────┘
 `
 	if !visualCheck(t, "StructPointerFields", buf.String(), expected) {
+		t.Log(table.Debug())
+	}
+}
+
+func TestStructPointerSQLNullString(t *testing.T) {
+	type Row struct {
+		Name string
+		Nick *sql.NullString
+	}
+
+	var buf bytes.Buffer
+	table := tablewriter.NewTable(&buf)
+	table.Configure(func(cfg *tablewriter.Config) {
+		cfg.Behavior.Structs.AutoHeader = tw.On
+	})
+	rows := []Row{
+		{"Alice", &sql.NullString{String: "ally", Valid: true}},
+		{"Bob", &sql.NullString{String: "ignored", Valid: false}},
+		{"Carol", nil},
+	}
+	if err := table.Bulk(rows); err != nil {
+		t.Fatalf("Bulk failed: %v", err)
+	}
+	table.Render()
+
+	expected := `
+	┌───────┬──────┐
+	│ NAME  │ NICK │
+	├───────┼──────┤
+	│ Alice │ ally │
+	│ Bob   │      │
+	│ Carol │      │
+	└───────┴──────┘
+`
+	if !visualCheck(t, "StructPointerSQLNullString", buf.String(), expected) {
 		t.Log(table.Debug())
 	}
 }
