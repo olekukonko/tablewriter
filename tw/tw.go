@@ -17,6 +17,7 @@ const (
 	Skip    = ""
 	Space   = " "
 	NewLine = "\n"
+	CRLF    = "\r\n" // Windows line ending, normalized to NewLine
 	Column  = ":"
 	Dash    = "-"
 )
