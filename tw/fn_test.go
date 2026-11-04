@@ -47,3 +47,22 @@ func TestSplitCase(t *testing.T) {
 		})
 	}
 }
+
+func TestNormalizeNewLines(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{input: "", expected: ""},
+		{input: "a\nb", expected: "a\nb"},
+		{input: "a\r\nb\r\n", expected: "a\nb\n"},
+		{input: "a\r\n\r\nb", expected: "a\n\nb"},
+		{input: "a\rb", expected: "a\rb"},
+		{input: "a\r\r\nb", expected: "a\r\nb"},
+	}
+	for _, tt := range tests {
+		if output := NormalizeNewLines(tt.input); output != tt.expected {
+			t.Errorf("NormalizeNewLines(%q) = %q, want %q", tt.input, output, tt.expected)
+		}
+	}
+}

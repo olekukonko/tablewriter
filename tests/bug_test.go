@@ -715,3 +715,62 @@ func TestBugMergedHeaderOverDistribution(t *testing.T) {
 		t.Error(table.Debug())
 	}
 }
+
+// TestBugCRLFInCell checks that a cell with Windows line endings renders the
+// same as one with plain newlines, with no stray carriage return in the output.
+func TestBugCRLFInCell(t *testing.T) {
+	render := func(newline string, opts ...tablewriter.Option) string {
+		var buf bytes.Buffer
+		table := tablewriter.NewTable(&buf, opts...)
+		table.Header([]string{"Name", "Note"})
+		table.Append([]string{"a", "line1" + newline + "line2"})
+		table.Footer([]string{"Total", "x" + newline + "y"})
+		table.Render()
+		return buf.String()
+	}
+
+	tests := []struct {
+		name string
+		opts []tablewriter.Option
+	}{
+		{"Blueprint", nil},
+		{"Markdown", []tablewriter.Option{tablewriter.WithRenderer(renderer.NewMarkdown())}},
+		{"HTML", []tablewriter.Option{tablewriter.WithRenderer(renderer.NewHTML())}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := render("\r\n", tt.opts...)
+			want := render("\n", tt.opts...)
+			if strings.Contains(got, "\r") {
+				t.Errorf("output contains a carriage return: %q", got)
+			}
+			if got != want {
+				t.Errorf("CRLF output differs from LF output\nCRLF: %q\nLF:   %q", got, want)
+			}
+		})
+	}
+
+	t.Run("Streaming", func(t *testing.T) {
+		stream := func(newline string) string {
+			var buf bytes.Buffer
+			table := tablewriter.NewTable(&buf, tablewriter.WithStreaming(tw.StreamConfig{Enable: true}))
+			if err := table.Start(); err != nil {
+				t.Fatal(err)
+			}
+			table.Header([]string{"Name", "Note"})
+			table.Append([]string{"a", "line1" + newline + "line2"})
+			if err := table.Close(); err != nil {
+				t.Fatal(err)
+			}
+			return buf.String()
+		}
+		got := stream("\r\n")
+		want := stream("\n")
+		if strings.Contains(got, "\r") {
+			t.Errorf("output contains a carriage return: %q", got)
+		}
+		if got != want {
+			t.Errorf("CRLF output differs from LF output\nCRLF: %q\nLF:   %q", got, want)
+		}
+	})
+}
