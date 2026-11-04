@@ -344,3 +344,61 @@ func TestTable_Options_WithRendition_PartialUpdate(t *testing.T) {
 		t.Logf("Renderer is not *renderer.Blueprint, skipping detailed internal config check. Type is %T", table.Renderer())
 	}
 }
+
+func TestNewCSVReaderReuseRecord(t *testing.T) {
+	var buf bytes.Buffer
+	csvReader := getCSVReaderFromString(csvTestData)
+	csvReader.ReuseRecord = true
+
+	table, err := tablewriter.NewCSVReader(&buf, csvReader, true)
+	if err != nil {
+		t.Fatalf("NewCSVReader failed: %v", err)
+	}
+	if err := table.Render(); err != nil {
+		t.Fatalf("Render failed: %v", err)
+	}
+
+	expected := `
+	┌─────────┬─────────────┬────────┐
+	│  NAME   │ DEPARTMENT  │ SALARY │
+	├─────────┼─────────────┼────────┤
+	│ Alice   │ Engineering │ 120000 │
+	│ Bob     │ Marketing   │ 85000  │
+	│ Charlie │ Engineering │ 135000 │
+	│ Diana   │ HR          │ 70000  │
+	└─────────┴─────────────┴────────┘
+`
+	if !visualCheck(t, "NewCSVReaderReuseRecord", buf.String(), expected) {
+		t.Log(table.Debug())
+	}
+}
+
+func TestAppendReusedRowSlice(t *testing.T) {
+	var buf bytes.Buffer
+	table := tablewriter.NewTable(&buf, tablewriter.WithRowFilter(tw.CellFilter{
+		PerColumn: []func(string) string{strings.ToUpper},
+	}))
+	table.Header([]string{"Name", "Age"})
+
+	row := make([]string, 2)
+	for _, r := range [][]string{{"alice", "25"}, {"bob", "30"}} {
+		copy(row, r)
+		table.Append(row)
+	}
+	table.Render()
+
+	expected := `
+	┌───────┬─────┐
+	│ NAME  │ AGE │
+	├───────┼─────┤
+	│ ALICE │ 25  │
+	│ BOB   │ 30  │
+	└───────┴─────┘
+`
+	if !visualCheck(t, "AppendReusedRowSlice", buf.String(), expected) {
+		t.Log(table.Debug())
+	}
+	if row[0] != "bob" {
+		t.Errorf("row filter changed the caller's slice: got %q, want %q", row[0], "bob")
+	}
+}

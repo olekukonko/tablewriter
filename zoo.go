@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -1274,7 +1275,7 @@ func (t *Table) convertCellsToStrings(rowInput any, cellCfg tw.CellConfig) ([]st
 	switch v := rowInput.(type) {
 	// Directly supported slice types
 	case []string:
-		cells = v
+		cells = slices.Clone(v) // Callers may reuse v, and filters write into cells
 	case []interface{}: // Catches variadic simple types grouped by Append
 		cells = make([]string, len(v))
 		for i, val := range v {
