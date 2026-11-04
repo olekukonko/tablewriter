@@ -189,6 +189,48 @@ func TestWrapString(t *testing.T) {
 	checkEqual(t, got, want)
 }
 
+func TestWrapStringWithSpacesMultiByteLastWord(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   string
+		lim  int
+		want []string
+	}{
+		// The core content ends after the last rune, not after its first
+		// byte: measuring a cut rune as its broken remainder made the last
+		// word look narrower than it is, so it was placed on a line that
+		// cannot hold it.
+		{"last word is one wide rune", "a あ", 1, []string{"a", "あ"}},
+		{"last word fits next to the first", "aaa あ", 5, []string{"aaa", "あ"}},
+		{"last word is two wide runes", "aaa ああ", 7, []string{"aaa", "ああ"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, lim := WrapStringWithSpaces(tc.in, tc.lim)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("WrapStringWithSpaces(%q, %d) = %q, want %q", tc.in, tc.lim, got, tc.want)
+			}
+
+			// The limit handed back to the caller sizes the lines the
+			// function returns, so none of them may exceed it.
+			for _, line := range got {
+				if w := twwidth.Width(line); w > lim {
+					t.Errorf("line %q is %d columns wide, above the returned limit %d", line, w, lim)
+				}
+			}
+		})
+	}
+
+	// The same input without leading or trailing spaces must wrap exactly as
+	// the plain wrapper does.
+	for _, in := range []string{"a あ", "aaa あ", "aaa ああ", "aa bb あ"} {
+		got, _ := WrapStringWithSpaces(in, 5)
+		want, _ := WrapString(in, 5)
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("WrapStringWithSpaces(%q, 5) = %q, WrapString = %q", in, got, want)
+		}
+	}
+}
+
 func TestWrapWords(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
