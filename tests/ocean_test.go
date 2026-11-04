@@ -403,3 +403,76 @@ func TestOceanTableStreaming_HorizontalMerge(t *testing.T) {
 		t.Error(tbl.Debug().String())
 	}
 }
+
+// TestOceanHorizontalMergeAcrossThreeColumns checks that no column separator
+// is written inside a horizontal merge that spans more than two columns.
+func TestOceanHorizontalMergeAcrossThreeColumns(t *testing.T) {
+	header := []string{"Region", "Q1", "Q2", "Q3"}
+	data := [][]string{
+		{"North", "100", "120", "90"},
+		{"South", "closed", "closed", "closed"},
+		{"East", "80", "95", "110"},
+	}
+
+	t.Run("batch", func(t *testing.T) {
+		var buf bytes.Buffer
+		tbl := tablewriter.NewTable(&buf,
+			tablewriter.WithRenderer(renderer.NewOcean()),
+			tablewriter.WithRowMergeMode(tw.MergeHorizontal),
+		)
+		tbl.Header(header)
+		tbl.Bulk(data)
+		tbl.Render()
+
+		expected := `
+        ┌────────┬────────┬────────┬────────┐
+        │ REGION │  Q 1   │  Q 2   │  Q 3   │
+        ├────────┼────────┼────────┼────────┤
+        │ North  │ 100    │ 120    │ 90     │
+        │ South  │ closed                   │
+        │ East   │ 80     │ 95     │ 110    │
+        └────────┴────────┴────────┴────────┘
+`
+		if !visualCheck(t, "OceanHorizontalMergeAcrossThreeColumns_Batch", buf.String(), expected) {
+			t.Error(tbl.Debug().String())
+		}
+	})
+
+	t.Run("streaming", func(t *testing.T) {
+		var buf bytes.Buffer
+		widths := tw.NewMapper[int, int]()
+		widths.Set(0, 10)
+		widths.Set(1, 9)
+		widths.Set(2, 9)
+		widths.Set(3, 9)
+		tbl := tablewriter.NewTable(&buf,
+			tablewriter.WithRenderer(renderer.NewOcean()),
+			tablewriter.WithRowMergeMode(tw.MergeHorizontal),
+			tablewriter.WithStreaming(tw.StreamConfig{Enable: true}),
+			tablewriter.WithColumnWidths(widths),
+		)
+		if err := tbl.Start(); err != nil {
+			t.Fatalf("Start failed: %v", err)
+		}
+		tbl.Header(header)
+		for _, row := range data {
+			tbl.Append(row)
+		}
+		if err := tbl.Close(); err != nil {
+			t.Fatalf("Close failed: %v", err)
+		}
+
+		expected := `
+        ┌──────────┬─────────┬─────────┬─────────┐
+        │  REGION  │   Q 1   │   Q 2   │   Q 3   │
+        ├──────────┼─────────┼─────────┼─────────┤
+        │ North    │ 100     │ 120     │ 90      │
+        │ South    │ closed                      │
+        │ East     │ 80      │ 95      │ 110     │
+        └──────────┴─────────┴─────────┴─────────┘
+`
+		if !visualCheck(t, "OceanHorizontalMergeAcrossThreeColumns_Streaming", buf.String(), expected) {
+			t.Error(tbl.Debug().String())
+		}
+	})
+}

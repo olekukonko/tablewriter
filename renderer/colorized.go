@@ -520,10 +520,19 @@ func (c *Colorized) renderLine(ctx tw.Formatting, line []string, tint Tint) {
 	}
 
 	// Process each column
+	hasVisibleCell := false // set once a column that is not hidden has been reached on this line
 	for i := 0; i < numCols; {
+		// Skip hidden (zero-width) columns unless they start a horizontal merge
+		if hiddenCtx, hiddenOk := ctx.Row.Current[i]; ctx.Row.Widths.Get(i) == 0 &&
+			!(hiddenOk && hiddenCtx.Merge.Horizontal.Present && hiddenCtx.Merge.Horizontal.Start) {
+			c.logger.Debugf("renderLine: Skipping col %d (zero width, not HMerge start)", i)
+			i++
+			continue
+		}
+
 		// Determine if a separator is needed
 		shouldAddSeparator := false
-		if i > 0 && c.config.Settings.Separators.BetweenColumns.Enabled() {
+		if hasVisibleCell && c.config.Settings.Separators.BetweenColumns.Enabled() {
 			cellCtx, ok := ctx.Row.Current[i]
 			if !ok || (!cellCtx.Merge.Horizontal.Present || cellCtx.Merge.Horizontal.Start) {
 				shouldAddSeparator = true
@@ -533,8 +542,9 @@ func (c *Colorized) renderLine(ctx tw.Formatting, line []string, tint Tint) {
 			output.WriteString(separatorString)
 			c.logger.Debugf("renderLine: Added separator '%s' before col %d", separatorString, i)
 		} else if i > 0 {
-			c.logger.Debugf("renderLine: Skipped separator before col %d due to HMerge continuation", i)
+			c.logger.Debugf("renderLine: Skipped separator before col %d due to no visible col before it or HMerge continuation", i)
 		}
+		hasVisibleCell = true
 
 		// Get cell context, use default if not present
 		cellCtx, ok := ctx.Row.Current[i]

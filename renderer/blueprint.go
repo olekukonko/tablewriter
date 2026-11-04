@@ -428,6 +428,7 @@ func (f *Blueprint) renderLine(ctx tw.Formatting) {
 	}
 
 	colIndex := 0
+	hasVisibleCell := false // set once a column that is not hidden has been reached on this line
 	separatorDisplayWidth := 0
 	if f.config.Settings.Separators.BetweenColumns.Enabled() {
 		separatorDisplayWidth = twwidth.Width(columnSeparator)
@@ -447,10 +448,9 @@ func (f *Blueprint) renderLine(ctx tw.Formatting) {
 		// Determine if a separator is needed
 		shouldAddSeparator := false
 		if colIndex > 0 && f.config.Settings.Separators.BetweenColumns.Enabled() {
-			prevWidth := ctx.Row.Widths.Get(colIndex - 1)
 			prevCellCtx, prevOk := ctx.Row.Current[colIndex-1]
 			prevIsHMergeEnd := prevOk && prevCellCtx.Merge.Horizontal.Present && prevCellCtx.Merge.Horizontal.End
-			if (prevWidth > 0 || prevIsHMergeEnd) && (!ok || (!cellCtx.Merge.Horizontal.Present || cellCtx.Merge.Horizontal.Start)) {
+			if (hasVisibleCell || prevIsHMergeEnd) && (!ok || (!cellCtx.Merge.Horizontal.Present || cellCtx.Merge.Horizontal.Start)) {
 				shouldAddSeparator = true
 			}
 		}
@@ -459,8 +459,9 @@ func (f *Blueprint) renderLine(ctx tw.Formatting) {
 			totalLineWidth += separatorDisplayWidth
 			f.logger.Debugf("renderLine: Added separator '%s' before col %d (f.width %d)", columnSeparator, colIndex, separatorDisplayWidth)
 		} else if colIndex > 0 {
-			f.logger.Debugf("renderLine: Skipped separator before col %d due to zero-width prev col or HMerge continuation", colIndex)
+			f.logger.Debugf("renderLine: Skipped separator before col %d due to no visible col before it or HMerge continuation", colIndex)
 		}
+		hasVisibleCell = true
 
 		// Handle merged cells
 		span := 1
