@@ -17,6 +17,15 @@ import (
 	// For UTF-8 rune handling
 )
 
+// NormalizeNewLines replaces Windows line endings (CRLF) with NewLine, so text
+// with either kind of line ending is split into the same lines.
+func NormalizeNewLines(s string) string {
+	if !strings.Contains(s, CRLF) {
+		return s
+	}
+	return strings.ReplaceAll(s, CRLF, NewLine)
+}
+
 // Title normalizes and uppercases a label string for use in headers.
 // It replaces underscores and certain dots with spaces and trims whitespace.
 func Title(name string) string {
