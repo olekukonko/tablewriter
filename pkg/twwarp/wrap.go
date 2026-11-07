@@ -11,6 +11,7 @@ import (
 	"math"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/clipperhouse/uax29/v2/graphemes"
 	"github.com/olekukonko/tablewriter/pkg/twwidth"
@@ -97,8 +98,12 @@ func WrapStringWithSpaces(s string, lim int) ([]string, int) {
 	firstNonSpace := strings.IndexFunc(s, func(r rune) bool { return !unicode.IsSpace(r) })
 	leadingSpaces = s[:firstNonSpace]
 	lastNonSpace := strings.LastIndexFunc(s, func(r rune) bool { return !unicode.IsSpace(r) })
-	trailingSpaces = s[lastNonSpace+1:]
-	coreContent = s[firstNonSpace : lastNonSpace+1]
+	// lastNonSpace is the byte index of the last non-space rune's first byte;
+	// the content ends after the whole rune, not after its first byte, or a
+	// multi-byte rune is cut in two and measured as the broken remainder.
+	_, lastRuneSize := utf8.DecodeRuneInString(s[lastNonSpace:])
+	trailingSpaces = s[lastNonSpace+lastRuneSize:]
+	coreContent = s[firstNonSpace : lastNonSpace+lastRuneSize]
 
 	if coreContent == "" {
 		return []string{leadingSpaces + trailingSpaces}, lim
