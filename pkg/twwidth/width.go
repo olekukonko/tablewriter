@@ -397,6 +397,12 @@ func WidthWithOptions(str string, opts Options) int {
 // way the column gets sized for a width the terminal never renders, and the
 // row stops lining up with the borders around it.
 func calculateWidth(str string, opts Options) int {
+	// Printable ASCII is one column per byte in every mode, and each byte is
+	// its own cluster, so skip the grapheme walk for the common case.
+	if isPrintableASCII(str) {
+		return len(str)
+	}
+
 	dwOpts := displaywidth.Options{EastAsianWidth: opts.EastAsianWidth}
 	calculatedWidth := 0
 	graphemes := dwOpts.StringGraphemes(str)
@@ -417,6 +423,16 @@ func calculateWidth(str string, opts Options) int {
 		calculatedWidth += graphemes.Width()
 	}
 	return calculatedWidth
+}
+
+// isPrintableASCII reports whether every byte of s is in 0x20..0x7E.
+func isPrintableASCII(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] < 0x20 || s[i] > 0x7e {
+			return false
+		}
+	}
+	return true
 }
 
 // calculateRunewidth calculates the width of a single rune based on the provided options.
