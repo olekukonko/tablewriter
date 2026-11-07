@@ -499,3 +499,32 @@ func TestWidthMeasuresGraphemeClusters(t *testing.T) {
 		})
 	}
 }
+
+// The printable ASCII shortcut in calculateWidth must agree with the grapheme
+// walk in every mode, and must not catch tabs or control characters.
+func TestCalculateWidthASCIIFastPath(t *testing.T) {
+	var all strings.Builder
+	for b := byte(0x20); b <= 0x7e; b++ {
+		all.WriteByte(b)
+	}
+	inputs := []string{"", "a", "hello world", all.String(), "a\tb", "a\x00b", "a\x7fb", "line\r\nnext", "café"}
+	for _, ea := range []bool{false, true} {
+		for _, narrow := range []bool{false, true} {
+			opts := Options{EastAsianWidth: ea, ForceNarrowBorders: narrow}
+			for _, input := range inputs {
+				want := 0
+				graphemes := displaywidth.Options{EastAsianWidth: ea}.StringGraphemes(input)
+				for graphemes.Next() {
+					if graphemes.Value() == "\t" {
+						want += TabWidth()
+					} else {
+						want += graphemes.Width()
+					}
+				}
+				if got := calculateWidth(input, opts); got != want {
+					t.Errorf("calculateWidth(%q, %+v) = %d, want %d", input, opts, got, want)
+				}
+			}
+		}
+	}
+}
