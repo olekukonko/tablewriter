@@ -279,7 +279,24 @@ func TestConvertToString(t *testing.T) {
 		{errors.New("err"), "err"},
 		{sql.NullString{String: "valid", Valid: true}, "valid"},
 		{sql.NullString{Valid: false}, ""},
-		// Add more cases
+		{sql.NullInt64{Int64: 64, Valid: true}, "64"},
+		{sql.NullInt64{Valid: false}, ""},
+		{sql.NullInt32{Int32: 32, Valid: true}, "32"},
+		{sql.NullInt32{Valid: false}, ""},
+		{sql.NullInt16{Int16: 16, Valid: true}, "16"},
+		{sql.NullInt16{Valid: false}, ""},
+		{sql.NullByte{Byte: 8, Valid: true}, "8"},
+		{sql.NullByte{Valid: false}, ""},
+		{sql.NullFloat64{Float64: 3.14, Valid: true}, "3.14"},
+		{sql.NullFloat64{Valid: false}, ""},
+		{sql.NullBool{Bool: true, Valid: true}, "true"},
+		{sql.NullBool{Valid: false}, ""},
+		{&sql.NullInt32{Int32: 42, Valid: true}, "42"},
+		{&sql.NullInt32{Valid: false}, ""},
+		{(*sql.NullInt32)(nil), ""},
+		{&sql.NullByte{Byte: 255, Valid: true}, "255"},
+		{&sql.NullByte{Valid: false}, ""},
+		{(*sql.NullByte)(nil), ""},
 	}
 	for _, tt := range tests {
 		result := table.convertToString(tt.input)

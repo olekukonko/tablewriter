@@ -1161,6 +1161,21 @@ func (t *Table) convertToString(value any) string {
 			return strconv.FormatInt(v.Int64, 10)
 		}
 		return ""
+	case sql.NullInt32:
+		if v.Valid {
+			return strconv.FormatInt(int64(v.Int32), 10)
+		}
+		return ""
+	case sql.NullInt16:
+		if v.Valid {
+			return strconv.FormatInt(int64(v.Int16), 10)
+		}
+		return ""
+	case sql.NullByte:
+		if v.Valid {
+			return strconv.FormatUint(uint64(v.Byte), 10)
+		}
+		return ""
 	case sql.NullFloat64:
 		if v.Valid {
 			return strconv.FormatFloat(v.Float64, 'f', -1, 64)

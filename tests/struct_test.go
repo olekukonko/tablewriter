@@ -636,3 +636,43 @@ func TestStructPointerSQLNullString(t *testing.T) {
 		t.Log(table.Debug())
 	}
 }
+
+func TestStructSQLNullNumericTypes(t *testing.T) {
+	type Row struct {
+		Name  string
+		Age   sql.NullInt32
+		Score *sql.NullInt16
+		Flag  sql.NullByte
+	}
+
+	score1 := sql.NullInt16{Int16: 95, Valid: true}
+	score2 := sql.NullInt16{Int16: 0, Valid: false}
+
+	var buf bytes.Buffer
+	table := tablewriter.NewTable(&buf)
+	table.Configure(func(cfg *tablewriter.Config) {
+		cfg.Behavior.Structs.AutoHeader = tw.On
+	})
+	rows := []Row{
+		{"Alice", sql.NullInt32{Int32: 28, Valid: true}, &score1, sql.NullByte{Byte: 1, Valid: true}},
+		{"Bob", sql.NullInt32{Int32: 0, Valid: false}, &score2, sql.NullByte{Byte: 0, Valid: false}},
+		{"Carol", sql.NullInt32{Valid: false}, nil, sql.NullByte{Valid: false}},
+	}
+	if err := table.Bulk(rows); err != nil {
+		t.Fatalf("Bulk failed: %v", err)
+	}
+	table.Render()
+
+	expected := `
+	┌───────┬─────┬───────┬──────┐
+	│ NAME  │ AGE │ SCORE │ FLAG │
+	├───────┼─────┼───────┼──────┤
+	│ Alice │ 28  │ 95    │ 1    │
+	│ Bob   │     │       │      │
+	│ Carol │     │       │      │
+	└───────┴─────┴───────┴──────┘
+`
+	if !visualCheck(t, "StructSQLNullNumericTypes", buf.String(), expected) {
+		t.Log(table.Debug())
+	}
+}
