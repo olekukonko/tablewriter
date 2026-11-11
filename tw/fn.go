@@ -213,28 +213,55 @@ func BreakPoint(s string, limit int) int {
 		return 0
 	}
 
+	// An escape sequence takes no width, so its runes are not measured. They
+	// are still counted, because the returned index is an index into the
+	// string: a line broken in the middle of a colour sequence would carry
+	// half of the sequence to the next line.
+	sequences := escapeSequences(s)
+
 	currentWidth := 0
 	runeCount := 0
-	// Iterate over runes, accumulating display width
-	for _, r := range s {
+	// Iterate over the string, accumulating display width
+	for i, sequence := 0, 0; i < len(s); {
+		if sequence < len(sequences) && i == sequences[sequence][0] {
+			// Skip the escape sequence: it is not text.
+			runeCount += utf8.RuneCountInString(s[i:sequences[sequence][1]])
+			i = sequences[sequence][1]
+			sequence++
+			continue
+		}
+		r, size := utf8.DecodeRuneInString(s[i:])
 		runeWidth := twwidth.Width(string(r)) // Calculate width of individual rune
 		if currentWidth+runeWidth > limit {
 			// Adding this rune would exceed the limit; breakpoint is before this rune
 			if currentWidth == 0 {
 				// First rune is too wide; allow breaking after it if limit > 0
 				if runeWidth > limit && limit > 0 {
-					return 1
+					return runeCount + 1
 				}
-				return 0
+				return runeCount
 			}
 			return runeCount
 		}
 		currentWidth += runeWidth
 		runeCount++
+		i += size
 	}
 
 	// Entire string fits within the limit
 	return runeCount
+}
+
+// escapeFilter matches the ANSI escape sequences that take no width. It is
+// compiled once, because Filter compiles a new one on every call.
+var escapeFilter = twwidth.Filter()
+
+// escapeSequences returns the byte ranges of the ANSI escape sequences in s.
+func escapeSequences(s string) [][]int {
+	if !strings.ContainsRune(s, '\x1b') {
+		return nil
+	}
+	return escapeFilter.FindAllStringIndex(s, -1)
 }
 
 func MakeAlign(l int, align Align) Alignment {
