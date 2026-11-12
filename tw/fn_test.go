@@ -48,6 +48,71 @@ func TestSplitCase(t *testing.T) {
 	}
 }
 
+func TestBreakPoint(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		limit    int
+		expected int
+	}{
+		{
+			name:     "empty string",
+			input:    "",
+			limit:    5,
+			expected: 0,
+		},
+		{
+			name:     "the whole string fits",
+			input:    "hello",
+			limit:    5,
+			expected: 5,
+		},
+		{
+			name:     "the string is longer than the limit",
+			input:    "hello world",
+			limit:    5,
+			expected: 5,
+		},
+		{
+			name:     "a limit of zero fits nothing",
+			input:    "hello",
+			limit:    0,
+			expected: 0,
+		},
+		{
+			name:     "an escape sequence takes no width",
+			input:    "\x1b[31mabc",
+			limit:    2,
+			expected: 7,
+		},
+		{
+			name:     "an escape sequence between two words",
+			input:    "ab\x1b[0mcd",
+			limit:    3,
+			expected: 7,
+		},
+		{
+			name:     "an OSC sequence takes no width",
+			input:    "\x1b]8;;http://example.com\x1b\\link",
+			limit:    2,
+			expected: 27,
+		},
+		{
+			name:     "a wide rune after an escape sequence",
+			input:    "\x1b[31m漢",
+			limit:    1,
+			expected: 6,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if output := BreakPoint(tt.input, tt.limit); output != tt.expected {
+				t.Errorf("BreakPoint(%q, %d) = %d, want %d", tt.input, tt.limit, output, tt.expected)
+			}
+		})
+	}
+}
+
 func TestNormalizeNewLines(t *testing.T) {
 	tests := []struct {
 		input    string
