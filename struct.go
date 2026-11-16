@@ -51,6 +51,12 @@ func (t *Table) extractFieldsAndValuesFromStruct(sample interface{}) ([]string, 
 // first field, used to keep embedded structs' per-column config (alignment,
 // width, padding) addressed correctly within the parent's column layout.
 func (t *Table) extractFieldsAndValuesFromStructWithOffset(sample interface{}, colOffset int) ([]string, []string) {
+	return t.extractStructFields(sample, colOffset, make(map[reflect.Type]bool))
+}
+
+// nilTypes prevents recursive embedded pointer types from expanding forever
+// when their missing values are replaced with zero structs for the schema.
+func (t *Table) extractStructFields(sample interface{}, colOffset int, nilTypes map[reflect.Type]bool) ([]string, []string) {
 	v := reflect.ValueOf(sample)
 	if v.Kind() == reflect.Ptr {
 		if v.IsNil() {
@@ -114,7 +120,22 @@ func (t *Table) extractFieldsAndValuesFromStructWithOffset(sample interface{}, c
 
 		// Handle embedded structs recursively, tracking absolute column offset.
 		if field.Anonymous {
-			h, val := t.extractFieldsAndValuesFromStructWithOffset(fieldValue.Interface(), colOffset+len(headers))
+			embedded := fieldValue.Interface()
+			nilEmbedded := fieldValue.Kind() == reflect.Ptr && fieldValue.IsNil() && fieldValue.Type().Elem().Kind() == reflect.Struct
+			if nilEmbedded {
+				if nilTypes[fieldValue.Type()] {
+					continue
+				}
+				nilTypes[fieldValue.Type()] = true
+				embedded = reflect.Zero(fieldValue.Type().Elem()).Interface()
+			}
+			h, val := t.extractStructFields(embedded, colOffset+len(headers), nilTypes)
+			if nilEmbedded {
+				delete(nilTypes, fieldValue.Type())
+				for j := range val {
+					val[j] = ""
+				}
+			}
 			if h != nil {
 				headers = append(headers, h...)
 				values = append(values, val...)
