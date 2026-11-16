@@ -305,11 +305,9 @@ func main() {
 
 ```
 |    NAME    |  AGE   |   CITY   |
-|:----------:|:------:|:--------:|
+|:-----------|:-------|:---------|
 | Alice Mask | 25 yrs | New York |
 | Bob Marley | 30 yrs | Boston   |
-
-
 ```
 
 #### 3. CSV Input
@@ -558,19 +556,19 @@ func main() {
 **Output**:
 
 ```
-┌────────────┬──────────┬──────────────┬────────┐
-│ DEPARTMENT │ DIVISION │    TEAM      │  LEAD  │
-├────────────┼──────────┼──────────────┼────────┤
-│ Engineering│ Backend  │ API Team     │ Alice  │
-│            │          ├──────────────┼────────┤
-│            │          │ Database Team│ Bob    │
-│            │ Frontend ├──────────────┼────────┤
-│            │          │ UI Team      │ Charlie│
-├────────────┼──────────┼──────────────┼────────┤
-│ Marketing  │ Digital  │ SEO Team     │ Dave   │
-│            │          ├──────────────┼────────┤
-│            │          │ Content Team │ Eve    │
-└────────────┴──────────┴──────────────┴────────┘
+┌─────────────┬──────────┬───────────────┬─────────┐
+│ DEPARTMENT  │ DIVISION │     TEAM      │  LEAD   │
+├─────────────┼──────────┼───────────────┼─────────┤
+│ Engineering │ Backend  │ API Team      │ Alice   │
+│             │          ├───────────────┼─────────┤
+│             │          │ Database Team │ Bob     │
+│             ├──────────┼───────────────┼─────────┤
+│             │ Frontend │ UI Team       │ Charlie │
+├─────────────┼──────────┼───────────────┼─────────┤
+│ Marketing   │ Digital  │ SEO Team      │ Dave    │
+│             │          ├───────────────┼─────────┤
+│             │          │ Content Team  │ Eve     │
+└─────────────┴──────────┴───────────────┴─────────┘
 ```
 
 **Note**: Hierarchical merging groups repeated values (e.g., "Engineering" spans multiple rows, "Backend" spans two teams), creating a tree-like structure.
