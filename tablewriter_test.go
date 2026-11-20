@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 
@@ -847,5 +848,43 @@ func TestTwTagWrapAllModes(t *testing.T) {
 		if got := tbl.config.Row.Formatting.AutoWrap; got != c.want {
 			t.Errorf("wrap=%s: AutoWrap = %v, want %v", c.token, got, c.want)
 		}
+	}
+}
+
+func TestHeaderAutoFormatKeepsPunctuationTogether(t *testing.T) {
+	tests := []struct {
+		header string
+		want   string
+	}{
+		{"Size (MB)", "SIZE (MB)"},
+		{"Price ($)", "PRICE ($)"},
+		{"e-mail", "E-MAIL"},
+		{"Last-Seen", "LAST-SEEN"},
+		{"CPU %", "CPU %"},
+		{"user.name", "USER NAME"},
+		{"userName", "USER NAME"},
+		{"user_name", "USER NAME"},
+		{"First Name", "FIRST NAME"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.header, func(t *testing.T) {
+			var buf bytes.Buffer
+			table := NewTable(&buf, WithConfig(Config{Header: tw.CellConfig{
+				Formatting: tw.CellFormatting{AutoFormat: tw.On},
+			}}))
+			table.Header(tt.header)
+			table.Append("x")
+			if err := table.Render(); err != nil {
+				t.Fatalf("Render failed: %v", err)
+			}
+			lines := strings.Split(buf.String(), "\n")
+			if len(lines) < 2 {
+				t.Fatalf("unexpected output: %q", buf.String())
+			}
+			got := strings.TrimSpace(strings.Trim(lines[1], "│"))
+			if got != tt.want {
+				t.Errorf("header %q rendered as %q, want %q", tt.header, got, tt.want)
+			}
+		})
 	}
 }
