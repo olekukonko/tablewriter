@@ -32,6 +32,7 @@ type HTML struct {
 	trace        []string    // Debug trace messages
 	debug        bool        // Enables debug logging
 	tableStarted bool        // Tracks if <table> tag is open
+	theadStarted bool        // Tracks if <thead> tag is open
 	tbodyStarted bool        // Tracks if <tbody> tag is open
 	tfootStarted bool        // Tracks if <tfoot> tag is open
 	vMergeTrack  map[int]int // Tracks vertical merge spans by column index
@@ -114,8 +115,13 @@ func (h *HTML) Start(w io.Writer) error {
 	return nil
 }
 
-// closePreviousSection closes any open <tbody> or <tfoot> sections.
+// closePreviousSection closes any open <thead>, <tbody> or <tfoot> sections.
 func (h *HTML) closePreviousSection() {
+	if h.theadStarted {
+		h.logger.Debug("Closing <thead> tag")
+		fmt.Fprintln(h.w, "</thead>")
+		h.theadStarted = false
+	}
 	if h.tbodyStarted {
 		h.logger.Debug("Closing <tbody> tag")
 		fmt.Fprintln(h.w, "</tbody>")
@@ -139,12 +145,16 @@ func (h *HTML) Header(headers [][]string, ctx tw.Formatting) {
 		return
 	}
 
-	h.closePreviousSection()
-	classAttr := tw.Empty
-	if h.config.HeaderClass != tw.Empty {
-		classAttr = fmt.Sprintf(` class="%s"`, html.EscapeString(h.config.HeaderClass))
+	// Each line of a multi-line header arrives as its own call; keep them in one <thead>.
+	if !h.theadStarted {
+		h.closePreviousSection()
+		classAttr := tw.Empty
+		if h.config.HeaderClass != tw.Empty {
+			classAttr = fmt.Sprintf(` class="%s"`, html.EscapeString(h.config.HeaderClass))
+		}
+		fmt.Fprintf(h.w, "<thead%s>\n", classAttr)
+		h.theadStarted = true
 	}
-	fmt.Fprintf(h.w, "<thead%s>\n", classAttr)
 
 	headerRow := headers[0]
 	numCols := 0
@@ -203,7 +213,6 @@ func (h *HTML) Header(headers [][]string, ctx tw.Formatting) {
 		colIdx += hSpan
 	}
 	fmt.Fprintf(h.w, "</tr>\n")
-	fmt.Fprintln(h.w, "</thead>")
 }
 
 // Row renders a <tr> element within <tbody>, supporting horizontal and vertical merges.
@@ -294,13 +303,16 @@ func (h *HTML) Footer(footers [][]string, ctx tw.Formatting) {
 		return
 	}
 
-	h.closePreviousSection()
-	classAttr := tw.Empty
-	if h.config.FooterClass != tw.Empty {
-		classAttr = fmt.Sprintf(` class="%s"`, html.EscapeString(h.config.FooterClass))
+	// Each line of a multi-line footer arrives as its own call; keep them in one <tfoot>.
+	if !h.tfootStarted {
+		h.closePreviousSection()
+		classAttr := tw.Empty
+		if h.config.FooterClass != tw.Empty {
+			classAttr = fmt.Sprintf(` class="%s"`, html.EscapeString(h.config.FooterClass))
+		}
+		fmt.Fprintf(h.w, "<tfoot%s>\n", classAttr)
+		h.tfootStarted = true
 	}
-	fmt.Fprintf(h.w, "<tfoot%s>\n", classAttr)
-	h.tfootStarted = true
 
 	footerRow := footers[0]
 	numCols := 0
@@ -346,8 +358,6 @@ func (h *HTML) Footer(footers [][]string, ctx tw.Formatting) {
 		colIdx += hSpan
 	}
 	fmt.Fprintf(h.w, "</tr>\n")
-	fmt.Fprintln(h.w, "</tfoot>")
-	h.tfootStarted = false
 }
 
 // renderRowCell generates HTML for a single cell, handling content escaping, merges, and alignment.
@@ -421,13 +431,14 @@ func (h *HTML) Line(ctx tw.Formatting) {}
 func (h *HTML) Reset() {
 	h.logger.Debug("HTML.Reset() called.")
 	h.tableStarted = false
+	h.theadStarted = false
 	h.tbodyStarted = false
 	h.tfootStarted = false
 	h.vMergeTrack = make(map[int]int)
 	h.trace = nil
 }
 
-// Close ensures all open HTML tags (<table>, <tbody>, <tfoot>) are properly closed.
+// Close ensures all open HTML tags (<table>, <thead>, <tbody>, <tfoot>) are properly closed.
 func (h *HTML) Close() error {
 	if h.w == nil {
 		return errors.New("HTML Renderer Close called on nil internal w")

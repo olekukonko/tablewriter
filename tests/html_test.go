@@ -170,6 +170,64 @@ func TestHTMLMultiLine(t *testing.T) {
 	}
 }
 
+// TestHTMLMultiLineHeaderFooter verifies that every line of a multi-line
+// header or footer goes into a single <thead> or <tfoot>.
+func TestHTMLMultiLineHeaderFooter(t *testing.T) {
+	var buf bytes.Buffer
+	htmlCfg := renderer.HTMLConfig{HeaderClass: "my-thead", FooterClass: "my-tfoot"}
+	table := tablewriter.NewTable(&buf,
+		tablewriter.WithRenderer(renderer.NewHTML(htmlCfg)),
+		tablewriter.WithHeaderAutoFormat(tw.Off),
+	)
+	table.Header([]string{"Name\nfirst", "Age"})
+	table.Append([]string{"Alice", "25"})
+	table.Footer([]string{"Total\nall", "1"})
+	table.Render()
+
+	expected := `
+<table>
+<thead class="my-thead">
+<tr><th style="text-align: center;">Name</th><th style="text-align: center;">Age</th></tr>
+<tr><th style="text-align: center;">first</th><th style="text-align: center;"></th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left;">Alice</td><td style="text-align: left;">25</td></tr>
+</tbody>
+<tfoot class="my-tfoot">
+<tr><td style="text-align: right;">Total</td><td style="text-align: right;">1</td></tr>
+<tr><td style="text-align: right;">all</td><td style="text-align: right;"></td></tr>
+</tfoot>
+</table>`
+	if !visualCheckHTML(t, "HTMLMultiLineHeaderFooter", buf.String(), expected) {
+		t.Error(table.Debug())
+	}
+
+	// A table with no rows: the header is still closed before the footer opens.
+	buf.Reset()
+	noRows := tablewriter.NewTable(&buf,
+		tablewriter.WithRenderer(renderer.NewHTML()),
+		tablewriter.WithHeaderAutoFormat(tw.Off),
+	)
+	noRows.Header([]string{"A\nB"})
+	noRows.Footer([]string{"C\nD"})
+	noRows.Render()
+
+	expectedNoRows := `
+<table>
+<thead>
+<tr><th style="text-align: center;">A</th></tr>
+<tr><th style="text-align: center;">B</th></tr>
+</thead>
+<tfoot>
+<tr><td style="text-align: right;">C</td></tr>
+<tr><td style="text-align: right;">D</td></tr>
+</tfoot>
+</table>`
+	if !visualCheckHTML(t, "HTMLMultiLineHeaderFooter_NoRows", buf.String(), expectedNoRows) {
+		t.Error(noRows.Debug())
+	}
+}
+
 // TestHTMLHorizontalMerge verifies HTML table rendering with horizontal cell merges in headers, rows, and footers.
 func TestHTMLHorizontalMerge(t *testing.T) {
 	var buf bytes.Buffer
