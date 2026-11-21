@@ -333,6 +333,36 @@ func TestConcurrentSetEastAsian(t *testing.T) {
 	wg.Wait()
 }
 
+func TestWidthDuringCacheResize(t *testing.T) {
+	originalCache := widthCache
+	t.Cleanup(func() {
+		mu.Lock()
+		widthCache = originalCache
+		mu.Unlock()
+	})
+
+	const input = "a界"
+	const iterations = 256
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-start
+		for i := 0; i < iterations; i++ {
+			SetCacheCapacity(i % 4)
+		}
+	}()
+	defer wg.Wait()
+
+	close(start)
+	for i := 0; i < iterations; i++ {
+		if got := Width(input); got != 3 {
+			t.Fatalf("Width(%q) during cache resize = %d, want 3", input, got)
+		}
+	}
+}
+
 func TestWidthWithEnvironment(t *testing.T) {
 	original := os.Getenv("RUNEWIDTH_EASTASIAN")
 	defer func() {
