@@ -391,14 +391,14 @@ func TestLongHeaders(t *testing.T) {
 		table.Append([]string{"Bob", "30", "Boston"})
 		table.Render()
 		expected := `
-        ┌───────┬─────┬────────────────────────────┐
-        │ NAME  │ AGE │ THIS IS A VERY LONG HEADER │
-        │       │     │ , LET SEE IF THIS WILL BE  │
-        │       │     │      PROPERLY WRAPPED      │
-        ├───────┼─────┼────────────────────────────┤
-        │ Alice │ 25  │ New York                   │
-        │ Bob   │ 30  │ Boston                     │
-        └───────┴─────┴────────────────────────────┘
+        ┌───────┬─────┬─────────────────────────────┐
+        │ NAME  │ AGE │ THIS IS A VERY LONG HEADER, │
+        │       │     │   LET SEE IF THIS WILL BE   │
+        │       │     │      PROPERLY WRAPPED       │
+        ├───────┼─────┼─────────────────────────────┤
+        │ Alice │ 25  │ New York                    │
+        │ Bob   │ 30  │ Boston                      │
+        └───────┴─────┴─────────────────────────────┘
 `
 		if !visualCheck(t, "LongHeaders", buf.String(), expected) {
 			t.Log(table.Debug())

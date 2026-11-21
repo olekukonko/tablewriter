@@ -461,7 +461,7 @@ func TestEmojiTable(t *testing.T) {
 
 		expected := `
 ┌────────────┬──────────┬─────────────┐
-│  NAME  😺  │ AGE  🎂  │  CITY  🌍   │
+│  NAME 😺   │  AGE 🎂  │   CITY 🌍   │
 ├────────────┼──────────┼─────────────┤
 │ Alice 😊   │ 25       │ New York 🌆 │
 │ Bob 😎     │ 30       │ Boston 🏙️   │

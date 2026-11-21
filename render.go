@@ -3,6 +3,8 @@ package tablewriter
 import (
 	"io"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/olekukonko/errors"
 	"github.com/olekukonko/tablewriter/pkg/twwarp"
@@ -69,6 +71,28 @@ func (t *Table) processVariadic(elements []any) []any {
 	return elements
 }
 
+// joinCaseWords joins the words produced by tw.SplitCamelCase with a space,
+// except next to punctuation or symbols, which stay attached to the text around
+// them so a header such as "Size (MB)" or "e-mail" keeps its shape.
+func joinCaseWords(words []string) string {
+	var sb strings.Builder
+	var prev rune
+	for i, word := range words {
+		first, _ := utf8.DecodeRuneInString(word)
+		if i > 0 && isWordRune(prev) && isWordRune(first) {
+			sb.WriteString(tw.Space)
+		}
+		sb.WriteString(word)
+		prev, _ = utf8.DecodeLastRuneInString(word)
+	}
+	return sb.String()
+}
+
+// isWordRune reports whether r is a letter or a digit.
+func isWordRune(r rune) bool {
+	return unicode.IsLetter(r) || unicode.IsDigit(r)
+}
+
 // prepareContent processes cell content with formatting and wrapping.
 // Parameters include cells to process and config for formatting rules.
 // Returns a slice of string slices representing processed lines.
@@ -132,7 +156,7 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig, resolvedWid
 		effectiveContentMaxWidth := t.calculateContentMaxWidth(i, config, padLeftWidth, padRightWidth, effectiveNumCols, resolvedWidths)
 
 		if config.Formatting.AutoFormat.Enabled() {
-			cellContent = tw.Title(strings.Join(tw.SplitCamelCase(cellContent), tw.Space))
+			cellContent = tw.Title(joinCaseWords(tw.SplitCamelCase(cellContent)))
 		}
 
 		lines := strings.Split(cellContent, "\n")
