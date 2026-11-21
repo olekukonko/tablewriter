@@ -2,9 +2,11 @@ package tests
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/pkg/twwidth"
 	"github.com/olekukonko/tablewriter/renderer"
 	"github.com/olekukonko/tablewriter/tw"
 )
@@ -339,6 +341,49 @@ func TestMarkdownCustomPadding(t *testing.T) {
 `
 	if !visualCheck(t, "MarkdownCustomPadding", buf.String(), expected) {
 		t.Error(table.Debug())
+	}
+}
+
+func TestMarkdownWidePaddingPreservesContent(t *testing.T) {
+	for _, align := range []tw.Align{tw.AlignLeft, tw.AlignCenter, tw.AlignRight} {
+		t.Run(string(align), func(t *testing.T) {
+			var buf bytes.Buffer
+			table := tablewriter.NewTable(&buf,
+				tablewriter.WithRenderer(renderer.NewMarkdown()),
+				tablewriter.WithHeaderAlignment(align),
+				tablewriter.WithRowAlignment(align),
+				tablewriter.WithFooterAlignmentConfig(tw.CellAlignment{Global: align}),
+				tablewriter.WithPadding(tw.Padding{Left: "界", Right: "界"}),
+			)
+			table.Header("Item", "Count")
+			if err := table.Append("Tea", "42"); err != nil {
+				t.Fatal(err)
+			}
+			if err := table.Append("Coffee", "5"); err != nil {
+				t.Fatal(err)
+			}
+			table.Footer("Total", "47")
+			if err := table.Render(); err != nil {
+				t.Fatal(err)
+			}
+
+			wantRows := [][]string{{"ITEM", "COUNT"}, nil, {"Tea", "42"}, {"Coffee", "5"}, {"Total", "47"}}
+			lines := strings.Split(strings.TrimSuffix(buf.String(), "\n"), "\n")
+			if len(lines) != len(wantRows) {
+				t.Fatalf("got %d lines, want %d:\n%s", len(lines), len(wantRows), buf.String())
+			}
+			width := twwidth.Width(lines[1])
+			for i, line := range lines {
+				for _, value := range wantRows[i] {
+					if !strings.Contains(line, value) {
+						t.Errorf("line %d lost cell %q: %s", i+1, value, line)
+					}
+				}
+				if got := twwidth.Width(line); got != width {
+					t.Errorf("line %d has display width %d, want %d: %s", i+1, got, width, line)
+				}
+			}
+		})
 	}
 }
 
