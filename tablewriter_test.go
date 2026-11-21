@@ -144,6 +144,27 @@ func TestCallStringer(t *testing.T) {
 
 // TestCallStringerConcurrent tests the convertToStringer function under concurrent access.
 // It verifies thread-safety of the stringer cache with multiple goroutines.
+func TestStringerCacheOnlyWithStringer(t *testing.T) {
+	table := NewTable(&bytes.Buffer{})
+	if table.stringerCache != nil {
+		t.Error("expected no stringer cache for a table without a stringer")
+	}
+	table.Reset()
+	if table.stringerCache != nil {
+		t.Error("expected no stringer cache after Reset for a table without a stringer")
+	}
+
+	table = NewTable(&bytes.Buffer{}, WithStringer(func(v int) []string { return []string{fmt.Sprint(v)} }))
+	if table.stringerCache == nil {
+		t.Error("expected a stringer cache for a table with a stringer")
+	}
+	table.stringerCache = nil
+	table.Reset()
+	if table.stringerCache == nil {
+		t.Error("expected Reset to create a stringer cache for a table with a stringer")
+	}
+}
+
 func TestCallStringerConcurrent(t *testing.T) {
 	table := &Table{
 		logger:        ll.New("test").Disable(),
