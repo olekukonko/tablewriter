@@ -124,8 +124,8 @@ func NewTable(w io.Writer, opts ...Option) *Table {
 		streamNumCols:          0,
 		streamRowCounter:       0,
 
-		//  Cache
-		stringerCache: twcache.NewLRU[reflect.Type, reflect.Value](tw.DefaultCacheStringCapacity),
+		// The stringer cache is set by WithStringer. A table without a
+		// stringer does not use it.
 	}
 
 	// set Options
@@ -492,8 +492,10 @@ func (t *Table) Reset() {
 
 	// The stringer and its cache are part of the table's configuration,
 	if t.stringerCache == nil {
-		t.stringerCache = twcache.NewLRU[reflect.Type, reflect.Value](tw.DefaultCacheStringCapacity)
-		t.logger.Debug("Reset(): Stringer cache reset to default capacity.")
+		if t.stringer != nil {
+			t.stringerCache = twcache.NewLRU[reflect.Type, reflect.Value](tw.DefaultCacheStringCapacity)
+			t.logger.Debug("Reset(): Stringer cache reset to default capacity.")
+		}
 	} else {
 		t.stringerCache.Purge()
 		t.logger.Debug("Reset(): Stringer cache cleared.")
