@@ -31,7 +31,7 @@ type Options struct {
 // globalOptions holds the global displaywidth configuration, including East Asian width settings.
 var globalOptions Options
 
-// mu protects access to globalOptions for thread safety.
+// mu protects access to globalOptions and widthCache.
 var mu sync.Mutex
 
 // ansi is a compiled regular expression for stripping ANSI escape codes from strings.
@@ -347,6 +347,7 @@ func Width(str string) int {
 
 	mu.Lock()
 	currentOpts := globalOptions
+	cache := widthCache
 	mu.Unlock()
 
 	key := cacheKey{
@@ -355,7 +356,7 @@ func Width(str string) int {
 	}
 
 	// Check Cache (Optimization)
-	if w, found := widthCache.Get(key); found {
+	if w, found := cache.Get(key); found {
 		return w
 	}
 
@@ -363,7 +364,7 @@ func Width(str string) int {
 	calculatedWidth := calculateWidth(strip(str), currentOpts)
 
 	// Store in Cache
-	widthCache.Add(key, calculatedWidth)
+	cache.Add(key, calculatedWidth)
 	return calculatedWidth
 }
 
