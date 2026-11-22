@@ -145,6 +145,127 @@ func TestCallStringer(t *testing.T) {
 
 // TestCallStringerConcurrent tests the convertToStringer function under concurrent access.
 // It verifies thread-safety of the stringer cache with multiple goroutines.
+func TestStringerCacheOnlyWithStringer(t *testing.T) {
+	table := NewTable(&bytes.Buffer{})
+	if table.stringerCache != nil {
+		t.Error("expected no stringer cache for a table without a stringer")
+	}
+	table.Reset()
+	if table.stringerCache != nil {
+		t.Error("expected no stringer cache after Reset for a table without a stringer")
+	}
+
+	table = NewTable(&bytes.Buffer{}, WithStringer(func(v int) []string { return []string{fmt.Sprint(v)} }))
+	if table.stringerCache == nil {
+		t.Error("expected a stringer cache for a table with a stringer")
+	}
+	table.stringerCache = nil
+	table.Reset()
+	if table.stringerCache == nil {
+		t.Error("expected Reset to create a stringer cache for a table with a stringer")
+	}
+}
+
+type recordingStringerCache struct {
+	twcache.Cache[reflect.Type, reflect.Value]
+	adds, purges int
+}
+
+func (c *recordingStringerCache) Add(k reflect.Type, v reflect.Value) bool {
+	c.adds++
+	return c.Cache.Add(k, v)
+}
+
+func (c *recordingStringerCache) Purge() {
+	c.purges++
+	c.Cache.Purge()
+}
+
+func TestStringerCacheOptionsAcrossReset(t *testing.T) {
+	type rec struct{ N string }
+	stringer := WithStringer(func(v rec) []string { return []string{"S:" + v.N} })
+	render := func(t *testing.T, table *Table, buf *bytes.Buffer) {
+		t.Helper()
+		buf.Reset()
+		if err := table.Append(rec{"a"}); err != nil {
+			t.Fatal(err)
+		}
+		if err := table.Render(); err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Contains(buf.Bytes(), []byte("S:a")) {
+			t.Errorf("expected the stringer output, got %q", buf.String())
+		}
+	}
+
+	t.Run("WithStringerCache without stringer", func(t *testing.T) {
+		table := NewTable(&bytes.Buffer{}, WithStringerCache())
+		cache := table.stringerCache
+		if cache == nil {
+			t.Fatal("expected WithStringerCache to create a cache")
+		}
+		cache.Add(reflect.TypeOf(0), reflect.Value{})
+		table.Reset()
+		if table.stringerCache != cache {
+			t.Error("expected Reset to keep the cache")
+		}
+		if _, ok := table.stringerCache.Get(reflect.TypeOf(0)); ok {
+			t.Error("expected Reset to purge the cache")
+		}
+	})
+
+	t.Run("WithStringerCache with stringer", func(t *testing.T) {
+		var buf bytes.Buffer
+		table := NewTable(&buf, stringer, WithStringerCache())
+		render(t, table, &buf)
+		table.Reset()
+		if table.stringerCache == nil {
+			t.Error("expected a cache after Reset")
+		}
+		render(t, table, &buf)
+	})
+
+	t.Run("WithStringerCacheCustom", func(t *testing.T) {
+		var buf bytes.Buffer
+		custom := &recordingStringerCache{Cache: twcache.NewLRU[reflect.Type, reflect.Value](8)}
+		table := NewTable(&buf, stringer, WithStringerCacheCustom(custom))
+		render(t, table, &buf)
+		table.Reset()
+		if table.stringerCache != custom {
+			t.Error("expected Reset to keep the custom cache")
+		}
+		if custom.purges != 1 {
+			t.Errorf("expected Reset to purge the custom cache once, got %d", custom.purges)
+		}
+		render(t, table, &buf)
+		if custom.adds != 2 {
+			t.Errorf("expected the stringer to use the custom cache, got %d adds", custom.adds)
+		}
+	})
+
+	t.Run("WithStringerCacheCustom nil with stringer", func(t *testing.T) {
+		var buf bytes.Buffer
+		table := NewTable(&buf, stringer, WithStringerCacheCustom(nil))
+		if table.stringerCache != nil {
+			t.Fatal("expected WithStringerCacheCustom(nil) to disable the cache")
+		}
+		render(t, table, &buf)
+		table.Reset()
+		if table.stringerCache == nil {
+			t.Error("expected Reset to create the default cache for a table with a stringer")
+		}
+		render(t, table, &buf)
+	})
+
+	t.Run("WithStringerCacheCustom nil without stringer", func(t *testing.T) {
+		table := NewTable(&bytes.Buffer{}, WithStringerCacheCustom(nil))
+		table.Reset()
+		if table.stringerCache != nil {
+			t.Error("expected no cache after Reset for a table without a stringer")
+		}
+	})
+}
+
 func TestCallStringerConcurrent(t *testing.T) {
 	table := &Table{
 		logger:        ll.New("test").Disable(),
