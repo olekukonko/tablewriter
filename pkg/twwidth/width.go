@@ -60,6 +60,9 @@ func init() {
 // Deprecated: use WidthWithOptions with the new twwidth.Options struct instead.
 // This function is kept for backward compatibility.
 func Display(cond *runewidth.Condition, str string) int {
+	if cond == nil {
+		return Width(str)
+	}
 	opts := Options{EastAsianWidth: cond.EastAsianWidth}
 	return WidthWithOptions(str, opts)
 }
@@ -111,6 +114,9 @@ func IsEastAsian() bool {
 // Deprecated: use SetOptions with the new twwidth.Options struct instead.
 // This function is kept for backward compatibility.
 func SetCondition(cond *runewidth.Condition) {
+	if cond == nil {
+		return
+	}
 	mu.Lock()
 	defer mu.Unlock()
 	newEastAsianWidth := cond.EastAsianWidth
