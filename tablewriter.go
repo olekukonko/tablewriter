@@ -408,7 +408,9 @@ func (t *Table) Options(opts ...Option) *Table {
 
 	// loop through options
 	for _, opt := range opts {
-		opt(t)
+		if opt != nil {
+			opt(t)
+		}
 	}
 
 	// force debugging mode if set

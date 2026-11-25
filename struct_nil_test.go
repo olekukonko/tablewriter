@@ -1,6 +1,7 @@
 package tablewriter
 
 import (
+	"bytes"
 	"github.com/olekukonko/tablewriter/tw"
 	"reflect"
 	"testing"
@@ -62,5 +63,25 @@ func TestNilRecursiveEmbeddedPointer(t *testing.T) {
 	}
 	if want := []string{"", "ok"}; !reflect.DeepEqual(values, want) {
 		t.Fatalf("values = %q, want %q", values, want)
+	}
+}
+
+func TestNilOptions(t *testing.T) {
+	var buf bytes.Buffer
+	tbl := NewTable(&buf, nil)
+	if tbl == nil {
+		t.Fatal("expected non-nil Table when nil Option is passed")
+	}
+	tbl.Options(nil)
+}
+
+func TestNewCSVReader_NilReader(t *testing.T) {
+	var buf bytes.Buffer
+	tbl, err := NewCSVReader(&buf, nil, true)
+	if err == nil {
+		t.Fatal("expected error when nil csv.Reader is passed")
+	}
+	if tbl != nil {
+		t.Fatal("expected nil Table on error")
 	}
 }

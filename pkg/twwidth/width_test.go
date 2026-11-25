@@ -410,6 +410,12 @@ func TestCoverageWidth(t *testing.T) {
 		if IsEastAsian() == original {
 			t.Error("SetCondition failed to update global state")
 		}
+
+		// Nil condition should not panic
+		SetCondition(nil)
+		if got := Display(nil, "hello"); got != 5 {
+			t.Errorf("Display(nil, \"hello\") = %d, want 5", got)
+		}
 	})
 
 	t.Run("Truncate ANSI Reset", func(t *testing.T) {
