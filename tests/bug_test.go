@@ -774,3 +774,33 @@ func TestBugCRLFInCell(t *testing.T) {
 		}
 	})
 }
+
+func TestANSIHeaderAutoFormat(t *testing.T) {
+	var buf bytes.Buffer
+	table := tablewriter.NewTable(&buf)
+	table.Header([]string{"\x1b[31mHdr\x1b[0m", "second_col"})
+	table.Append([]string{"x", "y"})
+	table.Render()
+
+	out := buf.String()
+	// The ANSI escape sequences must survive auto-formatting byte-for-byte:
+	// uppercasing and word-splitting apply to the visible text only.
+	if !strings.Contains(out, "\x1b[31mHDR\x1b[0m") {
+		t.Errorf("expected intact escape sequence around uppercased header, got:\n%q", out)
+	}
+	if !strings.Contains(out, "SECOND COL") {
+		t.Errorf("expected visible header text to be auto-formatted, got:\n%q", out)
+	}
+	// All rendered lines must have equal display width once sequences are stripped.
+	lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+	w0 := -1
+	for i, ln := range lines {
+		w := twwidth.Width(ln)
+		if w0 == -1 {
+			w0 = w
+		} else if w != w0 {
+			t.Errorf("line %d width %d differs from first line width %d:\n%s", i, w, w0, out)
+			break
+		}
+	}
+}

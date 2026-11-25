@@ -264,6 +264,32 @@ func escapeSequences(s string) [][]int {
 	return escapeFilter.FindAllStringIndex(s, -1)
 }
 
+// TransformExcludingANSI applies fn to each segment of s that is not part of
+// an ANSI escape sequence, reassembling the string with the escape sequences
+// unchanged and in their original positions. It is used for formatting
+// operations (such as header auto-formatting) that would otherwise corrupt
+// the bytes of a sequence, for example by uppercasing its final byte or by
+// splitting it at a digit-to-letter transition.
+func TransformExcludingANSI(s string, fn func(string) string) string {
+	ranges := escapeSequences(s)
+	if len(ranges) == 0 {
+		return fn(s)
+	}
+	var b strings.Builder
+	pos := 0
+	for _, r := range ranges {
+		if r[0] > pos {
+			b.WriteString(fn(s[pos:r[0]]))
+		}
+		b.WriteString(s[r[0]:r[1]])
+		pos = r[1]
+	}
+	if pos < len(s) {
+		b.WriteString(fn(s[pos:]))
+	}
+	return b.String()
+}
+
 func MakeAlign(l int, align Align) Alignment {
 	aa := make(Alignment, l)
 	for i := 0; i < l; i++ {

@@ -156,7 +156,9 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig, resolvedWid
 		effectiveContentMaxWidth := t.calculateContentMaxWidth(i, config, padLeftWidth, padRightWidth, effectiveNumCols, resolvedWidths)
 
 		if config.Formatting.AutoFormat.Enabled() {
-			cellContent = tw.Title(joinCaseWords(tw.SplitCamelCase(cellContent)))
+			cellContent = tw.TransformExcludingANSI(cellContent, func(segment string) string {
+				return tw.Title(joinCaseWords(tw.SplitCamelCase(segment)))
+			})
 		}
 
 		lines := strings.Split(cellContent, "\n")
