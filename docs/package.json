@@ -1,0 +1,1 @@
+{"description":"TableWriter documentation site, built with Sourcey.","devDependencies":{"sourcey":"3.9.5"},"name":"tablewriter-docs","private":true,"scripts":{"build":"sourcey build","dev":"sourcey dev"},"version":"1.0.0"}
