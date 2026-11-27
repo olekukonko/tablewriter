@@ -933,6 +933,9 @@ func mergeConfig(dst, src Config) Config {
 	dst.Behavior.AutoHide = src.Behavior.AutoHide
 	dst.Behavior.TrimSpace = src.Behavior.TrimSpace
 	dst.Behavior.TrimTab = src.Behavior.TrimTab
+	if !src.Behavior.TrimLine.Default() {
+		dst.Behavior.TrimLine = src.Behavior.TrimLine
+	}
 	dst.Behavior.Compact = src.Behavior.Compact
 	dst.Behavior.Header = src.Behavior.Header
 	dst.Behavior.Footer = src.Behavior.Footer

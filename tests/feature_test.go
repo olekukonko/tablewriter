@@ -326,6 +326,43 @@ func TestTrimLine(t *testing.T) {
 	}
 }
 
+func TestTrimLineWithConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		state    tw.State
+		expected string
+	}{
+		{"off", tw.Off, `
+			┌───┐
+			│ A │
+			│   │
+			│ B │
+			└───┘
+		`},
+		{"default", tw.Unknown, `
+			┌───┐
+			│ A │
+			│ B │
+			└───┘
+		`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			table := tablewriter.NewTable(&buf, tablewriter.WithConfig(tablewriter.Config{
+				Behavior: tw.Behavior{TrimLine: tc.state},
+			}))
+			if err := table.Append([]string{"A\n\nB"}); err != nil {
+				t.Fatal(err)
+			}
+			if err := table.Render(); err != nil {
+				t.Fatal(err)
+			}
+			visualCheck(t, tc.name, buf.String(), tc.expected)
+		})
+	}
+}
+
 // A simple ByteCounter to demonstrate a custom counter implementation.
 type ByteCounter struct {
 	count int
