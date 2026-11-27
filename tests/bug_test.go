@@ -800,6 +800,16 @@ func TestBug368(t *testing.T) {
 			wantHeader: "\x1b[1m\x1b[34mFIRST NAME\x1b[0m",
 		},
 		{
+			name:       "OSC hyperlink header",
+			header:     []string{"\x1b]8;;http://example.com\x1b\\myHeader\x1b]8;;\x1b\\", "second"},
+			wantHeader: "\x1b]8;;http://example.com\x1b\\MY HEADER\x1b]8;;\x1b\\",
+		},
+		{
+			name:       "OSC title header",
+			header:     []string{"\x1b]0;myTitle\x07myHeader", "second"},
+			wantHeader: "\x1b]0;myTitle\x07MY HEADER",
+		},
+		{
 			name:       "plain header unchanged",
 			header:     []string{"myHeader", "second"},
 			wantHeader: "MY HEADER",
