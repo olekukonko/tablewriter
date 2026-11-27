@@ -2,6 +2,7 @@ package tablewriter
 
 import (
 	"io"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -93,6 +94,76 @@ func isWordRune(r rune) bool {
 	return unicode.IsLetter(r) || unicode.IsDigit(r)
 }
 
+// ansiSequenceFilter matches the ANSI escape sequences that take no width.
+// It is compiled once, because twwidth.Filter compiles a new one on every call.
+var ansiSequenceFilter = twwidth.Filter()
+
+// ansiPlaceholderStart and ansiPlaceholderEnd bracket the placeholders that
+// stand in for ANSI escape sequences while header auto-formatting runs.
+// Private-use runes have no case mapping, are neither letters nor digits,
+// and are never '_' or '.', so they pass through SplitCamelCase,
+// joinCaseWords and Title unchanged and are never split apart.
+const (
+	ansiPlaceholderStart = '\uE000'
+	ansiPlaceholderEnd   = '\uE001'
+)
+
+// formatHeaderCell applies the header auto-formatting pipeline (camel-case
+// splitting and title casing) to the visible text of cellContent, leaving
+// any ANSI escape sequences byte-for-byte unchanged. Running the pipeline
+// over the raw bytes would split inside sequences (digit-to-letter
+// transitions) and uppercase their terminating byte, corrupting e.g.
+// "\x1b[31m" into "\x1b[31 M".
+func formatHeaderCell(cellContent string) string {
+	if !strings.Contains(cellContent, "\x1b") {
+		return tw.Title(joinCaseWords(tw.SplitCamelCase(cellContent)))
+	}
+	sequences := ansiSequenceFilter.FindAllString(cellContent, -1)
+	if len(sequences) == 0 {
+		return tw.Title(joinCaseWords(tw.SplitCamelCase(cellContent)))
+	}
+	// The placeholder scheme collides with user text that already contains
+	// the private-use bracket runes; fall back to formatting each visible
+	// run separately in that (vanishingly rare) case.
+	if strings.ContainsAny(cellContent, string([]rune{ansiPlaceholderStart, ansiPlaceholderEnd})) {
+		return formatHeaderCellPerRun(cellContent, sequences)
+	}
+	placeholder := func(i int) string {
+		return string(ansiPlaceholderStart) + strconv.Itoa(i) + string(ansiPlaceholderEnd)
+	}
+	index := 0
+	masked := ansiSequenceFilter.ReplaceAllStringFunc(cellContent, func(string) string {
+		ph := placeholder(index)
+		index++
+		return ph
+	})
+	formatted := tw.Title(joinCaseWords(tw.SplitCamelCase(masked)))
+	for i, seq := range sequences {
+		formatted = strings.Replace(formatted, placeholder(i), seq, 1)
+	}
+	return formatted
+}
+
+// formatHeaderCellPerRun formats each visible run between ANSI escape
+// sequences separately, leaving the sequences untouched. It is only the
+// fallback for input that already contains the placeholder runes.
+func formatHeaderCellPerRun(cellContent string, sequences []string) string {
+	var sb strings.Builder
+	prev := 0
+	locs := ansiSequenceFilter.FindAllStringIndex(cellContent, -1)
+	for _, loc := range locs {
+		if loc[0] > prev {
+			sb.WriteString(tw.Title(joinCaseWords(tw.SplitCamelCase(cellContent[prev:loc[0]]))))
+		}
+		sb.WriteString(cellContent[loc[0]:loc[1]])
+		prev = loc[1]
+	}
+	if prev < len(cellContent) {
+		sb.WriteString(tw.Title(joinCaseWords(tw.SplitCamelCase(cellContent[prev:]))))
+	}
+	return sb.String()
+}
+
 // prepareContent processes cell content with formatting and wrapping.
 // Parameters include cells to process and config for formatting rules.
 // Returns a slice of string slices representing processed lines.
@@ -156,7 +227,7 @@ func (t *Table) prepareContent(cells []string, config tw.CellConfig, resolvedWid
 		effectiveContentMaxWidth := t.calculateContentMaxWidth(i, config, padLeftWidth, padRightWidth, effectiveNumCols, resolvedWidths)
 
 		if config.Formatting.AutoFormat.Enabled() {
-			cellContent = tw.Title(joinCaseWords(tw.SplitCamelCase(cellContent)))
+			cellContent = formatHeaderCell(cellContent)
 		}
 
 		lines := strings.Split(cellContent, "\n")
