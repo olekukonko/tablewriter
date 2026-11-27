@@ -774,3 +774,75 @@ func TestBugCRLFInCell(t *testing.T) {
 		}
 	})
 }
+
+// TestBug368 verifies that header auto-formatting leaves ANSI escape
+// sequences byte-for-byte unchanged while still formatting the visible text.
+// See https://github.com/olekukonko/tablewriter/issues/368
+func TestBug368(t *testing.T) {
+	tests := []struct {
+		name       string
+		header     []string
+		wantHeader string // visible header text expected in the output
+	}{
+		{
+			name:       "colored short header",
+			header:     []string{"\x1b[31mHdr\x1b[0m", "second"},
+			wantHeader: "\x1b[31mHDR\x1b[0m",
+		},
+		{
+			name:       "colored camelCase header",
+			header:     []string{"\x1b[32mmyHeader\x1b[0m", "plain"},
+			wantHeader: "\x1b[32mMY HEADER\x1b[0m",
+		},
+		{
+			name:       "colored header with multiple sequences",
+			header:     []string{"\x1b[1m\x1b[34mfirstName\x1b[0m", "x"},
+			wantHeader: "\x1b[1m\x1b[34mFIRST NAME\x1b[0m",
+		},
+		{
+			name:       "OSC hyperlink header",
+			header:     []string{"\x1b]8;;http://example.com\x1b\\myHeader\x1b]8;;\x1b\\", "second"},
+			wantHeader: "\x1b]8;;http://example.com\x1b\\MY HEADER\x1b]8;;\x1b\\",
+		},
+		{
+			name:       "OSC title header",
+			header:     []string{"\x1b]0;myTitle\x07myHeader", "second"},
+			wantHeader: "\x1b]0;myTitle\x07MY HEADER",
+		},
+		{
+			name:       "plain header unchanged",
+			header:     []string{"myHeader", "second"},
+			wantHeader: "MY HEADER",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			table := tablewriter.NewTable(&buf)
+			table.Header(tt.header)
+			table.Append([]string{"x", "y"})
+			table.Render()
+			out := buf.String()
+
+			// No corrupted sequences such as "\x1b[31 M" (space inside,
+			// terminator uppercased to 'M').
+			if strings.Contains(out, "\x1b[31 M") || strings.Contains(out, "\x1b[0 M") ||
+				strings.Contains(out, "\x1b[32 M") || strings.Contains(out, "\x1b[34 M") ||
+				strings.Contains(out, "\x1b[1 M") {
+				t.Fatalf("ANSI escape sequences corrupted in output:\n%s", out)
+			}
+			if !strings.Contains(out, tt.wantHeader) {
+				t.Fatalf("expected header %q in output:\n%s", tt.wantHeader, out)
+			}
+			// All rendered lines must share the same display width.
+			lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+			wantWidth := twwidth.Width(lines[0])
+			for _, line := range lines {
+				if w := twwidth.Width(line); w != wantWidth {
+					t.Fatalf("misaligned line %q (width %d, want %d):\n%s", line, w, wantWidth, out)
+				}
+			}
+		})
+	}
+}
