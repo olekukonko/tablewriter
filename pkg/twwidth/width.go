@@ -256,6 +256,9 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 	var ansiSeqBuf bytes.Buffer
 	inAnsiSequence := false
 	ansiWrittenToContent := false
+	// hyperlinkClose holds the sequence that ends an OSC 8 hyperlink opened
+	// in the kept content, so it can be closed if the cut drops its end.
+	hyperlinkClose := ""
 
 	dwOpts := displaywidth.Options{EastAsianWidth: currentOpts.EastAsianWidth}
 	graphemes := dwOpts.StringGraphemes(s)
@@ -288,6 +291,14 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 			}
 			if terminated {
 				inAnsiSequence = false
+				if seq := ansiSeqBuf.String(); strings.HasPrefix(seq, "\x1b]8;") {
+					hyperlinkClose = ""
+					// OSC 8 is "8;params;URI"; an empty URI closes the link.
+					body, term := oscBody(seq)
+					if parts := strings.SplitN(body, ";", 3); len(parts) == 3 && parts[2] != "" {
+						hyperlinkClose = "\x1b]8;;" + term
+					}
+				}
 				contentBuf.Write(ansiSeqBuf.Bytes())
 				ansiWrittenToContent = true
 				ansiSeqBuf.Reset()
@@ -306,6 +317,9 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 	}
 
 	result := contentBuf.String()
+	if hyperlinkClose != "" {
+		result += hyperlinkClose
+	}
 
 	// Determine if we need to append a reset sequence to prevent color bleeding.
 	// This is needed if we wrote any ANSI codes or if the input had active codes
@@ -328,6 +342,16 @@ func Truncate(s string, maxWidth int, suffix ...string) string {
 		result += suffixStr
 	}
 	return result
+}
+
+// oscBody splits a terminated OSC sequence into its content (without the
+// leading ESC ]) and its string terminator (BEL or ESC \\).
+func oscBody(seq string) (body, term string) {
+	body = strings.TrimPrefix(seq, "\x1b]")
+	if strings.HasSuffix(body, "\x07") {
+		return strings.TrimSuffix(body, "\x07"), "\x07"
+	}
+	return strings.TrimSuffix(body, "\x1b\\"), "\x1b\\"
 }
 
 // Width calculates the visual width of a string using the global cache for performance.
