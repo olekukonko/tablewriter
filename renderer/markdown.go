@@ -257,34 +257,18 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 	minWidth := tw.Max(3, contentVisualWidth+padLeftCharWidth+padRightCharWidth)
 	targetWidth := tw.Max(width, minWidth)
 
-	totalPaddingNeeded := max(targetWidth-contentVisualWidth, 0)
-
-	var leftPadStr, rightPadStr string
+	totalPaddingNeeded := targetWidth - contentVisualWidth
+	leftPaddingWidth := padLeftCharWidth
 	switch align {
 	case tw.AlignRight:
-		leftPadCount := tw.Max(0, totalPaddingNeeded-padRightCharWidth)
-		rightPadCount := totalPaddingNeeded - leftPadCount
-		leftPadStr = strings.Repeat(padLeftChar, leftPadCount)
-		rightPadStr = strings.Repeat(padRightChar, rightPadCount)
+		leftPaddingWidth = totalPaddingNeeded - padRightCharWidth
 	case tw.AlignCenter:
-		leftPadCount := totalPaddingNeeded / 2
-		rightPadCount := totalPaddingNeeded - leftPadCount
-		if leftPadCount < padLeftCharWidth && totalPaddingNeeded >= padLeftCharWidth+padRightCharWidth {
-			leftPadCount = padLeftCharWidth
-			rightPadCount = totalPaddingNeeded - leftPadCount
-		}
-		if rightPadCount < padRightCharWidth && totalPaddingNeeded >= padLeftCharWidth+padRightCharWidth {
-			rightPadCount = padRightCharWidth
-			leftPadCount = totalPaddingNeeded - rightPadCount
-		}
-		leftPadStr = strings.Repeat(padLeftChar, leftPadCount)
-		rightPadStr = strings.Repeat(padRightChar, rightPadCount)
-	default: // AlignLeft
-		rightPadCount := tw.Max(0, totalPaddingNeeded-padLeftCharWidth)
-		leftPadCount := totalPaddingNeeded - rightPadCount
-		leftPadStr = strings.Repeat(padLeftChar, leftPadCount)
-		rightPadStr = strings.Repeat(padRightChar, rightPadCount)
+		leftPaddingWidth = min(max(totalPaddingNeeded/2, padLeftCharWidth), totalPaddingNeeded-padRightCharWidth)
 	}
+	rightPaddingWidth := totalPaddingNeeded - leftPaddingWidth
+
+	leftPadStr := markdownPadding(padLeftChar, padLeftCharWidth, leftPaddingWidth)
+	rightPadStr := markdownPadding(padRightChar, padRightCharWidth, rightPaddingWidth)
 
 	result := leftPadStr + content + rightPadStr
 	finalWidth := twwidth.Width(result)
@@ -305,7 +289,9 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 				result += adjStr
 			}
 		} else {
-			result = twwidth.Truncate(result, targetWidth)
+			// Padding and the cell can interact at a grapheme boundary. Use spaces
+			// if the combined string is too wide so the cell content stays intact.
+			result = strings.Repeat(tw.Space, leftPaddingWidth) + content + strings.Repeat(tw.Space, rightPaddingWidth)
 		}
 		m.logger.Debugf("Markdown formatCell Corrected: target_w=%d, result='%s', new_w=%d", targetWidth, result, twwidth.Width(result))
 	}
@@ -313,6 +299,13 @@ func (m *Markdown) formatCell(content string, width int, align tw.Align, padding
 	m.logger.Debugf("Markdown formatCell: content='%s', width=%d, align=%s, paddingL='%s', paddingR='%s' -> '%s' (target %d)",
 		content, width, align, padding.Left, padding.Right, result, targetWidth)
 	return result
+}
+
+func markdownPadding(pad string, padWidth, width int) string {
+	if padWidth <= 1 {
+		return strings.Repeat(pad, width)
+	}
+	return strings.Repeat(pad, width/padWidth) + strings.Repeat(tw.Space, width%padWidth)
 }
 
 func (m *Markdown) formatSeparator(width int, align tw.Align) string {
