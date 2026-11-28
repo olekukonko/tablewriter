@@ -387,6 +387,133 @@ func TestMarkdownWidePaddingPreservesContent(t *testing.T) {
 	}
 }
 
+func TestMarkdownAsymmetricWidePadding(t *testing.T) {
+	tests := []struct {
+		name     string
+		padding  tw.Padding
+		align    tw.Align
+		expected string
+	}{
+		{
+			name:    "wide-left/left",
+			padding: tw.Padding{Left: "界", Right: " "},
+			align:   tw.AlignLeft,
+			expected: `
+|界ITEM   |界COUNT |
+|:--------|:-------|
+|界Tea    |界42    |
+|界Coffee |界5     |
+|界Total  |界47    |
+`,
+		},
+		{
+			name:    "wide-left/center",
+			padding: tw.Padding{Left: "界", Right: " "},
+			align:   tw.AlignCenter,
+			expected: `
+|界ITEM   |界COUNT |
+|:-------:|:------:|
+|界 Tea   |界 42   |
+|界Coffee |界 5    |
+|界Total  |界 47   |
+`,
+		},
+		{
+			name:    "wide-left/right",
+			padding: tw.Padding{Left: "界", Right: " "},
+			align:   tw.AlignRight,
+			expected: `
+|界界ITEM |界COUNT |
+|--------:|-------:|
+|界界 Tea |界界 42 |
+|界Coffee |界界界5 |
+|界 Total |界界 47 |
+`,
+		},
+		{
+			name:    "wide-right/left",
+			padding: tw.Padding{Left: " ", Right: "界"},
+			align:   tw.AlignLeft,
+			expected: `
+| ITEM界界| COUNT界|
+|:--------|:-------|
+| Tea界界 | 42界界 |
+| Coffee界| 5界界界|
+| Total界 | 47界界 |
+`,
+		},
+		{
+			name:    "wide-right/center",
+			padding: tw.Padding{Left: " ", Right: "界"},
+			align:   tw.AlignCenter,
+			expected: `
+|  ITEM界 | COUNT界|
+|:-------:|:------:|
+|   Tea界 |   42界 |
+| Coffee界|   5界界|
+|  Total界|   47界 |
+`,
+		},
+		{
+			name:    "wide-right/right",
+			padding: tw.Padding{Left: " ", Right: "界"},
+			align:   tw.AlignRight,
+			expected: `
+|   ITEM界| COUNT界|
+|--------:|-------:|
+|    Tea界|    42界|
+| Coffee界|     5界|
+|  Total界|    47界|
+`,
+		},
+	}
+
+	wantRows := [][]string{{"ITEM", "COUNT"}, nil, {"Tea", "42"}, {"Coffee", "5"}, {"Total", "47"}}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			table := tablewriter.NewTable(&buf,
+				tablewriter.WithRenderer(renderer.NewMarkdown()),
+				tablewriter.WithHeaderAlignment(tc.align),
+				tablewriter.WithRowAlignment(tc.align),
+				tablewriter.WithFooterAlignmentConfig(tw.CellAlignment{Global: tc.align}),
+				tablewriter.WithPadding(tc.padding),
+			)
+			table.Header("Item", "Count")
+			if err := table.Append("Tea", "42"); err != nil {
+				t.Fatal(err)
+			}
+			if err := table.Append("Coffee", "5"); err != nil {
+				t.Fatal(err)
+			}
+			table.Footer("Total", "47")
+			if err := table.Render(); err != nil {
+				t.Fatal(err)
+			}
+
+			if !visualCheck(t, tc.name, buf.String(), tc.expected) {
+				t.Error(table.Debug())
+			}
+
+			lines := strings.Split(strings.TrimSuffix(buf.String(), "\n"), "\n")
+			if len(lines) != len(wantRows) {
+				t.Fatalf("got %d lines, want %d:\n%s", len(lines), len(wantRows), buf.String())
+			}
+			width := twwidth.Width(lines[1])
+			for i, line := range lines {
+				for _, value := range wantRows[i] {
+					if !strings.Contains(line, value) {
+						t.Errorf("line %d lost cell %q: %s", i+1, value, line)
+					}
+				}
+				if got := twwidth.Width(line); got != width {
+					t.Errorf("line %d has display width %d, want %d: %s", i+1, got, width, line)
+				}
+			}
+		})
+	}
+}
+
 func TestMarkdownHorizontalMerge(t *testing.T) {
 	var buf bytes.Buffer
 	c := tablewriter.Config{
